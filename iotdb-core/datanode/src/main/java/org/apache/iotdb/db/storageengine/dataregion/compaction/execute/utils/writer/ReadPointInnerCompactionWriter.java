@@ -71,7 +71,10 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     int batchSize = tsBlock.getPositionCount();
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
-    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
+    chunkPointNumArray[subTaskId] += batchSize;
+    if (hasVariableLengthTypeArray[subTaskId]) {
+      writtenPointTotalSizeArray[subTaskId] += estimateWrittenPointTotalSize(tsBlock);
+    }
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId);
   }
 

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -176,14 +175,14 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
+    List<IMeasurementSchema> filteredSchemaList =
+        schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList());
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
-              seriesNumber += schemaList.size();
-              return new AlignedWritableMemChunkGroup(
-                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()),
-                  k.isTableModel());
+              seriesNumber += filteredSchemaList.size();
+              return new AlignedWritableMemChunkGroup(filteredSchemaList, k.isTableModel());
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
@@ -201,11 +200,14 @@ public abstract class AbstractMemTable implements IMemTable {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
+    Object[] writableValues = new Object[measurements == null ? 0 : measurements.length];
     int nullPointsNumber = 0;
-    for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      final boolean hasValue = values != null && i < values.length;
+      final Object value = hasValue ? values[i] : null;
       // Use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null || values[i] == null) {
-        if (values[i] == null) {
+      if (!insertRowNode.isValidMeasurement(i, true) || !hasValue || value == null) {
+        if (hasValue && insertRowNode.isValidMeasurement(i, true) && value == null) {
           nullPointsNumber++;
         }
         schemaList.add(null);
@@ -213,14 +215,15 @@ public abstract class AbstractMemTable implements IMemTable {
         IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
         schemaList.add(schema);
         dataTypes.add(schema.getType());
+        writableValues[i] = value;
       }
     }
-    memSize += MemUtils.getRowRecordSize(dataTypes, values);
-    write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
+    memSize +=
+        MemUtils.getRowRecordSize(dataTypes, writableValues, insertRowNode.getColumnCategories());
+    write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), writableValues);
 
     int pointsInserted =
-        insertRowNode.getMeasurements().length
-            - insertRowNode.getFailedMeasurementNumber()
+        insertRowNode.getValidMeasurementNumber(true)
             - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                 ? 0
                 : nullPointsNumber);
@@ -236,14 +239,14 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowNode.getValues();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
+    Object[] writableValues = new Object[measurements == null ? 0 : measurements.length];
     int nullPointsNumber = 0;
-    for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      final boolean hasValue = values != null && i < values.length;
+      final Object value = hasValue ? values[i] : null;
       // Use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null
-          || values[i] == null
-          || insertRowNode.getColumnCategories() != null
-              && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD) {
-        if (measurements[i] != null && values[i] == null) {
+      if (!insertRowNode.isValidMeasurement(i, true) || !hasValue || value == null) {
+        if (hasValue && insertRowNode.isValidMeasurement(i, true) && value == null) {
           // do not include failed measurement to avoid a negative pointsInserted
           nullPointsNumber++;
         }
@@ -253,16 +256,18 @@ public abstract class AbstractMemTable implements IMemTable {
       IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
       schemaList.add(schema);
       dataTypes.add(schema.getType());
+      writableValues[i] = value;
     }
     if (schemaList.isEmpty()) {
       return 0;
     }
     memSize +=
-        MemUtils.getAlignedRowRecordSize(dataTypes, values, insertRowNode.getColumnCategories());
-    writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
+        MemUtils.getAlignedRowRecordSize(
+            dataTypes, writableValues, insertRowNode.getColumnCategories());
+    writeAlignedRow(
+        insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), writableValues);
     int pointsInserted =
-        insertRowNode.getMeasurementColumnCnt()
-            - insertRowNode.getFailedMeasurementNumber()
+        insertRowNode.getValidMeasurementNumber(true)
             - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
                 ? 0
                 : nullPointsNumber);
@@ -274,12 +279,11 @@ public abstract class AbstractMemTable implements IMemTable {
   public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
-      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end, true);
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
-          ((insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
-                  * (end - start))
+          (insertTabletNode.getValidMeasurementNumber(true) * (end - start))
               - (IoTDBDescriptor.getInstance()
                       .getConfig()
                       .isIncludeNullValueInWriteThroughputMetric()
@@ -297,14 +301,12 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
-      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end);
+      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end, true);
       writeAlignedTablet(insertTabletNode, start, end, results);
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
       int pointsInserted =
-          ((insertTabletNode.getMeasurementColumnCnt()
-                      - insertTabletNode.getFailedMeasurementNumber())
-                  * (end - start))
+          (insertTabletNode.getValidMeasurementNumber(true) * (end - start))
               - (IoTDBDescriptor.getInstance()
                       .getConfig()
                       .isIncludeNullValueInWriteThroughputMetric()
@@ -318,17 +320,23 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private static int computeTabletNullPointsNumber(
-      InsertTabletNode insertTabletNode, int start, int end) {
+      InsertTabletNode insertTabletNode, int start, int end, boolean countFieldOnly) {
     Object[] values = insertTabletNode.getBitMaps();
     int nullPointsNumber = 0;
     if (values != null) {
-      for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-        if (insertTabletNode.isMeasurementFailed(i)) {
+      for (int i = 0;
+          insertTabletNode.getMeasurements() != null
+              && i < insertTabletNode.getMeasurements().length;
+          i++) {
+        if (!insertTabletNode.isValidMeasurement(i, countFieldOnly)
+            || insertTabletNode.getColumns() == null
+            || i >= insertTabletNode.getColumns().length
+            || insertTabletNode.getColumns()[i] == null) {
           // do not include failed measurement to avoid a negative pointsInserted
           continue;
         }
 
-        BitMap bitMap = (BitMap) values[i];
+        BitMap bitMap = i < values.length ? (BitMap) values[i] : null;
         if (bitMap != null && !bitMap.isAllUnmarked()) {
           for (int j = start; j < end; j++) {
             if (bitMap.isMarked(j)) {
@@ -365,19 +373,33 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-      if (insertTabletNode.getColumns()[i] == null) {
+    final int measurementSize =
+        insertTabletNode.getMeasurements() == null ? 0 : insertTabletNode.getMeasurements().length;
+    final Object[] writableColumns = new Object[measurementSize];
+    final BitMap[] writableBitMaps =
+        insertTabletNode.getBitMaps() == null ? null : new BitMap[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      if (!insertTabletNode.isValidMeasurement(i, true)
+          || insertTabletNode.getColumns() == null
+          || i >= insertTabletNode.getColumns().length
+          || insertTabletNode.getColumns()[i] == null) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
+        writableColumns[i] = insertTabletNode.getColumns()[i];
+        if (writableBitMaps != null
+            && insertTabletNode.getBitMaps() != null
+            && i < insertTabletNode.getBitMaps().length) {
+          writableBitMaps[i] = insertTabletNode.getBitMaps()[i];
+        }
       }
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
     memChunkGroup.writeTablet(
         insertTabletNode.getTimes(),
-        insertTabletNode.getColumns(),
-        insertTabletNode.getBitMaps(),
+        writableColumns,
+        writableBitMaps,
         schemaList,
         start,
         end,
@@ -387,13 +409,25 @@ public abstract class AbstractMemTable implements IMemTable {
   public void writeAlignedTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-      if (insertTabletNode.getColumns()[i] == null
-          || (insertTabletNode.getColumnCategories() != null
-              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
+    final int measurementSize =
+        insertTabletNode.getMeasurements() == null ? 0 : insertTabletNode.getMeasurements().length;
+    final Object[] writableColumns = new Object[measurementSize];
+    final BitMap[] writableBitMaps =
+        insertTabletNode.getBitMaps() == null ? null : new BitMap[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      if (!insertTabletNode.isValidMeasurement(i, true)
+          || insertTabletNode.getColumns() == null
+          || i >= insertTabletNode.getColumns().length
+          || insertTabletNode.getColumns()[i] == null) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
+        writableColumns[i] = insertTabletNode.getColumns()[i];
+        if (writableBitMaps != null
+            && insertTabletNode.getBitMaps() != null
+            && i < insertTabletNode.getBitMaps().length) {
+          writableBitMaps[i] = insertTabletNode.getBitMaps()[i];
+        }
       }
     }
     if (schemaList.isEmpty()) {
@@ -409,8 +443,8 @@ public abstract class AbstractMemTable implements IMemTable {
           createAlignedMemChunkGroupIfNotExistAndGet(deviceID, schemaList);
       memChunkGroup.writeTablet(
           insertTabletNode.getTimes(),
-          insertTabletNode.getColumns(),
-          insertTabletNode.getBitMaps(),
+          writableColumns,
+          writableBitMaps,
           schemaList,
           splitStart,
           splitEnd,

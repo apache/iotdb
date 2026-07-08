@@ -22,15 +22,22 @@ package org.apache.iotdb.commons.pipe.sink.payload.thrift.common;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class PipeTransferSliceReqBuilderTest {
 
@@ -89,6 +96,83 @@ public class PipeTransferSliceReqBuilderTest {
     Assert.assertTrue(
         PipeTransferSliceReqBuilder.shouldSlice(
             createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 4), bodySizeLimit));
+  }
+
+  @Test
+  public void testPipeTransferSliceReqFromLegacyV13Body() throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_SLICE.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(7, outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), outputStream);
+      ReadWriteIOUtils.write(6, outputStream);
+      ReadWriteIOUtils.write(new Binary(new byte[] {2, 3, 4}), outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    final PipeTransferSliceReq sliceReq = PipeTransferSliceReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(7, sliceReq.getOrderId());
+    Assert.assertEquals(PipeRequestType.TRANSFER_TABLET_RAW.getType(), sliceReq.getOriginReqType());
+    Assert.assertEquals(6, sliceReq.getOriginBodySize());
+    Assert.assertArrayEquals(new byte[] {2, 3, 4}, sliceReq.getSliceBody());
+    Assert.assertEquals(1, sliceReq.getSliceIndex());
+    Assert.assertEquals(2, sliceReq.getSliceCount());
+  }
+
+  @Test
+  public void testSliceReqHandlerRejectsOversizedSlices() throws IOException {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 6);
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 0, 2, req.body.duplicate(), 0, 4);
+    final PipeTransferSliceReq oversizedSecondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 1, 2, req.body.duplicate(), 2, 6);
+
+    final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
+    Assert.assertTrue(handler.receiveSlice(firstSlice));
+    Assert.assertFalse(handler.receiveSlice(oversizedSecondSlice));
+    Assert.assertFalse(handler.makeReqIfComplete().isPresent());
+  }
+
+  @Test
+  public void testSliceReqHandlerAssemblesCompleteRequest() throws IOException {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 6);
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 0, 2, req.body.duplicate(), 0, 4);
+    final PipeTransferSliceReq secondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 1, 2, req.body.duplicate(), 4, 6);
+
+    final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
+    Assert.assertTrue(handler.receiveSlice(firstSlice));
+    Assert.assertFalse(handler.makeReqIfComplete().isPresent());
+    Assert.assertTrue(handler.receiveSlice(secondSlice));
+
+    final Optional<TPipeTransferReq> completedReq = handler.makeReqIfComplete();
+    Assert.assertTrue(completedReq.isPresent());
+
+    final TPipeTransferReq assembledReq = completedReq.get();
+    Assert.assertEquals(IoTDBSinkRequestVersion.VERSION_1.getVersion(), assembledReq.getVersion());
+    Assert.assertEquals(req.getType(), assembledReq.getType());
+
+    final byte[] assembledBody = new byte[assembledReq.body.remaining()];
+    assembledReq.body.get(assembledBody);
+    Assert.assertArrayEquals(new byte[] {0, 1, 2, 3, 4, 5}, assembledBody);
+  }
+
+  @Test
+  public void testSliceReqHandlerRejectsInvalidMetadata() throws IOException {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 2);
+    final PipeTransferSliceReq invalidSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(7, req.getType(), 0, 0, req.body.duplicate(), 0, 1);
+
+    final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
+
+    Assert.assertFalse(handler.receiveSlice(invalidSlice));
+    Assert.assertFalse(handler.makeReqIfComplete().isPresent());
   }
 
   private static TPipeTransferReq createReq(final byte version, final int bodySize) {

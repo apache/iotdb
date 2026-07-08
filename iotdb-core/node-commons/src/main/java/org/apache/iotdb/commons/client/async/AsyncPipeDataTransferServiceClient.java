@@ -234,7 +234,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

@@ -56,10 +56,10 @@ public class CteScanOperator implements SourceOperator {
       PlanNodeId sourceId,
       CteDataStore dataStore,
       QueryId queryId) {
-    requireNonNull(dataStore, "dataStore is null");
+    requireNonNull(dataStore, DataNodeQueryMessages.EXCEPTION_DATASTORE_IS_NULL_D9972B2E);
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
-    this.dataReader = new MemoryReader(dataStore, queryId);
+    this.dataReader = new MemoryReader(dataStore, queryId, operatorContext.isHighestPriority());
   }
 
   @Override

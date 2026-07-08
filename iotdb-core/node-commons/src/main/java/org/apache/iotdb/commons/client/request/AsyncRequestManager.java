@@ -182,18 +182,19 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     final TEndPoint endPoint = nodeLocationToEndPoint(targetNode);
     Client client = null;
     boolean dispatched = false;
+    AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler = null;
     try {
       if (!actionMap.containsKey(requestContext.getRequestType())) {
         throw new UnsupportedOperationException(
-            "unsupported request type "
+            ClientMessages.EXCEPTION_UNSUPPORTED_REQUEST_TYPE_2030CDC7
                 + requestContext.getRequestType()
-                + ", please set it in AsyncRequestManager::initActionMapBuilder()");
+                + ClientMessages
+                    .EXCEPTION_PLEASE_SET_IT_ASYNCREQUESTMANAGER_INITACTIONMAPBUILDER_0F039A93);
       }
+      handler = buildHandler(requestContext, requestId, targetNode);
       client = clientManager.borrowClient(endPoint);
       adjustClientTimeoutIfNecessary(requestContext.getRequestType(), client);
       Object req = requestContext.getRequest(requestId);
-      AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler =
-          buildHandler(requestContext, requestId, targetNode);
       Objects.requireNonNull(actionMap.get(requestContext.getRequestType()))
           .accept(req, client, handler);
       // After accept() returns, the async callback (onComplete/onError) takes over the
@@ -207,6 +208,22 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           endPoint,
           e.getMessage(),
           retryCount);
+      if (handler != null) {
+        try {
+          handler.onError(e);
+        } catch (final Exception handlerException) {
+          LOGGER.warn(
+              ClientMessages
+                  .MESSAGE_FAILED_TO_HANDLE_ASYNC_REQUEST_ERROR_FOR_REQUEST_TYPE_ARG_ON_NODE_ARG_ARG_3AE293F7,
+              requestContext.getRequestType(),
+              endPoint,
+              handlerException.getMessage(),
+              handlerException);
+          requestContext.getCountDownLatch().countDown();
+        }
+      } else {
+        requestContext.getCountDownLatch().countDown();
+      }
     } finally {
       if (!dispatched && client != null && clientManager instanceof ClientManager) {
         ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);

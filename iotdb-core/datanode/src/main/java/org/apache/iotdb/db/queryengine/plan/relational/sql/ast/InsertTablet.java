@@ -103,9 +103,16 @@ public class InsertTablet extends WrappedInsertStatement {
           deviceID2AttributeValues.get(insertTabletStatement.getTableDeviceID(rowIndex));
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
-        if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
-          attrValues[attrColNum] =
-              ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
+        final Object[] columns = insertTabletStatement.getColumns();
+        if (!insertTabletStatement.isNull(rowIndex, columnIndex)
+            && columns != null
+            && columnIndex >= 0
+            && columnIndex < columns.length
+            && columns[columnIndex] instanceof Object[]) {
+          final Object[] columnValues = (Object[]) columns[columnIndex];
+          if (rowIndex < columnValues.length) {
+            attrValues[attrColNum] = columnValues[rowIndex];
+          }
         }
       }
     }

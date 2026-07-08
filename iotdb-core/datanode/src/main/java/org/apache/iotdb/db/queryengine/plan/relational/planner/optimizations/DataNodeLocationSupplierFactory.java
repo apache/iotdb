@@ -67,8 +67,10 @@ public class DataNodeLocationSupplierFactory {
       TShowRegionResp tShowRegionResp = client.showRegion(req);
       if (tShowRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBRuntimeException(
-            "An error occurred when executing getReadableDataRegions():"
-                + tShowRegionResp.getStatus().getMessage(),
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREADABLEDATAREGIONS_A884A6BB,
+                tShowRegionResp.getStatus().getMessage()),
             QUERY_PROCESS_ERROR.getStatusCode());
       }
       Map<Integer, List<TRegionInfo>> map = new HashMap<>();
@@ -78,7 +80,10 @@ public class DataNodeLocationSupplierFactory {
       return map;
     } catch (final ClientManagerException | TException e) {
       throw new IoTDBRuntimeException(
-          "An error occurred when executing getReadableDataNodeLocations():" + e.getMessage(),
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREADABLEDATANODELOCATIONS_54CBD60D,
+              e.getMessage()),
           QUERY_PROCESS_ERROR.getStatusCode());
     }
   }
@@ -90,14 +95,19 @@ public class DataNodeLocationSupplierFactory {
       final TGetDataNodeLocationsResp showDataNodesResp = client.getReadableDataNodeLocations();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBRuntimeException(
-            "An error occurred when executing getReadableDataNodeLocations():"
-                + showDataNodesResp.getStatus().getMessage(),
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREADABLEDATANODELOCATIONS_54CBD60D,
+                showDataNodesResp.getStatus().getMessage()),
             QUERY_PROCESS_ERROR.getStatusCode());
       }
       return showDataNodesResp.getDataNodeLocationList();
     } catch (final ClientManagerException | TException e) {
       throw new IoTDBRuntimeException(
-          "An error occurred when executing getReadableDataNodeLocations():" + e.getMessage(),
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREADABLEDATANODELOCATIONS_54CBD60D,
+              e.getMessage()),
           QUERY_PROCESS_ERROR.getStatusCode());
     }
   }

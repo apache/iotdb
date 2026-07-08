@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -92,6 +93,74 @@ public class MemUtilsTest {
   }
 
   @Test
+  public void getAlignedRowRecordSizeWithSkippedSlotsTest() {
+    Object[] row = {null, 1, 2L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+
+    int sizeSum = 8 + 4;
+    sizeSum += TSDataType.INT32.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getAlignedRowRecordSize(
+            dataTypes,
+            row,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD, TsTableColumnCategory.TAG
+            }));
+  }
+
+  @Test
+  public void getRowRecordSizeWithSkippedSlotsTest() {
+    Object[] row = {1, 2, 3L, null};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+
+    int sizeSum = 8 + TSDataType.INT64.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getRowRecordSize(
+            dataTypes,
+            row,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.ATTRIBUTE,
+              TsTableColumnCategory.FIELD,
+              TsTableColumnCategory.FIELD
+            }));
+  }
+
+  @Test
+  public void getRowRecordSizeWithShortColumnCategoriesTest() {
+    Object[] row = {1, 2L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+
+    int sizeSum = 8 + TSDataType.INT32.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getRowRecordSize(
+            dataTypes, row, new TsTableColumnCategory[] {TsTableColumnCategory.FIELD}));
+  }
+
+  @Test
+  public void getAlignedRowRecordSizeWithShortColumnCategoriesTest() {
+    Object[] row = {1, 2L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+
+    int sizeSum = 8 + 4 + TSDataType.INT32.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getAlignedRowRecordSize(
+            dataTypes, row, new TsTableColumnCategory[] {TsTableColumnCategory.FIELD}));
+  }
+
+  @Test
   public void getRecordSizeWithInsertTableNodeTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
@@ -125,6 +194,14 @@ public class MemUtilsTest {
             null,
             columns,
             1);
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.FLOAT),
+          new MeasurementSchema("s4", TSDataType.DOUBLE),
+          new MeasurementSchema("s5", TSDataType.TEXT)
+        });
     Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1));
   }
 
@@ -173,6 +250,56 @@ public class MemUtilsTest {
           new MeasurementSchema("s5", TSDataType.TEXT)
         });
     Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1, null));
+  }
+
+  @Test
+  public void getAlignedTabletSizeWithMarkedFailedMeasurementTest() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d1");
+    String[] measurements = {"s1", "s2"};
+    Object[] columns = {new int[] {1, 2}, new long[] {3, 4}};
+    TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT64};
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            device,
+            true,
+            measurements,
+            dataTypes,
+            new long[] {1, 2},
+            null,
+            columns,
+            2);
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64)
+        });
+    insertNode.markFailedMeasurement(0);
+
+    long sizeSum = 2L * TSDataType.INT64.getDataTypeSize();
+    sizeSum += 2L * (8L + 4L);
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 2, null));
+  }
+
+  @Test
+  public void getTabletSizeWithShortValueArraysTest() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d1");
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            device,
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32},
+            new long[] {1},
+            null,
+            new Object[] {new int[] {1}},
+            1);
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)});
+
+    long sizeSum = 8 + TSDataType.INT32.getDataTypeSize();
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */

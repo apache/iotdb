@@ -66,9 +66,6 @@ public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);
 
-  private static final long HEARTBEAT_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
-
   protected IManager configManager;
   private final LoadCache loadCache;
 
@@ -101,7 +98,7 @@ public class HeartbeatService {
                 heartBeatExecutor,
                 this::heartbeatLoopBody,
                 0,
-                HEARTBEAT_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
         LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
@@ -116,6 +113,24 @@ public class HeartbeatService {
         currentHeartbeatFuture = null;
         LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
+    }
+  }
+
+  /** Reload the heartbeat interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (heartbeatScheduleMonitor) {
+      if (currentHeartbeatFuture == null) {
+        return;
+      }
+      currentHeartbeatFuture.cancel(false);
+      currentHeartbeatFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              heartBeatExecutor,
+              this::heartbeatLoopBody,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 

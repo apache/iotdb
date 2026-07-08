@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
@@ -45,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -90,7 +93,9 @@ public class TableDistributedPlanner {
       List<PlanOptimizer> distributedOptimizers,
       DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.analysis = analysis;
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
     this.optimizers = distributedOptimizers;
@@ -104,11 +109,15 @@ public class TableDistributedPlanner {
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     List<String> planText = null;
     if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {
-      planText =
-          outputNodeWithExchange.accept(
-              new PlanGraphPrinter(),
-              new PlanGraphPrinter.GraphContext(
-                  mppQueryContext.getTypeProvider().getTemplatedInfo()));
+      if (mppQueryContext.getExplainOutputFormat() == ExplainOutputFormat.JSON) {
+        planText = PlanGraphJsonPrinter.getJsonLines(outputNodeWithExchange);
+      } else {
+        planText =
+            outputNodeWithExchange.accept(
+                new PlanGraphPrinter(),
+                new PlanGraphPrinter.GraphContext(
+                    mppQueryContext.getTypeProvider().getTemplatedInfo()));
+      }
     }
 
     if (analysis.isQuery()) {
@@ -136,7 +145,9 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator(
                 mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
-    checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
+    checkArgument(
+        distributedPlanResult.size() == 1,
+        DataNodeQueryMessages.EXCEPTION_ROOT_NODE_MUST_RETURN_ONLY_ONE_FF42061C);
 
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);

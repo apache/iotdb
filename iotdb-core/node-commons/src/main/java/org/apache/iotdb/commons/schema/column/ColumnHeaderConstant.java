@@ -61,10 +61,8 @@ public class ColumnHeaderConstant {
   public static final String TIME_PARTITION_ORIGIN = "TimePartitionOrigin";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
-  public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
   public static final String MAX_SCHEMA_REGION_GROUP_NUM = "MaxSchemaRegionGroupNum";
   public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
-  public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
   public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
@@ -135,6 +133,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TOPIC = "Topic";
+  public static final String CREATE_TOPIC = "Create Topic";
 
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
@@ -196,6 +196,12 @@ public class ColumnHeaderConstant {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
+  public static final String IS_DEGRADED = "IsDegraded";
+
+  // column names for show repair data partition table progress
+  public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
+  public static final String REPAIR_DATA_PARTITION_TABLE_PROGRESS = "Progress(%)";
+  public static final String REPAIR_DATA_PARTITION_TABLE_MESSAGE = "Message";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -248,7 +254,10 @@ public class ColumnHeaderConstant {
   public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
   public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
   public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
+  public static final String MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL =
+      "max_schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
+  public static final String MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL = "max_data_region_group_num";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -269,6 +278,7 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
+  public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -340,6 +350,9 @@ public class ColumnHeaderConstant {
   public static final String CREATE_VIEW = "Create View";
   public static final String TABLE = "Table";
   public static final String CREATE_TABLE = "Create Table";
+  public static final String PIPE = "Pipe";
+  public static final String CREATE_PIPE = "Create Pipe";
+  public static final String CREATE_DATABASE = "Create Database";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -417,10 +430,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
@@ -604,12 +615,24 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
-          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN));
+
+  public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_PROGRESS, TSDataType.DOUBLE),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TOPIC, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(
@@ -730,7 +753,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -754,6 +779,15 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreatePipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PIPE, TSDataType.TEXT), new ColumnHeader(CREATE_PIPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateDatabaseColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_DATABASE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
       ImmutableList.of(

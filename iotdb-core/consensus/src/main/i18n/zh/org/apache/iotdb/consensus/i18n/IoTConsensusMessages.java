@@ -56,8 +56,6 @@ public final class IoTConsensusMessages {
   public static final String THROTTLE_DOWN = "[限流] index:{}, safeIndex:{}";
   public static final String DATA_REGION_INDEX_AFTER_BUILD =
       "DataRegion[{}]：构建后的 index：safeIndex:{}，searchIndex: {}，lastConsensusRequest: {}";
-  public static final String WRITE_OPERATION_FAILED =
-      "{}：写入操作失败。searchIndex: {}。Code: {}";
   public static final String FAILED_TO_THROTTLE_DOWN = "限流失败，原因 ";
 
   // ===================== 快照 =====================
@@ -296,4 +294,36 @@ public final class IoTConsensusMessages {
       "轮询和等待后被中断";
   public static final String INTERRUPTED_AFTER_GETTING_A_BATCH =
       "获取批次后被中断";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA = "group {} 的 onNewPeerCreated 回调失败";
+  public static final String LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF = "group {} 的 onPeerRemoved 回调失败";
+  public static final String EXCEPTION_UNSUPPORTED_WRITER_META_VERSION_ARG_ARG_7D14E679 = "不支持 writer meta 版本 %d，位置 %s";
+  public static final String LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B = "write() 没有已注册的订阅队列，";
+  public static final String LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6 = "group={}, searchIndex={}, 当前对象={}";
+  public static final String LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB = "无法通知 {} 构建同步日志通道。";
+  public static final String LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3 = "请手动检查该节点状态";
+  public static final String LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A = "无法将 writer safe-time barrier 同步到 peer {}，group {}，";
+  public static final String LOG_SAFEPT_ARG_WRITERNODEID_ARG_BARRIER_ARG_AC74618F = "safePt={}, writerNodeId={}, barrier={}";
+  public static final String LOG_RECOVERED_WRITER_META_GROUP_ARG_ARG_RECOVEREDLOCALSEQ_ARG_9B989AAC = "已恢复 group {} 的 writer meta，来源 {}，recoveredLocalSeq={}，";
+  public static final String LOG_PERSISTEDLOCALSEQ_ARG_5EBAA9A5 = "persistedLocalSeq={}";
+  public static final String LOG_FAILED_LOAD_WRITER_META_GROUP_ARG_ARG_STARTING_FRESH_WRITER_A24EDEFE = "无法加载 group {} 的 writer meta，来源 {}。正在启动新的 writer 元数据。";
+  public static final String LOG_INITIALIZED_FRESH_WRITER_META_GROUP_ARG_RECOVEREDLOCALSEQ_ARG_A7254C6E = "已初始化 group {} 的新 writer meta，recoveredLocalSeq={}";
+  public static final String LOG_FAILED_PERSIST_WRITER_META_GROUP_ARG_AT_LOCALSEQ_ARG_PT_3502F119 = "无法持久化 group {} 的 writer meta，localSeq={}，pt={}";
+  public static final String LOG_REGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_5102ABA0 = "已注册 group {} 的订阅队列，";
+  public static final String LOG_TOTAL_SUBSCRIPTION_QUEUES_ARG_CURRENTSEARCHINDEX_ARG_ARG_9BF9006A = "订阅队列总数：{}，currentSearchIndex={}，当前对象={}";
+  public static final String LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF = "已注销 group {} 的订阅队列，剩余订阅队列：{}";
+  public static final String LOG_OBSERVED_INCOMPARABLE_WRITER_SAFE_TIME_BARRIER_WRITER_ARG_0F0C171D = "观察到 writer {} 存在不可比较的 writer safe-time barrier。";
+  public static final String LOG_KEEP_PENDINGSAFEPHYSICALTIME_ARG_PENDINGSAFELOCALSEQ_ARG_7123FD95 = "保留 pendingSafePhysicalTime={}，pendingSafeLocalSeq={}，";
+  public static final String LOG_IGNORE_SAFEPHYSICALTIME_ARG_SAFELOCALSEQ_ARG_A601C4D1 = "忽略 safePhysicalTime={}，safeLocalSeq={}";
+  public static final String LOG_WRITE_OFFERING_ARG_SUBSCRIPTION_QUEUE_S_GROUP_ARG_SEARCHINDEX_ARG_A8489EDF = "write() 正在提交到 {} 个订阅队列，group={}，searchIndex={}，requestType={}";
+  public static final String LOG_OFFER_RESULT_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_7ADC84C2 = "提交结果={}，queueSize={}，queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D = "订阅队列已满，丢弃了 {} 个 entry，最近 {} ms，最新 ";
+  public static final String LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED = "searchIndex={}, queueSize={}, queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "订阅队列已满，丢弃 entry，searchIndex={}，droppedCount={}";
+  public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "预留 {} 字节给批次 {}-{}，当前总使用量 {}";
+  public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}：无法向 {} 发送 idle writer safe-time barrier。状态={}";
+  public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}：写入操作失败。searchIndex: {}。Code: {}，订阅队列：{}，当前对象：{}";
+
 }

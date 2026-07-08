@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -126,9 +127,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         loadBalancer = new PriorityLoadBalancer();
         break;
       default:
-        LOGGER.warn(
-            "Unknown load balance strategy: {}, use round-robin strategy instead.",
-            loadBalanceStrategy);
+        LOGGER.warn(PipeMessages.UNKNOWN_LOAD_BALANCE_STRATEGY, loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
 
@@ -315,7 +314,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   protected boolean sendBytes(final AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       throw new SocketException(
-          String.format("Socket %s is closed, will try to handshake", socket));
+          String.format(
+              PipeMessages.EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1, socket));
     }
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
@@ -324,8 +324,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     outputStream.flush();
 
     final byte[] response = new byte[1];
-    final int size = socket.getInputStream().read(response);
-    return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+    new DataInputStream(socket.getInputStream()).readFully(response);
+    return Arrays.equals(AirGapOneByteResponse.OK, response);
   }
 
   protected boolean send(final AirGapSocket socket, final byte[] bytes) throws IOException {

@@ -80,10 +80,13 @@ public class InsertRow extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     final InsertRowStatement insertRowStatement = getInnerTreeStatement();
     final List<Integer> attrColumnIndices = insertRowStatement.getAttrColumnIndices();
+    final Object[] values = insertRowStatement.getValues();
     Object[] attrValues = new Object[attrColumnIndices.size()];
     for (int j = 0; j < attrColumnIndices.size(); j++) {
       final int columnIndex = attrColumnIndices.get(j);
-      attrValues[j] = insertRowStatement.getValues()[columnIndex];
+      if (values != null && columnIndex >= 0 && columnIndex < values.length) {
+        attrValues[j] = values[columnIndex];
+      }
     }
     return Collections.singletonList(attrValues);
   }

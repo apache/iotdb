@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataParti
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQ
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.AlterTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
@@ -192,6 +194,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -222,6 +225,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -241,13 +245,17 @@ import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrusted
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSinkUser;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.checkAndEnrichSourceUser;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSinkAuthenticationAsExplicitIfNecessary;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.markSourceAuthenticationAsExplicitIfNecessary;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
   @Override
   public IConfigTask visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -392,6 +400,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
     return new RepairDataPartitionTableTask();
+  }
+
+  @Override
+  public IConfigTask visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      MPPQueryContext context) {
+    return new ShowRepairDataPartitionTableProgressTask();
   }
 
   @Override
@@ -633,14 +648,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                createPipeStatement.getPipeName(),
+                sourceAttribute));
       }
       if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), sourceAttribute));
+                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
+                createPipeStatement.getPipeName(),
+                sourceAttribute));
       }
     }
 
@@ -670,14 +687,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                alterPipeStatement.getPipeName(),
+                extractorAttributeKey));
       }
       if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
-                "Failed to alter pipe %s, modifying %s is not allowed.",
-                alterPipeStatement.getPipeName(), extractorAttributeKey));
+                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
+                alterPipeStatement.getPipeName(),
+                extractorAttributeKey));
       }
     }
 
@@ -696,6 +715,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           sourceAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSourceAuthenticationAsExplicitIfNecessary(sourceAttributes);
     }
 
     if (alterPipeStatement.isReplaceAllSinkAttributes()) {
@@ -704,6 +725,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
+    } else {
+      markSinkAuthenticationAsExplicitIfNecessary(alterPipeStatement.getSinkAttributes());
     }
 
     return new AlterPipeTask(alterPipeStatement);
@@ -728,6 +751,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
 
     return new CreateTopicTask(createTopicStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterTopic(
+      AlterTopicStatement alterTopicStatement, MPPQueryContext context) {
+    alterTopicStatement
+        .getTopicAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    return new AlterTopicTask(alterTopicStatement);
   }
 
   @Override

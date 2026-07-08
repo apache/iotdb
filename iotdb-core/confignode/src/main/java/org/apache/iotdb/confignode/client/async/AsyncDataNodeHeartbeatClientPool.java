@@ -56,8 +56,8 @@ public class AsyncDataNodeHeartbeatClientPool {
       client = clientManager.borrowClient(endPoint);
       client.getDataNodeHeartBeat(req, handler);
       dispatched = true;
-    } catch (Exception ignore) {
-      // Just ignore
+    } catch (Exception e) {
+      handleError(handler, e);
     } finally {
       returnClientIfNotDispatched(endPoint, client, dispatched);
     }
@@ -72,7 +72,7 @@ public class AsyncDataNodeHeartbeatClientPool {
       client.writeAuditLog(req, handler);
       dispatched = true;
     } catch (Exception e) {
-      // Just ignore
+      handleError(handler, e);
     } finally {
       returnClientIfNotDispatched(endPoint, client, dispatched);
     }
@@ -86,6 +86,22 @@ public class AsyncDataNodeHeartbeatClientPool {
     if (!dispatched && client != null && clientManager instanceof ClientManager) {
       ((ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>) clientManager)
           .returnClient(endPoint, client);
+    }
+  }
+
+  private void handleError(final DataNodeHeartbeatHandler handler, final Exception e) {
+    try {
+      handler.onError(e);
+    } catch (final Exception ignore) {
+      // Ignore handler failures in heartbeat best-effort path.
+    }
+  }
+
+  private void handleError(final DataNodeWriteAuditLogHandler handler, final Exception e) {
+    try {
+      handler.onError(e);
+    } catch (final Exception ignore) {
+      // Ignore handler failures in audit-log best-effort path.
     }
   }
 

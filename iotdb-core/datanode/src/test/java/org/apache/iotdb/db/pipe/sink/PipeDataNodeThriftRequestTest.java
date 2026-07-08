@@ -20,12 +20,19 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -40,6 +47,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -69,9 +77,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PipeDataNodeThriftRequestTest {
@@ -147,6 +158,61 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferDataNodeHandshakeReqFromLegacyV13Body() throws IOException {
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.HANDSHAKE_DATANODE_V1, serializeLegacyHandshakeV1Body(TIME_PRECISION));
+
+    final PipeTransferDataNodeHandshakeV1Req deserializeReq =
+        PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(TIME_PRECISION, deserializeReq.getTimestampPrecision());
+  }
+
+  @Test
+  public void testPipeTransferDataNodeHandshakeV2Req() throws IOException {
+    final Map<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "cluster");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, "root");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, "root");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, "async");
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE, Boolean.TRUE.toString());
+
+    final PipeTransferDataNodeHandshakeV2Req req =
+        PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
+    final PipeTransferDataNodeHandshakeV2Req deserializeReq =
+        PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(params, deserializeReq.getParams());
+  }
+
+  @Test
+  public void testPipeTransferDataNodeHandshakeV2ReqFromLegacyV13Body() throws IOException {
+    final Map<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "cluster");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, "root");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, "root");
+
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.HANDSHAKE_DATANODE_V2, serializeLegacyHandshakeV2Body(params));
+
+    final PipeTransferDataNodeHandshakeV2Req deserializeReq =
+        PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(params, deserializeReq.getParams());
+  }
+
+  @Test
   public void testPipeTransferInsertNodeReq() {
     final PipeTransferTabletInsertNodeReq req =
         PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
@@ -171,6 +237,34 @@ public class PipeDataNodeThriftRequestTest {
     final List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
     Assert.assertEquals(statement.getPaths(), paths);
+  }
+
+  @Test
+  public void testPipeTransferInsertNodeReqFromLegacyV13Body() {
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_INSERT_NODE, node.serializeToByteBuffer());
+
+    final PipeTransferTabletInsertNodeReq deserializeReq =
+        PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(node, deserializeReq.getInsertNode());
+
+    final List<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
+    Assert.assertEquals(paths, deserializeReq.constructStatement().getPaths());
   }
 
   @Test
@@ -244,6 +338,23 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'}, byteBufferToByteArray(deserializeReq.getByteBuffer()));
+  }
+
+  @Test
+  public void testPipeTransferTabletBinaryReqFromLegacyV13Body() {
+    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_BINARY, ByteBuffer.wrap(new byte[] {'a', 'b'}));
+    final PipeTransferTabletBinaryReq deserializeReq =
+        PipeTransferTabletBinaryReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'}, byteBufferToByteArray(deserializeReq.getByteBuffer()));
   }
 
   @Test
@@ -283,6 +394,67 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
 
     Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
+  }
+
+  @Test
+  public void testPipeTransferPlanNodeReqBytesWithPartialDirectByteBuffer() throws IOException {
+    final CreateAlignedTimeSeriesNode node =
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            Collections.singletonList("s"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.UNCOMPRESSED),
+            null,
+            null,
+            null);
+    final byte[] serializedPlanNodeBytes = byteBufferToByteArray(node.serializeToByteBuffer());
+    final ByteBuffer serializedPlanNode =
+        ByteBuffer.allocateDirect(serializedPlanNodeBytes.length + 2);
+    serializedPlanNode.put((byte) 0);
+    serializedPlanNode.put(serializedPlanNodeBytes);
+    serializedPlanNode.put((byte) 1);
+    serializedPlanNode.flip();
+    serializedPlanNode.position(1);
+    serializedPlanNode.limit(1 + serializedPlanNodeBytes.length);
+
+    final byte[] transferBytes = PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode);
+
+    Assert.assertEquals(1, serializedPlanNode.position());
+    Assert.assertEquals(1 + serializedPlanNodeBytes.length, serializedPlanNode.limit());
+    final ByteBuffer transferBuffer = ByteBuffer.wrap(transferBytes);
+    Assert.assertEquals(
+        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(transferBuffer));
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_PLAN_NODE.getType(), ReadWriteIOUtils.readShort(transferBuffer));
+    Assert.assertEquals(node, PlanNodeType.deserialize(transferBuffer));
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(transferBuffer));
+    Assert.assertFalse(transferBuffer.hasRemaining());
+  }
+
+  @Test
+  public void testPipeTransferPlanNodeReqFromLegacyV13SchemaPlanBody() {
+    final CreateAlignedTimeSeriesNode node =
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            Collections.singletonList("s"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.UNCOMPRESSED),
+            null,
+            null,
+            null);
+    final TPipeTransferReq req =
+        legacyTransferReq(PipeRequestType.TRANSFER_PLAN_NODE, node.serializeToByteBuffer());
+
+    final PipeTransferPlanNodeReq deserializeReq =
+        PipeTransferPlanNodeReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(node, deserializeReq.getPlanNode());
   }
 
   @Test
@@ -519,6 +691,154 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqWithLegacyTabletFormat() throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(serializeLegacyTabletRawBuffer(false));
+    tabletBuffers.add(serializeLegacyTabletRawBuffer(true));
+
+    final PipeTransferTabletBatchReq req =
+        PipeTransferTabletBatchReq.toTPipeTransferReq(Collections.emptyList(), tabletBuffers);
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(2, deserializedReq.getTabletReqs().size());
+    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+    Assert.assertTrue(deserializedReq.getTabletReqs().get(1).getIsAligned());
+
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(1).constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqFromLegacyV13Body() throws IOException {
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_BATCH,
+            serializeLegacyTabletBatchBody(
+                Collections.singletonList(node.serializeToByteBuffer()),
+                Collections.singletonList(serializeLegacyTabletRawBuffer(false))));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertEquals(1, deserializedReq.getInsertNodeReqs().size());
+    Assert.assertEquals(1, deserializedReq.getTabletReqs().size());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqFromLegacyV13BodyWithBinaryReqs() throws IOException {
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+    final ByteBuffer binaryBuffer = ByteBuffer.wrap(new byte[] {'a', 'b'});
+
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_BATCH,
+            serializeLegacyTabletBatchBody(
+                Collections.singletonList(binaryBuffer),
+                Collections.singletonList(node.serializeToByteBuffer()),
+                Collections.singletonList(serializeLegacyTabletRawBuffer(false))));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertEquals(1, deserializedReq.getBinaryReqs().size());
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'},
+        byteBufferToByteArray(deserializedReq.getBinaryReqs().get(0).getByteBuffer()));
+    Assert.assertEquals(1, deserializedReq.getInsertNodeReqs().size());
+    Assert.assertEquals(1, deserializedReq.getTabletReqs().size());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletRawReqWithLegacyTabletFormat() throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();
+    req.body = serializeLegacyTabletRawBuffer(true);
+
+    final PipeTransferTabletRawReq deserializedReq =
+        PipeTransferTabletRawReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertTrue(deserializedReq.getIsAligned());
+    assertLegacyTabletStatement(deserializedReq.constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletRawReqWithSingleColumnLegacyTabletFormat() throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();
+    req.body = serializeSingleColumnLegacyTabletRawBuffer(false);
+
+    final PipeTransferTabletRawReq deserializedReq =
+        PipeTransferTabletRawReq.fromTPipeTransferReq(req);
+
+    Assert.assertFalse(deserializedReq.getIsAligned());
+    final InsertTabletStatement statement = deserializedReq.constructStatement();
+    Assert.assertEquals("root.sg.d", statement.getDevicePath().getFullPath());
+    Assert.assertArrayEquals(new String[] {"s1"}, statement.getMeasurements());
+    Assert.assertArrayEquals(new TSDataType[] {TSDataType.INT32}, statement.getDataTypes());
+    Assert.assertEquals(2, statement.getRowCount());
+    Assert.assertArrayEquals(new long[] {1700000000000L, 1700000000001L}, statement.getTimes());
+    Assert.assertArrayEquals(new int[] {2, 1}, (int[]) statement.getColumns()[0]);
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqRejectsTruncatedRawTablet() throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      outputStream.write(new byte[] {1, 0, 0, 0, 0, 0});
+
+      final TPipeTransferReq req =
+          legacyTransferReq(
+              PipeRequestType.TRANSFER_TABLET_BATCH,
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+
+      try {
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+        Assert.fail("Expected IllegalArgumentException");
+      } catch (final IllegalArgumentException e) {
+        Assert.assertTrue(e.getMessage().contains("Failed to deserialize raw tablet"));
+        Assert.assertTrue(
+            e.getCause().getMessage().contains("Failed to deserialize raw tablet request"));
+      }
+    }
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqV2() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
@@ -734,6 +1054,38 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferFilePieceReqsFromLegacyV13Bodies() throws IOException {
+    final byte[] body = "legacyPiece".getBytes();
+
+    final PipeTransferTsFilePieceReq tsFilePieceReq =
+        PipeTransferTsFilePieceReq.fromTPipeTransferReq(
+            legacyTransferReq(
+                PipeRequestType.TRANSFER_TS_FILE_PIECE,
+                serializeLegacyFilePieceBody("1.tsfile", 1L, body)));
+    Assert.assertEquals("1.tsfile", tsFilePieceReq.getFileName());
+    Assert.assertEquals(1L, tsFilePieceReq.getStartWritingOffset());
+    Assert.assertArrayEquals(body, tsFilePieceReq.getFilePiece());
+
+    final PipeTransferTsFilePieceWithModReq tsFilePieceWithModReq =
+        PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(
+            legacyTransferReq(
+                PipeRequestType.TRANSFER_TS_FILE_PIECE_WITH_MOD,
+                serializeLegacyFilePieceBody("1.tsfile.mod", 2L, body)));
+    Assert.assertEquals("1.tsfile.mod", tsFilePieceWithModReq.getFileName());
+    Assert.assertEquals(2L, tsFilePieceWithModReq.getStartWritingOffset());
+    Assert.assertArrayEquals(body, tsFilePieceWithModReq.getFilePiece());
+
+    final PipeTransferSchemaSnapshotPieceReq schemaSnapshotPieceReq =
+        PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(
+            legacyTransferReq(
+                PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE,
+                serializeLegacyFilePieceBody("schema.snapshot", 3L, body)));
+    Assert.assertEquals("schema.snapshot", schemaSnapshotPieceReq.getFileName());
+    Assert.assertEquals(3L, schemaSnapshotPieceReq.getStartWritingOffset());
+    Assert.assertArrayEquals(body, schemaSnapshotPieceReq.getFilePiece());
+  }
+
+  @Test
   public void testPipeTransferTsFileSealReq() throws IOException {
     final String fileName = "1.tsfile";
 
@@ -747,6 +1099,87 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealReqFromLegacyV13Body() throws IOException {
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TS_FILE_SEAL, serializeLegacyFileSealV1Body("1.tsfile", 100L));
+
+    final PipeTransferTsFileSealReq deserializeReq =
+        PipeTransferTsFileSealReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals("1.tsfile", deserializeReq.getFileName());
+    Assert.assertEquals(100L, deserializeReq.getFileLength());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReq() throws IOException {
+    final String modFileName = "1.tsfile.mod";
+    final String tsFileName = "1.tsfile";
+
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            modFileName, 10, tsFileName, 100, "root.db");
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
+    Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
+    Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqFromLegacyV13BodyWithoutDatabaseName()
+      throws IOException {
+    final String modFileName = "1.tsfile.mod";
+    final String tsFileName = "1.tsfile";
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD,
+            serializeLegacyFileSealV2Body(
+                Arrays.asList(modFileName, tsFileName),
+                Arrays.asList(10L, 100L),
+                Collections.emptyMap()));
+
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
+    Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
+    Assert.assertTrue(deserializeReq.getParameters().isEmpty());
+    Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqFromLegacyV13BodyWithNullDatabaseName()
+      throws IOException {
+    final String modFileName = "1.tsfile.mod";
+    final String tsFileName = "1.tsfile";
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put("DATABASE_NAME_" + tsFileName, null);
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD,
+            serializeLegacyFileSealV2Body(
+                Arrays.asList(modFileName, tsFileName), Arrays.asList(10L, 100L), parameters));
+
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
+    Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
+    Assert.assertEquals(parameters, deserializeReq.getParameters());
+    Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
   }
 
   @Test
@@ -785,6 +1218,36 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferSchemaSnapshotSealReqFromLegacyV13Body() throws IOException {
+    final String mTreeSnapshotName = SchemaConstant.MTREE_SNAPSHOT;
+    final String tLogName = SchemaConstant.TAG_LOG;
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, "root.**");
+    parameters.put(ColumnHeaderConstant.DATABASE, "root.db");
+    parameters.put(ColumnHeaderConstant.TYPE, "19");
+
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+            serializeLegacyFileSealV2Body(
+                Arrays.asList(mTreeSnapshotName, tLogName), Arrays.asList(100L, 10L), parameters));
+    final PipeTransferSchemaSnapshotSealReq deserializeReq =
+        PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(Arrays.asList(mTreeSnapshotName, tLogName), deserializeReq.getFileNames());
+    Assert.assertEquals(Arrays.asList(100L, 10L), deserializeReq.getFileLengths());
+    Assert.assertEquals(parameters, deserializeReq.getParameters());
+    Assert.assertTrue(
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(
+            deserializeReq.getParameters()));
+    Assert.assertFalse(
+        PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(
+            deserializeReq.getParameters()));
+  }
+
+  @Test
   public void testPipeTransferFilePieceResp() throws IOException {
     final PipeTransferFilePieceResp resp =
         PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
@@ -793,6 +1256,83 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
     Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());
+  }
+
+  private static TPipeTransferReq legacyTransferReq(
+      final PipeRequestType requestType, final ByteBuffer body) {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = requestType.getType();
+    req.body = body;
+    return req;
+  }
+
+  private static ByteBuffer serializeLegacyFileSealV2Body(
+      final List<String> fileNames,
+      final List<Long> fileLengths,
+      final Map<String, String> parameters)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(fileNames.size(), outputStream);
+      for (final String fileName : fileNames) {
+        ReadWriteIOUtils.write(fileName, outputStream);
+      }
+      ReadWriteIOUtils.write(fileLengths.size(), outputStream);
+      for (final Long fileLength : fileLengths) {
+        ReadWriteIOUtils.write(fileLength, outputStream);
+      }
+      ReadWriteIOUtils.write(parameters.size(), outputStream);
+      for (final Map.Entry<String, String> entry : parameters.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyHandshakeV1Body(final String timestampPrecision)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(timestampPrecision, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyHandshakeV2Body(final Map<String, String> params)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(params.size(), outputStream);
+      for (final Map.Entry<String, String> entry : params.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyFilePieceBody(
+      final String fileName, final long startWritingOffset, final byte[] filePiece)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(startWritingOffset, outputStream);
+      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyFileSealV1Body(
+      final String fileName, final long fileLength) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(fileLength, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 
   private static Tablet createSingleValueTablet(final String deviceId, final String measurement) {
@@ -813,5 +1353,130 @@ public class PipeDataNodeThriftRequestTest {
       ReadWriteIOUtils.write(isAligned, outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
+  }
+
+  private static ByteBuffer serializeLegacyTabletRawBuffer(final boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write("root.sg.d", outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      writeLegacyMeasurementSchema(outputStream, "s1", TSDataType.INT32);
+      writeLegacyMeasurementSchema(outputStream, "s2", TSDataType.TEXT);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(1700000000000L, outputStream);
+      ReadWriteIOUtils.write(1700000000001L, outputStream);
+
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(new Binary("2", TSFileConfig.STRING_CHARSET), outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(new Binary("1", TSFileConfig.STRING_CHARSET), outputStream);
+
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeSingleColumnLegacyTabletRawBuffer(final boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write("root.sg.d", outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      writeLegacyMeasurementSchema(outputStream, "s1", TSDataType.INT32);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(1700000000000L, outputStream);
+      ReadWriteIOUtils.write(1700000000001L, outputStream);
+
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static ByteBuffer serializeLegacyTabletBatchBody(
+      final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
+      throws IOException {
+    return serializeLegacyTabletBatchBody(
+        Collections.emptyList(), insertNodeBuffers, tabletBuffers);
+  }
+
+  private static ByteBuffer serializeLegacyTabletBatchBody(
+      final List<ByteBuffer> binaryBuffers,
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
+        writeByteBuffer(outputStream, binaryBuffer);
+      }
+
+      ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
+      for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
+        writeByteBuffer(outputStream, insertNodeBuffer);
+      }
+
+      ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
+      for (final ByteBuffer tabletBuffer : tabletBuffers) {
+        writeByteBuffer(outputStream, tabletBuffer);
+      }
+
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static void writeByteBuffer(
+      final DataOutputStream outputStream, final ByteBuffer byteBuffer) throws IOException {
+    outputStream.write(byteBufferToByteArray(byteBuffer));
+  }
+
+  private static byte[] byteBufferToByteArray(final ByteBuffer byteBuffer) {
+    final ByteBuffer duplicatedBuffer = byteBuffer.duplicate();
+    final byte[] bytes = new byte[duplicatedBuffer.remaining()];
+    duplicatedBuffer.get(bytes);
+    return bytes;
+  }
+
+  private static void writeLegacyMeasurementSchema(
+      final DataOutputStream outputStream, final String measurement, final TSDataType dataType)
+      throws IOException {
+    ReadWriteIOUtils.write((byte) 1, outputStream);
+    ReadWriteIOUtils.write(measurement, outputStream);
+    ReadWriteIOUtils.write(dataType.serialize(), outputStream);
+    ReadWriteIOUtils.write(TSEncoding.PLAIN.serialize(), outputStream);
+    ReadWriteIOUtils.write(CompressionType.UNCOMPRESSED.serialize(), outputStream);
+    ReadWriteIOUtils.write(0, outputStream);
+  }
+
+  private static void assertLegacyTabletStatement(final InsertTabletStatement statement) {
+    Assert.assertEquals("root.sg.d", statement.getDevicePath().getFullPath());
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, statement.getMeasurements());
+    Assert.assertArrayEquals(
+        new TSDataType[] {TSDataType.INT32, TSDataType.TEXT}, statement.getDataTypes());
+    Assert.assertEquals(2, statement.getRowCount());
   }
 }

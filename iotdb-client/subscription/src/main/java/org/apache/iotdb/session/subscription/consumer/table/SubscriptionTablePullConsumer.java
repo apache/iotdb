@@ -47,6 +47,8 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -57,6 +59,8 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
         encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);

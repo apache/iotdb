@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
@@ -56,13 +57,16 @@ public class ErrorHandlingUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(ErrorHandlingUtils.class);
 
   private static final String INFO_PARSING_SQL_ERROR =
-      "Error occurred while parsing SQL to physical plan: ";
-  private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in read process: ";
+      DataNodeMiscMessages.MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59;
+  private static final String INFO_QUERY_PROCESS_ERROR =
+      DataNodeMiscMessages.MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195;
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
-      "The read statement is not allowed in batch: ";
+      DataNodeMiscMessages.MESSAGE_THE_READ_STATEMENT_IS_NOT_ALLOWED_IN_BATCH_COLON_D6A3D5EB;
 
-  private static final String ERROR_OPERATION_LOG = "Status code: {}, operation: {} failed";
-  private static final String EXCEPTION_PATTERN = "[%s] Exception occurred: %s failed. ";
+  private static final String ERROR_OPERATION_LOG = DataNodeMiscMessages.ERROR_OPERATION_LOG;
+  private static final String EXCEPTION_PATTERN =
+      DataNodeMiscMessages
+          .MESSAGE_LEFT_BRACKET_ARG_RIGHT_BRACKET_EXCEPTION_OCCURRED_COLON_ARG_FAILED_DOT_909D8FFA;
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {

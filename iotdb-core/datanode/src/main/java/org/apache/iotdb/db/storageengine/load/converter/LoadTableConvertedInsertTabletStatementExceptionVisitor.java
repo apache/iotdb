@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,6 +31,9 @@ public class LoadTableConvertedInsertTabletStatementExceptionVisitor
     implements AstVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitNode(final Node node, final Exception context) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(context)) {
+      return LoadTsFileDataTypeConverter.getMemoryPressureStatus(context);
+    }
     if (context instanceof AccessDeniedException) {
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(context.getMessage());
@@ -42,9 +44,8 @@ public class LoadTableConvertedInsertTabletStatementExceptionVisitor
 
   @Override
   public TSStatus visitLoadTsFile(final LoadTsFile loadTsFile, final Exception context) {
-    if (context instanceof LoadRuntimeOutOfMemoryException) {
-      return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(context)) {
+      return LoadTsFileDataTypeConverter.getMemoryPressureStatus(context);
     } else if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.LOAD_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());

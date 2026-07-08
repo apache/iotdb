@@ -249,13 +249,15 @@ public class DriverScheduler implements IDriverScheduler, IService {
           .getThrottleQuotaLimit()
           .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {
         throw new CpuNotEnoughException(
-            "There is not enough cpu to execute current fragment instance");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_CPU_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_E7719FB8);
       }
       if (!DataNodeThrottleQuotaManager.getInstance()
           .getThrottleQuotaLimit()
           .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
         throw new MemoryNotEnoughException(
-            "There is no enough memory to execute current fragment instance");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THERE_IS_NO_ENOUGH_MEMORY_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_CB632843);
       }
     }
 
@@ -347,16 +349,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           case READY:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.remove(task.getDriverTaskId());
+            if (readyQueue.remove(task.getDriverTaskId()) == null) {
+              readyQueue.decreaseReservedSize(task);
+            }
             break;
           case BLOCKED:
             task.setStatus(DriverTaskStatus.ABORTED);
             blockedTasks.remove(task);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case RUNNING:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case FINISHED:
             break;
@@ -420,6 +424,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   public long getReadyQueueTaskCount() {
     return readyQueue.size();
+  }
+
+  public long getReadyQueueReservedTaskCount() {
+    return readyQueue.getReservedSize();
   }
 
   public long getBlockQueueTaskCount() {
@@ -497,6 +505,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
+          readyQueue.decreaseReservedSize(task);
           return false;
         }
 
@@ -553,7 +562,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
-        readyQueue.decreaseReservedSize();
+        readyQueue.decreaseReservedSize(task);
       } finally {
         task.unlock();
       }
@@ -581,7 +590,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           }
           logger.info(
-              "The task {} is aborted. All other tasks in the same query will be cancelled",
+              DataNodeQueryMessages
+                  .THE_TASK_ARG_IS_ABORTED_ALL_OTHER_TASKS_IN_THE_SAME_QUERY_WILL_BE_CANCELLED,
               task.getDriverTaskId());
         } finally {
           task.unlock();

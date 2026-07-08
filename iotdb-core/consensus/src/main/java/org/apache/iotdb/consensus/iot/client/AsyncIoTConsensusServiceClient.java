@@ -160,7 +160,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
           new AsyncIoTConsensusServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

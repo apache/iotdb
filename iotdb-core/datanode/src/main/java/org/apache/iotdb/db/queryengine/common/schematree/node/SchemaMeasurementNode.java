@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -119,13 +120,15 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   @Override
   public void replaceChild(String name, SchemaNode newChild) {
     throw new UnsupportedOperationException(
-        "This operation is not supported in SchemaMeasurementNode.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THIS_OPERATION_IS_NOT_SUPPORTED_IN_SCHEMAMEASUREMENTNODE_93A81AE3);
   }
 
   @Override
   public void removeChild(String name) {
     throw new UnsupportedOperationException(
-        "Remove child operation is not supported in SchemaMeasurementNode.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_REMOVE_CHILD_OPERATION_IS_NOT_SUPPORTED_IN_SCHEMAMEASUREMENTNODE_940D080F);
   }
 
   @Override

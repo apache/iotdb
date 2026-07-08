@@ -100,7 +100,11 @@ public class PBTreeFlushExecutor {
     }
     if (!exceptions.isEmpty()) {
       throw new MetadataException(
-          exceptions.stream().map(Exception::getMessage).reduce("", (a, b) -> a + ", " + b));
+          exceptions.stream()
+              .map(Exception::getMessage)
+              .reduce(
+                  DataNodeSchemaMessages.EMPTY_MESSAGE,
+                  (a, b) -> a + DataNodeSchemaMessages.EXCEPTION_COMMA_50AD1C01 + b));
     }
   }
 

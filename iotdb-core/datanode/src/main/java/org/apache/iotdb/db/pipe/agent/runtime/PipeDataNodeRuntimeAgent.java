@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -42,7 +43,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -76,12 +78,14 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
       new PipePeriodicalPhantomReferenceCleaner();
 
+  private PipeMemoryBlock pipeLogReducerMemoryBlock;
+
   //////////////////////////// System Service Interface ////////////////////////////
 
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
     // Clean sender (connector) hardlink file dir and snapshot dir
-    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
     // Clean receiver file dir
     PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
@@ -91,6 +95,22 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     IoTDBTreePattern.setDevicePathGetter(PipeDataNodeRuntimeAgent::getPath);
     IoTDBTreePattern.setMeasurementPathGetter(PipeDataNodeRuntimeAgent::getPath);
+    initPipePeriodicalLogReducer();
+  }
+
+  private void initPipePeriodicalLogReducer() {
+    if (pipeLogReducerMemoryBlock == null) {
+      pipeLogReducerMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+    }
+
+    PipePeriodicalLogReducer.setMemoryResizeFunction(
+        targetSizeInBytes -> {
+          PipeDataNodeResourceManager.memory()
+              .resize(pipeLogReducerMemoryBlock, Math.max(0, targetSizeInBytes), false);
+          return pipeLogReducerMemoryBlock.getMemoryUsageInBytes();
+        });
     PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 
@@ -214,16 +234,20 @@ public class PipeDataNodeRuntimeAgent implements IService {
     if (event.getPipeTaskMeta() != null) {
       report(event.getPipeTaskMeta(), pipeRuntimeException);
     } else {
-      LOGGER.warn(DataNodePipeMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A, pipeRuntimeException);
+      PipeLogger.log(
+          LOGGER::warn,
+          pipeRuntimeException,
+          DataNodePipeMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A);
     }
   }
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
-    LOGGER.warn(
+    PipeLogger.log(
+        LOGGER::warn,
+        pipeRuntimeException,
         DataNodePipeMessages.REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE,
         pipeTaskMeta,
-        pipeRuntimeException.getMessage(),
-        pipeRuntimeException);
+        pipeRuntimeException.getMessage());
 
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.

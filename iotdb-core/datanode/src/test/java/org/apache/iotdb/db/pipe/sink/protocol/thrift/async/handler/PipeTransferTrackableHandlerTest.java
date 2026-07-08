@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -38,6 +39,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 import java.nio.ByteBuffer;
@@ -154,6 +156,36 @@ public class PipeTransferTrackableHandlerTest {
     Assert.assertEquals(0, handler.errorCount);
   }
 
+  @Test
+  public void testTransferWaitsForReceiverBackoffAndRecordsStatus() throws Exception {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    final TSStatus status =
+        new TSStatus()
+            .setCode(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
+
+    Mockito.when(client.getEndPoint()).thenReturn(endPoint);
+    Mockito.doAnswer(
+            invocation -> {
+              final AsyncMethodCallback<TPipeTransferResp> callback = invocation.getArgument(1);
+              callback.onComplete(resp(status));
+              return null;
+            })
+        .when(client)
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
+
+    handler.transfer(client, createReq(1));
+
+    final InOrder inOrder = Mockito.inOrder(sink, client);
+    inOrder.verify(sink).waitIfReceiverTemporarilyUnavailable(endPoint);
+    inOrder.verify(client).pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+    Mockito.verify(sink).recordReceiverStatus(endPoint, status);
+  }
+
   private static TPipeTransferReq createReq(final int bodySize) {
     final byte[] body = new byte[bodySize];
     for (int i = 0; i < body.length; ++i) {
@@ -168,8 +200,12 @@ public class PipeTransferTrackableHandlerTest {
   }
 
   private static TPipeTransferResp successResp() {
+    return resp(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  private static TPipeTransferResp resp(final TSStatus status) {
     final TPipeTransferResp resp = new TPipeTransferResp();
-    resp.setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    resp.setStatus(status);
     return resp;
   }
 

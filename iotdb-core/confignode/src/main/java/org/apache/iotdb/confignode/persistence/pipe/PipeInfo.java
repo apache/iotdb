@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
@@ -49,6 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class PipeInfo implements SnapshotProcessor {
 
@@ -58,8 +60,13 @@ public class PipeInfo implements SnapshotProcessor {
   private final PipeTaskInfo pipeTaskInfo;
 
   public PipeInfo() throws IOException {
+    this(null);
+  }
+
+  public PipeInfo(final Function<String, String> pipeUserCurrentPasswordProvider)
+      throws IOException {
     pipePluginInfo = new PipePluginInfo();
-    pipeTaskInfo = new PipeTaskInfo();
+    pipeTaskInfo = new PipeTaskInfo(pipeUserCurrentPasswordProvider);
   }
 
   public PipePluginInfo getPipePluginInfo() {
@@ -76,15 +83,14 @@ public class PipeInfo implements SnapshotProcessor {
   public TSStatus createPipe(final CreatePipePlanV2 plan) {
     try {
       final Optional<PipeMeta> pipeMetaBeforeCreation =
-          Optional.ofNullable(
-              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+          Optional.ofNullable(pipeTaskInfo.getPipeMetaByPipeStaticMeta(plan.getPipeStaticMeta()));
 
       pipeTaskInfo.createPipe(plan);
 
       final TPushPipeMetaRespExceptionMessage message =
           PipeConfigNodeAgent.task()
               .handleSinglePipeMetaChanges(
-                  pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+                  pipeTaskInfo.getPipeMetaByPipeStaticMeta(plan.getPipeStaticMeta()));
       if (message == null) {
         pipeMetaBeforeCreation.orElseGet(
             () -> {
@@ -116,7 +122,8 @@ public class PipeInfo implements SnapshotProcessor {
       pipeTaskInfo.setPipeStatus(plan);
 
       PipeConfigNodeAgent.task()
-          .handleSinglePipeMetaChanges(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+          .handleSinglePipeMetaChanges(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName(), plan.isTableModel()));
       PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -133,7 +140,8 @@ public class PipeInfo implements SnapshotProcessor {
       pipeTaskInfo.setPipeStatusWithStoppedByRuntimeException(plan);
 
       PipeConfigNodeAgent.task()
-          .handleSinglePipeMetaChanges(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+          .handleSinglePipeMetaChanges(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName(), plan.isTableModel()));
       PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -142,7 +150,8 @@ public class PipeInfo implements SnapshotProcessor {
           ConfigNodeMessages.FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
           .setMessage(
-              "Failed to set pipe status with stopped-by-runtime-exception flag, because "
+              ConfigNodeMessages
+                      .MESSAGE_FAILED_SET_PIPE_STATUS_STOPPED_RUNTIME_EXCEPTION_FLAG_BECAUSE_BFEA15AA
                   + e.getMessage());
     }
   }
@@ -150,12 +159,19 @@ public class PipeInfo implements SnapshotProcessor {
   public TSStatus dropPipe(final DropPipePlanV2 plan) {
     try {
       final Optional<PipeMeta> pipeMetaBeforeDrop =
-          Optional.ofNullable(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+          Optional.ofNullable(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName(), plan.isTableModel()));
 
       pipeTaskInfo.dropPipe(plan);
 
       final TPushPipeMetaRespExceptionMessage message =
-          PipeConfigNodeAgent.task().handleDropPipe(plan.getPipeName());
+          pipeMetaBeforeDrop
+              .map(
+                  meta -> {
+                    meta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+                    return PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(meta);
+                  })
+              .orElse(null);
       if (message == null) {
         pipeMetaBeforeDrop.ifPresent(
             meta -> {
@@ -185,14 +201,14 @@ public class PipeInfo implements SnapshotProcessor {
     try {
       final Optional<PipeMeta> pipeMetaBeforeAlter =
           Optional.ofNullable(
-              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+              pipeTaskInfo.getPipeMetaByPipeStaticMeta(plan.getCurrentPipeStaticMeta()));
 
       pipeTaskInfo.alterPipe(plan);
 
       final TPushPipeMetaRespExceptionMessage message =
           PipeConfigNodeAgent.task()
               .handleSinglePipeMetaChanges(
-                  pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+                  pipeTaskInfo.getPipeMetaByPipeStaticMeta(plan.getPipeStaticMeta()));
       if (message == null) {
         PipeConfigNodeAgent.runtime()
             .increaseListenerReference(plan.getPipeStaticMeta().getSourceParameters());
@@ -267,7 +283,7 @@ public class PipeInfo implements SnapshotProcessor {
       final List<PipeMeta> pipeMetaListFromCoordinator = new ArrayList<>();
       for (final PipeMeta pipeMeta : plan.getPipeMetaList()) {
         pipeMetaListFromCoordinator.add(
-            pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
+            pipeTaskInfo.getPipeMetaByPipeStaticMeta(pipeMeta.getStaticMeta()));
       }
       PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetaListFromCoordinator);
       PipeTemporaryMetaInCoordinatorMetrics.getInstance()
@@ -315,9 +331,9 @@ public class PipeInfo implements SnapshotProcessor {
     if (loadPipeTaskInfoException != null || loadPipePluginInfoException != null) {
       throw new IOException(
           ConfigNodeMessages.FAILED_TO_LOAD_PIPE_INFO_FROM_SNAPSHOT
-              + "loadPipeTaskInfoException="
+              + ConfigNodeMessages.EXCEPTION_LOADPIPETASKINFOEXCEPTION_2270468E
               + loadPipeTaskInfoException
-              + ", loadPipePluginInfoException="
+              + ConfigNodeMessages.EXCEPTION_LOADPIPEPLUGININFOEXCEPTION_40362E11
               + loadPipePluginInfoException);
     }
   }

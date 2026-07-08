@@ -173,7 +173,8 @@ public class IoTDBStartCheck {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
         throw new ConfigurationException(
-            "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
+            DataNodeMiscMessages
+                .MISC_EXCEPTION_CONFIGURING_THE_DATA_DIRECTORIES_AS_CROSS_DISK_DIRECTORIES_FC0A3875);
       }
     }
     // check system dir
@@ -207,7 +208,7 @@ public class IoTDBStartCheck {
       FileUtils.copyFile(oldPropertiesFile, correctPropertiesFile);
       FileUtils.delete(oldPropertiesFile);
       logger.info(
-          "system.properties file has been moved successfully: {} -> {}",
+          DataNodeMiscMessages.MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448,
           oldPropertiesFile.getAbsolutePath(),
           correctPropertiesFile.getAbsolutePath());
     }
@@ -235,14 +236,15 @@ public class IoTDBStartCheck {
                       .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
-            "Configuring the WALMode as disable is not supported under IoTConsensus and IoTConsensusV2 stream mode");
+            DataNodeMiscMessages
+                .MISC_EXCEPTION_CONFIGURING_THE_WALMODE_AS_DISABLE_IS_NOT_SUPPORTED_UNDER_49298819);
       }
     } else {
       // check whether upgrading from <=v0.9
       if (!properties.containsKey(IOTDB_VERSION_STRING)) {
         logger.error(
-            "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0!"
-                + " Please upgrade to v0.10 first");
+            DataNodeMiscMessages
+                .MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88);
         System.exit(-1);
       }
       String versionString = properties.getProperty(IOTDB_VERSION_STRING);
@@ -301,7 +303,8 @@ public class IoTDBStartCheck {
         properties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL, dataRegionConsensusProtocolClass);
         needRewriteConsensusProtocol = true;
         logger.warn(
-            "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+            DataNodeMiscMessages
+                .MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F,
             DATA_REGION_CONSENSUS_PROTOCOL,
             persistedDataRegionConsensusProtocolClass,
             dataRegionConsensusProtocolClass);
@@ -318,7 +321,8 @@ public class IoTDBStartCheck {
         parameter,
         String.valueOf(badValue),
         properties.getProperty(parameter),
-        parameter + "can't be modified after first startup");
+        String.format(
+            DataNodeMiscMessages.PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT, parameter));
   }
 
   public void serializeDataNodeId(int dataNodeId) throws IOException {
@@ -337,7 +341,8 @@ public class IoTDBStartCheck {
       String token = System.getenv("user_encrypt_token");
       if (token == null || token.trim().isEmpty()) {
         throw new EncryptException(
-            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
+            DataNodeMiscMessages
+                .MISC_EXCEPTION_ENCRYPTTYPE_IS_NOT_UNENCRYPTED_BUT_USER_ENCRYPT_TOKEN_IS_F828C20B);
       }
       String tokenHint = System.getenv("user_encrypt_token_hint");
       if (tokenHint != null && !tokenHint.trim().isEmpty()) {
@@ -345,13 +350,15 @@ public class IoTDBStartCheck {
         // For example, it could not include user_encrypt_token.
         if (tokenHint.toLowerCase().contains(token.toLowerCase())) {
           throw new EncryptException(
-              "user_encrypt_token_hint should not include user_encrypt_token, please check it in your environment variable.");
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_USER_ENCRYPT_TOKEN_HINT_SHOULD_NOT_INCLUDE_USER_ENCRYPT_50531D40);
         }
         if (tokenHint
             .toLowerCase()
             .contains(new StringBuilder(token.toLowerCase()).reverse().toString())) {
           throw new EncryptException(
-              "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please check it in your environment variable.");
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_USER_ENCRYPT_TOKEN_HINT_SHOULD_NOT_INCLUDE_THE_REVERSE_OF_39B2D35C);
         }
       }
     }
@@ -393,7 +400,8 @@ public class IoTDBStartCheck {
     }
     long endTime = System.currentTimeMillis();
     logger.info(
-        "Serialize mutable system properties successfully, which takes {} ms.",
+        DataNodeMiscMessages
+            .MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206,
         (endTime - startTime));
   }
 
@@ -418,8 +426,10 @@ public class IoTDBStartCheck {
       String token = System.getenv("user_encrypt_token");
       if (token == null || token.trim().isEmpty()) {
         throw new EncryptException(
-            "restart system after not storing key, but user_encrypt_token is not set. Please set it in the environment variable before restart. Here is your token hint info: "
-                + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_RESTART_SYSTEM_AFTER_NOT_STORING_KEY_BUT_USER_ENCRYPT_TOKEN_61CCF9A2,
+                CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint()));
       }
       TSFileDescriptor.getInstance().getConfig().setEncryptKeyFromToken(token);
       String encryptMagicString = properties.getProperty(ENCRYPT_MAGIC_STRING);
@@ -431,8 +441,10 @@ public class IoTDBStartCheck {
       if (!Objects.equals(decryptedMagicString, magicString)) {
         logger.error(DataNodeMiscMessages.ENCRYPT_MAGIC_STRING_NOT_MATCHED);
         throw new ConfigurationException(
-            "Changing encrypt type or key for tsfile encryption after first start is not permitted. Here is your token hint info: "
-                + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_CHANGING_ENCRYPT_TYPE_OR_KEY_FOR_TSFILE_ENCRYPTION_AFTER_0668F74E,
+                CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint()));
       }
     }
   }

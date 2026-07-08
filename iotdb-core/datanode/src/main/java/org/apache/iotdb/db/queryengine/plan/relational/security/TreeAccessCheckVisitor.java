@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -159,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -880,6 +882,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitCreateTopic(CreateTopicStatement statement, TreeAccessCheckContext context) {
+    return checkPipeManagement(
+        context.setAuditLogOperation(AuditLogOperation.DDL), statement::getTopicName);
+  }
+
+  @Override
+  public TSStatus visitAlterTopic(AlterTopicStatement statement, TreeAccessCheckContext context) {
     return checkPipeManagement(
         context.setAuditLogOperation(AuditLogOperation.DDL), statement::getTopicName);
   }
@@ -1663,7 +1671,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
               .setMessage(
                   String.format(
-                      "'AUDIT' permission is needed to alter the encoding and compressor of database %s",
+                      DataNodeQueryMessages
+                          .MESSAGE_AUDIT_PERMISSION_NEEDED_ALTER_ENCODING_COMPRESSOR_DATABASE_ARG_CC06994D,
                       TREE_MODEL_AUDIT_DATABASE));
         }
       }
@@ -1799,6 +1808,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       RepairDataPartitionTable repairDataPartitionTable, TreeAccessCheckContext context) {
     return checkGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
+        PrivilegeType.SYSTEM,
+        AuditEventType.INTEGRITY_CHECK);
+  }
+
+  @Override
+  public TSStatus visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.DDL),
         PrivilegeType.SYSTEM,
         AuditEventType.INTEGRITY_CHECK);
   }

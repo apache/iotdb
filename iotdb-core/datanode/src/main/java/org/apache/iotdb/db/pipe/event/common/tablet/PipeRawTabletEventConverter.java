@@ -33,19 +33,25 @@ public abstract class PipeRawTabletEventConverter implements DataCollector {
   protected boolean isAligned = false;
   protected final PipeTaskMeta pipeTaskMeta; // Used to report progress
   protected final EnrichedEvent sourceEvent; // Used to report progress
-  protected final String sourceEventDataBaseName;
-  protected final Boolean isTableModel;
+  protected String sourceEventDataBaseName;
+  protected Boolean isTableModel;
+  protected String rawTableModelDataBaseName;
+  protected String rawTreeModelDataBaseName;
 
   public PipeRawTabletEventConverter(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
     if (sourceEvent instanceof PipeInsertionEvent) {
-      sourceEventDataBaseName =
-          ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
-      isTableModel = ((PipeInsertionEvent) sourceEvent).getRawIsTableModelEvent();
+      final PipeInsertionEvent pipeInsertionEvent = (PipeInsertionEvent) sourceEvent;
+      sourceEventDataBaseName = pipeInsertionEvent.getSourceDatabaseNameFromDataRegion();
+      isTableModel = pipeInsertionEvent.getRawIsTableModelEvent();
+      rawTableModelDataBaseName = pipeInsertionEvent.getRawTableModelDataBase();
+      rawTreeModelDataBaseName = pipeInsertionEvent.getRawTreeModelDataBase();
     } else {
       sourceEventDataBaseName = null;
       isTableModel = null;
+      rawTableModelDataBaseName = null;
+      rawTreeModelDataBaseName = null;
     }
   }
 
@@ -54,10 +60,32 @@ public abstract class PipeRawTabletEventConverter implements DataCollector {
       EnrichedEvent sourceEvent,
       String sourceEventDataBase,
       Boolean isTableModel) {
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.sourceEvent = sourceEvent;
+    this(pipeTaskMeta, sourceEvent);
     this.sourceEventDataBaseName = sourceEventDataBase;
     this.isTableModel = isTableModel;
+  }
+
+  public PipeRawTabletEventConverter(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    this(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
+    this.rawTableModelDataBaseName = rawTableModelDataBaseName;
+    this.rawTreeModelDataBaseName = rawTreeModelDataBaseName;
+  }
+
+  public void resetDatabaseInfo(
+      final String sourceEventDataBaseName,
+      final Boolean isTableModel,
+      final String rawTableModelDataBaseName,
+      final String rawTreeModelDataBaseName) {
+    this.sourceEventDataBaseName = sourceEventDataBaseName;
+    this.isTableModel = isTableModel;
+    this.rawTableModelDataBaseName = rawTableModelDataBaseName;
+    this.rawTreeModelDataBaseName = rawTreeModelDataBaseName;
   }
 
   @Override

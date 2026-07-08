@@ -50,7 +50,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
@@ -58,6 +61,8 @@ import java.util.function.Function;
  * cluster dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
 public class LoadManager {
+
+  private static final long FIRST_HEARTBEAT_READY_TOLERANCE_MS = TimeUnit.SECONDS.toMillis(30);
 
   protected final IManager configManager;
 
@@ -74,6 +79,10 @@ public class LoadManager {
   private final StatisticsService statisticsService;
   private final EventService eventService;
   private final TopologyService topologyService;
+  private final AtomicBoolean loadServicesStarted;
+  private final AtomicLong loadReadyStartTimeMillis;
+  private final AtomicBoolean loadReady;
+  private volatile String loadReadyReason;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -92,6 +101,10 @@ public class LoadManager {
         configManager.getSubscriptionManager().getSubscriptionLeaderChangeHandler());
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);
+    this.loadServicesStarted = new AtomicBoolean(false);
+    this.loadReadyStartTimeMillis = new AtomicLong(0);
+    this.loadReady = new AtomicBoolean(false);
+    this.loadReadyReason = "ConfigNode leader load services are not started.";
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -149,7 +162,11 @@ public class LoadManager {
   }
 
   public void startLoadServices() {
+    loadReady.set(false);
+    loadReadyStartTimeMillis.set(System.currentTimeMillis());
+    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
     loadCache.initHeartbeatCache(configManager);
+    loadServicesStarted.set(true);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
@@ -157,12 +174,66 @@ public class LoadManager {
   }
 
   public void stopLoadServices() {
+    loadServicesStarted.set(false);
+    loadReadyStartTimeMillis.set(0);
+    loadReady.set(false);
+    loadReadyReason = "ConfigNode leader load services are stopped.";
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+  }
+
+  public void reloadHeartbeatInterval() {
+    heartbeatService.reloadHeartbeatInterval();
+    statisticsService.reloadHeartbeatInterval();
+    eventService.reloadHeartbeatInterval();
+  }
+
+  public boolean isLoadReady() {
+    return loadReady.get() || tryUpdateLoadReady();
+  }
+
+  public String getLoadReadyReason() {
+    return loadReadyReason;
+  }
+
+  private synchronized boolean tryUpdateLoadReady() {
+    if (loadReady.get()) {
+      return true;
+    }
+    if (!loadServicesStarted.get()) {
+      loadReadyReason = "ConfigNode leader load services are not started.";
+      return false;
+    }
+
+    loadCache.updateNodeStatistics(false);
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+
+    List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
+    if (unreadyReasons.isEmpty()) {
+      loadReadyReason = "ConfigNode leader load services are ready.";
+      loadReady.set(true);
+      return true;
+    }
+
+    long elapsedMillis = System.currentTimeMillis() - loadReadyStartTimeMillis.get();
+    if (elapsedMillis < FIRST_HEARTBEAT_READY_TOLERANCE_MS) {
+      loadReadyReason =
+          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes: "
+              + unreadyReasons;
+      return false;
+    }
+
+    loadReadyReason =
+        "ConfigNode leader load services are ready after waiting "
+            + FIRST_HEARTBEAT_READY_TOLERANCE_MS
+            + "ms for first heartbeat. Missing heartbeats: "
+            + unreadyReasons;
+    loadReady.set(true);
+    return true;
   }
 
   public void startTopologyService() {
@@ -487,6 +558,14 @@ public class LoadManager {
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
+  }
+
+  @TestOnly
+  void markLoadServicesStartedForTest(long loadReadyStartTimeMillis) {
+    loadServicesStarted.set(true);
+    loadReady.set(false);
+    this.loadReadyStartTimeMillis.set(loadReadyStartTimeMillis);
+    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
   }
 
   @TestOnly

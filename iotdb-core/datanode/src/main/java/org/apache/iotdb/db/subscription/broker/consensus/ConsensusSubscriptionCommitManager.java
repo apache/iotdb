@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -224,8 +225,8 @@ public class ConsensusSubscriptionCommitManager {
     final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state == null) {
       LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: Cannot commit for unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}, writerId={}, writerProgress={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_COMMIT_FOR_UNKNOWN_751BD2A9,
           consumerGroupId,
           topicName,
           regionId,
@@ -261,8 +262,8 @@ public class ConsensusSubscriptionCommitManager {
     final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state == null) {
       LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: Cannot direct-commit for unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}, writerId={}, writerProgress={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_DIRECT_COMMIT_D6AD7D96,
           consumerGroupId,
           topicName,
           regionId,
@@ -383,8 +384,8 @@ public class ConsensusSubscriptionCommitManager {
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
     if (state == null) {
       LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: Cannot reset unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F,
           consumerGroupId,
           topicName,
           regionId);
@@ -495,7 +496,8 @@ public class ConsensusSubscriptionCommitManager {
           client.syncSubscriptionProgress(req);
         } catch (final ClientManagerException | TException e) {
           LOGGER.debug(
-              "Failed to broadcast subscription progress to DataNode {} at {}: {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_FAILED_TO_BROADCAST_SUBSCRIPTION_PROGRESS_TO_DATANODE_AT_7024F5B2,
               location.getDataNodeId(),
               endpoint,
               e.getMessage());
@@ -503,7 +505,10 @@ public class ConsensusSubscriptionCommitManager {
       }
     } catch (final Exception e) {
       LOGGER.debug(
-          "Failed to broadcast subscription progress for region {}: {}", regionId, e.getMessage());
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_BROADCAST_SUBSCRIPTION_PROGRESS_FOR_REGION_DE9074BD,
+          regionId,
+          e.getMessage());
     }
   }
 
@@ -534,8 +539,8 @@ public class ConsensusSubscriptionCommitManager {
       final WriterProgress writerProgress) {
     if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
       LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: ignore broadcast without writer identity, "
-              + "consumerGroupId={}, topicName={}, regionId={}, writerId={}, writerProgress={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_IGNORE_BROADCAST_WITHOUT_211DE477,
           consumerGroupId,
           topicName,
           regionIdStr,
@@ -562,8 +567,8 @@ public class ConsensusSubscriptionCommitManager {
       persistRegionProgress(stateKey, commitStates.get(stateKey.encodedStateKey));
     }
     LOGGER.debug(
-        "Received subscription progress broadcast: consumerGroupId={}, topicName={}, "
-            + "regionId={}, physicalTime={}, localSeq={}",
+        DataNodePipeMessages
+            .PIPE_LOG_RECEIVED_SUBSCRIPTION_PROGRESS_BROADCAST_CONSUMERGROUPID_CDAEF839,
         consumerGroupId,
         topicName,
         regionIdStr,
@@ -621,7 +626,8 @@ public class ConsensusSubscriptionCommitManager {
       case 3:
         return new String(Base64.getUrlDecoder().decode(value + "="), StandardCharsets.UTF_8);
       default:
-        throw new IllegalArgumentException("Invalid base64 url component length");
+        throw new IllegalArgumentException(
+            DataNodePipeMessages.PIPE_EXCEPTION_INVALID_BASE64_URL_COMPONENT_LENGTH_F1F1B6BA);
     }
   }
 
@@ -670,7 +676,9 @@ public class ConsensusSubscriptionCommitManager {
       final String[] decodedTopicKey = decodeTopicFileKey(topicFileKey);
       if (Objects.isNull(decodedTopicKey)) {
         LOGGER.warn(
-            "Skip malformed consensus subscription progress file name {}", metaFile.getName());
+            DataNodePipeMessages
+                .PIPE_LOG_SKIP_MALFORMED_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_NAME_BB4D75F0,
+            metaFile.getName());
         continue;
       }
       recoverTopicStatesIfNeeded(topicFileKey, decodedTopicKey[0], decodedTopicKey[1]);
@@ -710,8 +718,8 @@ public class ConsensusSubscriptionCommitManager {
         topicProgressIndexes.put(topicFileKey, snapshot.indexEntries);
       } catch (final IOException e) {
         LOGGER.warn(
-            "Failed to recover consensus subscription progress for consumerGroupId={}, "
-                + "topicName={}",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_RECOVER_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_DF30716B,
             consumerGroupId,
             topicName,
             e);
@@ -741,7 +749,10 @@ public class ConsensusSubscriptionCommitManager {
       final int regionCount = ReadWriteIOUtils.readInt(buffer);
       if (regionCount < 0) {
         throw new IOException(
-            "Invalid consensus subscription progress region count " + regionCount);
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_INVALID_CONSENSUS_SUBSCRIPTION_PROGRESS_REGION_COUNT_S_7CE4FD8E,
+                regionCount));
       }
       final Map<String, ConsensusSubscriptionCommitState> states = new LinkedHashMap<>();
       final Map<String, ProgressIndexEntry> indexEntries = new LinkedHashMap<>();
@@ -750,7 +761,10 @@ public class ConsensusSubscriptionCommitManager {
         final int payloadLength = ReadWriteIOUtils.readInt(buffer);
         if (payloadLength < 0 || payloadLength > buffer.remaining()) {
           throw new IOException(
-              "Invalid consensus subscription progress payload length " + payloadLength);
+              String.format(
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_INVALID_CONSENSUS_SUBSCRIPTION_PROGRESS_PAYLOAD_LENGTH_S_8C145986,
+                  payloadLength));
         }
         final long payloadOffset = buffer.position();
         final byte[] payload = new byte[payloadLength];
@@ -762,7 +776,12 @@ public class ConsensusSubscriptionCommitManager {
       }
       return new TopicProgressSnapshot(states, indexEntries);
     } catch (final RuntimeException e) {
-      throw new IOException("Malformed consensus subscription progress file " + metaFile, e);
+      throw new IOException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_MALFORMED_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_S_83042847,
+              metaFile),
+          e);
     }
   }
 
@@ -777,7 +796,10 @@ public class ConsensusSubscriptionCommitManager {
 
   private static void deleteFileIfExists(final File file) {
     if (file.exists() && !file.delete()) {
-      LOGGER.warn("Failed to delete consensus subscription progress file {}", file);
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_DELETE_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_51C57096,
+          file);
     }
   }
 
@@ -827,8 +849,8 @@ public class ConsensusSubscriptionCommitManager {
         rewriteTopicProgressFilesUnderLock(stateKey);
       } catch (final IOException e) {
         LOGGER.warn(
-            "Failed to persist consensus subscription progress for consumerGroupId={}, "
-                + "topicName={}, regionId={}",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_PERSIST_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_4EA71236,
             stateKey.consumerGroupId,
             stateKey.topicName,
             stateKey.regionIdStr,
@@ -854,8 +876,8 @@ public class ConsensusSubscriptionCommitManager {
         rewriteTopicProgressFilesUnderLock(stateKey);
       } catch (final IOException e) {
         LOGGER.warn(
-            "Failed to rewrite consensus subscription progress for consumerGroupId={}, "
-                + "topicName={}",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_REWRITE_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_8B230D50,
             stateKey.consumerGroupId,
             stateKey.topicName,
             e);
@@ -955,8 +977,8 @@ public class ConsensusSubscriptionCommitManager {
       final TGetCommitProgressResp resp = configNodeClient.getCommitProgress(req);
       if (resp.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "ConsensusSubscriptionCommitManager: failed to query commit progress from ConfigNode "
-                + "for consumerGroupId={}, topicName={}, regionId={}, status={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_FAILED_TO_QUERY_COMMIT_31E47F21,
             consumerGroupId,
             topicName,
             regionId,
@@ -970,8 +992,8 @@ public class ConsensusSubscriptionCommitManager {
         if (Objects.nonNull(committedRegionProgress)
             && !committedRegionProgress.getWriterPositions().isEmpty()) {
           LOGGER.info(
-              "ConsensusSubscriptionCommitManager: recovered committedRegionProgress={} from "
-                  + "ConfigNode for consumerGroupId={}, topicName={}, regionId={}",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_RECOVERED_COMMITTEDREGIONPROGRESS_F6B92C6B,
               committedRegionProgress,
               consumerGroupId,
               topicName,
@@ -985,8 +1007,8 @@ public class ConsensusSubscriptionCommitManager {
       }
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: failed to query commit progress from ConfigNode "
-              + "for consumerGroupId={}, topicName={}, regionId={}, starting from 0",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_FAILED_TO_QUERY_COMMIT_16CFDCD9,
           consumerGroupId,
           topicName,
           regionId,
@@ -1004,7 +1026,10 @@ public class ConsensusSubscriptionCommitManager {
       regionProgress.serialize(dos);
       return ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     } catch (final IOException e) {
-      LOGGER.warn("Failed to serialize committed region progress {}", regionProgress, e);
+      LOGGER.warn(
+          DataNodePipeMessages.PIPE_LOG_FAILED_TO_SERIALIZE_COMMITTED_REGION_PROGRESS_0D8D2129,
+          regionProgress,
+          e);
       return null;
     }
   }
@@ -1158,8 +1183,8 @@ public class ConsensusSubscriptionCommitManager {
     public void recordMapping(final WriterId writerId, final WriterProgress writerProgress) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
-            "ConsensusSubscriptionCommitState: ignore mapping without writer identity, "
-                + "writerId={}, writerProgress={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IGNORE_MAPPING_WITHOUT_3E66A74D,
             writerId,
             writerProgress);
         return;
@@ -1170,8 +1195,8 @@ public class ConsensusSubscriptionCommitManager {
         final ProgressKey previous = outstandingKeys.put(slot, key);
         if (Objects.nonNull(previous) && !previous.equals(key)) {
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: duplicate outstanding mapping for slot={}, "
-                  + "previous={}, current={}",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_DUPLICATE_OUTSTANDING_MAPPING_B5B34891,
               slot,
               previous,
               key);
@@ -1179,8 +1204,8 @@ public class ConsensusSubscriptionCommitManager {
         final int size = outstandingKeys.size();
         if (size > OUTSTANDING_SIZE_WARN_THRESHOLD && size % OUTSTANDING_SIZE_WARN_THRESHOLD == 1) {
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: outstanding size ({}) exceeds threshold ({}), "
-                  + "consumers may not be committing. committed=({},{}), writerNodeId={}",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_OUTSTANDING_SIZE_EXCEEDS_1463BF02,
               size,
               OUTSTANDING_SIZE_WARN_THRESHOLD,
               getCommittedPhysicalTime(),
@@ -1204,8 +1229,8 @@ public class ConsensusSubscriptionCommitManager {
         final WriterId writerId, final WriterProgress writerProgress) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
-            "ConsensusSubscriptionCommitState: missing writer identity for commit, "
-                + "writerId={}, writerProgress={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_MISSING_WRITER_IDENTITY_01040357,
             writerId,
             writerProgress);
         return CommitOperationResult.unhandled();
@@ -1217,7 +1242,8 @@ public class ConsensusSubscriptionCommitManager {
         if (recordedKey == null) {
           if (recentlyCommittedKeys.contains(key)) {
             LOGGER.debug(
-                "ConsensusSubscriptionCommitState: idempotent re-commit for ({},{},{})",
+                DataNodePipeMessages
+                    .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IDEMPOTENT_RE_COMMIT_FOR_30464FC4,
                 key.physicalTime,
                 key.writerNodeId,
                 key.localSeq);
@@ -1225,7 +1251,8 @@ public class ConsensusSubscriptionCommitManager {
             return CommitOperationResult.handledWithoutAdvance();
           }
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: unknown key ({},{},{}) for commit",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_UNKNOWN_KEY_FOR_COMMIT_5F699CFD,
               key.physicalTime,
               key.writerNodeId,
               key.localSeq);
@@ -1252,8 +1279,8 @@ public class ConsensusSubscriptionCommitManager {
         final WriterId writerId, final WriterProgress writerProgress) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
-            "ConsensusSubscriptionCommitState: missing writer identity for direct commit, "
-                + "writerId={}, writerProgress={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_MISSING_WRITER_IDENTITY_BB10A3B1,
             writerId,
             writerProgress);
         return CommitOperationResult.unhandled();
@@ -1263,7 +1290,8 @@ public class ConsensusSubscriptionCommitManager {
       synchronized (this) {
         if (recentlyCommittedKeys.contains(incomingKey)) {
           LOGGER.debug(
-              "ConsensusSubscriptionCommitState: idempotent direct commit for ({},{},{})",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IDEMPOTENT_DIRECT_COMMIT_B093AC01,
               incomingKey.physicalTime,
               incomingKey.writerNodeId,
               incomingKey.localSeq);
@@ -1274,8 +1302,8 @@ public class ConsensusSubscriptionCommitManager {
         final ProgressKey outstandingKey = outstandingKeys.remove(ProgressSlot.from(incomingKey));
         if (Objects.isNull(outstandingKey)) {
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: reject direct commit without outstanding mapping "
-                  + "for ({},{},{})",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_REJECT_DIRECT_COMMIT_WITHOUT_5B975E49,
               incomingKey.physicalTime,
               incomingKey.writerNodeId,
               incomingKey.localSeq);

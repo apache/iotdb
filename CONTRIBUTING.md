@@ -111,7 +111,7 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
 
 - Formatter: `clang-format` only
 - Version: pinned as `clang.format.version` in the root `pom.xml` (currently `17.0.6`, aligned with Apache TsFile); CI installs LLVM/clang-format so the default `clang-format` on the runner matches that version
-- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates only on **JDK 11+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 11 or newer (CI does). JDK 8 builds elsewhere in the reactor do not load that Spotless fragment.
+- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates on the repository baseline, **JDK 17+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 17 or newer (CI does).
 
 Check only:
 

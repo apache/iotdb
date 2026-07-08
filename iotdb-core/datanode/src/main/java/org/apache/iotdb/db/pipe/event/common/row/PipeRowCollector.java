@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.event.common.row;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
@@ -54,6 +53,22 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       String sourceEventDataBase,
       Boolean isTableModel) {
     super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
+  }
+
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    super(
+        pipeTaskMeta,
+        sourceEvent,
+        sourceEventDataBase,
+        isTableModel,
+        rawTableModelDataBaseName,
+        rawTreeModelDataBaseName);
   }
 
   @Override
@@ -106,15 +121,12 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
       PipeTabletUtils.compactBitMaps(tablet);
-      // TODO: non-PipeInsertionEvent sourceEvent is not supported?
-      final PipeInsertionEvent pipeInsertionEvent =
-          sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
               isTableModel,
               sourceEventDataBaseName,
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
+              rawTableModelDataBaseName,
+              rawTreeModelDataBaseName,
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

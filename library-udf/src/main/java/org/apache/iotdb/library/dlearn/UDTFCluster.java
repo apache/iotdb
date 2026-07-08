@@ -141,16 +141,20 @@ public class UDTFCluster implements UDTF {
     int n = values.size();
     if (n < l) {
       throw new UDFException(
-          "Time series length must be at least l; got " + n + " points, l=" + l + ".");
+          String.format(
+              LibraryUdfMessages
+                  .EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_ARG_POINTS_L_ARG_8C796580,
+              n,
+              l));
     }
     int numWindows = n / l;
     if (numWindows < k) {
       throw new UDFException(
-          "Not enough non-overlapping windows: got "
-              + numWindows
-              + " windows, need at least k="
-              + k
-              + ".");
+          String.format(
+              LibraryUdfMessages
+                  .EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_ARG_WINDOWS_NEED_AT_LEAST_K_ARG_9E42BA1F,
+              numWindows,
+              k));
     }
 
     double[][] windows = new double[numWindows][l];
