@@ -105,6 +105,9 @@ public class ReadTsFileTableFunction implements TableFunction {
             arguments,
             DEVICE_METADATA_INFO_SWAP_THRESHOLD_PARAMETER_NAME,
             DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES);
+    if (deviceMetadataInfoSwapThreshold <= 0) {
+      deviceMetadataInfoSwapThreshold = DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES;
+    }
 
     ReadTsFileTableFunctionHandle handle =
         new ReadTsFileTableFunctionHandle(
