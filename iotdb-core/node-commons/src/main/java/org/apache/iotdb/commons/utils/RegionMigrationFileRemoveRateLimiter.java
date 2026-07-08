@@ -46,6 +46,11 @@ public class RegionMigrationFileRemoveRateLimiter {
     }
   }
 
+  @TestOnly
+  public double getRate() {
+    return rateLimiter.getRate();
+  }
+
   private static final RegionMigrationFileRemoveRateLimiter INSTANCE =
       new RegionMigrationFileRemoveRateLimiter();
 
