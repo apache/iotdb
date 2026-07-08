@@ -322,10 +322,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return timeIndex;
     }
 
-    ITimeIndex timeIndexFromResourceFile = deserializeTimeIndexFromResourceFile();
-    return timeIndexFromResourceFile instanceof FileTimeIndex
-        ? timeIndex
-        : timeIndexFromResourceFile;
+    return buildDeviceTimeIndex();
   }
 
   /** deserialize from disk */
@@ -723,10 +720,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
     } finally {
       readUnlock();
     }
-  }
-
-  private ITimeIndex deserializeTimeIndexFromResourceFile() throws IOException {
-    return deserializeTimeIndexFromResourceFile(IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
   }
 
   private ITimeIndex deserializeTimeIndexFromResourceFile(IDeviceID.Deserializer deserializer)
