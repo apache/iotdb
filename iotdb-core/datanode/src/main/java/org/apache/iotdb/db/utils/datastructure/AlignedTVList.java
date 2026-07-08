@@ -1833,8 +1833,7 @@ public abstract class AlignedTVList extends TVList {
       while (index < rows && !findValidRow) {
         // all columns values are deleted
         int convertedScanOrderValueIndex = getValueIndex(getScanOrderIndex(index));
-        if ((allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(convertedScanOrderValueIndex))
+        if (isAllValueColumnsDeleted(convertedScanOrderValueIndex)
             || isTimeDeleted(convertedScanOrderValueIndex, false)) {
           index++;
           continue;
@@ -1875,9 +1874,7 @@ public abstract class AlignedTVList extends TVList {
         while (index + 1 < rows
             && getTime(getScanOrderIndex(index + 1)) == getTime(getScanOrderIndex(index))) {
           index++;
-          // skip all-Null rows if allValueColDeletedMap exists
-          if (allValueColDeletedMap == null
-              || !allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index)))) {
+          if (!isAllValueColumnsDeleted(getValueIndex(getScanOrderIndex(index)))) {
             for (int columnIndex = 0; columnIndex < dataTypeList.size(); columnIndex++) {
               if (!scanOrder.isAscending() && selectedIndices[columnIndex] != -1) {
                 // non -1 value means it already set the latest point index
@@ -2034,8 +2031,7 @@ public abstract class AlignedTVList extends TVList {
 
     private boolean isRowInvalid(
         int rowIndex, long time, int[] deleteCursor, long[] filteredRowsByTimeFilter) {
-      if ((allValueColDeletedMap != null
-              && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(rowIndex))))
+      if (isAllValueColumnsDeleted(getValueIndex(getScanOrderIndex(rowIndex)))
           || isTimeDeleted(getScanOrderIndex(rowIndex))
           || isPointDeleted(time, timeColumnDeletion, deleteCursor, scanOrder)) {
         return true;
@@ -2369,7 +2365,7 @@ public abstract class AlignedTVList extends TVList {
           break;
         }
         // skip empty row
-        if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(getValueIndex(index))) {
+        if (isAllValueColumnsDeleted(getValueIndex(index))) {
           continue;
         }
         if (isTimeDeleted(index)) {
@@ -2377,9 +2373,8 @@ public abstract class AlignedTVList extends TVList {
         }
         int nextRowIndex = index + 1;
         while (nextRowIndex < rows
-            && ((allValueColDeletedMap != null
-                    && allValueColDeletedMap.isMarked(getValueIndex(nextRowIndex)))
-                || (isTimeDeleted(nextRowIndex)))) {
+            && (isAllValueColumnsDeleted(getValueIndex(nextRowIndex))
+                || isTimeDeleted(nextRowIndex))) {
           nextRowIndex++;
         }
         long time = getTime(index);
@@ -2409,9 +2404,8 @@ public abstract class AlignedTVList extends TVList {
         }
         for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {
           // skip empty row
-          if ((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(getValueIndex(sortedRowIndex)))
-              || (isTimeDeleted(sortedRowIndex))) {
+          if (isAllValueColumnsDeleted(getValueIndex(sortedRowIndex))
+              || isTimeDeleted(sortedRowIndex)) {
             continue;
           }
           long time = getTime(sortedRowIndex);
@@ -2491,6 +2485,14 @@ public abstract class AlignedTVList extends TVList {
 
     public int[] getSelectedIndices() {
       return selectedIndices;
+    }
+
+    private boolean isAllValueColumnsDeleted(int valueIndex) {
+      // A sorted row-count snapshot can point to value indices appended after the snapshot.
+      return allValueColDeletedMap != null
+          && valueIndex >= 0
+          && valueIndex < allValueColDeletedMap.getSize()
+          && allValueColDeletedMap.isMarked(valueIndex);
     }
 
     public int getSelectedIndex(int column) {
