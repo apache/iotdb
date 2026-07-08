@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -43,6 +44,10 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLoadTsFileActiveRetryIT {
@@ -50,6 +55,11 @@ public class IoTDBLoadTsFileActiveRetryIT {
   private static final String DATABASE = "root.sg.test_0";
   private static final String DEVICE = DATABASE + ".d_0";
   private static final String MEASUREMENT = "sensor_00";
+  private static final String ACTIVE_LOAD_USER = "active_load_user";
+  private static final String ACTIVE_LOAD_NO_WRITE_USER = "active_load_no_write_user";
+  private static final String ACTIVE_LOAD_WRITE_USER = "active_load_write_user";
+  private static final String DELETED_ACTIVE_LOAD_USER = "deleted_active_load_user";
+  private static final String PASSWORD = "test123123456";
   private static final long UNALLOCATABLE_TABLET_CONVERSION_BATCH_MEMORY_SIZE_IN_BYTES =
       Long.MAX_VALUE / 4;
   private static final MeasurementSchema TSFILE_SCHEMA =
@@ -129,6 +139,129 @@ public class IoTDBLoadTsFileActiveRetryIT {
     }
   }
 
+  @Test
+  public void testAsyncLoadShouldStoreUserInfoInActiveDir() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File retryTsFile = new File(tmpDir, "3-0-0-0.tsfile");
+    generateTsFile(retryTsFile);
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + DATABASE);
+      statement.execute(
+          String.format(
+              "create timeseries %s.%s %s", DEVICE, MEASUREMENT, TSDataType.INT64.name()));
+      createUser(ACTIVE_LOAD_USER, PASSWORD);
+      grantUserSeriesPrivilege(ACTIVE_LOAD_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
+
+      executeNonQuery(
+          String.format(
+              "load \"%s\" with ('database-level'='3', 'async'='true', 'on-success'='none', "
+                  + "'convert-on-type-mismatch'='true')",
+              retryTsFile.getAbsolutePath()),
+          ACTIVE_LOAD_USER,
+          PASSWORD);
+
+      final File activeDir = getActiveLoadDir(dataNodeWrapper);
+      final File activeTsFile = waitForFile(activeDir, retryTsFile.getName(), 30_000L);
+
+      Assert.assertNotNull(
+          "Async load should copy tsfile into active load directory", activeTsFile);
+      Assert.assertTrue(
+          "Async load should store user info in active load directory",
+          activeTsFile.getAbsolutePath().contains("user-"));
+      Assert.assertFalse(
+          "Async load should not expose raw username in active load directory",
+          activeTsFile.getAbsolutePath().contains(ACTIVE_LOAD_USER));
+    }
+  }
+
+  @Test
+  public void testActiveLoadShouldCheckWriteDataPermissionWithStoredUser() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File noWriteTsFile = new File(tmpDir, "4-0-0-0.tsfile");
+    final File writeTsFile = new File(tmpDir, "5-0-0-0.tsfile");
+    generateTsFile(noWriteTsFile);
+    generateTsFile(writeTsFile);
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + DATABASE);
+      statement.execute(
+          String.format(
+              "create timeseries %s.%s %s", DEVICE, MEASUREMENT, TSDataType.INT32.name()));
+      createUser(ACTIVE_LOAD_NO_WRITE_USER, PASSWORD);
+      createUser(ACTIVE_LOAD_WRITE_USER, PASSWORD);
+      grantUserSeriesPrivilege(ACTIVE_LOAD_WRITE_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
+
+      executeNonQuery(
+          String.format(
+              "load \"%s\" with ('database-level'='3', 'async'='true', 'on-success'='none', "
+                  + "'verify'='false')",
+              noWriteTsFile.getAbsolutePath()),
+          ACTIVE_LOAD_NO_WRITE_USER,
+          PASSWORD);
+      executeNonQuery(
+          String.format(
+              "load \"%s\" with ('database-level'='3', 'async'='true', 'on-success'='none', "
+                  + "'verify'='false')",
+              writeTsFile.getAbsolutePath()),
+          ACTIVE_LOAD_WRITE_USER,
+          PASSWORD);
+    }
+
+    Assert.assertNotNull(
+        "Active load without WRITE_DATA should be moved to fail dir",
+        waitForFile(
+            getActiveLoadFailDir(dataNodeWrapper),
+            noWriteTsFile.getName(),
+            TimeUnit.SECONDS.toMillis(60)));
+    assertCountEventually(10, TimeUnit.SECONDS.toMillis(60));
+  }
+
+  @Test
+  public void testActiveLoadShouldMoveFileToFailDirWhenUserDoesNotExist() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File sourceTsFile = new File(tmpDir, "6-0-0-0.tsfile");
+    generateTsFile(sourceTsFile);
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + DATABASE);
+      statement.execute(
+          String.format(
+              "create timeseries %s.%s %s", DEVICE, MEASUREMENT, TSDataType.INT64.name()));
+      createUser(DELETED_ACTIVE_LOAD_USER, PASSWORD);
+      grantUserSeriesPrivilege(
+          DELETED_ACTIVE_LOAD_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
+
+      executeNonQuery(
+          String.format(
+              "load \"%s\" with ('database-level'='3', 'async'='true', 'on-success'='none', "
+                  + "'convert-on-type-mismatch'='true')",
+              sourceTsFile.getAbsolutePath()),
+          DELETED_ACTIVE_LOAD_USER,
+          PASSWORD);
+
+      Assert.assertNotNull(
+          "Async load should copy tsfile into active load directory",
+          waitForFileUnderPathContaining(
+              getActiveLoadDir(dataNodeWrapper), sourceTsFile.getName(), "user-", 30_000L));
+
+      statement.execute("drop user " + DELETED_ACTIVE_LOAD_USER);
+    }
+
+    Assert.assertNotNull(
+        "Active load should move tsfile to fail dir when user does not exist",
+        waitForFile(
+            getActiveLoadFailDir(dataNodeWrapper),
+            sourceTsFile.getName(),
+            TimeUnit.SECONDS.toMillis(60)));
+  }
+
   private void generateTsFile(final File tsFile) throws Exception {
     try (final TsFileGenerator generator = new TsFileGenerator(tsFile)) {
       generator.registerTimeseries(DEVICE, Collections.singletonList(TSFILE_SCHEMA));
@@ -171,6 +304,20 @@ public class IoTDBLoadTsFileActiveRetryIT {
     return null;
   }
 
+  private File waitForFileUnderPathContaining(
+      final File root, final String fileName, final String pathSegment, final long timeoutMs)
+      throws InterruptedException {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      final File file = findFile(root, fileName);
+      if (file != null && file.getAbsolutePath().contains(pathSegment)) {
+        return file;
+      }
+      Thread.sleep(500L);
+    }
+    return null;
+  }
+
   private boolean containsFile(final File root, final String fileName) {
     return findFile(root, fileName) != null;
   }
@@ -188,6 +335,28 @@ public class IoTDBLoadTsFileActiveRetryIT {
           containsFile(failDir, fileName));
       Thread.sleep(500L);
     }
+  }
+
+  private void assertCountEventually(final long expected, final long timeoutMs) throws Exception {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    AssertionError lastError = null;
+    while (System.currentTimeMillis() < deadline) {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement();
+          final java.sql.ResultSet resultSet =
+              statement.executeQuery("select count(" + MEASUREMENT + ") from " + DEVICE)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expected, resultSet.getLong(1));
+        return;
+      } catch (final AssertionError e) {
+        lastError = e;
+      }
+      Thread.sleep(500L);
+    }
+    if (lastError != null) {
+      throw lastError;
+    }
+    Assert.fail("Timed out waiting for count " + expected);
   }
 
   private File findFile(final File root, final String fileName) {

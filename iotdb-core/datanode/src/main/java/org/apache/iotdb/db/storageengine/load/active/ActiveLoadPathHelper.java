@@ -31,6 +31,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -43,10 +44,13 @@ import java.util.Optional;
 public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
+  public static final String USER_KEY = "user";
+  private static final String USER_VALUE_MASK_PREFIX = "b64:";
 
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
           Arrays.asList(
+              USER_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
@@ -65,8 +69,13 @@ public final class ActiveLoadPathHelper {
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
       final Long tabletConversionThresholdBytes,
-      final Boolean pipeGenerated) {
+      final Boolean pipeGenerated,
+      final String userName) {
     final Map<String, String> attributes = new LinkedHashMap<>();
+    if (Objects.nonNull(userName) && !userName.isEmpty()) {
+      attributes.put(USER_KEY, userName);
+    }
+
     if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
       attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
     }
@@ -208,7 +217,17 @@ public final class ActiveLoadPathHelper {
   }
 
   private static String formatSegment(final String key, final String value) {
-    return key + SEGMENT_SEPARATOR + encodeValue(value);
+    return key + SEGMENT_SEPARATOR + encodeValue(maskValueIfNecessary(key, value));
+  }
+
+  private static String maskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key)) {
+      return value;
+    }
+    return USER_VALUE_MASK_PREFIX
+        + Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 
   private static String encodeValue(final String value) {
@@ -227,7 +246,11 @@ public final class ActiveLoadPathHelper {
     }
 
     final String encodedValue = dirName.substring(prefixLength);
-    final String decodedValue = decodeValue(encodedValue);
+    final String rawDecodedValue = decodeValue(encodedValue);
+    if (USER_KEY.equals(key) && !rawDecodedValue.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return Optional.empty();
+    }
+    final String decodedValue = unmaskValueIfNecessary(key, rawDecodedValue);
     try {
       validateAttributeValue(key, decodedValue);
       return Optional.of(decodedValue);
@@ -255,6 +278,11 @@ public final class ActiveLoadPathHelper {
       case LoadTsFileConfigurator.VERIFY_KEY:
         LoadTsFileConfigurator.validateVerifyParam(value);
         break;
+      case USER_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException("User name must not be empty");
+        }
+        break;
       default:
         LoadTsFileConfigurator.validateParameters(key, value);
     }
@@ -276,6 +304,19 @@ public final class ActiveLoadPathHelper {
     try {
       return URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
     } catch (final UnsupportedEncodingException e) {
+      return value;
+    }
+  }
+
+  private static String unmaskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key) || !value.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return value;
+    }
+    try {
+      return new String(
+          Base64.getUrlDecoder().decode(value.substring(USER_VALUE_MASK_PREFIX.length())),
+          StandardCharsets.UTF_8);
+    } catch (final IllegalArgumentException e) {
       return value;
     }
   }

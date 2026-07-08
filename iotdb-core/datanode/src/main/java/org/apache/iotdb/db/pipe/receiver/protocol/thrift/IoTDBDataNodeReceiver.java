@@ -653,7 +653,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         shouldConvertDataTypeOnTypeMismatch,
         validateTsFile || shouldConvertDataTypeOnTypeMismatch,
         null,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        AuthorityChecker.SUPER_USER);
   }
 
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
