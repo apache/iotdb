@@ -1924,8 +1924,7 @@ public abstract class AlignedTVList extends TVList {
         }
 
         int nextRowIndex = index + 1;
-        while (nextRowIndex < rows
-            && isAllValueColumnsDeleted(getValueIndex(nextRowIndex))) {
+        while (nextRowIndex < rows && isAllValueColumnsDeleted(getValueIndex(nextRowIndex))) {
           nextRowIndex++;
         }
         long time = getTime(index);
