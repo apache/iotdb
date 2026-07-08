@@ -105,11 +105,19 @@ public class TsFileInsertionDataContainerTest {
   private File nonalignedTsFile;
   private TsFileResource resource;
   private boolean isPipeMemoryManagementEnabled;
+  private long originalPipeMemoryAllocateRetryIntervalInMs;
+  private int originalPipeMemoryAllocateMaxRetries;
 
   @Before
   public void setUp() throws Exception {
     isPipeMemoryManagementEnabled = PipeConfig.getInstance().getPipeMemoryManagementEnabled();
+    originalPipeMemoryAllocateRetryIntervalInMs =
+        PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
+    originalPipeMemoryAllocateMaxRetries =
+        PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
     CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(false);
+    CommonDescriptor.getInstance().getConfig().setPipeMemoryAllocateRetryIntervalInMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeMemoryAllocateMaxRetries(2);
   }
 
   @After
@@ -117,6 +125,12 @@ public class TsFileInsertionDataContainerTest {
     CommonDescriptor.getInstance()
         .getConfig()
         .setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMemoryAllocateRetryIntervalInMs(originalPipeMemoryAllocateRetryIntervalInMs);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMemoryAllocateMaxRetries(originalPipeMemoryAllocateMaxRetries);
     if (alignedTsFile != null) {
       alignedTsFile.delete();
     }
@@ -214,6 +228,54 @@ public class TsFileInsertionDataContainerTest {
     Assert.assertNotNull(parsedEventReference.get());
     Assert.assertTrue(parsedEventReference.get().isReleased());
     Assert.assertNull(getDataContainer(event).get());
+  }
+
+  @Test
+  public void testConsumeTabletInsertionEventsWithRetryKeepsParserForTransientOutOfMemory()
+      throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-consume-transient-oom.tsfile", 1, 1, 10, 0, 100, 10, 10);
+    resource = new TsFileResource(nonalignedTsFile);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    final IDeviceID deviceID = new PlainDeviceID("root.testsg.d0");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 9);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            resource,
+            null,
+            false,
+            false,
+            false,
+            null,
+            0,
+            null,
+            new PrefixPipePattern("root"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AtomicInteger retryCount = new AtomicInteger(0);
+    final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
+        new AtomicReference<>();
+
+    event.consumeTabletInsertionEventsWithRetry(
+        parsedEvent -> {
+          parsedEventReference.set(parsedEvent);
+          if (retryCount.getAndIncrement() == 0) {
+            throw new PipeRuntimeOutOfMemoryCriticalException("transient oom");
+          }
+          parsedEvent.clearReferenceCount(getClass().getName());
+        },
+        "test");
+
+    Assert.assertEquals(2, retryCount.get());
+    Assert.assertNotNull(parsedEventReference.get());
+    Assert.assertTrue(parsedEventReference.get().isReleased());
+    Assert.assertNotNull(getDataContainer(event).get());
+
+    event.close();
   }
 
   @Test
