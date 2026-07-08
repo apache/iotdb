@@ -233,7 +233,9 @@ public class ClusterSchemaManager {
       // Reject if Database doesn't exist
       result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(
-          "Failed to alter database. The Database " + databaseSchema.getName() + " doesn't exist.");
+          ManagerMessages.MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F
+              + databaseSchema.getName()
+              + ManagerMessages.MESSAGE_DOESN_T_EXIST_EED8C92E);
       return result;
     }
 
@@ -869,7 +871,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C);
     }
 
     if (!databaseSchema.isSetDataReplicationFactor()) {
@@ -879,7 +882,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The dataReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E);
     }
 
     if (!databaseSchema.isSetTimePartitionOrigin()) {
@@ -889,7 +893,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9);
     }
 
     if (!databaseSchema.isSetTimePartitionInterval()) {
@@ -899,7 +904,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionInterval should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -911,7 +917,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaRegionGroupNum should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -927,16 +934,16 @@ public class ClusterSchemaManager {
                       .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
-    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxSchemaRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.SchemaRegion);
     }
-    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxDataRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.DataRegion);
     }
 
-    if (errorResp != null) {
+    if (isErrorStatus(errorResp)) {
       LOGGER.warn(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
@@ -949,6 +956,10 @@ public class ClusterSchemaManager {
     }
 
     return StatusUtils.OK;
+  }
+
+  private static boolean isErrorStatus(final TSStatus status) {
+    return status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private static TSStatus validateMaxRegionGroupNumOnCreation(
@@ -1014,8 +1025,23 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to current min %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", minRegionGroupNum));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  minRegionGroupNum));
+    }
+
+    final int currentMaxRegionGroupNum = getMaxRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < currentMaxRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  currentMaxRegionGroupNum));
     }
 
     final int allocatedRegionGroupCount;
@@ -1030,8 +1056,11 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to allocated %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", allocatedRegionGroupCount));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  allocatedRegionGroupCount));
     }
 
     return StatusUtils.OK;

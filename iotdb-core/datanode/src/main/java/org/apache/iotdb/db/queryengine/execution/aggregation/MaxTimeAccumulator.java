@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -54,7 +55,9 @@ public class MaxTimeAccumulator implements Accumulator {
   // partialResult should be like: | partialMaxTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxTime should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXTIME_SHOULD_BE_1_877F7EAC);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -82,7 +85,9 @@ public class MaxTimeAccumulator implements Accumulator {
   // columnBuilder should be single in maxTimeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxTime should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXTIME_SHOULD_BE_1_877F7EAC);
     if (!initResult) {
       columnBuilders[0].appendNull();
     } else {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -26,8 +27,10 @@ import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
@@ -58,7 +61,15 @@ public class PipePlanTablePatternParseVisitorTest {
   @Test
   public void testDeleteData() {
     final TableDeletionEntry matchedEntry = deletionEntry(MATCH_TABLE);
-    final TableDeletionEntry filteredEntry = deletionEntry(MISMATCH_TABLE);
+    final TableDeletionEntry filteredEntry =
+        deletionEntry(
+            MISMATCH_TABLE,
+            new TagPredicate.And(
+                new TagPredicate.FullExactMatch(
+                    DeviceIDFactory.getInstance()
+                        .getDeviceID(new PartialPath(new String[] {MISMATCH_TABLE, "device1"}))),
+                new TagPredicate.SegmentExactMatch("device2", 1)),
+            new TimeRange(0, 1));
 
     Assert.assertEquals(
         deleteDataNode(MATCH_DATABASE, matchedEntry),
@@ -123,5 +134,10 @@ public class PipePlanTablePatternParseVisitorTest {
   private TableDeletionEntry deletionEntry(final String table) {
     return new TableDeletionEntry(
         new DeletionPredicate(table), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+  }
+
+  private TableDeletionEntry deletionEntry(
+      final String table, final TagPredicate tagPredicate, final TimeRange timeRange) {
+    return new TableDeletionEntry(new DeletionPredicate(table, tagPredicate), timeRange);
   }
 }

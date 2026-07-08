@@ -179,6 +179,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   event1 -> {
                     try {
                       pipeProcessor.process(event1, outputEventCollector);
+                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                      throw e;
                     } catch (Exception e) {
                       ex.set(e);
                     }
@@ -261,7 +263,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
-                "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_EXCEPTION_IN_PIPE_PROCESS_SUBTASK_S_LAST_EVENT_S_ROOT_CAUSE_95B49C24,
                 getDisplayTaskID(),
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()

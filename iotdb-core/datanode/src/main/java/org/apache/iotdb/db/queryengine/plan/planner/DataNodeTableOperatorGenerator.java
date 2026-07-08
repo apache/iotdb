@@ -272,7 +272,8 @@ public class DataNodeTableOperatorGenerator
       operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeId);
     }
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -294,7 +295,8 @@ public class DataNodeTableOperatorGenerator
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
       throw new IllegalStateException(
-          "IdentitySinkNode should only have one child in table model.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_IDENTITYSINKNODE_SHOULD_ONLY_HAVE_ONE_CHILD_IN_TABLE_MODEL_5E995EB3);
     }
   }
 
@@ -352,7 +354,10 @@ public class DataNodeTableOperatorGenerator
         return new FourOrHigherLevelDBExtractor(dbLevel);
       } else {
         throw new IllegalArgumentException(
-            "tree db name should at least be two level: " + treeDBName);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_TREE_DB_NAME_SHOULD_AT_LEAST_BE_TWO_LEVEL_S_772B6832,
+                treeDBName));
       }
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(e);
@@ -448,7 +453,8 @@ public class DataNodeTableOperatorGenerator
           long viewTTL) {
     if (node.isPushLimitToEachDevice() && node.getPushDownOffset() > 0) {
       throw new IllegalArgumentException(
-          "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_PUSHDOWNOFFSET_SHOULD_NOT_BE_SET_WHEN_ISPUSHLIMITTOEACHDEVICE_9B6D5144);
     }
     CommonTableScanOperatorParameters commonParameter =
         new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
@@ -882,7 +888,9 @@ public class DataNodeTableOperatorGenerator
       boolean addedTimeColumn = false;
       for (Symbol columnName : outputColumnNames) {
         ColumnSchema schema =
-            requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+            requireNonNull(
+                columnSchemaMap.get(columnName),
+                columnName + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
 
         symbolInputs.add(columnName);
         switch (schema.getColumnCategory()) {
@@ -890,7 +898,8 @@ public class DataNodeTableOperatorGenerator
           case ATTRIBUTE:
             columnsIndexArray[idx++] =
                 requireNonNull(
-                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+                    tagAndAttributeColumnsIndexMap.get(columnName),
+                    columnName + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
             columnSchemas.add(schema);
             break;
           case FIELD:
@@ -915,7 +924,9 @@ public class DataNodeTableOperatorGenerator
             break;
           default:
             throw new IllegalArgumentException(
-                "Unexpected column category: " + schema.getColumnCategory());
+                String.format(
+                    DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+                    schema.getColumnCategory()));
         }
       }
       Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
@@ -1000,7 +1011,11 @@ public class DataNodeTableOperatorGenerator
       DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
       if (deviceEntry == null) {
         throw new IllegalStateException(
-            "Device entries of index " + i + " in " + planNodeName + " is empty");
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_S_IS_EMPTY_68D1DB60,
+                i,
+                planNodeName));
       }
       if (deviceEntry instanceof NonAlignedDeviceEntry) {
         for (IMeasurementSchema schema : measurementSchemas) {
@@ -1297,7 +1312,8 @@ public class DataNodeTableOperatorGenerator
   public Operator visitAggregationTreeDeviceViewScan(
       AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     throw new UnsupportedOperationException(
-        "The AggregationTreeDeviceViewScanNode should has been transferred to its child class node");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_AGGREGATIONTREEDEVICEVIEWSCANNODE_SHOULD_HAS_BEEN_TRANSFERRED_76A35037);
   }
 
   @Override
@@ -1435,14 +1451,17 @@ public class DataNodeTableOperatorGenerator
       for (Expression argument : entry.getValue().getArguments()) {
         Symbol symbol = Symbol.from(argument);
         ColumnSchema schema =
-            requireNonNull(node.getAssignments().get(symbol), symbol + " is null");
+            requireNonNull(
+                node.getAssignments().get(symbol),
+                symbol + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
         if (!aggColumnLayout.containsKey(symbol)) {
           switch (schema.getColumnCategory()) {
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
                   requireNonNull(
-                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
+                      node.getTagAndAttributeIndexMap().get(symbol),
+                      symbol + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -1461,7 +1480,9 @@ public class DataNodeTableOperatorGenerator
               break;
             default:
               throw new IllegalArgumentException(
-                  "Unexpected column category: " + schema.getColumnCategory());
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+                      schema.getColumnCategory()));
           }
 
           aggColumnSchemas.add(schema);
@@ -1538,7 +1559,8 @@ public class DataNodeTableOperatorGenerator
             timeRangeIterator = new TableDateBinTimeRangeIterator(dateBinTransformer);
           } else {
             throw new IllegalStateException(
-                "grouping key must be ID or Attribute in AggregationTableScan");
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_GROUPING_KEY_MUST_BE_ID_OR_ATTRIBUTE_IN_AGGREGATIONTABLESCAN_7B592AE6);
           }
         }
       }

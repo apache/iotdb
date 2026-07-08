@@ -323,20 +323,24 @@ public class IoTConsensusServerImpl {
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
             logger.debug(
-                "write() no subscription queues registered, " + "group={}, searchIndex={}, this={}",
+                IoTConsensusMessages.LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B
+                    + IoTConsensusMessages.LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6,
                 consensusGroupId,
                 indexedConsensusRequest.getSearchIndex(),
                 System.identityHashCode(this));
           }
           searchIndex.incrementAndGet();
         }
-        updateWriterMetaOnSuccess(indexedConsensusRequest);
+        latestWriterMeta =
+            new WriterMeta(
+                indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
       } else if (logger.isDebugEnabled()) {
         logger.debug(
-            IoTConsensusMessages.WRITE_OPERATION_FAILED + ", subscriptionQueues: {}, this: {}",
+            IoTConsensusMessages
+                .LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576,
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
             result.getCode(),
@@ -349,6 +353,7 @@ public class IoTConsensusServerImpl {
       return result;
     } finally {
       stateMachineLock.unlock();
+      persistLatestWriterMeta(false);
     }
   }
 
@@ -724,8 +729,8 @@ public class IoTConsensusServerImpl {
           // after current operation
           // TODO: (xingtanzjr) design more reliable way for IoTConsensus
           logger.error(
-              "cannot notify {} to build sync log channel. "
-                  + "Please check the status of this node manually",
+              IoTConsensusMessages.LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB
+                  + IoTConsensusMessages.LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3,
               peer,
               e);
         }
@@ -860,8 +865,8 @@ public class IoTConsensusServerImpl {
       return res.getStatus();
     } catch (Exception e) {
       logger.debug(
-          "Failed to sync writer safe-time barrier to peer {} for group {}, "
-              + "safePt={}, writerNodeId={}, barrier={}",
+          IoTConsensusMessages.LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A
+              + IoTConsensusMessages.LOG_SAFEPT_ARG_WRITERNODEID_ARG_BARRIER_ARG_AC74618F,
           targetPeer,
           consensusGroupId,
           safePhysicalTime,
@@ -1013,8 +1018,9 @@ public class IoTConsensusServerImpl {
       if (writerMetaOptional.isPresent()) {
         final WriterMeta writerMeta = writerMetaOptional.get();
         logger.info(
-            "Recovered writer meta for group {} from {}, recoveredLocalSeq={}, "
-                + "persistedLocalSeq={}",
+            IoTConsensusMessages
+                    .LOG_RECOVERED_WRITER_META_GROUP_ARG_ARG_RECOVEREDLOCALSEQ_ARG_9B989AAC
+                + IoTConsensusMessages.LOG_PERSISTEDLOCALSEQ_ARG_5EBAA9A5,
             consensusGroupId,
             writerMetaPath,
             recoveredSearchIndex,
@@ -1028,22 +1034,22 @@ public class IoTConsensusServerImpl {
       }
     } catch (IOException e) {
       logger.warn(
-          "Failed to load writer meta for group {} from {}. Starting fresh writer metadata.",
+          IoTConsensusMessages
+              .LOG_FAILED_LOAD_WRITER_META_GROUP_ARG_ARG_STARTING_FRESH_WRITER_A24EDEFE,
           consensusGroupId,
           writerMetaPath,
           e);
     }
     lastAssignedPhysicalTime.set(System.currentTimeMillis());
     logger.info(
-        "Initialized fresh writer meta for group {}, recoveredLocalSeq={}",
+        IoTConsensusMessages
+            .LOG_INITIALIZED_FRESH_WRITER_META_GROUP_ARG_RECOVEREDLOCALSEQ_ARG_A7254C6E,
         consensusGroupId,
         recoveredSearchIndex);
   }
 
   private void updateWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
-    latestWriterMeta =
-        new WriterMeta(
-            indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
+
     persistLatestWriterMeta(false);
   }
 
@@ -1062,8 +1068,8 @@ public class IoTConsensusServerImpl {
     synchronized (writerMetaPersistLock) {
       final WriterMeta latestMeta = latestWriterMeta;
       if (latestMeta == null
-          || (latestMeta.getLastAllocatedLocalSeq() == lastPersistedWriterLocalSeq
-              && latestMeta.getLastAssignedPhysicalTimeMs() == lastPersistedWriterPhysicalTime)) {
+          || (latestMeta.getLastAllocatedLocalSeq() <= lastPersistedWriterLocalSeq
+              && latestMeta.getLastAssignedPhysicalTimeMs() <= lastPersistedWriterPhysicalTime)) {
         return;
       }
 
@@ -1080,7 +1086,8 @@ public class IoTConsensusServerImpl {
         lastPersistedWriterPhysicalTime = latestMeta.getLastAssignedPhysicalTimeMs();
       } catch (IOException e) {
         logger.warn(
-            "Failed to persist writer meta for group {} at localSeq={}, pt={}",
+            IoTConsensusMessages
+                .LOG_FAILED_PERSIST_WRITER_META_GROUP_ARG_AT_LOCALSEQ_ARG_PT_3502F119,
             consensusGroupId,
             latestMeta.getLastAllocatedLocalSeq(),
             latestMeta.getLastAssignedPhysicalTimeMs(),
@@ -1136,8 +1143,9 @@ public class IoTConsensusServerImpl {
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
-        "Registered subscription queue for group {}, "
-            + "total subscription queues: {}, currentSearchIndex={}, this={}",
+        IoTConsensusMessages.LOG_REGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_5102ABA0
+            + IoTConsensusMessages
+                .LOG_TOTAL_SUBSCRIPTION_QUEUES_ARG_CURRENTSEARCHINDEX_ARG_ARG_9BF9006A,
         consensusGroupId,
         subscriptionQueueRegistry.size(),
         searchIndex.get(),
@@ -1149,7 +1157,8 @@ public class IoTConsensusServerImpl {
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
-        "Deregistered subscription queue for group {}, remaining subscription queues: {}",
+        IoTConsensusMessages
+            .LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF,
         consensusGroupId,
         subscriptionQueueRegistry.size());
   }

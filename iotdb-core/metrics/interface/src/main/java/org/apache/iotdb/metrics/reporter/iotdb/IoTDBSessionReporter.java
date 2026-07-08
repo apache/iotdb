@@ -125,7 +125,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);
     LOGGER.info(
-        "IoTDBSessionReporter start, write to {}:{}",
+        MetricsMessages.LOG_IOTDBSESSIONREPORTER_START_WRITE_ARG_ARG_E79CDDAE,
         ioTDBReporterConfig.getHost(),
         ioTDBReporterConfig.getPort());
     return true;

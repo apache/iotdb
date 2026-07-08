@@ -58,8 +58,10 @@ public class IrRowPatternToProgramRewriter {
     private final Map<IrLabel, Integer> labelMapping;
 
     public Rewriter(List<Instruction> instructions, Map<IrLabel, Integer> labelMapping) {
-      this.instructions = requireNonNull(instructions, "instructions is null");
-      this.labelMapping = requireNonNull(labelMapping, "labelMapping is null");
+      this.instructions =
+          requireNonNull(instructions, CalcMessages.EXCEPTION_INSTRUCTIONS_IS_NULL_A9CDA591);
+      this.labelMapping =
+          requireNonNull(labelMapping, CalcMessages.EXCEPTION_LABELMAPPING_IS_NULL_535461C7);
     }
 
     @Override
@@ -135,7 +137,8 @@ public class IrRowPatternToProgramRewriter {
     protected Void visitIrPermutation(IrPermutation node, Void context) {
       checkArgument(
           node.getPatterns().size() > 1,
-          "invalid pattern: permutation with single element. run IrRowPatternFlattener first");
+          CalcMessages
+              .EXCEPTION_INVALID_PATTERN_COLON_PERMUTATION_WITH_SINGLE_ELEMENT_DOT_RUN_IRROWPATTERNFLATTE_3FF56E02);
 
       List<Integer> indexes =
           IntStream.range(0, node.getPatterns().size()).boxed().collect(toImmutableList());
@@ -192,7 +195,7 @@ public class IrRowPatternToProgramRewriter {
     }
 
     private void loopingQuantified(IrRowPattern pattern, boolean greedy, int min) {
-      checkArgument(min >= 0, "invalid min value: %s", min);
+      checkArgument(min >= 0, CalcMessages.EXCEPTION_INVALID_MIN_VALUE_COLON_ARG_8D899A2E, min);
 
       if (min == 0) {
         int startSplitPosition = instructions.size();
@@ -231,7 +234,11 @@ public class IrRowPatternToProgramRewriter {
     }
 
     private void rangeQuantified(IrRowPattern pattern, boolean greedy, int min, int max) {
-      checkArgument(min <= max, "invalid range: (%s, %s)", min, max);
+      checkArgument(
+          min <= max,
+          CalcMessages.EXCEPTION_INVALID_RANGE_COLON_LEFT_PAREN_ARG_COMMA_ARG_RIGHT_PAREN_EF9544AA,
+          min,
+          max);
 
       for (int i = 0; i < min; i++) {
         process(pattern);

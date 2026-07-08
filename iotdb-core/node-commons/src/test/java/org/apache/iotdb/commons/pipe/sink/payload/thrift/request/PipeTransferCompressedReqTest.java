@@ -54,6 +54,16 @@ public class PipeTransferCompressedReqTest {
             Collections.singletonList(
                 PipeCompressorFactory.getCompressor(
                     PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    final int compressedBodySize = compressedReq.body.remaining();
+    final int maxDecompressedLength =
+        Math.max(compressedBodySize, originalReq.body.remaining() + 3);
+    Assert.assertEquals(
+        maxDecompressedLength,
+        PipeTransferCompressedReq.getMaxDecompressedLengthInBytes(compressedReq));
+    Assert.assertEquals(
+        maxDecompressedLength - compressedBodySize,
+        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(compressedReq));
+    Assert.assertEquals(0, compressedReq.body.position());
 
     assertVersionAndType(
         compressedReq, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_COMPRESSED);
@@ -102,6 +112,32 @@ public class PipeTransferCompressedReqTest {
     assertVersionAndType(
         compressedReq, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_COMPRESSED);
     assertRoundTrip(originalReq, compressedReq);
+  }
+
+  @Test
+  public void testAdditionalDecompressedLengthExcludesTransferFrameBody() throws IOException {
+    final TPipeTransferReq originalReq = new TPipeTransferReq();
+    originalReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    originalReq.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    final byte[] highlyCompressibleBody = new byte[16 * 1024];
+    Arrays.fill(highlyCompressibleBody, (byte) 1);
+    originalReq.body = ByteBuffer.wrap(highlyCompressibleBody);
+
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            originalReq,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    final int compressedBodySize = compressedReq.body.remaining();
+    final int maxDecompressedLength =
+        PipeTransferCompressedReq.getMaxDecompressedLengthInBytes(compressedReq);
+
+    Assert.assertTrue(maxDecompressedLength > compressedBodySize);
+    Assert.assertEquals(
+        maxDecompressedLength - compressedBodySize,
+        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(compressedReq));
+    Assert.assertEquals(0, compressedReq.body.position());
   }
 
   @Test

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -144,12 +143,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
     this.allocatedMemoryBlockForChunk =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
       currentModifications =
@@ -225,6 +221,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     throw new NoSuchElementException();
                   }
 
+                  // Release the previous parser-owned tablet buffer before allocating the next
+                  // tablet.
+                  releaseTabletMemoryBlock();
                   // currentIsAligned is initialized when TsFileInsertionEventScanParser is
                   // constructed.
                   // When the getNextTablet function is called, currentIsAligned may be updated,
@@ -263,6 +262,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                             sourceEvent,
                             isLast);
                   } finally {
+                    // The raw event owns the generated tablet; only release the parser-side memory
+                    // accounting.
+                    releaseTabletMemoryBlock();
                     if (isLast) {
                       recordParseEndTimeIfNecessary();
                       close();
@@ -395,7 +397,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     final Exception exception = deferredException;
     deferredException = null;
-    throw new PipeException("Failed to prepare next tablet insertion event.", exception);
+    throw new PipeException(
+        DataNodePipeMessages.EXCEPTION_FAILED_TO_PREPARE_NEXT_TABLET_INSERTION_EVENT_70A57827,
+        exception);
   }
 
   private boolean isLastTabletWithoutDeferredException() {
@@ -977,8 +981,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (timeChunkIndex < 0 || timeChunkIndex >= timeChunkList.size()) {
       throw new IOException(
           String.format(
-              "Invalid aligned value chunk index %d, while there are %d time chunks.",
-              timeChunkIndex, timeChunkList.size()));
+              DataNodePipeMessages
+                  .EXCEPTION_INVALID_ALIGNED_VALUE_CHUNK_INDEX_ARG_WHILE_THERE_ARE_ARG_TIME_CHUNKS_A7AE6C57,
+              timeChunkIndex,
+              timeChunkList.size()));
     }
   }
 

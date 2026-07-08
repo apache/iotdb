@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -278,7 +279,8 @@ public class TemplatedAggregationAnalyze {
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
           String.format(
-              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              DataNodeQueryMessages
+                  .THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_HAVING_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_S,
               outputType));
     }
     analysis.setHavingExpression(havingExpression);

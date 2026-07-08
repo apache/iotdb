@@ -212,8 +212,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
@@ -1454,7 +1454,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     TopicMeta.deserialize(ByteBuffer.wrap(req.getTopicMeta())));
       } else {
         throw new SubscriptionException(
-            DataNodeMiscMessages.INVALID_REQUEST + req + " from config node.");
+            String.format(DataNodeMiscMessages.INVALID_REQUEST_FROM_CONFIG_NODE_FMT, req));
       }
 
       return exceptionMessage == null
@@ -1584,7 +1584,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     ConsumerGroupMeta.deserialize(ByteBuffer.wrap(req.getConsumerGroupMeta())));
       } else {
         throw new SubscriptionException(
-            DataNodeMiscMessages.INVALID_REQUEST + req + " from config node.");
+            String.format(DataNodeMiscMessages.INVALID_REQUEST_FROM_CONFIG_NODE_FMT, req));
       }
 
       return exceptionMessage == null
@@ -1609,7 +1609,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
           .setCommitRegionProgress(regionProgress);
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pulling commit progress", e);
+      LOGGER.warn(
+          DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
       return new TPullCommitProgressResp(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
@@ -1628,7 +1629,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.getLocalSeq());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when receiving subscription progress broadcast", e);
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_RECEIVING_SUBSCRIPTION_PROGRESS_BROADCAST_94B2CF10,
+          e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
@@ -1647,7 +1651,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing subscription runtime state", e);
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_PUSHING_SUBSCRIPTION_RUNTIME_STATE_D4E71CE3,
+          e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
@@ -2120,7 +2127,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             new TableDeletionEntry(
                                 new DeletionPredicate(
                                     req.getTableName(),
-                                    new IDPredicate.NOP(),
+                                    new TagPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
                                 new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                             // the request is only sent to associated region
@@ -2380,7 +2387,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusSubscriptionSetupHandler.onRegionRouteChanged(
             req.getRegionRouteMap(), req.getTimestamp());
       } catch (final Exception e) {
-        LOGGER.warn("Failed to process consensus subscription route update", e);
+        LOGGER.warn(
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_PROCESS_CONSENSUS_SUBSCRIPTION_ROUTE_UPDATE_80D73E2B,
+            e);
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
@@ -2495,10 +2505,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         LOGGER.warn(
-            "The available disk space is : {}, "
-                + "the total disk space is : {}, "
-                + "and the remaining disk usage ratio: {} is "
-                + "less than disk_space_warning_threshold: {}, set system to readonly!",
+            DataNodeMiscMessages
+                .MISC_LOG_THE_AVAILABLE_DISK_SPACE_IS_THE_TOTAL_DISK_SPACE_IS_AND_4506856F,
             RamUsageEstimator.humanReadableUnits((long) availableDisk),
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
@@ -2832,7 +2840,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     LOGGER.info(
-        "[ChangeRegionLeader] Start change the leader of RegionGroup: {} to DataNode: {}",
+        DataNodeMiscMessages
+            .MISC_LOG_CHANGEREGIONLEADER_START_CHANGE_THE_LEADER_OF_REGIONGROUP_248A99AD,
         regionId,
         req.getNewLeaderNode().getDataNodeId());
     resp.setStatus(transferLeader(regionId, newLeaderPeer));
@@ -2854,16 +2863,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     } catch (ConsensusException e) {
       LOGGER.warn(
-          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}", regionId, e);
+          DataNodeMiscMessages
+              .MISC_LOG_CHANGEREGIONLEADER_FAILED_TO_CHANGE_THE_LEADER_OF_REGIONGROUP_F1A1DC14,
+          regionId,
+          e);
       status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
 
     status.setMessage(
-        "[ChangeRegionLeader] Successfully change the leader of RegionGroup: "
+        DataNodeMiscMessages
+                .MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4
             + regionId
-            + " to "
+            + DataNodeMiscMessages.MESSAGE_MESSAGE_3501C7E6
             + newLeaderPeer.getNodeId());
     return status;
   }
@@ -2915,7 +2928,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit addRegionPeer task for region: {}, target DataNode: {}",
+          DataNodeMiscMessages
+              .MISC_LOG_SUCCESSFULLY_SUBMIT_ADDREGIONPEER_TASK_FOR_REGION_TARGET_64183781,
           regionId,
           selectedDataNodeIP);
       return status;
@@ -2937,7 +2951,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit removeRegionPeer task for region: {}, DataNode to be removed: {}",
+          DataNodeMiscMessages
+              .MISC_LOG_SUCCESSFULLY_SUBMIT_REMOVEREGIONPEER_TASK_FOR_REGION_DATANODE_9B74B948,
           regionId,
           selectedDataNodeIP);
       return status;
@@ -2959,7 +2974,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit deleteOldRegionPeer task for region: {}, DataNode to be removed: {}",
+          DataNodeMiscMessages
+              .MISC_LOG_SUCCESSFULLY_SUBMIT_DELETEOLDREGIONPEER_TASK_FOR_REGION_3F3BB495,
           regionId,
           selectedDataNodeIP);
       return status;
@@ -3032,7 +3048,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance().register(triggerInformation, req.jarFile);
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_CREATING_TRIGGER_INSTANCE_FOR_TRIGGER_5A8F8890,
           triggerInformation.getTriggerName(),
           e);
       return new TSStatus(TSStatusCode.CREATE_TRIGGER_INSTANCE_ERROR.getStatusCode())
@@ -3047,7 +3064,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_DURING_ACTIVE_TRIGGER_INSTANCE_FOR_TRIGGER_7731ECF2,
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.ACTIVE_TRIGGER_INSTANCE_ERROR.getStatusCode())
@@ -3062,7 +3080,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_TRY_TO_INACTIVE_TRIGGER_INSTANCE_FOR_FA93D7E7,
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -3078,7 +3097,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred when dropping trigger instance for trigger: {}. The cause is {}.",
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_DROPPING_TRIGGER_INSTANCE_FOR_TRIGGER_23B94EBE,
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getStatusCode())
@@ -3094,7 +3114,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .updateLocationOfStatefulTrigger(req.triggerName, req.newLocation);
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred when updating Location for trigger: {}. The cause is {}.",
+          DataNodeMiscMessages
+              .MISC_LOG_ERROR_OCCURRED_WHEN_UPDATING_LOCATION_FOR_TRIGGER_THE_CAUSE_1C076D98,
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.UPDATE_TRIGGER_LOCATION_ERROR.getStatusCode())
@@ -3184,7 +3205,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private TSStatus createNewRegionPeer(ConsensusGroupId regionId, List<Peer> peers) {
     LOGGER.info(
-        "{}, Start to createNewRegionPeer {} to region {}",
+        DataNodeMiscMessages.MISC_LOG_START_TO_CREATENEWREGIONPEER_TO_REGION_6DCE04AD,
         REGION_MIGRATE_PROCESS,
         peers,
         regionId);
@@ -3212,7 +3233,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (ConsensusException e) {
       if (!(e instanceof ConsensusGroupAlreadyExistException)) {
         LOGGER.warn(
-            "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
+            DataNodeMiscMessages
+                .MISC_LOG_CREATENEWREGIONPEER_ERROR_PEERS_REGIONID_ERRORMESSAGE_2EDAE3C8,
             REGION_MIGRATE_PROCESS,
             peers,
             regionId,
@@ -3223,7 +3245,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     LOGGER.info(
-        "{}, Succeed to createNewRegionPeer {} for region {}",
+        DataNodeMiscMessages.MISC_LOG_SUCCEED_TO_CREATENEWREGIONPEER_FOR_REGION_FDF176E3,
         REGION_MIGRATE_PROCESS,
         peers,
         regionId);
@@ -3275,7 +3297,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LOGGER.warn(DataNodeMiscMessages.INTERRUPTED_STOP_AND_CLEAR);
               } finally {
                 LOGGER.info(
-                    "Executing system.exit(0) in stopAndClearDataNode RPC method after 30 seconds");
+                    DataNodeMiscMessages
+                        .MISC_LOG_EXECUTING_SYSTEM_EXIT_0_IN_STOPANDCLEARDATANODE_RPC_METHOD_647927C6);
                 System.exit(0);
               }
             })
@@ -3386,7 +3409,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
         resp.setMessage(
             String.format(
-                "DataPartitionTable generation is already in the progress: %.1f%%",
+                DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_ALREADY_IN_PROGRESS_FMT,
                 runningGenerator.getProgress() * 100));
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         return resp;
@@ -3514,7 +3537,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (generator == null) {
       resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
       resp.setProgress(0.0);
-      resp.setMessage("No DataPartitionTable generation task found");
+      resp.setMessage(PipeMessages.MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55);
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return resp;
     }
@@ -3525,26 +3548,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setProgress(generator.getProgress());
         resp.setMessage(
             String.format(
-                "DataPartitionTable generation in progress: %.1f%%",
+                PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8,
                 generator.getProgress() * 100));
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         break;
       case COMPLETED:
         resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
         resp.setProgress(1.0);
-        resp.setMessage("DataPartitionTable generation completed successfully");
+        resp.setMessage(
+            PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2);
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         break;
       case FAILED:
         resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
         resp.setProgress(generator.getProgress());
-        resp.setMessage("DataPartitionTable generation failed: " + generator.getErrorMessage());
+        resp.setMessage(
+            PipeMessages.MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A
+                + generator.getErrorMessage());
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         break;
       default:
         resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
         resp.setProgress(generator.getProgress());
-        resp.setMessage("Unknown task status: " + generator.getStatus());
+        resp.setMessage(PipeMessages.MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 + generator.getStatus());
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         break;
     }
@@ -3558,19 +3584,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             resp,
             DataPartitionTableGeneratorState.IN_PROGRESS.getCode(),
             String.format(
-                "DataPartitionTable generation in progress: %.1f%%", generator.getProgress() * 100),
+                DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_IN_PROGRESS_FMT,
+                generator.getProgress() * 100),
             generator.getProgress(),
             RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         LOGGER.info(
             String.format(
-                "DataPartitionTable generation with task ID: %s in progress: %.1f%%",
-                currentTaskId, generator.getProgress() * 100));
+                DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_WITH_TASK_ID_IN_PROGRESS_FMT,
+                currentTaskId,
+                generator.getProgress() * 100));
         break;
       case COMPLETED:
         setResponseFields(
             resp,
             DataPartitionTableGeneratorState.SUCCESS.getCode(),
-            "DataPartitionTable generation completed successfully",
+            DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_COMPLETED_SUCCESSFULLY,
             1.0,
             RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_COMPLETED, currentTaskId);
@@ -3579,7 +3607,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         setResponseFields(
             resp,
             DataPartitionTableGeneratorState.FAILED.getCode(),
-            "DataPartitionTable generation failed: " + generator.getErrorMessage(),
+            String.format(
+                DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_FAILED_FMT,
+                generator.getErrorMessage()),
             generator.getProgress(),
             RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_FAILED, currentTaskId);
@@ -3693,7 +3723,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         result.add(ByteBuffer.wrap(baos.getBuf(), 0, baos.size()));
       } catch (IOException | TException e) {
         LOGGER.error(
-            "Failed to serialize DatabaseScopedDataPartitionTable for database: {}",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_SERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_FOR_2EFDD270,
             table.getDatabase(),
             e);
       }

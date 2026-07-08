@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
@@ -87,7 +88,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
 
   @Override
   public boolean executeFromValidate(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: executeFromValidate");
+    LOGGER.info(
+        ProcedureMessages.LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATE_97490577);
     if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return false;
     }
@@ -102,7 +104,9 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
   @Override
   public void executeFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_D4E8BD37);
 
     final Map<Integer, TPullCommitProgressResp> respMap =
         env.pullCommitProgressFromDataNodesBestEffort();
@@ -114,7 +118,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       final TPullCommitProgressResp resp = entry.getValue();
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "SubscriptionHandleLeaderChangeProcedure: failed to pull commit progress from DataNode {}, status: {}",
+            ProcedureMessages
+                .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_8C6DEC4E,
             entry.getKey(),
             resp.getStatus());
         continue;
@@ -144,7 +149,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
                       serializeRegionProgressMap(mergedRegionProgress)));
     } catch (final ConsensusException e) {
       LOGGER.warn(
-          "SubscriptionHandleLeaderChangeProcedure: failed in the write API executing the consensus layer due to: ",
+          ProcedureMessages
+              .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_WRITE_API_EXECUTING_CONSENSUS_LAYER_56B3832A,
           e);
       throw new SubscriptionException(e.getMessage());
     }
@@ -157,14 +163,17 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
   @Override
   public void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONDATANODES_0D9F7C98);
 
     final Map<Integer, TPushTopicMetaResp> topicRespMap = pushTopicMetaToDataNodesBestEffort(env);
     topicRespMap.forEach(
         (dataNodeId, resp) -> {
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "SubscriptionHandleLeaderChangeProcedure: ignored failed topic meta push to DataNode {}, status: {}",
+                ProcedureMessages
+                    .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_TOPIC_META_PUSH_DATANODE_ARG_STATUS_ARG_67FC003F,
                 dataNodeId,
                 resp.getStatus());
           }
@@ -176,7 +185,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
         (dataNodeId, resp) -> {
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "SubscriptionHandleLeaderChangeProcedure: ignored failed consumer group meta push to DataNode {}, status: {}",
+                ProcedureMessages
+                    .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_CONSUMER_GROUP_META_PUSH_DATANODE_ARG_STATUS_17C948,
                 dataNodeId,
                 resp.getStatus());
           }
@@ -195,7 +205,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       if (!runtimePushError.isEmpty()) {
         throw new SubscriptionException(
             String.format(
-                "Failed to push subscription runtime state to readable DataNodes during leader change, details: %s",
+                ProcedureMessages
+                    .EXCEPTION_FAILED_PUSH_SUBSCRIPTION_RUNTIME_STATE_READABLE_DATANODES_DURING_LEADER_CHANGE_F37E6F2C,
                 runtimePushError));
       }
       runtimeRespMap.forEach(
@@ -203,7 +214,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
             if (!readableDataNodeIds.contains(dataNodeId)
                 && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.warn(
-                  "SubscriptionHandleLeaderChangeProcedure: ignored failed subscription runtime push to unreadable DataNode {}, status: {}",
+                  ProcedureMessages
+                      .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_SUBSCRIPTION_RUNTIME_PUSH_UNREADABLE_DATANODE_ARG_S,
                   dataNodeId,
                   status);
             }
@@ -213,17 +225,23 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
 
   @Override
   public void rollbackFromValidate(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: rollbackFromValidate");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATE_74B408B7);
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_D4C70763);
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0250F6E9);
   }
 
   @Override
@@ -317,7 +335,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       return RegionProgress.deserialize(duplicate);
     } catch (final RuntimeException e) {
       LOGGER.warn(
-          "SubscriptionHandleLeaderChangeProcedure: failed to deserialize region progress, key={}, summary={}",
+          ProcedureMessages
+              .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_F6935E59,
           key,
           summarizeRegionProgressPayload(buffer),
           e);
@@ -377,7 +396,9 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       dos.flush();
       return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
     } catch (final IOException e) {
-      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+      throw new RuntimeException(
+          ProcedureMessages.EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 + regionProgress,
+          e);
     }
   }
 
@@ -414,7 +435,8 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
             .collect(Collectors.toSet());
     if (readableDataNodeIds.isEmpty()) {
       throw new SubscriptionException(
-          "No readable DataNode is available to accept subscription metadata/runtime updates during leader change");
+          ProcedureMessages
+              .EXCEPTION_NO_READABLE_DATANODE_AVAILABLE_ACCEPT_SUBSCRIPTION_METADATA_RUNTIME_UPDATES_DURING_22E61621);
     }
     return readableDataNodeIds;
   }

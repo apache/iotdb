@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -387,7 +388,10 @@ public class ConsensusPrefetchingQueue {
           wait(50L);
         } catch (final InterruptedException e) {
           Thread.currentThread().interrupt();
-          throw new RuntimeException("Interrupted while waiting for seek application", e);
+          throw new RuntimeException(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_INTERRUPTED_WHILE_WAITING_FOR_SEEK_APPLICATION_7C7ECAF2,
+              e);
         }
       }
       if (failure != null) {
@@ -436,9 +440,8 @@ public class ConsensusPrefetchingQueue {
     serverImpl.registerSubscriptionQueue(pendingEntries, retentionPolicy);
 
     LOGGER.info(
-        "ConsensusPrefetchingQueue created (dormant): consumerGroupId={}, topicName={}, "
-            + "orderMode={}, consensusGroupId={}, fallbackCommittedRegionProgress={}, "
-            + "fallbackTailSearchIndex={}, initialRuntimeVersion={}, initialActive={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_CREATED_DORMANT_CONSUMERGROUPID_863BC6D6,
         consumerGroupId,
         topicName,
         this.orderMode,
@@ -640,7 +643,8 @@ public class ConsensusPrefetchingQueue {
     resetBatchWriterProgress();
 
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: prefetch initialized, startSearchIndex={}, progressSource={}, recoveryWriterCount={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6,
         this,
         resolvedStart.getStartSearchIndex(),
         resolvedStart.getDetail(),
@@ -661,8 +665,10 @@ public class ConsensusPrefetchingQueue {
     if (!(consensusReqReader instanceof WALNode)) {
       throw new IllegalStateException(
           String.format(
-              "ConsensusPrefetchingQueue %s: cannot recover from non-empty region progress without WAL access: %s",
-              this, recoveryRegionProgress));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_RECOVER_FROM_NON_EMPTY_C1B367EF,
+              this,
+              recoveryRegionProgress));
     }
 
     final ReplayLocateDecision replayTarget =
@@ -679,8 +685,11 @@ public class ConsensusPrefetchingQueue {
       default:
         throw new IllegalStateException(
             String.format(
-                "ConsensusPrefetchingQueue %s: cannot initialize replay start from region progress %s: %s",
-                this, recoveryRegionProgress, replayTarget.getDetail()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_INITIALIZE_REPLAY_START_E02DE40E,
+                this,
+                recoveryRegionProgress,
+                replayTarget.getDetail()));
     }
   }
 
@@ -1045,8 +1054,8 @@ public class ConsensusPrefetchingQueue {
     final long size = prefetchingQueue.size();
     if (size == 0) {
       LOGGER.debug(
-          "ConsensusPrefetchingQueue {}: prefetching queue is empty for consumerId={}, "
-              + "pendingEntriesSize={}, nextExpected={}, isClosed={}, prefetchInitialized={}, subtaskScheduled={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCHING_QUEUE_IS_EMPTY_FOR_22836B5E,
           this,
           consumerId,
           pendingEntries.size(),
@@ -1058,7 +1067,8 @@ public class ConsensusPrefetchingQueue {
     }
 
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: polling, queue size={}, consumerId={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLLING_QUEUE_SIZE_CONSUMERID_FCA0AAD3,
         this,
         size,
         consumerId);
@@ -1081,7 +1091,8 @@ public class ConsensusPrefetchingQueue {
 
         if (event.isCommitted()) {
           LOGGER.warn(
-              "ConsensusPrefetchingQueue {} poll committed event {} (broken invariant), remove it",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_COMMITTED_EVENT_BROKEN_INVARIANT_E478FA3C,
               this,
               event);
           continue;
@@ -1089,7 +1100,8 @@ public class ConsensusPrefetchingQueue {
 
         if (!event.pollable()) {
           LOGGER.warn(
-              "ConsensusPrefetchingQueue {} poll non-pollable event {} (broken invariant), nack it",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_NON_POLLABLE_EVENT_BROKEN_E9551325,
               this,
               event);
           event.nack();
@@ -1104,7 +1116,11 @@ public class ConsensusPrefetchingQueue {
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("ConsensusPrefetchingQueue {} interrupted while polling", this, e);
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_INTERRUPTED_WHILE_POLLING_B7CFF5FD,
+          this,
+          e);
     }
 
     return null;
@@ -1210,9 +1226,8 @@ public class ConsensusPrefetchingQueue {
       final List<IndexedConsensusRequest> batch = drainPendingEntries(maxWalEntries);
       if (!batch.isEmpty()) {
         LOGGER.debug(
-            "ConsensusPrefetchingQueue {}: drained {} entries from pendingEntries, "
-                + "first searchIndex={}, last searchIndex={}, nextExpected={}, "
-                + "prefetchingQueueSize={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_DRAINED_ENTRIES_FROM_PENDINGENTRIES_2D4E0BE7,
             this,
             batch.size(),
             batch.get(0).getSearchIndex(),
@@ -1252,8 +1267,8 @@ public class ConsensusPrefetchingQueue {
             return PrefetchRoundResult.rescheduleNow();
           }
           LOGGER.debug(
-              "ConsensusPrefetchingQueue {}: time-based flush, {} tablets lingered for {}ms "
-                  + "(threshold={}ms)",
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_TIME_BASED_FLUSH_TABLETS_LINGERED_10A4EBA8,
               this,
               lingerBatch.tablets.size(),
               lingerElapsedMs,
@@ -1266,7 +1281,8 @@ public class ConsensusPrefetchingQueue {
       return computeIdleRoundResult();
     } catch (final Throwable fatal) {
       LOGGER.error(
-          "ConsensusPrefetchingQueue {}: prefetch round failed " + "(type={}, message={})",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_ROUND_FAILED_TYPE_MESSAGE_63BC909B,
           this,
           fatal.getClass().getName(),
           fatal.getMessage(),
@@ -1290,9 +1306,8 @@ public class ConsensusPrefetchingQueue {
     final long currentPendingAcceptedEntries = pendingPathAcceptedEntries.get();
     final long currentWalAcceptedEntries = walPathAcceptedEntries.get();
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
-            + "pendingTotal={}, walTotal={}, pendingQueueSize={}, prefetchingQueueSize={}, "
-            + "inFlightEventsSize={}, realtimeWriterCount={}, walHasNext={}, isActive={}, subtaskScheduled={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0,
         this,
         getLag(),
         currentPendingAcceptedEntries - lastPendingAcceptedEntries,
@@ -1447,8 +1462,8 @@ public class ConsensusPrefetchingQueue {
       final long expected = nextExpectedSearchIndex.get();
       if (hasLocalSearchIndex(request) && searchIndex > expected) {
         LOGGER.debug(
-            "ConsensusPrefetchingQueue {}: gap detected, expected={}, got={}. "
-                + "Filling {} entries from WAL.",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_GAP_DETECTED_EXPECTED_GOT_FILLING_70DD08B3,
             this,
             expected,
             searchIndex,
@@ -1487,8 +1502,8 @@ public class ConsensusPrefetchingQueue {
     }
 
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: accumulate complete, batchSize={}, processed={}, "
-            + "skipped={}, lingerTablets={}, nextExpected={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ACCUMULATE_COMPLETE_BATCHSIZE_FA3F3B41,
         this,
         batch.size(),
         processedCount,
@@ -1542,8 +1557,8 @@ public class ConsensusPrefetchingQueue {
     if (lastWalGapWaitLogTimeMs == 0L
         || nowMs - lastWalGapWaitLogTimeMs >= WAL_GAP_WAIT_LOG_INTERVAL_MS) {
       LOGGER.info(
-          "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
-              + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5,
           this,
           nowMs - walGapWaitStartTimeMs,
           nextExpected,
@@ -1619,14 +1634,19 @@ public class ConsensusPrefetchingQueue {
         markMaterializedProgress(walEntry);
         advanceLocalCursorIfPresent(walEntry);
       } catch (final Exception e) {
-        LOGGER.warn("ConsensusPrefetchingQueue {}: error reading subscription WAL", this, e);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_READING_SUBSCRIPTION_WAL_A3888AC5,
+            this,
+            e);
         break;
       }
     }
 
     if (entriesRead > 0) {
       LOGGER.debug(
-          "ConsensusPrefetchingQueue {}: subscription WAL read {} entries, nextExpectedSearchIndex={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SUBSCRIPTION_WAL_READ_ENTRIES_14AA5096,
           this,
           entriesRead,
           nextExpectedSearchIndex.get());
@@ -1647,8 +1667,8 @@ public class ConsensusPrefetchingQueue {
     }
 
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: subscription WAL exhausted at {} while current WAL is {}. "
-            + "Rolling WAL file to expose current-file entries.",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SUBSCRIPTION_WAL_EXHAUSTED_AT_E61AF763,
         this,
         nextExpectedSearchIndex.get(),
         currentWalIndex);
@@ -1711,7 +1731,11 @@ public class ConsensusPrefetchingQueue {
     try {
       subscriptionWALIterator.close();
     } catch (final IOException e) {
-      LOGGER.warn("ConsensusPrefetchingQueue {}: error closing subscription WAL iterator", this, e);
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_CLOSING_SUBSCRIPTION_WAL_19711C01,
+          this,
+          e);
     } finally {
       subscriptionWALIterator = null;
     }
@@ -1771,8 +1795,8 @@ public class ConsensusPrefetchingQueue {
 
     if (seekGeneration.get() != expectedSeekGeneration) {
       LOGGER.debug(
-          "ConsensusPrefetchingQueue {}: skip stale event with searchIndex range [{}, {}], "
-              + "expectedSeekGeneration={}, currentSeekGeneration={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SKIP_STALE_EVENT_WITH_SEARCHINDEX_07A09B36,
           this,
           startSearchIndex,
           endSearchIndex,
@@ -1801,8 +1825,8 @@ public class ConsensusPrefetchingQueue {
     prefetchingQueue.add(event);
 
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: ENQUEUED event with {} tablets, "
-            + "searchIndex range [{}, {}], prefetchQueueSize={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ENQUEUED_EVENT_WITH_TABLETS_SEARCHINDEX_140FDDCB,
         this,
         tablets.size(),
         startSearchIndex,
@@ -2031,13 +2055,15 @@ public class ConsensusPrefetchingQueue {
     if (Objects.isNull(commitContext) || !commitContext.hasWriterProgress()) {
       if (silent) {
         LOGGER.debug(
-            "ConsensusPrefetchingQueue {}: reject {} without writer progress, commitContext={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_WITHOUT_WRITER_PROGRESS_D84AA802,
             this,
             action,
             commitContext);
       } else {
         LOGGER.warn(
-            "ConsensusPrefetchingQueue {}: reject {} without writer progress, commitContext={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_WITHOUT_WRITER_PROGRESS_D84AA802,
             this,
             action,
             commitContext);
@@ -2047,14 +2073,16 @@ public class ConsensusPrefetchingQueue {
     if (!isActive) {
       if (silent) {
         LOGGER.debug(
-            "ConsensusPrefetchingQueue {}: reject {} for inactive queue, commitContext={}, runtimeVersion={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_FOR_INACTIVE_QUEUE_COMMITCONTEXT_AE6D382C,
             this,
             action,
             commitContext,
             runtimeVersion);
       } else {
         LOGGER.warn(
-            "ConsensusPrefetchingQueue {}: reject {} for inactive queue, commitContext={}, runtimeVersion={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_FOR_INACTIVE_QUEUE_COMMITCONTEXT_AE6D382C,
             this,
             action,
             commitContext,
@@ -2094,7 +2122,8 @@ public class ConsensusPrefetchingQueue {
             acked.set(directCommitted);
             if (!acked.get()) {
               LOGGER.warn(
-                  "ConsensusPrefetchingQueue {}: commit context {} does not exist for ack",
+                  DataNodePipeMessages
+                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_COMMIT_CONTEXT_DOES_NOT_EXIST_99B8A8F3,
                   this,
                   commitContext);
             }
@@ -2103,7 +2132,10 @@ public class ConsensusPrefetchingQueue {
 
           if (ev.isCommitted()) {
             LOGGER.warn(
-                "ConsensusPrefetchingQueue {}: event {} already committed", this, commitContext);
+                DataNodePipeMessages
+                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_EVENT_ALREADY_COMMITTED_AC34E829,
+                this,
+                commitContext);
             ev.cleanUp(false);
             return null;
           }
@@ -2117,7 +2149,8 @@ public class ConsensusPrefetchingQueue {
                   commitWriterProgress);
           if (!committed) {
             LOGGER.warn(
-                "ConsensusPrefetchingQueue {}: failed to advance commit frontier for {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
                 this,
                 commitContext);
             return ev;
@@ -2228,8 +2261,8 @@ public class ConsensusPrefetchingQueue {
             nacked.set(true);
             if (ev.isPoisoned()) {
               LOGGER.error(
-                  "ConsensusPrefetchingQueue {}: poison message detected (nackCount={}), "
-                      + "force-acking event {} to prevent infinite re-delivery",
+                  DataNodePipeMessages
+                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
                   this,
                   ev.getNackCount(),
                   ev);
@@ -2255,7 +2288,8 @@ public class ConsensusPrefetchingQueue {
         (key, ev) -> {
           if (Objects.isNull(ev)) {
             LOGGER.warn(
-                "ConsensusPrefetchingQueue {}: commit context {} does not exist for nack",
+                DataNodePipeMessages
+                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_COMMIT_CONTEXT_DOES_NOT_EXIST_05F6C6E0,
                 this,
                 commitContext);
             return null;
@@ -2265,8 +2299,8 @@ public class ConsensusPrefetchingQueue {
           nacked.set(true);
           if (ev.isPoisoned()) {
             LOGGER.error(
-                "ConsensusPrefetchingQueue {}: poison message detected (nackCount={}), "
-                    + "force-acking event {} to prevent infinite re-delivery",
+                DataNodePipeMessages
+                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
                 this,
                 ev.getNackCount(),
                 ev);
@@ -2301,8 +2335,8 @@ public class ConsensusPrefetchingQueue {
               ev.nack();
               if (ev.isPoisoned()) {
                 LOGGER.error(
-                    "ConsensusPrefetchingQueue {}: poison message detected during recycle "
-                        + "(nackCount={}), force-acking event {}",
+                    DataNodePipeMessages
+                        .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_DURING_23159F02,
                     this,
                     ev.getNackCount(),
                     ev);
@@ -2313,7 +2347,8 @@ public class ConsensusPrefetchingQueue {
               }
               prefetchingQueue.add(ev);
               LOGGER.debug(
-                  "ConsensusPrefetchingQueue {}: recycled timed-out event {} back to prefetching queue",
+                  DataNodePipeMessages
+                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RECYCLED_TIMED_OUT_EVENT_BACK_5E58639C,
                   this,
                   ev);
               return null;
@@ -2374,7 +2409,8 @@ public class ConsensusPrefetchingQueue {
   public void seekToRegionProgress(final RegionProgress regionProgress) {
     if (!(consensusReqReader instanceof WALNode)) {
       LOGGER.warn(
-          "ConsensusPrefetchingQueue {}: seekToRegionProgress not supported (no WAL directory)",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKTOREGIONPROGRESS_NOT_SUPPORTED_85477BAB,
           this);
       seekToBeginning();
       return;
@@ -2388,7 +2424,8 @@ public class ConsensusPrefetchingQueue {
       case FOUND:
       case AT_END:
         LOGGER.info(
-            "ConsensusPrefetchingQueue {}: seekToRegionProgress writerCount={} -> {} searchIndex={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKTOREGIONPROGRESS_WRITERCOUNT_3134A29B,
             this,
             regionProgress.getWriterPositions().size(),
             replayTarget.getStatus(),
@@ -2402,15 +2439,19 @@ public class ConsensusPrefetchingQueue {
       default:
         throw new IllegalStateException(
             String.format(
-                "ConsensusPrefetchingQueue %s: cannot seekToRegionProgress %s: %s",
-                this, regionProgress, replayTarget.getDetail()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_SEEKTOREGIONPROGRESS_2746E514,
+                this,
+                regionProgress,
+                replayTarget.getDetail()));
     }
   }
 
   public void seekAfterRegionProgress(final RegionProgress regionProgress) {
     if (!(consensusReqReader instanceof WALNode)) {
       LOGGER.warn(
-          "ConsensusPrefetchingQueue {}: seekAfterRegionProgress not supported (no WAL directory)",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_NOT_SUPPORTED_55F36BE8,
           this);
       seekToEnd();
       return;
@@ -2424,7 +2465,8 @@ public class ConsensusPrefetchingQueue {
       case FOUND:
       case AT_END:
         LOGGER.info(
-            "ConsensusPrefetchingQueue {}: seekAfterRegionProgress writerCount={} -> {} searchIndex={}",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_WRITERCOUNT_C6B26D20,
             this,
             regionProgress.getWriterPositions().size(),
             replayTarget.getStatus(),
@@ -2438,8 +2480,11 @@ public class ConsensusPrefetchingQueue {
       default:
         throw new IllegalStateException(
             String.format(
-                "ConsensusPrefetchingQueue %s: cannot seekAfterRegionProgress %s: %s",
-                this, regionProgress, replayTarget.getDetail()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_SEEKAFTERREGIONPROGRESS_48A500C3,
+                this,
+                regionProgress,
+                replayTarget.getDetail()));
     }
   }
 
@@ -2500,7 +2545,9 @@ public class ConsensusPrefetchingQueue {
         request.fail(
             new IllegalStateException(
                 String.format(
-                    "ConsensusPrefetchingQueue %s is closing while applying seek", this)));
+                    DataNodePipeMessages
+                        .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_WHILE_APPLYING_SEEK_2BB2B431,
+                    this)));
         return true;
       }
       applySeekResetUnderWriteLock(request);
@@ -2529,7 +2576,8 @@ public class ConsensusPrefetchingQueue {
         seekGeneration.set(requestToFail.previousSeekGeneration);
       }
       LOGGER.info(
-          "ConsensusPrefetchingQueue {}: aborted pending seek({}) during runtime stop, restored prefetchInitialized {} -> {}, seekGeneration {} -> {}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ABORTED_PENDING_SEEK_DURING_RUNTIME_F9928604,
           this,
           requestToFail.seekReason,
           true,
@@ -2543,8 +2591,10 @@ public class ConsensusPrefetchingQueue {
     requestToFail.fail(
         new IllegalStateException(
             String.format(
-                "ConsensusPrefetchingQueue %s runtime stopped before seek(%s) was applied",
-                this, requestToFail.seekReason)));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_RUNTIME_STOPPED_BEFORE_SEEK_7BCB4F4B,
+                this,
+                requestToFail.seekReason)));
   }
 
   private void failPendingSeekBeforeScheduling(final PendingSeekRequest request) {
@@ -2562,10 +2612,13 @@ public class ConsensusPrefetchingQueue {
         seekGeneration.set(request.previousSeekGeneration);
       }
       LOGGER.info(
-          "ConsensusPrefetchingQueue {}: failed to schedule seek({}) because {}, restored prefetchInitialized {} -> {}, seekGeneration {} -> {}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_SCHEDULE_SEEK_BECAUSE_9E407068,
           this,
           request.seekReason,
-          closing ? "the queue is closing" : "prefetch runtime is unavailable",
+          closing
+              ? DataNodePipeMessages.MESSAGE_THE_QUEUE_IS_CLOSING_AC6C2AB4
+              : DataNodePipeMessages.MESSAGE_PREFETCH_RUNTIME_IS_UNAVAILABLE_F1721E89,
           true,
           request.previousPrefetchInitialized,
           request.targetSeekGeneration,
@@ -2578,8 +2631,10 @@ public class ConsensusPrefetchingQueue {
         new IllegalStateException(
             String.format(
                 closing
-                    ? "ConsensusPrefetchingQueue %s is closing before seek(%s) can be scheduled"
-                    : "ConsensusPrefetchingQueue %s cannot schedule seek(%s) because prefetch runtime is unavailable",
+                    ? DataNodePipeMessages
+                        .CONSENSUS_PREFETCHING_QUEUE_CLOSING_BEFORE_SEEK_SCHEDULED_FMT
+                    : DataNodePipeMessages
+                        .CONSENSUS_PREFETCHING_QUEUE_RUNTIME_UNAVAILABLE_FOR_SEEK_FMT,
                 this,
                 request.seekReason)));
   }
@@ -2622,7 +2677,8 @@ public class ConsensusPrefetchingQueue {
         consumerGroupId, topicName, consensusGroupId, request.committedRegionProgress);
 
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: seek({}) applied to searchIndex={}, writerCount={}, seekGeneration={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEK_APPLIED_TO_SEARCHINDEX_WRITERCOUNT_FA2C4327,
         this,
         request.seekReason,
         request.targetSearchIndex,
@@ -2658,7 +2714,8 @@ public class ConsensusPrefetchingQueue {
         mergeTailProgress(tailProgressByWriter, reader.getMetaData());
       } catch (final IOException e) {
         LOGGER.warn(
-            "ConsensusPrefetchingQueue {}: failed to read WAL metadata from {} while computing seekToEnd frontier",
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1,
             this,
             walFile,
             e);
@@ -2782,7 +2839,8 @@ public class ConsensusPrefetchingQueue {
     prefetchingQueue.add(watermarkEvent);
 
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: injected WATERMARK, watermarkTimestamp={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_INJECTED_WATERMARK_WATERMARKTIMESTAMP_BF373164,
         this,
         watermarkTimestamp);
   }
@@ -2826,7 +2884,10 @@ public class ConsensusPrefetchingQueue {
     if (Objects.nonNull(seekRequestToFail)) {
       seekRequestToFail.fail(
           new IllegalStateException(
-              String.format("ConsensusPrefetchingQueue %s is closing before seek applies", this)));
+              String.format(
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_BEFORE_SEEK_APPLIES_F893BB02,
+                  this)));
     }
 
     if (Objects.nonNull(prefetchBinding.right)) {
@@ -2874,7 +2935,10 @@ public class ConsensusPrefetchingQueue {
     try {
       serverImpl.deregisterSubscriptionQueue(pendingEntries);
     } catch (final Exception e) {
-      LOGGER.warn("ConsensusPrefetchingQueue {}: error during deregister", this, e);
+      LOGGER.warn(
+          DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7,
+          this,
+          e);
     }
   }
 
@@ -2883,12 +2947,14 @@ public class ConsensusPrefetchingQueue {
       return;
     }
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: flushing {} lingering tablets during close",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FLUSHING_LINGERING_TABLETS_DURING_4C4AF235,
         this,
         lingerBatch.tablets.size());
     if (!flushBatch(lingerBatch, observedSeekGeneration)) {
       LOGGER.warn(
-          "ConsensusPrefetchingQueue {}: failed to flush lingering batch during close, discarding it",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7,
           this);
       lingerBatch.reset();
       resetBatchWriterProgress();
@@ -2968,7 +3034,7 @@ public class ConsensusPrefetchingQueue {
   public void setActive(final boolean active) {
     this.isActive = active;
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: isActive set to {} (region={})",
+        DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ISACTIVE_SET_TO_REGION_EC0AD7BA,
         this,
         active,
         consensusGroupId);
@@ -2987,8 +3053,8 @@ public class ConsensusPrefetchingQueue {
             new LinkedHashSet<>(Objects.requireNonNull(activeWriterNodeIds)));
     refreshEffectiveActiveWriterNodeIds();
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: runtimeActiveWriterNodeIds={}, effectiveActiveWriterNodeIds={} "
-            + "(region={}, orderMode={}, preferredWriterNodeId={})",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RUNTIMEACTIVEWRITERNODEIDS_EFFECTIVEACTIVEWRITERNODEIDS_246519D2,
         this,
         this.runtimeActiveWriterNodeIds,
         this.activeWriterNodeIds,
@@ -3036,8 +3102,8 @@ public class ConsensusPrefetchingQueue {
     this.preferredWriterNodeId = preferredWriterNodeId;
     refreshEffectiveActiveWriterNodeIds();
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: preferredWriterNodeId set to {}, effectiveActiveWriterNodeIds={} "
-            + "(region={}, orderMode={})",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFERREDWRITERNODEID_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_B08E8180,
         this,
         this.preferredWriterNodeId,
         this.activeWriterNodeIds,
@@ -3058,8 +3124,8 @@ public class ConsensusPrefetchingQueue {
     this.orderMode = normalizedOrderMode;
     refreshEffectiveActiveWriterNodeIds();
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: orderMode set to {}, effectiveActiveWriterNodeIds={} "
-            + "(region={}, preferredWriterNodeId={}, runtimeActiveWriterNodeIds={})",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ORDERMODE_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_CDD3C86E,
         this,
         this.orderMode,
         this.activeWriterNodeIds,
@@ -3079,11 +3145,11 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void applyRuntimeState(final ConsensusRegionRuntimeState runtimeState) {
-    Objects.requireNonNull(runtimeState, "runtimeState");
+    Objects.requireNonNull(runtimeState, DataNodeMiscMessages.EXCEPTION_RUNTIMESTATE_D4D018BA);
     this.runtimeVersion = runtimeState.getRuntimeVersion();
     runtimeVersionChangeCount.incrementAndGet();
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: applied runtimeVersion {}",
+        DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMEVERSION_36E05B80,
         this,
         runtimeState.getRuntimeVersion());
     setPreferredWriterNodeId(runtimeState.getPreferredWriterNodeId());
@@ -3094,7 +3160,8 @@ public class ConsensusPrefetchingQueue {
     // signal.
     setActive(runtimeState.isActive());
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: applied runtimeState={}, preferredWriterNodeId={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMESTATE_PREFERREDWRITERNODEID_D845E9D6,
         this,
         runtimeState,
         runtimeState.getPreferredWriterNodeId());

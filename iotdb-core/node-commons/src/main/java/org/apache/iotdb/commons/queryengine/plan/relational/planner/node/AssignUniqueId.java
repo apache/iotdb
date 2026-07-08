@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -44,7 +45,7 @@ public class AssignUniqueId extends SingleChildProcessNode {
   public AssignUniqueId(PlanNodeId id, PlanNode child, Symbol idColumn) {
     super(id);
     this.child = child;
-    this.idColumn = requireNonNull(idColumn, "idColumn is null");
+    this.idColumn = requireNonNull(idColumn, QueryMessages.EXCEPTION_IDCOLUMN_IS_NULL_FA206D71);
   }
 
   @Override
@@ -65,7 +66,9 @@ public class AssignUniqueId extends SingleChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.size() == 1, "expected newChildren to contain 1 node");
+    checkArgument(
+        newChildren.size() == 1,
+        QueryMessages.EXCEPTION_EXPECTED_NEWCHILDREN_TO_CONTAIN_1_NODE_7A97D180);
     return new AssignUniqueId(getPlanNodeId(), Iterables.getOnlyElement(newChildren), idColumn);
   }
 

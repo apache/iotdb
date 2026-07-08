@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -45,10 +46,15 @@ public class ProjectOperator implements ProcessOperator {
 
   public ProjectOperator(
       OperatorContext operatorContext, Operator child, List<Integer> remainingColumnIndexList) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.child = requireNonNull(child, "child operator is null");
+    this.operatorContext =
+        requireNonNull(
+            operatorContext, DataNodeQueryMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
+    this.child =
+        requireNonNull(child, DataNodeQueryMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
     this.remainingColumnIndexList =
-        requireNonNull(remainingColumnIndexList, "remainingInputLocations is null");
+        requireNonNull(
+            remainingColumnIndexList,
+            DataNodeQueryMessages.EXCEPTION_REMAININGINPUTLOCATIONS_IS_NULL_CEBBA2C1);
   }
 
   @Override

@@ -127,9 +127,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         loadBalancer = new PriorityLoadBalancer();
         break;
       default:
-        LOGGER.warn(
-            "Unknown load balance strategy: {}, use round-robin strategy instead.",
-            loadBalanceStrategy);
+        LOGGER.warn(PipeMessages.UNKNOWN_LOAD_BALANCE_STRATEGY, loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
 
@@ -316,7 +314,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   protected boolean sendBytes(final AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       throw new SocketException(
-          String.format("Socket %s is closed, will try to handshake", socket));
+          String.format(
+              PipeMessages.EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1, socket));
     }
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());

@@ -36,12 +36,14 @@ public enum HandleSystemErrorStrategy {
   public void handle() {
     if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
-          "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
+          CommonMessages
+              .LOG_UNRECOVERABLE_ERROR_OCCURS_CHANGE_SYSTEM_STATUS_READ_ONLY_BECAUSE_HANDLE_05C9AD1A,
           new RuntimeException(CommonMessages.SYSTEM_READ_ONLY));
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
-          "Unrecoverable error occurs! Shutdown system directly because handle_system_error is SHUTDOWN.",
+          CommonMessages
+              .LOG_UNRECOVERABLE_ERROR_OCCURS_SHUTDOWN_SYSTEM_DIRECTLY_BECAUSE_HANDLE_SYSTEM_ERROR_14FC06C9,
           new RuntimeException(CommonMessages.UNRECOVERABLE_ERROR));
       System.exit(-1);
     }

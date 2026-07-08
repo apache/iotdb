@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.utils.sort;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -98,7 +99,10 @@ public abstract class DiskSpiller {
       spill(tsBlocks);
     } catch (IOException e) {
       throw new IoTDBException(
-          "Create file error: " + filePrefix + (fileIndex - 1) + FILE_SUFFIX,
+          CalcMessages.EXCEPTION_CREATE_FILE_ERROR_B8B379CF
+              + filePrefix
+              + (fileIndex - 1)
+              + FILE_SUFFIX,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -126,7 +130,7 @@ public abstract class DiskSpiller {
       }
     } catch (IOException e) {
       throw new IoTDBException(
-          "Can't write intermediate sorted data to file: " + fileName,
+          CalcMessages.EXCEPTION_CAN_T_WRITE_INTERMEDIATE_SORTED_DATA_FILE_0027961E + fileName,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -167,7 +171,8 @@ public abstract class DiskSpiller {
       }
     } catch (IOException e) {
       throw new IoTDBException(
-          "Can't get file for FileSpillerReader, check if the file exists: " + filePaths,
+          CalcMessages.EXCEPTION_CAN_T_GET_FILE_FILESPILLERREADER_CHECK_IF_FILE_EXISTS_DEED83D9
+              + filePaths,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }

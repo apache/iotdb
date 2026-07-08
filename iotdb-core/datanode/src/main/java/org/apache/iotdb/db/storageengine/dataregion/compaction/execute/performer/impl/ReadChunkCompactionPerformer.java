@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
@@ -270,7 +271,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private void checkThreadInterrupted() throws InterruptedException {
     if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
-          String.format("[Compaction] compaction for target files %s abort", targetResources));
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILES_S_ABORT_AFC87906,
+              targetResources));
     }
   }
 
