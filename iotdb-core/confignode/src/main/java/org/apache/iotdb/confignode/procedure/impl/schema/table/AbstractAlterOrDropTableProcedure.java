@@ -99,7 +99,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     // fenced (it may still be serving clients).
     final TUpdateTableReq req = SchemaUtils.buildPreUpdateTableReq(database, table, oldName);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
     if (!proceeded) {
@@ -152,7 +152,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     final TUpdateTableReq req =
         SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), tableName);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
     if (!proceeded) {

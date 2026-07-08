@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -169,7 +170,8 @@ public class ConfigNodeProcedureEnv {
     invalidateCacheReq.setFullPath(databaseName);
     // The per-round cache invalidation is sent asynchronously so the lease framework can collect a
     // cluster-wide ack map and decide whether unAcked DataNodes are safely fenced.
-    final ClusterCachePropagator propagator = new ClusterCachePropagator(configManager);
+    final ClusterCachePropagator propagator =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(configManager));
     if (!propagator.propagate(
         targets ->
             invalidateDatabaseCacheOnce(

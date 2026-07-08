@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.confignode.manager.lease;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
+
+import static org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator.DEFAULT_PROCEED_MARGIN_MS;
 
 /**
  * Tracks, per DataNode, the time the ConfigNode last received a <em>successful heartbeat
@@ -71,6 +75,12 @@ public class DataNodeContactTracker {
     }
     final long elapsedNanos = nanoClock.getAsLong() - lastNanos;
     return elapsedNanos > 0 ? elapsedNanos / 1_000_000L : 0L;
+  }
+
+  public boolean isDataNodeFenced(final int dataNodeId) {
+    return getMillisSinceLastSuccessfulResponse(dataNodeId)
+        > (CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs()
+            + DEFAULT_PROCEED_MARGIN_MS);
   }
 
   /**

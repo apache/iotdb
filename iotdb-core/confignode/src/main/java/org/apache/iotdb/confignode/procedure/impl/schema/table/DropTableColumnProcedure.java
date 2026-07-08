@@ -154,7 +154,7 @@ public class DropTableColumnProcedure
     TInvalidateColumnCacheReq req =
         new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {

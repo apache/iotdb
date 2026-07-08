@@ -59,7 +59,7 @@ public class ClusterCachePropagatorTest {
   /** Build a propagator whose loop seams are inert (only propagateOnce is exercised). */
   private ClusterCachePropagator propagator(final IntToLongFunction hbAgeMs) {
     return new ClusterCachePropagator(
-        this::twoDataNodes, hbAgeMs, () -> FENCE_TIMEOUT_MS, () -> 0L, ms -> {});
+        twoDataNodes(), hbAgeMs, () -> FENCE_TIMEOUT_MS, () -> 0L, ms -> {});
   }
 
   @Test
@@ -147,7 +147,7 @@ public class ClusterCachePropagatorTest {
     final AtomicLong nanos = new AtomicLong();
     final ClusterCachePropagator p =
         new ClusterCachePropagator(
-            this::twoDataNodes,
+            twoDataNodes(),
             id -> id == 2 ? 10_000L : 0L, // DN2 not fenced, so round 1 must WAIT
             () -> FENCE_TIMEOUT_MS,
             nanos::get,
@@ -164,7 +164,7 @@ public class ClusterCachePropagatorTest {
     final AtomicLong nanos = new AtomicLong();
     final ClusterCachePropagator p =
         new ClusterCachePropagator(
-            this::twoDataNodes,
+            twoDataNodes(),
             id -> id == 2 ? 10_000L : 0L, // DN2 never fenced (alive but not acking) -> WAIT forever
             () -> FENCE_TIMEOUT_MS,
             nanos::get,

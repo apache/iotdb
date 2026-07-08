@@ -547,9 +547,13 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      CnToDnAsyncRequestType CnToDnAsyncRequestType, AsyncDataNodeInternalServiceClient client) {
+      CnToDnAsyncRequestType CnToDnAsyncRequestType,
+      AsyncDataNodeInternalServiceClient client,
+      Long timeoutInMs) {
     if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (timeoutInMs != null) {
+      client.setTimeoutTemporarily(timeoutInMs);
     }
   }
 

@@ -160,7 +160,7 @@ public class CreateTableProcedure
     // serving clients).
     final TUpdateTableReq req = SchemaUtils.buildPreUpdateTableReq(database, table, null);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
     if (!proceeded) {
@@ -252,7 +252,7 @@ public class CreateTableProcedure
     final TUpdateTableReq req =
         SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), null);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
     if (!proceeded) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -276,6 +278,16 @@ public class SchemaUtils {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
+  public static Map<Integer, TDataNodeLocation> filterFencedDataNode(
+      final ConfigManager configManager) {
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
+        .filter(
+            entry ->
+                configManager.getLoadManager().getNodeStatus(entry.getKey()) != NodeStatus.Unknown
+                    || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
   public static Map<Integer, TSStatus> commitReleaseTable(
       final String database,
       final String tableName,
@@ -293,11 +305,9 @@ public class SchemaUtils {
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+            CnToDnAsyncRequestType.UPDATE_TABLE, req, filterFencedDataNode(configManager));
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithTimeoutInMs(
             clientHandler, ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
@@ -331,7 +341,7 @@ public class SchemaUtils {
     return failedOnly(
         broadcastTableUpdate(
             rollbackUpdateTableReq(database, tableName, oldName),
-            configManager.getNodeManager().getRegisteredDataNodeLocations()));
+            filterFencedDataNode(configManager)));
   }
 
   /**
@@ -349,7 +359,7 @@ public class SchemaUtils {
       final ConfigManager configManager,
       final ByteBuffer patternTreeBytes,
       final boolean needLock) {
-    return new ClusterCachePropagator(configManager)
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
         .propagate(
             targets -> {
               final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
@@ -378,7 +388,7 @@ public class SchemaUtils {
    */
   public static boolean broadcastTemplateUpdate(
       final ConfigManager configManager, final Supplier<TUpdateTemplateReq> requestSupplier) {
-    return new ClusterCachePropagator(configManager)
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
         .propagate(
             targets -> {
               final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =

@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -226,7 +227,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     TTableDeviceInvalidateCacheReq req =
         new TTableDeviceInvalidateCacheReq(database, tableName, ByteBuffer.wrap(patternBytes));
     boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {

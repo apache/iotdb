@@ -149,7 +149,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   private void preDelete(final ConfigNodeProcedureEnv env) {
     TInvalidateTableCacheReq req = new TInvalidateTableCacheReq(database, tableName);
     final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {

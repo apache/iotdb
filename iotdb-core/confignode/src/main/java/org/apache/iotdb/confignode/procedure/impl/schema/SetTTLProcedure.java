@@ -132,7 +132,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
    * Package-private and overridable for tests.
    */
   boolean broadcastTTLAndDecide(final ConfigNodeProcedureEnv env, final TSetTTLReq req) {
-    return new ClusterCachePropagator(env.getConfigManager())
+    return new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
         .propagate(targets -> sendTTLRequest(targets, req).getResponseMap());
   }
 

@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.lease;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.DataNodeState;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.Verdict;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,7 +32,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntToLongFunction;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 /**
  * Broadcasts one Tier-A cache invalidation and turns the per-DataNode responses into a {@link
@@ -45,7 +43,7 @@ public class ClusterCachePropagator {
    * {@code T_proceed = T_fence + margin}. The margin covers heartbeat-recording granularity and
    * scheduling jitter.
    */
-  private static final long DEFAULT_PROCEED_MARGIN_MS = 5_000L;
+  public static final long DEFAULT_PROCEED_MARGIN_MS = 5_000L;
 
   /** How often to retry while waiting for unacked DataNodes to ack or cross T_proceed. */
   private static final long RETRY_INTERVAL_MS = 1_000L;
@@ -65,15 +63,15 @@ public class ClusterCachePropagator {
     void sleepMs(long ms) throws InterruptedException;
   }
 
-  private final Supplier<Map<Integer, TDataNodeLocation>> registeredDataNodes;
+  private final Map<Integer, TDataNodeLocation> registeredDataNodes;
   private final IntToLongFunction elapsedMsSinceLastSuccessfulHeartbeatResponse;
   private final LongSupplier fenceTimeoutMs;
   private final LongSupplier nanoClock;
   private final Sleeper sleeper;
 
-  public ClusterCachePropagator(final IManager configManager) {
+  public ClusterCachePropagator(final Map<Integer, TDataNodeLocation> registeredDataNodes) {
     this(
-        () -> configManager.getNodeManager().getRegisteredDataNodeLocations(),
+        registeredDataNodes,
         nodeId -> DataNodeContactTracker.getInstance().getMillisSinceLastSuccessfulResponse(nodeId),
         () ->
             CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs()
@@ -83,7 +81,7 @@ public class ClusterCachePropagator {
   }
 
   ClusterCachePropagator(
-      final Supplier<Map<Integer, TDataNodeLocation>> registeredDataNodes,
+      final Map<Integer, TDataNodeLocation> registeredDataNodes,
       final IntToLongFunction elapsedMsSinceLastSuccessfulHeartbeatResponse,
       final LongSupplier fenceTimeoutMs,
       final LongSupplier nanoClock,
@@ -101,7 +99,7 @@ public class ClusterCachePropagator {
    * Verdict#WAIT} into {@link Verdict#FAIL}.
    */
   public Verdict propagateOnce(final CacheBroadcast broadcast, final boolean waitBudgetExhausted) {
-    final Map<Integer, TDataNodeLocation> targets = registeredDataNodes.get();
+    final Map<Integer, TDataNodeLocation> targets = registeredDataNodes;
     final Map<Integer, TSStatus> responses = broadcast.sendTo(targets);
     final long fenceTimeOutsMs = this.fenceTimeoutMs.getAsLong();
     final List<DataNodeState> states = new ArrayList<>(targets.size());
