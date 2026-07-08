@@ -528,6 +528,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
+      } else {
+        getOrCreateTreeSchemaVerifier().checkWritePermission(device2TimeseriesMetadata);
       }
 
       // TODO: how to get the correct write point count when
