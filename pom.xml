@@ -194,6 +194,10 @@
         <moduleA.enabled>true</moduleA.enabled>
         <moduleB.enabled>true</moduleB.enabled>
         <version.suffix/>
+        <!-- Edition: MAX (full, default) or PRO (iotdb, security features gated off) -->
+        <edition>MAX</edition>
+        <!-- Distribution package name prefix: timechodb (MAX) or iotdb (PRO) -->
+        <package.name>timechodb</package.name>
         <!-- Filename suffix for locale-specific distribution packages (empty for default en, e.g. "-zh" when with-zh-locale is active) -->
         <locale.suffix/>
     </properties>
@@ -2077,6 +2081,13 @@
                 <i18n.locale>zh</i18n.locale>
                 <locale.suffix>-zh</locale.suffix>
                 <tsfile.locale.opt>-Dtsfile.locale=zh</tsfile.locale.opt>
+            </properties>
+        </profile>
+        <profile>
+            <id>pro</id>
+            <properties>
+                <edition>PRO</edition>
+                <package.name>iotdb</package.name>
             </properties>
         </profile>
     </profiles>

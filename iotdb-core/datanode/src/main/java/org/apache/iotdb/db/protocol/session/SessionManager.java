@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
@@ -800,6 +801,12 @@ public class SessionManager implements SessionManagerMBean {
       sessionNumCheckStatus.setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode());
       sessionNumCheckStatus.setMessage(
           "The current number of client connections has reached the maximum connection limit allowed by the system.");
+      return sessionNumCheckStatus;
+    }
+
+    // PRO edition: per-user connection limit is not available; skip per-user enforcement.
+    if (EditionGate.isPro()) {
+      sessionNumCheckStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       return sessionNumCheckStatus;
     }
 

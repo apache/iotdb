@@ -88,14 +88,28 @@ public class IoTDBConstant {
   public static final String CLUSTER_NAME = "cluster_name";
   public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
 
-  public static final String LOGO =
+  private static final String IOTDB_LOGO =
       ""
           + " _____       _________  ______   ______    \n"
           + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
           + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
           + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
           + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-          + "|_____|'.__.' |_____|  |______.'|_______/  Enterprise ";
+          + "|_____|'.__.' |_____|  |______.'|_______/  ";
+
+  private static final String TIMECHODB_LOGO =
+      ""
+          + "  _______                     __          ____  ____\n"
+          + " /_  __(_)___ ___  ___  _____/ /_  ____  / __ \\/ __ )\n"
+          + "  / / / / __ `__ \\/ _ \\/ ___/ __ \\/ __ \\/ / / / __  |\n"
+          + " / / / / / / / / /  __/ /__/ / / / /_/ / /_/ / /_/ /\n"
+          + "/_/ /_/_/ /_/ /_/\\___/\\___/_/ /_/\\____/_____/_____/  ";
+
+  public static final String BRAND_NAME =
+      ModuleConfigManager.getInstance().isPro() ? "IoTDB" : "TimechoDB";
+
+  public static final String LOGO =
+      ModuleConfigManager.getInstance().isPro() ? IOTDB_LOGO : TIMECHODB_LOGO;
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()

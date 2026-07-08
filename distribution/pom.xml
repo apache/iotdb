@@ -370,7 +370,7 @@
                             </assembly>
                             <generateTemporaryConfigurationFile>true</generateTemporaryConfigurationFile>
                             <outputDirectory>${project.basedir}/target</outputDirectory>
-                            <outjar>timechodb-server-${project.version}.jar</outjar>
+                            <outjar>${package.name}-server-${project.version}.jar</outjar>
                             <includeDependency>true</includeDependency>
                             <proguardInclude>${project.basedir}/src/security/${proguard.config}</proguardInclude>
                             <libs>
@@ -463,7 +463,7 @@
                             <skip>${jarsigner.skip}</skip>
                             <archiveDirectory>${project.build.directory}</archiveDirectory>
                             <includes>
-                                <include>timechodb-server-${project.version}.jar</include>
+                                <include>${package.name}-server-${project.version}.jar</include>
                                 <include>common-dependency.jar</include>
                             </includes>
                             <keystore>${keystore}</keystore>
@@ -505,7 +505,7 @@
                                 <descriptor>src/assembly/external-service-impl.xml</descriptor>
                                 <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
-                            <finalName>timechodb-${project.version}${locale.suffix}</finalName>
+                            <finalName>${package.name}-${project.version}${locale.suffix}</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -518,7 +518,7 @@
                             <descriptors>
                                 <descriptor>src/assembly/security-file.xml</descriptor>
                             </descriptors>
-                            <finalName>timechodb-${project.version}${locale.suffix}</finalName>
+                            <finalName>${package.name}-${project.version}${locale.suffix}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -545,16 +545,16 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>timechodb-${project.version}${locale.suffix}-bin.zip</include>
-                                        <include>timechodb-${project.version}${locale.suffix}-external-service-impl-bin.zip</include>
-                                        <include>timechodb-${project.version}${locale.suffix}-library-pipe-bin.zip</include>
+                                        <include>${package.name}-${project.version}${locale.suffix}-bin.zip</include>
+                                        <include>${package.name}-${project.version}${locale.suffix}-external-service-impl-bin.zip</include>
+                                        <include>${package.name}-${project.version}${locale.suffix}-library-pipe-bin.zip</include>
                                     </includes>
                                 </fileSet>
                                 <!--security-file-->
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>timechodb-${project.version}${locale.suffix}-security-file.zip</include>
+                                        <include>${package.name}-${project.version}${locale.suffix}-security-file.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -724,7 +724,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <includes combine.children="append">
-                                                <include>timechodb-${project.version}${locale.suffix}-ainode-bin.zip</include>
+                                                <include>${package.name}-${project.version}${locale.suffix}-ainode-bin.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>

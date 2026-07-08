@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>timechodb-${project.version}-bin</baseDirectory>
+    <baseDirectory>${package.name}-${project.version}-bin</baseDirectory>
     <fileSets>
         <!-- 包含合并的依赖JAR -->
         <fileSet>
@@ -40,7 +40,7 @@
             <outputDirectory>lib</outputDirectory>
             <directory>${project.build.directory}</directory>
             <includes>
-                <include>timechodb-server-${project.version}.jar</include>
+                <include>${package.name}-server-${project.version}.jar</include>
             </includes>
         </fileSet>
         <fileSet>

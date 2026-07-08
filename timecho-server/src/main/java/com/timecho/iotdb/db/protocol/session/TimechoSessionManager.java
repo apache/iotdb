@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -62,6 +63,9 @@ public class TimechoSessionManager extends SessionManager {
   }
 
   private void cleanExpiredSessions() {
+    if (EditionGate.isPro()) {
+      return;
+    }
     int idleSessionTimeoutInMinutes =
         IoTDBDescriptor.getInstance().getConfig().getIdleSessionTimeoutInMinutes();
     if (idleSessionTimeoutInMinutes <= 0) {

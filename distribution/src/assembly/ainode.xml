@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>timechodb-${project.version}-ainode-bin</baseDirectory>
+    <baseDirectory>${package.name}-${project.version}-ainode-bin</baseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}/../iotdb-core/ainode/target/timechodb-ainode-${project.version}/timechodb-ainode-${project.version}/conf</directory>

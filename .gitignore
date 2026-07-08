@@ -139,3 +139,8 @@ iotdb-core/relational-grammar/src/main/antlr4/org/apache/iotdb/db/relational/gra
 .claude/todos/
 .claude/worktrees/
 .claude/scheduled_tasks.json
+
+activation/system_info
+activation/license
+
+.env

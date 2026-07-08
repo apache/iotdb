@@ -129,6 +129,46 @@ public class IoTDBLoadConfigurationTableIT {
     assertPositiveNonZero(defaultsReload, "mods_cache_size_limit_per_fi_in_bytes");
   }
 
+  // Enterprise-only params whose loaders rewrite the value (coercions / overflow guards).
+  // These keys do not exist in the open-source IoTDBDescriptor; the overlay in
+  // overlayEffectiveConfigurationValues() was extended to cover them.
+  @Test
+  public void showConfigurationDisplaysEffectiveValueForEnterpriseParams() throws Exception {
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    String confPath =
+        dataNodeWrapper.getNodePath()
+            + File.separator
+            + "conf"
+            + File.separator
+            + "iotdb-system.properties";
+    int dataNodeId = findDataNodeIdByRpcPort(dataNodeWrapper.getPort());
+
+    // idle_session_timeout_in_minutes: 0 is coerced to 1 in the loader. Show must display 1,
+    // not the raw file value 0.
+    Map<String, String> idleReload =
+        appendLinesLoadAndShow(dataNodeId, confPath, "idle_session_timeout_in_minutes=0");
+    Assert.assertEquals("1", idleReload.get("idle_session_timeout_in_minutes"));
+
+    // audit_log_space_tl_in_GB: <=0 is coerced to Double.MAX_VALUE (unlimited). Show must
+    // display the coerced value, not the raw 0.
+    Map<String, String> auditSpaceReload =
+        appendLinesLoadAndShow(dataNodeId, confPath, "audit_log_space_tl_in_GB=0");
+    Assert.assertEquals(
+        Double.toString(Double.MAX_VALUE), auditSpaceReload.get("audit_log_space_tl_in_GB"));
+
+    // password_expiration_days: in MAX (this IT build) the setter is pass-through, so the
+    // overlay is a no-op and show displays the applied value 30. In PRO the setter clamps to 0
+    // via EditionGate; verifying that requires a PRO build.
+    Map<String, String> passwordExpirationReload =
+        appendLinesLoadAndShow(dataNodeId, confPath, "password_expiration_days=30");
+    Assert.assertEquals("30", passwordExpirationReload.get("password_expiration_days"));
+
+    // A valid idle value (no coercion) must display the applied value (regression).
+    Map<String, String> idleValidReload =
+        appendLinesLoadAndShow(dataNodeId, confPath, "idle_session_timeout_in_minutes=5");
+    Assert.assertEquals("5", idleValidReload.get("idle_session_timeout_in_minutes"));
+  }
+
   // Appends the given lines to the config file, runs `load configuration`, fetches the
   // `show configuration` result, and restores the file to its original length.
   private Map<String, String> appendLinesLoadAndShow(

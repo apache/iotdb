@@ -22,11 +22,18 @@ package com.timecho.iotdb.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
+import org.apache.iotdb.commons.conf.EditionGate;
+import org.apache.iotdb.commons.conf.ProFeature;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.i18n.TimechoConfigNodeMessages;
 import org.apache.thrift.TException;
 
 import java.io.File;
@@ -64,6 +71,40 @@ public class TimechoAuthorInfo extends AuthorInfo {
 
   public boolean isEnableSeparationOfAdminPowers() {
     return separationOfPowersEnabled;
+  }
+
+  // Edition gate on the per-user connection limit (a PRO-disabled feature). Overriding the dispatch
+  // choke point (AuthorInfo.authorNonQuery) catches the plan regardless of which author plan
+  // executor is active. StrictAuthorPlanExecutor is only installed after separation of powers is
+  // enabled, so the gate cannot live there — it would never run in the PRO edition.
+  @Override
+  public TSStatus authorNonQuery(AuthorTreePlan authorPlan) {
+    ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+    if (EditionGate.isPro()
+        && (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+            || authorType == ConfigPhysicalPlanType.UpdateUserMinSession)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SEMANTIC_ERROR,
+          String.format(
+              TimechoConfigNodeMessages.MESSAGE_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_7C713053,
+              ProFeature.CONNECTION_LIMIT.getDisplayName()));
+    }
+    return super.authorNonQuery(authorPlan);
+  }
+
+  @Override
+  public TSStatus authorNonQuery(AuthorRelationalPlan authorPlan) {
+    ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+    if (EditionGate.isPro()
+        && (authorType == ConfigPhysicalPlanType.RUpdateUserMaxSession
+            || authorType == ConfigPhysicalPlanType.RUpdateUserMinSession)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SEMANTIC_ERROR,
+          String.format(
+              TimechoConfigNodeMessages.MESSAGE_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_7C713053,
+              ProFeature.CONNECTION_LIMIT.getDisplayName()));
+    }
+    return super.authorNonQuery(authorPlan);
   }
 
   @Override

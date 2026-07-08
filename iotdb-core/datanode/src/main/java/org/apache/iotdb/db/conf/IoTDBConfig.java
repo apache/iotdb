@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.ProFeature;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -4065,7 +4067,8 @@ public class IoTDBConfig {
   }
 
   public void setEnableWhiteList(boolean enableWhiteList) {
-    this.enableWhiteList = enableWhiteList;
+    this.enableWhiteList =
+        EditionGate.forceDisabledInPro(enableWhiteList, ProFeature.WHITE_BLACK_LIST);
   }
 
   public boolean isEnableBlackList() {
@@ -4073,7 +4076,8 @@ public class IoTDBConfig {
   }
 
   public void setEnableBlackList(boolean enableBlackList) {
-    this.enableBlackList = enableBlackList;
+    this.enableBlackList =
+        EditionGate.forceDisabledInPro(enableBlackList, ProFeature.WHITE_BLACK_LIST);
   }
 
   public String[] getWhiteIPList() {
@@ -4803,7 +4807,8 @@ public class IoTDBConfig {
   }
 
   public void setIdleSessionTimeoutInMinutes(int idleSessionTimeoutInMinutes) {
-    this.idleSessionTimeoutInMinutes = idleSessionTimeoutInMinutes;
+    this.idleSessionTimeoutInMinutes =
+        EditionGate.forceValueInPro(idleSessionTimeoutInMinutes, -1, ProFeature.IDLE_EVICTION);
   }
 
   public int getFailedLoginAttempts() {
@@ -4811,7 +4816,8 @@ public class IoTDBConfig {
   }
 
   public void setFailedLoginAttempts(int failedLoginAttempts) {
-    this.failedLoginAttempts = failedLoginAttempts;
+    this.failedLoginAttempts =
+        EditionGate.forceValueInPro(failedLoginAttempts, 0, ProFeature.BRUTE_FORCE);
   }
 
   public int getFailedLoginAttemptsPerUser() {
@@ -4819,7 +4825,8 @@ public class IoTDBConfig {
   }
 
   public void setFailedLoginAttemptsPerUser(int failedLoginAttemptsPerUser) {
-    this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
+    this.failedLoginAttemptsPerUser =
+        EditionGate.forceValueInPro(failedLoginAttemptsPerUser, 0, ProFeature.BRUTE_FORCE);
   }
 
   public int getPasswordLockTimeMinutes() {

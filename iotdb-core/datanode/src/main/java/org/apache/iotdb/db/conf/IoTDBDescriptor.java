@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.ProFeature;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -2333,7 +2335,11 @@ public class IoTDBDescriptor {
                         "max_tsblock_line_number"))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setEncryptType(properties.getProperty("encrypt_type", "UNENCRYPTED"));
+        .setEncryptType(
+            EditionGate.forceValueInPro(
+                properties.getProperty("encrypt_type", "UNENCRYPTED"),
+                "UNENCRYPTED",
+                ProFeature.TDE));
 
     String booleanCompressor = properties.getProperty("boolean_compressor");
     if (booleanCompressor != null) {
@@ -2975,6 +2981,7 @@ public class IoTDBDescriptor {
   // local *and* remote `show configuration` (which reads each node's own map over RPC) stay
   // correct.
   private void overlayEffectiveConfigurationValues() {
+    // OSS keys whose setters rewrite the loaded value (guard skips, computed defaults).
     ConfigurationFileUtils.updateAppliedProperties(
         "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
@@ -2987,6 +2994,42 @@ public class IoTDBDescriptor {
         Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+
+    // Enterprise-only keys whose loaders rewrite the value (coercions / overflow guards).
+    ConfigurationFileUtils.updateAppliedProperties(
+        "idle_session_timeout_in_minutes", // 0 is coerced to 1
+        Integer.toString(conf.getIdleSessionTimeoutInMinutes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "audit_log_space_tl_in_GB", // <=0 -> Double.MAX_VALUE
+        Double.toString(commonDescriptor.getConfig().getAuditLogSpaceTlInGB()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "audit_log_ttl_in_days", // overflow -> clamped
+        Double.toString(commonDescriptor.getConfig().getAuditLogTtlInDays()));
+
+    // PRO-edition gated security keys: their setters clamp to the disabled form via EditionGate.
+    // In PRO the raw file value (e.g. enable_white_list=true) diverges from the effective value
+    // (false); overlaying with the getter ensures show configuration shows the post-clamp value.
+    // In MAX the setters are pass-through, so this overlay is a no-op.
+    ConfigurationFileUtils.updateAppliedProperties(
+        "enable_white_list", Boolean.toString(conf.isEnableWhiteList()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "enable_black_list", Boolean.toString(conf.isEnableBlackList()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "failed_login_attempts", Integer.toString(conf.getFailedLoginAttempts()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "failed_login_attempts_per_user", Integer.toString(conf.getFailedLoginAttemptsPerUser()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "password_expiration_days",
+        Long.toString(commonDescriptor.getConfig().getPasswordExpirationDays()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "enable_internal_ssl",
+        Boolean.toString(commonDescriptor.getConfig().isEnableInternalSSL()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "enable_encrypt_config_file",
+        Boolean.toString(commonDescriptor.getConfig().isEnableEncryptConfigFile()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "enable_encrypt_permission_file",
+        Boolean.toString(commonDescriptor.getConfig().isEnableEncryptPermissionFile()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {

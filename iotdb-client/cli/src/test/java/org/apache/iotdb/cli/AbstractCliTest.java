@@ -118,14 +118,16 @@ public class AbstractCliTest {
           AbstractCli.checkRequiredArg(
               ctx, AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, true, "127.0.0.1");
     } catch (ArgsErrorException e) {
-      assertEquals("IoTDB: Required values for option 'host' not provided", e.getMessage());
+      assertEquals(
+          AbstractCli.IOTDB + ": Required values for option 'host' not provided", e.getMessage());
     }
     try {
       str =
           AbstractCli.checkRequiredArg(
               ctx, AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, false, null);
     } catch (ArgsErrorException e) {
-      assertEquals("IoTDB: Required values for option 'host' is null.", e.getMessage());
+      assertEquals(
+          AbstractCli.IOTDB + ": Required values for option 'host' is null.", e.getMessage());
     }
   }
 

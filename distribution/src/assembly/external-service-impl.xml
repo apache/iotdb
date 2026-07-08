@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>timechodb-${project.version}-external-service-impl-bin</baseDirectory>
+    <baseDirectory>${package.name}-${project.version}-external-service-impl-bin</baseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}/../licenses</directory>

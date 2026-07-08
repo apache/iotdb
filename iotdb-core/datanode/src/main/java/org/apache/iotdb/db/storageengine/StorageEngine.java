@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -110,6 +111,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -746,6 +748,15 @@ public class StorageEngine implements IService {
     Map<String, String> newConfigItems = req.getConfigs();
     if (newConfigItems.isEmpty()) {
       return tsStatus;
+    }
+    Optional<String> gatedKey = EditionGate.firstGatedKey(newConfigItems.keySet());
+    if (gatedKey.isPresent()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SEMANTIC_ERROR,
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3,
+              gatedKey.get()));
     }
     TrimProperties newConfigProperties = new TrimProperties();
     newConfigProperties.putAll(newConfigItems);

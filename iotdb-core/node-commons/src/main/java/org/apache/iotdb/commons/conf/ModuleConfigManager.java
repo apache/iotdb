@@ -40,6 +40,7 @@ public class ModuleConfigManager {
   private final boolean moduleAEnabled;
   private final boolean moduleBEnabled;
   private final String versionSuffix;
+  private final Edition edition;
 
   private ModuleConfigManager() {
     properties = new Properties();
@@ -49,6 +50,7 @@ public class ModuleConfigManager {
     moduleAEnabled = Boolean.parseBoolean(properties.getProperty("moduleA.enabled", "true"));
     moduleBEnabled = Boolean.parseBoolean(properties.getProperty("moduleB.enabled", "true"));
     versionSuffix = properties.getProperty("version.suffix", "");
+    edition = Edition.fromString(properties.getProperty("edition", "MAX"));
   }
 
   public static ModuleConfigManager getInstance() {
@@ -91,6 +93,27 @@ public class ModuleConfigManager {
    */
   public String getVersionSuffix() {
     return versionSuffix;
+  }
+
+  /**
+   * @return the build-time edition (MAX by default).
+   */
+  public Edition getEdition() {
+    return edition;
+  }
+
+  /**
+   * @return true if this is a PRO edition build.
+   */
+  public boolean isPro() {
+    return edition == Edition.PRO;
+  }
+
+  /**
+   * @return true if this is a MAX edition build.
+   */
+  public boolean isMax() {
+    return edition == Edition.MAX;
   }
 
   /**

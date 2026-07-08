@@ -20,6 +20,7 @@ package com.timecho.iotdb.rpc;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -118,6 +119,9 @@ public class IPFilter {
   }
 
   public static boolean isDeniedConnect(String ip) {
+    if (EditionGate.isPro()) {
+      return false;
+    }
     loadIPCheckList();
     if (conf.isEnableBlackList() && !conf.isEnableWhiteList()) {
       return isInBlackList(ip);

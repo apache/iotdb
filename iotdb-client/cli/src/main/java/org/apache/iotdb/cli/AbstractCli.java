@@ -22,6 +22,7 @@ package org.apache.iotdb.cli;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -108,7 +109,7 @@ public abstract class AbstractCli {
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
-  static final String IOTDB = "IoTDB";
+  static final String IOTDB = IoTDBConstant.BRAND_NAME;
   static String cliPrefix = IOTDB;
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
@@ -431,14 +432,7 @@ public abstract class AbstractCli {
   static void displayLogo(CliContext ctx, String logo, String version, String buildInfo) {
     ctx.getPrinter()
         .println(
-            (logo != null
-                    ? logo
-                    : (" _____       _________  ______   ______    \n"
-                        + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-                        + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-                        + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-                        + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-                        + "|_____|'.__.' |_____|  |______.'|_______/  Enterprise "))
+            (logo != null ? logo : IoTDBConstant.LOGO)
                 + "version "
                 + version
                 + " (Build: "
@@ -450,7 +444,7 @@ public abstract class AbstractCli {
 
   static void echoStarting(CliContext ctx) {
     ctx.getPrinter().println("---------------------");
-    ctx.getPrinter().println("Starting IoTDB Cli");
+    ctx.getPrinter().println("Starting " + IOTDB + " Cli");
     ctx.getPrinter().println("---------------------");
   }
 

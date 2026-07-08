@@ -4565,4 +4565,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
 
+  // 版本门禁：在下发 ConfigNode 协调前拒绝设置 PRO 版禁用的键，使客户端看到顶层 701。%s 为配置键名。
+  public static final String EXCEPTION_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =
+      "配置项 '%s' 在本版本中不可用，无法设置。";
+
 }
