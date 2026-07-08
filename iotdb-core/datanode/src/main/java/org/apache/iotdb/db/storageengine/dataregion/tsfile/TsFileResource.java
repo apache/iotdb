@@ -248,7 +248,7 @@ public class TsFileResource implements Cloneable {
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-    timeIndex.serialize(outputStream);
+    getTimeIndexForSerialization().serialize(outputStream);
 
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
@@ -274,6 +274,14 @@ public class TsFileResource implements Cloneable {
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
+  }
+
+  private ITimeIndex getTimeIndexForSerialization() throws IOException {
+    if (!(timeIndex instanceof FileTimeIndex) || !resourceFileExists()) {
+      return timeIndex;
+    }
+
+    return buildDeviceTimeIndex();
   }
 
   /** deserialize from disk */
