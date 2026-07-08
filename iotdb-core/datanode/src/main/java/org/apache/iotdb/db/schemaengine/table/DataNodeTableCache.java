@@ -198,7 +198,7 @@ public class DataNodeTableCache implements ITableCache {
         }
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-            .put(tableName, oldTable);
+            .put(oldName, oldTable);
         LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
         removeTableFromPreUpdateMap(database, oldName);
       }
