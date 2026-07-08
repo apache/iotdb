@@ -104,7 +104,7 @@ public class DataNodeTableCacheTest {
       cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, newTableName, TABLE_NAME);
 
       Assert.assertEquals(
-        TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
+          TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
       Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, newTableName, false));
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);
