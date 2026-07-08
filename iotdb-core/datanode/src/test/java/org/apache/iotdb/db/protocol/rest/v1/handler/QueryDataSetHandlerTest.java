@@ -196,6 +196,5 @@ public class QueryDataSetHandlerTest {
     public String getClientHostname() {
       return null;
     }
-
   }
 }

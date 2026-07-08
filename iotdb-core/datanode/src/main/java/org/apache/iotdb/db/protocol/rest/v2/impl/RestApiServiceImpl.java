@@ -37,7 +37,6 @@ import org.apache.iotdb.db.protocol.rest.v2.handler.StatementConstructionHandler
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.PrefixPathList;
-import org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet;
 import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -47,7 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -64,14 +62,12 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -169,40 +165,9 @@ public class RestApiServiceImpl extends RestApiService {
         }
       }
 
-      // Cache hit: build response directly
-      QueryDataSet targetDataSet = new QueryDataSet();
-
-      FastLastHandler.setupTargetDataSet(targetDataSet);
-      List<Object> timeseries = new ArrayList<>();
-      List<Object> valueList = new ArrayList<>();
-      List<Object> dataTypeList = new ArrayList<>();
-      int fetched = 0;
-
-      for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
-          resultMap.entrySet()) {
-        final String deviceWithSeparator =
-            device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
-        for (Map.Entry<String, TimeValuePair> measurementEntry :
-            device2MeasurementLastEntry.getValue().entrySet()) {
-          final TimeValuePair tvPair = measurementEntry.getValue();
-          if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
-            if (QueryRowLimitUtils.exceedsLimit(fetched, 1, defaultQueryRowLimit)) {
-              return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(defaultQueryRowLimit);
-            }
-            valueList.add(tvPair.getValue().getStringValue());
-            dataTypeList.add(tvPair.getValue().getDataType().name());
-            targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-            timeseries.add(deviceWithSeparator + measurementEntry.getKey());
-            fetched++;
-          }
-        }
-      }
-      if (!timeseries.isEmpty()) {
-        targetDataSet.addValuesItem(timeseries);
-        targetDataSet.addValuesItem(valueList);
-        targetDataSet.addValuesItem(dataTypeList);
-      }
-      return Response.ok().entity(targetDataSet).build();
+      // Cache hit: build response directly (capped by defaultQueryRowLimit).
+      finish = true;
+      return FastLastHandler.fillLastValueDataSet(resultMap, defaultQueryRowLimit);
 
     } catch (Exception e) {
       finish = true;
