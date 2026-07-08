@@ -561,8 +561,6 @@ public final class ProcedureMessages {
   public static final String PRE_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE = "执行表删除操作流程时，预删除表 {}.{}";
   public static final String COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE =
       "执行删除表操作流程时，正式删除表 {}.{}";
-  public static final String INVALIDATING_CACHE_FOR_TABLE_WHEN_DROPPING_TABLE =
-      "删除表时正在使表 {}.{} 缓存失效";
   public static final String INVALID_DATA_TYPE_CANNOT_BE_USED_AS_A_NEW_TYPE = "无效的数据类型不能作为新类型使用";
   public static final String IO_ERROR_WHEN_DESERIALIZE_AUTHPLAN = "反序列化 authplan 时发生 IO 错误。";
   public static final String IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN = "反序列化 setTTL plan 时发生 IO 错误。";

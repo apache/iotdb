@@ -341,7 +341,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
     final TDataNodeLeaseRecoveryResp resp = configManager.reloadCacheAfterLeaseRecovery();
-    LOGGER.info("Execute getMetaDataCache with result {}", resp.getStatus());
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GET_METADATA_WITH_RESULT, resp.getStatus());
     return resp;
   }
 

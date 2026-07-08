@@ -158,7 +158,7 @@ public class DropTableColumnProcedure
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {
-      LOGGER.error(
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_COLUMN_S_CACHE_OF_TABLE,
           isAttributeColumn ? "attribute" : "measurement",
           columnName,

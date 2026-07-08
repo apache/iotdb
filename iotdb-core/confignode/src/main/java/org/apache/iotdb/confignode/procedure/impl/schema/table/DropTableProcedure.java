@@ -153,7 +153,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {
-      LOGGER.error(
+      LOGGER.warn(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE, database, tableName);
       setFailure(
           new ProcedureException(
