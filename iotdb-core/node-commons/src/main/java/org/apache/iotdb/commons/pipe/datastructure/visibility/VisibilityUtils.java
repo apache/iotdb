@@ -27,15 +27,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 public class VisibilityUtils {
-
-  private static final List<String> DOUBLE_LIVING_KEYS =
-      Arrays.asList(
-          PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-          PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
 
   private VisibilityUtils() {
     // forbidding instantiation
@@ -91,8 +85,7 @@ public class VisibilityUtils {
       return calculateStrictlyFromExtractorParameters(extractorParameters);
     }
 
-    if (extractorParameters.getBooleanOrDefault(
-        DOUBLE_LIVING_KEYS, PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)) {
+    if (PipeSourceConstant.isDoubleLiving(extractorParameters)) {
       return Visibility.BOTH;
     }
 

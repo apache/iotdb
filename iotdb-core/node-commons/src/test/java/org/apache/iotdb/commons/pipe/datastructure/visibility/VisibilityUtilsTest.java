@@ -70,6 +70,10 @@ public class VisibilityUtilsTest {
     doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "false");
     assertVisibility(Visibility.BOTH, doubleLivingAttributes, true, true);
 
+    final Map<String, String> directDoubleLivingAttributes = new HashMap<>();
+    directDoubleLivingAttributes.put("double-living", "true");
+    assertVisibility(Visibility.BOTH, directDoubleLivingAttributes, true, true);
+
     final Map<String, String> captureBothAttributes = new HashMap<>();
     captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
     captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
@@ -79,6 +83,26 @@ public class VisibilityUtilsTest {
     captureNoneAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "false");
     captureNoneAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "false");
     assertVisibility(Visibility.NONE, captureNoneAttributes, false, false);
+  }
+
+  @Test
+  public void testDoubleLivingSugarCanBeNormalizedForStrictPipes() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("double-living", "true");
+    attributes.put("mode.double-living", "true");
+    attributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+    attributes.put("forwarding-pipe-requests", "true");
+    attributes.put(PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, "true");
+
+    PipeSourceConstant.removeDoubleLivingAttributes(attributes);
+    PipeSourceConstant.disableForwardingPipeRequests(attributes);
+
+    final PipeParameters parameters = new PipeParameters(attributes);
+    Assert.assertFalse(PipeSourceConstant.isDoubleLiving(parameters));
+    Assert.assertFalse(
+        parameters.getBooleanOrDefault(
+            PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
+            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
   }
 
   private void assertVisibility(
