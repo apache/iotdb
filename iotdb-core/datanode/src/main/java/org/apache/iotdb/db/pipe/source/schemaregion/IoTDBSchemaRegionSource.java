@@ -97,6 +97,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   // Local for exception
   private PipePlanTreePrivilegeParseVisitor treePrivilegeParseVisitor;
+  private PipePlanTablePrivilegeParseVisitor tablePrivilegeParseVisitor;
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
@@ -123,6 +124,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     schemaRegionId = new SchemaRegionId(regionId);
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
     treePrivilegeParseVisitor = new PipePlanTreePrivilegeParseVisitor(skipIfNoPrivileges);
+    tablePrivilegeParseVisitor = new PipePlanTablePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeSchemaRegionSourceMetrics.getInstance().register(this);
     if (regionId >= 0) {
@@ -294,7 +296,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     final Optional<PlanNode> result =
         treePrivilegeParseVisitor
             .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity)
-            .flatMap(planNode -> TABLE_PRIVILEGE_PARSE_VISITOR.process(planNode, userEntity));
+            .flatMap(planNode -> tablePrivilegeParseVisitor.process(planNode, userEntity));
     if (result.isPresent()) {
       return Optional.of(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
