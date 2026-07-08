@@ -852,6 +852,8 @@ public final class DataNodeQueryMessages {
       "无效的标量参数：";
   public static final String ARGUMENT_SHOULD_BE_A_STRING =
       "参数 %s 应为字符串";
+  public static final String ARGUMENT_SHOULD_BE_A_NUMBER =
+      "参数 %s 应为数字";
   public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
       "参数 %s 应至少包含一个路径";
   public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =

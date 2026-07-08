@@ -868,6 +868,8 @@ public final class DataNodeQueryMessages {
       "Invalid scalar argument: ";
   public static final String ARGUMENT_SHOULD_BE_A_STRING =
       "Argument %s should be a string";
+  public static final String ARGUMENT_SHOULD_BE_A_NUMBER =
+      "Argument %s should be a number";
   public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
       "Argument %s should contain at least one path";
   public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
