@@ -281,6 +281,9 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
       "{}：为解析 TsFile {} 分配内存失败，tablet 事件编号 {}，"
           + "将释放解析器内存并稍后重试该 TsFile 事件。";
+  public static final String FAILED_TO_CONSUME_PARSED_TABLET_FROM_TSFILE_KEEP_PARSER =
+      "{}：消费 TsFile {} 解析出的 tablet 失败，tablet 事件编号 {}，重试次数 {}，"
+          + "将暂时保留解析器并在本地短暂重试。";
   public static final String FAILED_TO_BUILD_TABLET = "构建 tablet 失败";
   public static final String FAILED_TO_CHECK_NEXT = "check next 失败";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "关闭 TsFileReader 失败";
