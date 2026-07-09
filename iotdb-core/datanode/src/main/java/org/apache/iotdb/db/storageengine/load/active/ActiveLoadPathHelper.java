@@ -45,7 +45,8 @@ public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
   public static final String USER_KEY = "user";
-  private static final String USER_VALUE_MASK_PREFIX = "b64:";
+  // Keep a version in the user path segment so future encryption algorithms can be added safely.
+  private static final String USER_VALUE_MASK_PREFIX = "v1-";
 
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
@@ -312,12 +313,14 @@ public final class ActiveLoadPathHelper {
     if (!USER_KEY.equals(key) || !value.startsWith(USER_VALUE_MASK_PREFIX)) {
       return value;
     }
+    return decodeUserName(value.substring(USER_VALUE_MASK_PREFIX.length()), value);
+  }
+
+  private static String decodeUserName(final String encodedUserName, final String fallback) {
     try {
-      return new String(
-          Base64.getUrlDecoder().decode(value.substring(USER_VALUE_MASK_PREFIX.length())),
-          StandardCharsets.UTF_8);
+      return new String(Base64.getUrlDecoder().decode(encodedUserName), StandardCharsets.UTF_8);
     } catch (final IllegalArgumentException e) {
-      return value;
+      return fallback;
     }
   }
 }

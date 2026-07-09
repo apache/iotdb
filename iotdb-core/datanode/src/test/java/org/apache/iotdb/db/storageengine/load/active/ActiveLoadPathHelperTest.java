@@ -42,8 +42,9 @@ public class ActiveLoadPathHelperTest {
               ActiveLoadPathHelper.buildAttributes(null, null, null, null, null, null, userName));
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
 
-      Assert.assertTrue(targetDir.getAbsolutePath().contains("user-"));
+      Assert.assertTrue(targetDir.getAbsolutePath().contains("user-v1-"));
       Assert.assertFalse(targetDir.getAbsolutePath().contains(userName));
+      Assert.assertFalse(targetDir.getAbsolutePath().contains("b64%3A"));
 
       final Map<String, String> attributes =
           ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
@@ -58,6 +59,21 @@ public class ActiveLoadPathHelperTest {
     final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
     try {
       final File tsFile = new File(new File(pendingDir, "user-active_load_user"), "1-0-0-0.tsfile");
+
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertFalse(attributes.containsKey(ActiveLoadPathHelper.USER_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testNonV1UserAttributeShouldBeIgnored() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-path").toFile();
+    try {
+      final File tsFile =
+          new File(new File(pendingDir, "user-v2-active_load_user"), "1-0-0-0.tsfile");
 
       final Map<String, String> attributes =
           ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
