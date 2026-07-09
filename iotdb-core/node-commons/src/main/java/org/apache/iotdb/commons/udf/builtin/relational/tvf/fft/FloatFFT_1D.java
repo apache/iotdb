@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf.fft;
 
-/** Computes an in-place 1D forward DFT for interleaved complex double data. */
-public final class DoubleFFT1D {
+/** Computes an in-place 1D forward DFT for interleaved complex float data. */
+public final class FloatFFT_1D {
 
   private final int length;
 
-  public DoubleFFT1D(long length) {
+  public FloatFFT_1D(long length) {
     if (length < 1 || length > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("FFT length must be a positive int-sized value.");
     }
     this.length = (int) length;
   }
 
-  public void complexForward(double[] values) {
+  public void complexForward(float[] values) {
     if (values.length < 2 * length) {
       throw new IllegalArgumentException("Input array length must be at least 2 * FFT length.");
     }
@@ -45,17 +45,17 @@ public final class DoubleFFT1D {
     }
   }
 
-  private void bluesteinForward(double[] values) {
+  private void bluesteinForward(float[] values) {
     int convolutionLength = nextPowerOfTwo(2 * length - 1);
-    double[] a = new double[2 * convolutionLength];
-    double[] b = new double[2 * convolutionLength];
+    float[] a = new float[2 * convolutionLength];
+    float[] b = new float[2 * convolutionLength];
 
     for (int i = 0; i < length; i++) {
       double angle = Math.PI * i * (double) i / length;
-      double cos = Math.cos(angle);
-      double sin = Math.sin(angle);
-      double real = values[2 * i];
-      double imaginary = values[2 * i + 1];
+      float cos = (float) Math.cos(angle);
+      float sin = (float) Math.sin(angle);
+      float real = values[2 * i];
+      float imaginary = values[2 * i + 1];
 
       a[2 * i] = real * cos + imaginary * sin;
       a[2 * i + 1] = imaginary * cos - real * sin;
@@ -71,8 +71,8 @@ public final class DoubleFFT1D {
     transform(b, convolutionLength, false);
     for (int i = 0; i < convolutionLength; i++) {
       int offset = 2 * i;
-      double real = a[offset] * b[offset] - a[offset + 1] * b[offset + 1];
-      double imaginary = a[offset] * b[offset + 1] + a[offset + 1] * b[offset];
+      float real = a[offset] * b[offset] - a[offset + 1] * b[offset + 1];
+      float imaginary = a[offset] * b[offset + 1] + a[offset + 1] * b[offset];
       a[offset] = real;
       a[offset + 1] = imaginary;
     }
@@ -80,16 +80,16 @@ public final class DoubleFFT1D {
 
     for (int i = 0; i < length; i++) {
       double angle = Math.PI * i * (double) i / length;
-      double cos = Math.cos(angle);
-      double sin = Math.sin(angle);
-      double real = a[2 * i];
-      double imaginary = a[2 * i + 1];
+      float cos = (float) Math.cos(angle);
+      float sin = (float) Math.sin(angle);
+      float real = a[2 * i];
+      float imaginary = a[2 * i + 1];
       values[2 * i] = real * cos + imaginary * sin;
       values[2 * i + 1] = imaginary * cos - real * sin;
     }
   }
 
-  private static void transform(double[] values, int size, boolean inverse) {
+  private static void transform(float[] values, int size, boolean inverse) {
     for (int i = 1, j = 0; i < size; i++) {
       int bit = size >>> 1;
       while ((j & bit) != 0) {
@@ -114,10 +114,11 @@ public final class DoubleFFT1D {
         for (int j = 0; j < halfStep; j++) {
           int even = 2 * (block + j);
           int odd = 2 * (block + j + halfStep);
-          double oddReal = values[odd] * factorReal - values[odd + 1] * factorImaginary;
-          double oddImaginary = values[odd] * factorImaginary + values[odd + 1] * factorReal;
-          double evenReal = values[even];
-          double evenImaginary = values[even + 1];
+          float oddReal = (float) (values[odd] * factorReal - values[odd + 1] * factorImaginary);
+          float oddImaginary =
+              (float) (values[odd] * factorImaginary + values[odd + 1] * factorReal);
+          float evenReal = values[even];
+          float evenImaginary = values[even + 1];
 
           values[even] = evenReal + oddReal;
           values[even + 1] = evenImaginary + oddImaginary;
@@ -147,8 +148,8 @@ public final class DoubleFFT1D {
     return value == highestOneBit ? value : highestOneBit << 1;
   }
 
-  private static void swap(double[] values, int left, int right) {
-    double tmp = values[left];
+  private static void swap(float[] values, int left, int right) {
+    float tmp = values[left];
     values[left] = values[right];
     values[right] = tmp;
   }
