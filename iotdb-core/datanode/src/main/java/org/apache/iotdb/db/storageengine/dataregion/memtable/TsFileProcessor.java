@@ -491,7 +491,6 @@ public class TsFileProcessor {
       InsertTabletNode insertTabletNode,
       List<int[]> rangeList,
       TSStatus[] results,
-      boolean noFailure,
       long[] infoForMetrics)
       throws WriteProcessException {
     long memControlStartTime = System.nanoTime();
@@ -500,7 +499,7 @@ public class TsFileProcessor {
       int start = range[0];
       int end = range[1];
       try {
-        long[] memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
+        long[] memIncrements = checkMemCost(insertTabletNode, start, end, results);
         for (int i = 0; i < memIncrements.length; i++) {
           totalMemIncrements[i] += memIncrements[i];
         }
@@ -518,11 +517,11 @@ public class TsFileProcessor {
   }
 
   private long[] checkMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, boolean noFailure, TSStatus[] results)
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     long[] memIncrements;
     if (insertTabletNode.isAligned()) {
-      memIncrements = checkAlignedMemCost(insertTabletNode, start, end, noFailure, results);
+      memIncrements = checkAlignedMemCost(insertTabletNode, start, end, results);
     } else {
       memIncrements =
           checkMemCostAndAddToTspInfoForTablet(
@@ -538,7 +537,7 @@ public class TsFileProcessor {
   }
 
   private long[] checkAlignedMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, boolean noFailure, TSStatus[] results)
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     List<Pair<IDeviceID, Integer>> deviceEndPosList = insertTabletNode.splitByDevice(start, end);
     long[] memIncrements = new long[NUM_MEM_TO_ESTIMATE];
@@ -555,7 +554,6 @@ public class TsFileProcessor {
               insertTabletNode.getColumnCategories(),
               splitStart,
               splitEnd,
-              noFailure,
               results);
       for (int i = 0; i < NUM_MEM_TO_ESTIMATE; i++) {
         memIncrements[i] += splitMemIncrements[i];
@@ -586,7 +584,7 @@ public class TsFileProcessor {
     workMemTable.checkDataType(insertTabletNode);
 
     long[] memIncrements =
-        scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
+        scheduleMemoryBlock(insertTabletNode, rangeList, results, infoForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -648,7 +646,10 @@ public class TsFileProcessor {
         throw new WriteProcessException(e);
       }
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.SUCCESS_STATUS;
+        if (results[i] == null
+            || results[i].getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          results[i] = RpcUtils.SUCCESS_STATUS;
+        }
       }
 
       final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
@@ -977,7 +978,6 @@ public class TsFileProcessor {
       TsTableColumnCategory[] columnCategories,
       int start,
       int end,
-      boolean noFailure,
       TSStatus[] results)
       throws WriteProcessException {
     if (start >= end) {
@@ -994,7 +994,6 @@ public class TsFileProcessor {
         memIncrements,
         columns,
         columnCategories,
-        noFailure,
         results);
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -1051,19 +1050,8 @@ public class TsFileProcessor {
       long[] memIncrements,
       Object[] columns,
       TsTableColumnCategory[] columnCategories,
-      boolean noFailure,
       TSStatus[] results) {
-    int incomingPointNum;
-    if (noFailure) {
-      incomingPointNum = end - start;
-    } else {
-      incomingPointNum = end - start;
-      for (TSStatus result : results) {
-        if (result != null && result.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          incomingPointNum--;
-        }
-      }
-    }
+    int incomingPointNum = end - start;
 
     TSDataType[] writableFieldDataTypes =
         getWritableFieldDataTypes(measurementIds, dataTypes, columns, columnCategories);

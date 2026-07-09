@@ -41,9 +41,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -73,6 +76,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -558,6 +562,33 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1598168, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
+  }
+
+  @Test
+  public void alignedTabletKeepsFailedStatusesAndCountsWrittenRows()
+      throws MetadataException, WriteProcessException, IOException, IllegalPathException {
+    final int rowCount = PrimitiveArrayManager.ARRAY_SIZE + 2;
+    final List<int[]> rangeList = Collections.singletonList(new int[] {0, rowCount - 1});
+
+    final TsFileProcessor expectedProcessor = newTestProcessor(filePath + ".expected");
+    final TSStatus[] expectedResults = new TSStatus[rowCount];
+    Arrays.fill(expectedResults, RpcUtils.SUCCESS_STATUS);
+    expectedProcessor.insertTablet(
+        genSingleMeasurementTablet(rowCount, true), rangeList, expectedResults, false, new long[5]);
+
+    final TsFileProcessor actualProcessor = newTestProcessor(filePath + ".actual");
+    final TSStatus[] actualResults = new TSStatus[rowCount];
+    Arrays.fill(actualResults, RpcUtils.SUCCESS_STATUS);
+    final int failedIndex = rowCount - 2;
+    actualResults[failedIndex] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL, "failed row");
+    actualProcessor.insertTablet(
+        genSingleMeasurementTablet(rowCount, true), rangeList, actualResults, false, new long[5]);
+
+    Assert.assertEquals(
+        expectedProcessor.getWorkMemTable().getTVListsRamCost(),
+        actualProcessor.getWorkMemTable().getTVListsRamCost());
+    Assert.assertEquals(
+        TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
   }
 
   @Test
@@ -1259,6 +1290,49 @@ public class TsFileProcessorTest {
         throw new TsFileProcessorException(e);
       }
     }
+  }
+
+  private TsFileProcessor newTestProcessor(String path) throws IOException, WriteProcessException {
+    TsFileProcessor newProcessor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(path),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    newProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(newProcessor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, newProcessor);
+    return newProcessor;
+  }
+
+  private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)
+      throws IllegalPathException {
+    String[] measurements = new String[] {measurementId};
+    TSDataType[] dataTypes = new TSDataType[] {dataType};
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {new MeasurementSchema(measurementId, dataType, encoding)};
+    long[] times = new long[rowCount];
+    Object[] columns = new Object[] {new int[rowCount]};
+
+    for (int i = 0; i < rowCount; i++) {
+      times[i] = i;
+      ((int[]) columns[0])[i] = i;
+    }
+
+    return new InsertTabletNode(
+        new QueryId("test_write").genPlanNodeId(),
+        new PartialPath(deviceId),
+        isAligned,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        null,
+        columns,
+        rowCount);
   }
 
   private InsertTabletNode genInsertTableNode(long startTime, boolean isAligned)
