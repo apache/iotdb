@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteCol
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.response.table.PreDeleteColumnStatus;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -143,40 +144,46 @@ public class DropTableColumnProcedure
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final TInvalidateColumnCacheReq req =
+    TInvalidateColumnCacheReq req =
         new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn);
-
     appendOriginalColumnForCacheInvalidation(req);
-    final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
-      // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            ProcedureMessages.FAILED_TO_INVALIDATE_COLUMN_S_CACHE_OF_TABLE,
-            isAttributeColumn ? "attribute" : "measurement",
-            columnName,
-            database,
-            tableName);
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    String.format(
-                        ProcedureMessages.INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE,
-                        columnName,
-                        database,
-                        tableName))));
-        return;
-      }
-    }
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> broadCastInvalidateCache(req, targets));
 
+    if (!proceeded) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_COLUMN_S_CACHE_OF_TABLE,
+          isAttributeColumn ? "attribute" : "measurement",
+          columnName,
+          database,
+          tableName);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      ProcedureMessages.INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE,
+                      columnName,
+                      database,
+                      tableName))));
+      return;
+    }
     // View does not need to be executed on regions
     setNextState(getStateAfterInvalidateCache());
+  }
+
+  private Map<Integer, TSStatus> broadCastInvalidateCache(
+      TInvalidateColumnCacheReq req, Map<Integer, TDataNodeLocation> targets) {
+
+    final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {

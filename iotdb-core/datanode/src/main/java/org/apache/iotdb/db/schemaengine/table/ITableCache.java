@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public interface ITableCache {
@@ -55,14 +56,6 @@ public interface ITableCache {
    */
   void invalid(final String database);
 
-  void invalid(final String database, final String tableName);
-
-  void invalid(
-      final String database1,
-      final String tableName1,
-      final String database2,
-      final String tableName2);
-
   void invalid(final String database, final String tableName, final String columnName);
 
   void invalid(
@@ -72,4 +65,23 @@ public interface ITableCache {
       final String database2,
       final String tableName2,
       final String columnName2);
+
+  void invalidateAll();
+
+  TsTable getTableInWrite(final String database, final String tableName);
+
+  TsTable getTable(final String database, final String tableName);
+
+  TsTable getTable(String database, final String tableName, final boolean force);
+
+  String tryGetInternColumnName(
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName);
+
+  boolean isDatabaseExist(final String database);
+
+  void reloadTableCacheAfterLeaseRecovery();
+
+  long getInstanceVersion();
 }

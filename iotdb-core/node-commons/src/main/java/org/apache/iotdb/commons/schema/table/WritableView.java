@@ -42,8 +42,6 @@ public class WritableView extends TsTable {
   // source-column syntax separate from tree-view column syntax.
   public static final String ADD_COLUMN_SOURCE_SYNTAX = "__writable_view_add_column_source_syntax";
 
-  static final int WRITABLE_VIEW = -2;
-
   // Currently not used, used for potential future development
   private final String sourceTableDatabase;
   private final String sourceTableName;
@@ -229,7 +227,7 @@ public class WritableView extends TsTable {
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
 
-    ReadWriteIOUtils.write(WRITABLE_VIEW, stream);
+    ReadWriteIOUtils.write(TsTableMarker.WRITABLE_VIEW_MARKER.getType(), stream);
     ReadWriteIOUtils.write(sourceTableDatabase, stream);
     ReadWriteIOUtils.write(sourceTableName, stream);
     ReadWriteIOUtils.write(isSchemaCascade, stream);

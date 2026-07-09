@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
@@ -144,7 +145,7 @@ public class LoadTsFileAnalyzerTest {
 
   @Test
   public void testIdentityWritableViewTargetUsesNativeLoadFastPath() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_writable_view_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -214,7 +215,7 @@ public class LoadTsFileAnalyzerTest {
 
   @Test
   public void testProjectionWritableViewTargetUsesNativeLoadFastPath() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_projection_writable_view_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -269,7 +270,7 @@ public class LoadTsFileAnalyzerTest {
 
   @Test
   public void testIdentityWritableViewTargetWithObjectUsesNativeLoadFastPath() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_writable_view_object_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -323,7 +324,7 @@ public class LoadTsFileAnalyzerTest {
 
   @Test
   public void testIdentityWritableViewTargetWithModsUsesNativeLoadFastPath() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_writable_view_mod_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -383,7 +384,7 @@ public class LoadTsFileAnalyzerTest {
   @Test
   public void testIdentityWritableViewTargetWithFullyDeletedDeviceRecordsRewrite()
       throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_writable_view_full_deleted_mod_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -442,7 +443,7 @@ public class LoadTsFileAnalyzerTest {
 
   @Test
   public void testAliasWritableViewTargetUsesNativeLoadFastPath() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_alias_writable_view_ut";
     final String sourceName = "source_table";
     final String viewName = "writable_view";

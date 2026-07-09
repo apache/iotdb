@@ -232,6 +232,7 @@ public enum ConfigPhysicalPlanType {
   RenameViewColumn((short) 877),
   AlterColumnDataType((short) 878),
   PreAlterColumnDataType((short) 879),
+  RollbackPreDeleteTable((short) 880),
   AlterViewColumnDataType((short) -894),
   PreAlterViewColumnDataType((short) -895),
 

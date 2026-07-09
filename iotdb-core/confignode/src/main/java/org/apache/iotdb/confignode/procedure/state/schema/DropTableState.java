@@ -21,8 +21,9 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum DropTableState {
   CHECK_AND_INVALIDATE_TABLE,
-  INVALIDATE_CACHE,
+  PRE_DELETE,
   DELETE_DATA,
   DELETE_DEVICES,
   DROP_TABLE,
+  COMMIT_DELETE
 }

@@ -123,7 +123,8 @@ public final class DataNodeSchemaMessages {
   public static final String UPDATE_MLOG_DESCRIPTION_FAILED = "Update {} failed because {}";
   public static final String DIRECT_BUFFER_MEMORY_EXCEEDED =
       "Total allocated memory for direct buffer will be ";
-  public static final String DIRECT_BUFFER_MEMORY_LIMIT = ", which is greater than limit mem cost: ";
+  public static final String DIRECT_BUFFER_MEMORY_LIMIT =
+      ", which is greater than limit mem cost: ";
 
   // ======================== SchemaRegion Snapshot ========================
 
@@ -146,8 +147,7 @@ public final class DataNodeSchemaMessages {
       "Snapshot creation of schemaRegion {} costs {}ms.";
   public static final String SUCCESSFULLY_CREATE_SNAPSHOT =
       "Successfully create snapshot of schemaRegion {}";
-  public static final String START_LOADING_SNAPSHOT =
-      "Start loading snapshot of schemaRegion {}";
+  public static final String START_LOADING_SNAPSHOT = "Start loading snapshot of schemaRegion {}";
   public static final String DEVICE_ATTR_SNAPSHOT_LOADING_COST =
       "Device attribute snapshot loading of schemaRegion {} costs {}ms.";
   public static final String DEVICE_ATTR_UPDATER_SNAPSHOT_LOADING_COST =
@@ -267,8 +267,7 @@ public final class DataNodeSchemaMessages {
       "Failed to rename {} to {} while creating mTree snapshot.";
   public static final String FAILED_TO_CREATE_MTREE_SNAPSHOT =
       "Failed to create mTree snapshot due to {}";
-  public static final String SERIALIZE_ERROR_INFO =
-      "Error occurred during serializing MemMTree.";
+  public static final String SERIALIZE_ERROR_INFO = "Error occurred during serializing MemMTree.";
   public static final String UNRECOGNIZED_MNODE_TYPE = "Unrecognized MNode type ";
 
   // ======================== View ========================
@@ -276,8 +275,7 @@ public final class DataNodeSchemaMessages {
   public static final String IS_NO_VIEW = "[%s] is no view.";
   public static final String VIEW_NOT_SUPPORTED = "View is not supported.";
   public static final String VIEW_DOES_NOT_SUPPORT_ALIAS = "View doesn't support alias";
-  public static final String CANNOT_CONSTRUCT_ABSTRACT_CLASS =
-      "Can not construct abstract class.";
+  public static final String CANNOT_CONSTRUCT_ABSTRACT_CLASS = "Can not construct abstract class.";
 
   // ======================== PBTree ========================
 
@@ -290,8 +288,7 @@ public final class DataNodeSchemaMessages {
       "PBTree File [{}] will be overwritten since already exists.";
   public static final String SCHEMA_FILE_WRONG_VERSION =
       "SchemaFile with wrong version, please check or upgrade.";
-  public static final String NODE_NO_CHILD_IN_PBTREE =
-      "Node [%s] has no child in pbtree file.";
+  public static final String NODE_NO_CHILD_IN_PBTREE = "Node [%s] has no child in pbtree file.";
   public static final String SCHEMA_FILE_INSPECTED = "SchemaFile[%s] had been inspected.";
   public static final String FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT =
       "Failed to create SchemaFile snapshot due to {}";
@@ -308,8 +305,7 @@ public final class DataNodeSchemaMessages {
       "AliasIndexPage can only extend to buffer with same capacity.";
   public static final String SEGMENTS_SPLIT_SAME_CAPACITY =
       "Segments only splits with same capacity.";
-  public static final String SEGMENT_SPLIT_NO_RECORDS =
-      "Segment can not be split with no records.";
+  public static final String SEGMENT_SPLIT_NO_RECORDS = "Segment can not be split with no records.";
   public static final String SEGMENT_SPLIT_ONLY_ONE_RECORD =
       "Segment can not be split with only one record.";
   public static final String INTERNAL_PAGE_EXTEND_CAPACITY =
@@ -334,8 +330,7 @@ public final class DataNodeSchemaMessages {
   public static final String CHILD_SHALL_NOT_HAVE_SEGMENT_ADDRESS =
       "A child in newChildBuffer shall not have segmentAddress.";
   public static final String PAGE_INDEX_OUT_OF_RANGE = "Page index %d out of range.";
-  public static final String ROOT_PAGE_SHALL_NOT_BE_MIGRATED =
-      "Root page shall not be migrated.";
+  public static final String ROOT_PAGE_SHALL_NOT_BE_MIGRATED = "Root page shall not be migrated.";
   public static final String SUBORDINATE_INDEX_NOT_ON_SINGLE_PAGE =
       "Subordinate index shall not build upon single page segment.";
   public static final String SUBORDINATE_INDEX_BROKEN =
@@ -459,8 +454,7 @@ public final class DataNodeSchemaMessages {
   public static final String COMMIT_MARK_WITHOUT_PREPARE = "COMMIT_MARK without PREPARE_MARK";
   public static final String EXTRANEOUS_BYTE_AFTER_PREPARE =
       "an extraneous byte rather than COMMIT_MARK after PREPARE_MARK";
-  public static final String NOT_ENDED_BY_MARK =
-      "not ended by COMMIT_MARK nor PREPARE_MARK.";
+  public static final String NOT_ENDED_BY_MARK = "not ended by COMMIT_MARK nor PREPARE_MARK.";
 
   // ======================== Additional MNodeContainer ========================
 
@@ -514,8 +508,7 @@ public final class DataNodeSchemaMessages {
 
   // ======================== Additional CachedMTreeStore ========================
 
-  public static final String ERROR_DURING_PBTREE_CLEAR =
-      "Error occurred during PBTree clear, {}";
+  public static final String ERROR_DURING_PBTREE_CLEAR = "Error occurred during PBTree clear, {}";
   public static final String ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION =
       "Error occurred during MTree flush, current SchemaRegionId is {}";
   public static final String ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION_BECAUSE =
@@ -534,17 +527,14 @@ public final class DataNodeSchemaMessages {
 
   // ======================== FakeCRC32Deserializer ========================
 
-  public static final String READ_LOG_LENGTH_NEGATIVE_LOG =
-      "Read log length {} is negative.";
+  public static final String READ_LOG_LENGTH_NEGATIVE_LOG = "Read log length {} is negative.";
 
   // ======================== SchemaLogReader ========================
 
-  public static final String FILE_CORRUPTED =
-      "File {} is corrupted. The uncorrupted size is {}.";
+  public static final String FILE_CORRUPTED = "File {} is corrupted. The uncorrupted size is {}.";
   public static final String LOG_FILE_END_CORRUPTED_TRUNCATE =
       "The end of log file {} is corrupted. Start truncate it. The unbroken size is {}. The file size is {}.";
-  public static final String FAIL_TO_TRUNCATE_LOG_FILE =
-      "Fail to truncate log file to size {}";
+  public static final String FAIL_TO_TRUNCATE_LOG_FILE = "Fail to truncate log file to size {}";
 
   // ======================== SchemaRegionPlanDeserializer ========================
 
@@ -555,28 +545,20 @@ public final class DataNodeSchemaMessages {
 
   public static final String TIMESERIES_NUM_UPPER_LIMIT =
       "The number of timeseries has reached the upper limit";
-  public static final String ALIAS_DUPLICATED_DETAIL =
-      ", fullPath: ";
-  public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =
-      ", otherMeasurement: ";
-  public static final String START_CREATE_TABLE_DEVICE =
-      "Start to create table device {}.{}";
-  public static final String TABLE_DEVICE_ALREADY_EXISTS =
-      "Table device {}.{} already exists";
-  public static final String TABLE_DEVICE_CREATED =
-      "Table device {}.{} created";
+  public static final String ALIAS_DUPLICATED_DETAIL = ", fullPath: ";
+  public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT = ", otherMeasurement: ";
+  public static final String START_CREATE_TABLE_DEVICE = "Start to create table device {}.{}";
+  public static final String TABLE_DEVICE_ALREADY_EXISTS = "Table device {}.{} already exists";
+  public static final String TABLE_DEVICE_CREATED = "Table device {}.{} created";
 
   // ======================== CachedMTreeStore / Scheduler ========================
 
-  public static final String MTREE_FLUSH_COST =
-      "It takes {}ms to flush MTree in SchemaRegion {}";
+  public static final String MTREE_FLUSH_COST = "It takes {}ms to flush MTree in SchemaRegion {}";
 
   // ======================== DataNodeTableCache ========================
 
-  public static final String INIT_TABLE_CACHE_SUCCESS =
-      "Init DataNodeTableCache successfully";
-  public static final String PRE_UPDATE_TABLE_SUCCESS =
-      "Pre-update table {}.{} successfully";
+  public static final String INIT_TABLE_CACHE_SUCCESS = "Init DataNodeTableCache successfully";
+  public static final String PRE_UPDATE_TABLE_SUCCESS = "Pre-update table {}.{} successfully";
   public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
       "Pre-rename old table {}.{} successfully";
   public static final String ROLLBACK_UPDATE_TABLE_SUCCESS =
@@ -587,14 +569,18 @@ public final class DataNodeSchemaMessages {
       "Commit-update table {}.{} successfully, {}";
   public static final String COMMIT_UPDATE_TABLE_SUCCESS =
       "Commit-update table {}.{} successfully.";
-  public static final String RENAME_OLD_TABLE_SUCCESS =
-      "Rename old table {}.{} successfully.";
+  public static final String RENAME_OLD_TABLE_SUCCESS = "Rename old table {}.{} successfully.";
+  public static final String COMMIT_DELETE_TABLE_SUCCESS =
+      "commit delete table {}.{} successfully.";
+  public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
+      "Failed to refresh DataNodeTableCache from ConfigNode";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
       "Update table {}.{} by table fetch, {}";
-  public static final String UPDATE_TABLE_BY_FETCH =
-      "Update table {}.{} by table fetch.";
+  public static final String UPDATE_TABLE_BY_FETCH = "Update table {}.{} by table fetch.";
+  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
+      "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
   public static final String COMPARE_TABLE_ADDED = "Added table: ";
   public static final String COMPARE_TABLE_REMOVED = "Removed table: ";
   public static final String COMPARE_TABLE_NAME = "Table name: ";
@@ -603,6 +589,21 @@ public final class DataNodeSchemaMessages {
   public static final String COMPARE_TABLE_REMOVED_COLUMNS = " Removed column(s): ";
   public static final String COMPARE_TABLE_ADDED_COLUMNS = " Added column(s): ";
   public static final String COMPARE_TABLE_NOT_MODIFIED = " Not modified";
+
+  // ======================== MetadataLeaseManager ========================
+
+  public static final String FAILED_TO_SUBMIT_METADATA_PULL_TASK =
+      "Failed to submit metadata pull task.";
+  public static final String UNEXPECTED_METADATA_STATE =
+      "Unexpected metadata state {}, because no other clear-and-pull thread should exist.";
+  public static final String METADATA_LEASE_CACHE_CLEARING_IN_PROGRESS =
+      "Metadata state is {}, another thread may be set the metadata status. Retry later.";
+  public static final String FAILED_TO_CLEAR_METADATA_CACHE = "Failed to clear metadata cache.";
+  public static final String FAILED_TO_MARK_METADATA_STATE_AS_PULLING =
+      "Failed to mark metadata state {} as PULLING because another metadata pull thread is active.";
+  public static final String FAILED_TO_PULL_OR_INIT_METADATA = "Failed to pull or init metadata.";
+  public static final String METADATA_LEASE_IS_FENCED =
+      "Metadata lease is fenced. The local metadata cache is unavailable.";
 
   // ======================== ClusterTemplateManager ========================
 

@@ -174,6 +174,7 @@ public final class ConfigNodeMessages {
       "Execute RestartAINodeRequest {} with result {}";
   public static final String EXECUTE_RESTARTDATANODEREQUEST_WITH_RESULT =
       "Execute RestartDataNodeRequest {} with result {}";
+  public static final String EXECUTE_GET_METADATA_WITH_RESULT = "Execute getMetaDataCache with result {}";
   public static final String EXECUTE_SETDATABASE_WITH_RESULT =
       "Execute SetDatabase: {} with result: {}";
   public static final String FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =

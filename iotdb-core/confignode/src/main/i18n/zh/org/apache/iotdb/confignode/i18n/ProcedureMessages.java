@@ -435,6 +435,7 @@ public final class ProcedureMessages {
       "对表 {}.{} 在 DataNode 上预释放 {} 失败，失败结果：{}";
   public static final String FAILED_TO_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
       "在路径 {} 上预设置模板 {} 失败，原因：{}";
+  public static final String FAILED_TO_PROVE_DN_IS_FENCED = "不能证明一个不可达的DN已经处于隔离状态";
   public static final String FAILED_TO_PUSH_CONSUMER_GROUP_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 consumer group 元数据失败，详情：%s";
   public static final String FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL =
@@ -476,6 +477,8 @@ public final class ProcedureMessages {
       "在 DataNode 上回滚 pipe plugin [%s] 失败";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "回滚对表 {}.{} 在 DataNode 上预释放 {} 的信息失败，失败结果：{}";
+  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED =
+      "不能认定一个不可达的datanode处于隔离状态";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
       "回滚 DataNode {} 上路径 {} 处模板 {} 的预释放模板信息失败";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
@@ -574,14 +577,12 @@ public final class ProcedureMessages {
       "使视图 schemaengine 缓存失效失败";
   public static final String INVALIDATING_CACHE_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "删除列时正在使表 {}.{} 中的列 {} 缓存失效";
-  public static final String INVALIDATING_CACHE_FOR_TABLE_WHEN_DROPPING_TABLE =
-      "删除表时正在使表 {}.{} 缓存失效";
-  public static final String INVALID_DATA_TYPE_CANNOT_BE_USED_AS_A_NEW_TYPE =
-      "无效的数据类型不能作为新类型使用";
-  public static final String IO_ERROR_WHEN_DESERIALIZE_AUTHPLAN =
-      "反序列化 authplan 时发生 IO 错误。";
-  public static final String IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN =
-      "反序列化 setTTL plan 时发生 IO 错误。";
+  public static final String PRE_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE = "执行表删除操作流程时，预删除表 {}.{}";
+  public static final String COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE =
+      "执行删除表操作流程时，正式删除表 {}.{}";
+  public static final String INVALID_DATA_TYPE_CANNOT_BE_USED_AS_A_NEW_TYPE = "无效的数据类型不能作为新类型使用";
+  public static final String IO_ERROR_WHEN_DESERIALIZE_AUTHPLAN = "反序列化 authplan 时发生 IO 错误。";
+  public static final String IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN = "反序列化 setTTL plan 时发生 IO 错误。";
   public static final String NO_AVAILABLE_DATANODE_TO_ASSIGN_TASKS = "没有可用的 DataNode 分配任务";
   public static final String NO_DATABASE_LOST_DATA_PARTITION_TABLE_FOR_CONSENSUS_WRITE =
       "没有数据库丢失用于共识写入的数据分区表";
@@ -844,8 +845,8 @@ public final class ProcedureMessages {
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "回滚创建表失败";
   public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_RELEASE = "回滚预释放 ";
-  public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED =
-      "回滚预释放模板失败";
+  public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED = "回滚预删除表 %s.%s 操作失败, 请手动输入sql删除";
+  public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED = "回滚预释放模板失败";
   public static final String ROLLBACK_RENAMETABLECOLUMN_COSTS_MS =
       "Rollback RenameTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_RENAMETABLE_COSTS_MS = "Rollback RenameTable-{} costs {}ms.";

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -395,7 +396,8 @@ public interface IConfigTaskExecutor {
       final Predicate<TTableInfo> checkCanShowTable,
       final boolean isDetails);
 
-  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+  TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final TableNodeStatus tableNodeStatus);
 
   SettableFuture<ConfigTaskResult> alterTableRenameTable(
       final String database,

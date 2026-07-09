@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -36,6 +37,8 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -47,6 +50,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSessionsNumInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -67,6 +71,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SchemaUtils {
@@ -247,12 +252,12 @@ public class SchemaUtils {
     }
   }
 
-  public static Map<Integer, TSStatus> preReleaseTable(
+  /** Build the PRE_UPDATE_TABLE request used to pre-release a table change to DataNodes. */
+  public static TUpdateTableReq buildPreUpdateTableReq(
       final String database,
       final @Nullable String originalDatabase,
       final TsTable table,
       final @Nullable TsTable originalTable,
-      final ConfigManager configManager,
       final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
@@ -263,15 +268,40 @@ public class SchemaUtils {
           TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(
               originalDatabase, originalTable));
     }
+    return req;
+  }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
+  private static Map<Integer, TSStatus> failedOnly(final Map<Integer, TSStatus> responses) {
+    return responses.entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  /**
+   * Broadcast a table update to exactly {@code targets} and return the full per-nodeId response map
+   * (both successes and failures). Used by {@link
+   * org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator}, which needs to know which
+   * DataNodes acknowledged in order to decide whether it is safe to proceed past the rest.
+   */
+  public static Map<Integer, TSStatus> broadcastTableUpdate(
+      final TUpdateTableReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TABLE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
+  }
+
+  public static Map<Integer, TDataNodeLocation> filterFencedDataNode(
+      final ConfigManager configManager) {
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
+        .filter(
+            entry ->
+                configManager.getLoadManager().getNodeStatus(entry.getKey()) != NodeStatus.Unknown
+                    || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey()))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
@@ -305,23 +335,25 @@ public class SchemaUtils {
       req.setOriginalInfo(outputStream.toByteArray());
     }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+            CnToDnAsyncRequestType.UPDATE_TABLE, req, filterFencedDataNode(configManager));
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     return clientHandler.getResponseMap().entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> rollbackPreRelease(
+  /** Build the ROLLBACK_UPDATE_TABLE request used to roll back a pre-released table change. */
+  public static TUpdateTableReq rollbackUpdateTableReq(
       final String database,
       final String tableName,
       final @Nullable String originalDatabase,
       final @Nullable String originalTableName,
-      final ConfigManager configManager,
       final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
@@ -334,7 +366,6 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
-
     if (Objects.nonNull(originalTableName)) {
       outputStream.reset();
       try {
@@ -346,15 +377,82 @@ public class SchemaUtils {
       req.setOriginalInfo(outputStream.toByteArray());
     }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    return req;
+  }
+
+  public static Map<Integer, TSStatus> rollbackPreRelease(
+      final String database,
+      final String tableName,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
+    return failedOnly(
+        broadcastTableUpdate(
+            rollbackUpdateTableReq(
+                database, tableName, originalDatabase, originalTableName, oldName),
+            filterFencedDataNode(configManager)));
+  }
+
+  /**
+   * Broadcast an INVALIDATE_MATCHED_SCHEMA_CACHE to all DataNodes through {@link
+   * ClusterCachePropagator}: proceed once every unreachable DataNode is provably self-fenced (it
+   * fails closed on its schema cache and resyncs on recovery, so it cannot serve the
+   * deleted/altered series), instead of hard-failing on the first unreachable DataNode. Returns
+   * whether it is safe to proceed; the caller maps {@code false} to its own failure.
+   *
+   * <p>The propagator may re-broadcast while waiting for unacked DataNodes, so a fresh request with
+   * a duplicated buffer is built on each attempt — a consumed buffer can never be re-sent as an
+   * empty (and silently-successful) invalidation.
+   */
+  public static boolean invalidateMatchedSchemaCache(
+      final ConfigManager configManager,
+      final ByteBuffer patternTreeBytes,
+      final boolean needLock) {
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
+        .propagate(
+            targets -> {
+              final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
+                  clientHandler =
+                      new DataNodeAsyncRequestContext<>(
+                          CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+                          new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
+                              .setNeedLock(needLock),
+                          targets);
+              CnToDnInternalServiceAsyncRequestManager.getInstance()
+                  .sendAsyncRequest(
+                      clientHandler,
+                      ClusterCachePropagator.BROADCAST_RPC_RETRY,
+                      ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+              return clientHandler.getResponseMap();
+            });
+  }
+
+  /**
+   * Broadcast an UPDATE_TEMPLATE to all DataNodes through {@link ClusterCachePropagator}: proceed
+   * once every unreachable DataNode is provably self-fenced (it fails closed on its template cache
+   * and resyncs on recovery), instead of hard-failing on the first unreachable DataNode. Returns
+   * whether it is safe to proceed.
+   *
+   * <p>The request is rebuilt from {@code requestSupplier} on every attempt: the propagator may
+   * re-broadcast while waiting, and {@code TUpdateTemplateReq}'s binary field is backed by a {@link
+   * ByteBuffer}, so reusing one request could re-send a consumed (empty) payload.
+   */
+  public static boolean broadcastTemplateUpdate(
+      final ConfigManager configManager, final Supplier<TUpdateTemplateReq> requestSupplier) {
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
+        .propagate(
+            targets -> {
+              final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+                  new DataNodeAsyncRequestContext<>(
+                      CnToDnAsyncRequestType.UPDATE_TEMPLATE, requestSupplier.get(), targets);
+              CnToDnInternalServiceAsyncRequestManager.getInstance()
+                  .sendAsyncRequest(
+                      clientHandler,
+                      ClusterCachePropagator.BROADCAST_RPC_RETRY,
+                      ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+              return clientHandler.getResponseMap();
+            });
   }
 
   public static TSStatus executeInConsensusLayer(

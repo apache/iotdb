@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
@@ -152,22 +154,24 @@ public class CreateTableProcedure
   }
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(
-            database,
-            getOriginalDatabase(),
-            table,
-            getOriginalTable(),
-            env.getConfigManager(),
-            null);
+    // Broadcast the pre-update to all DataNodes. Instead of failing whenever any DataNode is
+    // unreachable, proceed once every unacked DataNode is provably self-fenced: such a DataNode
+    // fails closed on its (now-stale) table cache and resyncs on lease recovery, so it cannot serve
+    // dirty schema. Only fail if an unacked DataNode is not provably fenced (it may still be
+    // serving clients).
+    final TUpdateTableReq req =
+        SchemaUtils.buildPreUpdateTableReq(
+            database, getOriginalDatabase(), table, getOriginalTable(), null);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(new MetadataException(ProcedureMessages.PRE_CREATE_TABLE_FAILED)));
       return;
@@ -270,23 +274,25 @@ public class CreateTableProcedure
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    // A down DataNode must not block rollback if it is already provably self-fenced.
     final TsTable originalTable = getOriginalTable();
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(
+    final TUpdateTableReq req =
+        SchemaUtils.rollbackUpdateTableReq(
             database,
             table.getTableName(),
             getOriginalDatabase(),
             Objects.nonNull(originalTable) ? originalTable.getTableName() : null,
-            env.getConfigManager(),
             null);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_SYNC_TABLE_ROLLBACK_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
               new MetadataException(ProcedureMessages.ROLLBACK_CREATE_TABLE_FAILED)));

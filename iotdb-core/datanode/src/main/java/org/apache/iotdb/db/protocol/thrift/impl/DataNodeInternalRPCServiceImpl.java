@@ -211,6 +211,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -2934,10 +2935,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       if (!req.isSetOriginalDatabase() || !req.isSetOriginalTableName()) {
         TableDeviceSchemaCache.getInstance()
-            .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
+            .invalidateAndPreDelete(
+                PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       } else {
         TableDeviceSchemaCache.getInstance()
-            .invalidate(
+            .invalidateAndPreDelete(
                 PathUtils.unQualifyDatabaseName(req.getDatabase()),
                 req.getTableName(),
                 PathUtils.unQualifyDatabaseName(req.getOriginalDatabase()),
@@ -3341,6 +3343,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req) throws TException {
     TDataNodeHeartbeatResp resp = new TDataNodeHeartbeatResp();
+
+    // Renew the metadata lease: receiving a ConfigNode heartbeat means this DataNode is still in
+    // contact with the cluster and may keep trusting its ConfigNode-pushed metadata caches.
+    MetadataLeaseManager.getInstance().triggerCheckWithHeartBeat();
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {

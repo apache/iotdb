@@ -111,6 +111,9 @@ public class DataNodeMetricsHelper {
     // bind memory related metrics
     metricService.addMetricSet(GlobalMemoryMetrics.getInstance());
 
+    // bind metadata lease (ConfigNode heartbeat freshness) metrics
+    metricService.addMetricSet(new MetadataLeaseMetrics());
+
     // bind async batch write related metrics
     metricService.addMetricSet(AsyncBatchMetrics.getInstance());
   }

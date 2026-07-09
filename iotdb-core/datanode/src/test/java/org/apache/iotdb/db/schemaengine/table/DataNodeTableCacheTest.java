@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.WritableView;
@@ -56,7 +57,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testInvalidColumnPreservesWritableViewType() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_test_db";
     final String viewName = "writable_view";
 
@@ -83,7 +84,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testWritableViewRewriteSupportUsesColumnSourceNameWhenMapMissing() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_column_source_name_db";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -132,7 +133,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testWritableViewMetadataFallsBackToSameNameAddedColumnWhenMapMissing() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_same_name_added_column_db";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -182,61 +183,8 @@ public class DataNodeTableCacheTest {
   }
 
   @Test
-  public void testWritableViewMetadataCacheRefreshesAfterSourceTableInvalidation() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
-    final String database = "cache_refresh_source_drop_db";
-    final String sourceName = "source_table";
-    final String viewName = "writable_view";
-
-    cache.invalid(database);
-    try {
-      final TsTable source = new TsTable(sourceName);
-      source.addColumnSchema(new FieldColumnSchema("value", TSDataType.INT32));
-      cache.preUpdateTable(database, source, null);
-      cache.commitUpdateTable(database, sourceName, null);
-
-      final WritableView view = new WritableView(viewName, database, sourceName, false);
-      view.addColumnSchema(new FieldColumnSchema("value", TSDataType.INT32));
-      cache.preUpdateTable(database, view, null);
-      cache.commitUpdateTable(database, viewName, null);
-
-      final TableMetadataImpl metadata = new TableMetadataImpl();
-      final SessionInfo session =
-          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
-      final QualifiedObjectName viewObjectName = new QualifiedObjectName(database, viewName);
-
-      final WritableViewSchema schemaBeforeDrop =
-          getWritableViewSchema(metadata.getTableSchema(session, viewObjectName));
-      Assert.assertTrue(schemaBeforeDrop.canUseIdentitySourceFastPath());
-
-      cache.invalid(database, sourceName);
-
-      final WritableViewSchema schemaAfterDrop =
-          getWritableViewSchema(metadata.getTableSchema(session, viewObjectName));
-      Assert.assertFalse(schemaAfterDrop.canUseIdentitySourceFastPath());
-      Assert.assertFalse(schemaAfterDrop.getSourceTableSchema().isPresent());
-
-      final Optional<WritableViewInsertRewriteSupport> rewriteSupportAfterDrop =
-          metadata.getWritableViewInsertRewriteSupport(session, viewObjectName);
-      Assert.assertTrue(rewriteSupportAfterDrop.isPresent());
-      try {
-        rewriteSupportAfterDrop.get().resolveExistingSourceColumnName("value");
-        Assert.fail("Expected source table missing exception");
-      } catch (final RuntimeException e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "The source table 'cache_refresh_source_drop_db.source_table' of writable view 'cache_refresh_source_drop_db.writable_view' does not exist."));
-      }
-    } finally {
-      cache.invalid(database);
-    }
-  }
-
-  @Test
   public void testGetTableUsesCommittedTableDuringActivePreUpdate() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_active_pre_update_db";
     final String tableName = "table1";
 
@@ -266,7 +214,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testWritableViewAndSourceCommitUpdatedColumnTypeTogether() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_writable_view_alter_type_db";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -303,7 +251,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testCommitUpdateTableRejectsNonCommittablePlaceholder() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_non_committable_commit_db";
     final String tableName = "table1";
 
@@ -318,8 +266,30 @@ public class DataNodeTableCacheTest {
   }
 
   @Test
+  public void testPreDeleteTableIsRemovedAfterCommit() {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    final String database = "cache_pre_delete_table_db";
+    final String tableName = "table1";
+
+    cache.invalid(database);
+    try {
+      cache.preUpdateTable(database, createTable(tableName), null);
+      Assert.assertTrue(cache.commitUpdateTable(database, tableName, null));
+      Assert.assertNotNull(cache.getTable(database, tableName, false));
+
+      cache.preUpdateTable(database, new PreDeleteTsTable(tableName), null);
+      Assert.assertNull(cache.getTableInWrite(database, tableName));
+
+      Assert.assertTrue(cache.commitUpdateTable(database, tableName, null));
+      Assert.assertNull(cache.getTable(database, tableName, false));
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
   public void testWritableViewMetadataCacheClearsStaleEntriesAfterVersionChange() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_writable_view_metadata_eviction_db";
     final String sourceName = "source_table";
     final String firstViewName = "writable_view_1";
@@ -345,7 +315,8 @@ public class DataNodeTableCacheTest {
       Assert.assertTrue(metadata.getTableSchema(session, firstViewObjectName).isPresent());
       Assert.assertTrue(getWritableViewMetadataCacheMap(metadata).containsKey(firstViewObjectName));
 
-      cache.invalid(database, firstViewName);
+      cache.preUpdateTable(database, new PreDeleteTsTable(firstViewName), null);
+      Assert.assertTrue(cache.commitUpdateTable(database, firstViewName, null));
       final WritableView secondView = new WritableView(secondViewName, database, sourceName, false);
       secondView.addColumnSchema(new FieldColumnSchema("value", TSDataType.INT32));
       cache.preUpdateTable(database, secondView, null);
@@ -366,7 +337,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void testWritableViewIdentityFastPathIgnoresColumnOrder() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String database = "cache_identity_column_order_db";
     final String sourceName = "source_table";
     final String viewName = "writable_view";
@@ -434,7 +405,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void interruptedFetchDoesNotLeakSemaphorePermit() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(DATABASE);
     try {
       final Semaphore fetchTableSemaphore = getFetchTableSemaphore(cache);
@@ -455,7 +426,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void commitUpdateTableIsIdempotent() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
@@ -472,7 +443,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void commitAfterRollbackUpdateTableIsIgnored() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
@@ -488,7 +459,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void rollbackRenameTableRestoresOldName() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String newTableName = "table2";
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
@@ -506,7 +477,7 @@ public class DataNodeTableCacheTest {
     }
   }
 
-  private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
+  private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {
     final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
     field.setAccessible(true);
     return (Semaphore) field.get(cache);

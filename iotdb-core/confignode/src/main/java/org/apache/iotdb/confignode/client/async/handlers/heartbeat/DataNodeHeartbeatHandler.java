@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
@@ -93,6 +94,11 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   }
 
   private void cacheNodeHeartbeatSample(TDataNodeHeartbeatResp heartbeatResp) {
+    // A successful response confirms ConfigNode->DataNode contact; stamp it on the ConfigNode clock
+    // for the metadata-lease verdict. Kept separate from the load-cache samples (which record the
+    // echoed send-time) and deliberately not touched in onError, so failures never advance it.
+    final DataNodeContactTracker contactTracker = DataNodeContactTracker.getInstance();
+    contactTracker.recordSuccessfulResponse(nodeId);
     loadManager
         .getLoadCache()
         .cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp));

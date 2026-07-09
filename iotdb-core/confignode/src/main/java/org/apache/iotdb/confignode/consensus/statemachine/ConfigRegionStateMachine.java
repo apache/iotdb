@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
@@ -304,6 +305,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
+
+    // Reset every DataNode's last-contact time to now on (re)acquiring leadership: a stale
+    // timestamp
+    // left from a previous leadership term (while another ConfigNode was contacting the DataNodes)
+    // would otherwise let the metadata-broadcast verdict wrongly judge a live DataNode as fenced.
+    DataNodeContactTracker.getInstance()
+        .onLeadershipAcquired(
+            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet());
+
     // Bump the epoch eagerly so that any in-flight services of an older epoch are invalidated
     // immediately, even before the (serialized) become-leader orchestration gets to run.
     final long epoch = nextLeaderServicesEpoch();

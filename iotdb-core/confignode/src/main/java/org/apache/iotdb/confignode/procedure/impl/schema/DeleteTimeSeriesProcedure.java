@@ -135,12 +135,16 @@ public class DeleteTimeSeriesProcedure
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
-          SchemaUtils.invalidateCache(
-              env,
-              expandedPatternTreeForDeletion.serialize(),
-              requestMessage,
-              this::setFailure,
-              true);
+          if (!SchemaUtils.invalidateMatchedSchemaCache(
+              env.getConfigManager(), expandedPatternTreeForDeletion.serialize(), true)) {
+            LOGGER.warn(
+                ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES,
+                requestMessage);
+            setFailure(
+                new ProcedureException(
+                    new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
