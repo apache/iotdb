@@ -275,6 +275,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
+    // used for retry
+    queryStatement.setWhereConditionBackToOriginal();
+
     Analysis analysis = new Analysis();
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
 
@@ -524,6 +527,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       WhereCondition whereCondition = queryStatement.getWhereCondition();
       Expression predicate = whereCondition.getPredicate();
 
+      WhereCondition originalWhereCondition = new WhereCondition(predicate);
+
       Pair<Expression, Boolean> resultPair =
           PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
       globalTimePredicate = resultPair.left;
@@ -540,6 +545,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         whereCondition.setPredicate(predicate);
       }
+
+      queryStatement.setOriginalWhereCondition(originalWhereCondition);
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
     analysis.setHasValueFilter(hasValueFilter);
