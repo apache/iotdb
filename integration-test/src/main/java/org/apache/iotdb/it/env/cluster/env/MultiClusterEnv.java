@@ -32,9 +32,31 @@ public class MultiClusterEnv extends AbstractEnv {
       final long startTime,
       final int index,
       final String currentMethodName,
-      boolean isExternalServiceRelatedTest) {
+      final boolean isExternalServiceRelatedTest) {
+    this(startTime, index, null, currentMethodName, isExternalServiceRelatedTest);
+  }
+
+  public MultiClusterEnv(final long startTime, final int index, final String currentMethodName) {
+    this(startTime, index, null, currentMethodName, false);
+  }
+
+  public MultiClusterEnv(
+      final long startTime,
+      final int index,
+      final String currentClassName,
+      final String currentMethodName) {
+    this(startTime, index, currentClassName, currentMethodName, false);
+  }
+
+  public MultiClusterEnv(
+      final long startTime,
+      final int index,
+      final String currentClassName,
+      final String currentMethodName,
+      final boolean isExternalServiceRelatedTest) {
     super(startTime);
     this.index = index;
+    setTestClassName(currentClassName);
     this.testMethodName = currentMethodName;
     this.isExternalServiceRelatedTest = isExternalServiceRelatedTest;
   }

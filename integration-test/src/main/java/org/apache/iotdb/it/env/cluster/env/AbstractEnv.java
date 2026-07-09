@@ -106,6 +106,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   protected List<AbstractNodeWrapper> extraNodeWrappers = Collections.emptyList();
+  protected String testClassName = null;
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -336,6 +337,9 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public String getTestClassName() {
+    if (testClassName != null) {
+      return testClassName;
+    }
     final StackTraceElement[] stack = Thread.currentThread().getStackTrace();
     for (final StackTraceElement stackTraceElement : stack) {
       final String className = stackTraceElement.getClassName();
@@ -1316,6 +1320,17 @@ public abstract class AbstractEnv implements BaseEnv {
 
   public String getTestMethodName() {
     return testMethodName;
+  }
+
+  @Override
+  public void setTestClassName(final String testClassName) {
+    if (testClassName == null || testClassName.isEmpty()) {
+      this.testClassName = null;
+      return;
+    }
+    final int lastDotIndex = testClassName.lastIndexOf(".");
+    this.testClassName =
+        lastDotIndex >= 0 ? testClassName.substring(lastDotIndex + 1) : testClassName;
   }
 
   @Override
