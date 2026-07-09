@@ -1101,7 +1101,7 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
-  private long regionMigrationFileRemoveSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
+  private long regionMigrationFileRemoveSpeedLimitBytesPerSecond = 16 * 1024 * 1024L;
   // Throttle the per-file snapshot-transmission progress log in IoTConsensus to at most once per
   // this interval (ms). A value <= 0 logs every file.
   private long dataRegionIotSnapshotTransmissionProgressLogIntervalMs = 5000L;

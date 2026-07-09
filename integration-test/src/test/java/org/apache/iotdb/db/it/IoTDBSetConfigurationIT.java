@@ -193,13 +193,13 @@ public class IoTDBSetConfigurationIT {
     } finally {
       try (Connection connection = EnvFactory.getEnv().getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("set configuration \"" + key + "\"=\"50331648\" on " + dataNodeId);
+        statement.execute("set configuration \"" + key + "\"=\"16777216\" on " + dataNodeId);
       } catch (Exception e) {
         Assert.fail(e.getMessage());
       }
     }
     Assert.assertTrue(
-        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=50331648"));
+        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=16777216"));
   }
 
   @Test
