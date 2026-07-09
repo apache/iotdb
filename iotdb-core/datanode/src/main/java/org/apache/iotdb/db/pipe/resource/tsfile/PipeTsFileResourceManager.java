@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -60,7 +61,7 @@ public class PipeTsFileResourceManager {
   private final Map<String, String> pipeNameToPipeTsFileDirPathMap = new ConcurrentHashMap<>();
   private final Set<String> pipeNameSetUnderDeletion = ConcurrentHashMap.newKeySet();
   private final ExecutorService pipeTsFileDirCleanupExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor("Pipe-TsFile-Dir-Cleanup");
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.PIPE_TSFILE_DIR_CLEANUP.getName());
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
   public static String getPipeTsFileResourcePipeName(
