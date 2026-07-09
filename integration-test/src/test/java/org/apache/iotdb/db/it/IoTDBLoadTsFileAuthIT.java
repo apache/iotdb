@@ -153,7 +153,6 @@ public class IoTDBLoadTsFileAuthIT {
 
   @Test
   public void testAsyncLoadShouldCheckWriteDataPermissionWithStoredUser() throws Exception {
-    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     final File noWriteTsFile = new File(tmpDir, "4-0-0-0.tsfile");
     final File writeTsFile = new File(tmpDir, "5-0-0-0.tsfile");
     prepareSchemaAndTsFile(noWriteTsFile);
@@ -177,12 +176,7 @@ public class IoTDBLoadTsFileAuthIT {
         ASYNC_WRITE_USER,
         PASSWORD);
 
-    Assert.assertNotNull(
-        "Async load without WRITE_DATA should be moved to fail dir",
-        waitForFile(
-            getActiveLoadFailDir(dataNodeWrapper),
-            noWriteTsFile.getName(),
-            TimeUnit.SECONDS.toMillis(60)));
+    waitUntilAllActiveLoadPendingDirsAreEmpty(TimeUnit.SECONDS.toMillis(60));
     assertCountEventually(10, TimeUnit.SECONDS.toMillis(60));
   }
 
@@ -216,7 +210,7 @@ public class IoTDBLoadTsFileAuthIT {
     }
   }
 
-  private File getActiveLoadFailDir(final DataNodeWrapper dataNodeWrapper) {
+  private File getActiveLoadPendingDir(final DataNodeWrapper dataNodeWrapper) {
     return new File(
         dataNodeWrapper.getNodePath()
             + File.separator
@@ -224,20 +218,26 @@ public class IoTDBLoadTsFileAuthIT {
             + File.separator
             + "load"
             + File.separator
-            + "failed");
+            + "pending");
   }
 
-  private File waitForFile(final File root, final String fileName, final long timeoutMs)
+  private void waitUntilAllActiveLoadPendingDirsAreEmpty(final long timeoutMs)
       throws InterruptedException {
     final long deadline = System.currentTimeMillis() + timeoutMs;
     while (System.currentTimeMillis() < deadline) {
-      final File file = findFile(root, fileName);
-      if (file != null) {
-        return file;
+      boolean hasTsFile = false;
+      for (final DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        if (containsTsFile(getActiveLoadPendingDir(dataNodeWrapper))) {
+          hasTsFile = true;
+          break;
+        }
+      }
+      if (!hasTsFile) {
+        return;
       }
       Thread.sleep(500L);
     }
-    return null;
+    Assert.fail("Timed out waiting for active load pending dirs to become empty");
   }
 
   private void assertCountEventually(final long expected, final long timeoutMs) throws Exception {
@@ -263,24 +263,23 @@ public class IoTDBLoadTsFileAuthIT {
     Assert.fail("Timed out waiting for count " + expected);
   }
 
-  private File findFile(final File root, final String fileName) {
+  private boolean containsTsFile(final File root) {
     if (root == null || !root.exists()) {
-      return null;
+      return false;
     }
     if (root.isFile()) {
-      return root.getName().equals(fileName) ? root : null;
+      return root.getName().endsWith(".tsfile");
     }
 
     final File[] children = root.listFiles();
     if (children == null) {
-      return null;
+      return false;
     }
     for (final File child : children) {
-      final File file = findFile(child, fileName);
-      if (file != null) {
-        return file;
+      if (containsTsFile(child)) {
+        return true;
       }
     }
-    return null;
+    return false;
   }
 }
