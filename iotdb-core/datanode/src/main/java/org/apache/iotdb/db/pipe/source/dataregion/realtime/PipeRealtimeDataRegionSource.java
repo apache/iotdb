@@ -380,7 +380,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
         break;
       }
-      pendingQueue.pollLast();
+      final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
+      if (droppedEvent != null) {
+        droppedEvent.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+      }
     }
     final Event last = pendingQueue.peekLast();
     if (last instanceof PipeRealtimeEvent
@@ -391,6 +394,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
       return;
     }
     pendingQueue.offer(event);
