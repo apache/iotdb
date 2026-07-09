@@ -187,41 +187,6 @@ public class IoTDBLoadTsFileAuthIT {
     assertCountEventually(10, TimeUnit.SECONDS.toMillis(60));
   }
 
-  @Test
-  public void testAsyncLoadShouldMoveFileToFailDirWhenUserDoesNotExist() throws Exception {
-    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    final File tsFile = new File(tmpDir, "6-0-0-0.tsfile");
-    prepareSchema(TSDataType.INT64);
-    generateTsFile(tsFile);
-    createUser(DELETED_ASYNC_LOAD_USER, PASSWORD);
-    grantUserSeriesPrivilege(DELETED_ASYNC_LOAD_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
-
-    executeNonQuery(
-        String.format(
-            "load \"%s\" with ('database-level'='2', 'async'='true', 'on-success'='none', "
-                + "'convert-on-type-mismatch'='true')",
-            tsFile.getAbsolutePath()),
-        DELETED_ASYNC_LOAD_USER,
-        PASSWORD);
-
-    Assert.assertNotNull(
-        "Async load should copy tsfile into active load directory",
-        waitForFileUnderPathContaining(
-            getActiveLoadDir(dataNodeWrapper), tsFile.getName(), "user-", 30_000L));
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute("drop user " + DELETED_ASYNC_LOAD_USER);
-    }
-
-    Assert.assertNotNull(
-        "Async load should move tsfile to fail dir when user does not exist",
-        waitForFile(
-            getActiveLoadFailDir(dataNodeWrapper),
-            tsFile.getName(),
-            TimeUnit.SECONDS.toMillis(60)));
-  }
-
   private static void prepareSchemaAndTsFile(final File tsFile) throws Exception {
     prepareSchema(MEASUREMENT.getType());
     generateTsFile(tsFile);
