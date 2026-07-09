@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -35,6 +36,35 @@ import java.util.Properties;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
+  @Test
+  public void testHotReloadRegionMigrationFileRemoveSpeedLimit() throws Exception {
+    IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    long originalLimit =
+        descriptor.getConfig().getRegionMigrationFileRemoveSpeedLimitBytesPerSecond();
+    try {
+      TrimProperties properties = new TrimProperties();
+      properties.setProperty("region_migration_file_remove_speed_limit_bytes_per_second", "65536");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          65536, descriptor.getConfig().getRegionMigrationFileRemoveSpeedLimitBytesPerSecond());
+      Assert.assertEquals(
+          65536.0, RegionMigrationFileRemoveRateLimiter.getInstance().getRate(), 0.0);
+
+      properties.setProperty("region_migration_file_remove_speed_limit_bytes_per_second", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          0, descriptor.getConfig().getRegionMigrationFileRemoveSpeedLimitBytesPerSecond());
+      Assert.assertEquals(
+          Double.MAX_VALUE, RegionMigrationFileRemoveRateLimiter.getInstance().getRate(), 0.0);
+    } finally {
+      TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "region_migration_file_remove_speed_limit_bytes_per_second",
+          Long.toString(originalLimit));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
   @Test
   public void PropertiesWithSpace() {
     IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();

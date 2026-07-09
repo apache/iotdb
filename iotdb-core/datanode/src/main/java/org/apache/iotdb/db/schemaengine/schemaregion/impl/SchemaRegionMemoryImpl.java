@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -508,7 +509,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());

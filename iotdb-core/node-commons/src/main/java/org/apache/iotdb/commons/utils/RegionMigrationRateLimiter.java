@@ -17,32 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.iot.snapshot;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
+import com.google.common.util.concurrent.RateLimiter;
 
-public class IoTConsensusRateLimiter {
+public class RegionMigrationRateLimiter {
 
-  private final RegionMigrationRateLimiter rateLimiter = RegionMigrationRateLimiter.getInstance();
+  private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  private IoTConsensusRateLimiter() {}
+  private RegionMigrationRateLimiter() {}
 
   public void init(long regionMigrationSpeedLimitBytesPerSecond) {
-    rateLimiter.init(regionMigrationSpeedLimitBytesPerSecond);
+    rateLimiter.setRate(
+        regionMigrationSpeedLimitBytesPerSecond <= 0
+            ? Double.MAX_VALUE
+            : regionMigrationSpeedLimitBytesPerSecond);
   }
 
-  /**
-   * Acquire the size of the data to be sent.
-   *
-   * @param transitDataSize the size of the data to be sent
-   */
-  public void acquireTransitDataSizeWithRateLimiter(long transitDataSize) {
-    rateLimiter.acquire(transitDataSize);
+  public void acquire(long sizeInBytes) {
+    while (sizeInBytes > 0) {
+      if (sizeInBytes > Integer.MAX_VALUE) {
+        rateLimiter.acquire(Integer.MAX_VALUE);
+        sizeInBytes -= Integer.MAX_VALUE;
+      } else {
+        rateLimiter.acquire((int) sizeInBytes);
+        return;
+      }
+    }
   }
 
-  private static final IoTConsensusRateLimiter INSTANCE = new IoTConsensusRateLimiter();
+  private static final RegionMigrationRateLimiter INSTANCE = new RegionMigrationRateLimiter();
 
-  public static IoTConsensusRateLimiter getInstance() {
+  public static RegionMigrationRateLimiter getInstance() {
     return INSTANCE;
   }
 }

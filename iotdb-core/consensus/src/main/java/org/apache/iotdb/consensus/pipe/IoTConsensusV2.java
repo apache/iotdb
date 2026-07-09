@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -323,7 +324,9 @@ public class IoTConsensusV2 implements IConsensus {
         consensus.clear();
         stateMachineMap.remove(groupId);
 
-        FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
+        FileUtils.deleteFileOrDirectoryWithRateLimiter(
+            new File(getPeerDir(groupId)),
+            RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
         KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
         LOGGER.info(IoTConsensusV2Messages.FINISH_DELETE_LOCAL_PEER, CLASS_NAME, groupId);
       } finally {

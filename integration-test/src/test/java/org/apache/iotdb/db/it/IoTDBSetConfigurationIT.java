@@ -179,6 +179,30 @@ public class IoTDBSetConfigurationIT {
   }
 
   @Test
+  public void testHotReloadRegionMigrationFileRemoveSpeedLimit() {
+    String key = "region_migration_file_remove_speed_limit_bytes_per_second";
+    int dataNodeId = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"" + key + "\"=\"65536\" on " + dataNodeId);
+      assertAppliedConfiguration(dataNodeId, key, "65536");
+      Assert.assertTrue(
+          checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=65536"));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"" + key + "\"=\"16777216\" on " + dataNodeId);
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=16777216"));
+  }
+
+  @Test
   public void testHotReloadContinuousQueryMinEveryInterval() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

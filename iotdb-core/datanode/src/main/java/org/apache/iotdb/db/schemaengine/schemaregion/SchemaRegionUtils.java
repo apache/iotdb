@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
+import java.util.function.LongConsumer;
 
 public class SchemaRegionUtils {
 
@@ -37,6 +39,12 @@ public class SchemaRegionUtils {
   }
 
   public static void deleteSchemaRegionFolder(String schemaRegionDirPath, Logger logger)
+      throws MetadataException {
+    deleteSchemaRegionFolder(schemaRegionDirPath, logger, null);
+  }
+
+  public static void deleteSchemaRegionFolder(
+      String schemaRegionDirPath, Logger logger, LongConsumer deleteRateLimiter)
       throws MetadataException {
     File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     File[] sgFiles = schemaRegionDir.listFiles();
@@ -47,6 +55,9 @@ public class SchemaRegionUtils {
     }
     for (File file : sgFiles) {
       try {
+        if (deleteRateLimiter != null) {
+          deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(file));
+        }
         Files.delete(file.toPath());
         logger.info(DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE, file.getAbsolutePath());
       } catch (IOException e) {
@@ -60,6 +71,9 @@ public class SchemaRegionUtils {
     }
 
     try {
+      if (deleteRateLimiter != null) {
+        deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(schemaRegionDir));
+      }
       Files.delete(schemaRegionDir.toPath());
       logger.info(
           DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER, schemaRegionDir.getAbsolutePath());
