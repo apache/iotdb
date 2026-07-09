@@ -86,6 +86,10 @@ public class QueryStatement extends AuthorityInformationStatement {
   private SelectComponent selectComponent;
   private FromComponent fromComponent;
   private WhereCondition whereCondition;
+
+  // used for retry
+  private WhereCondition originalWhereCondition;
+
   private HavingCondition havingCondition;
 
   // row limit for result set. The default value is 0, which means no limit
@@ -256,6 +260,16 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   public void setWhereCondition(WhereCondition whereCondition) {
     this.whereCondition = whereCondition;
+  }
+
+  public void setWhereConditionBackToOriginal() {
+    if (originalWhereCondition != null) {
+      this.whereCondition = originalWhereCondition;
+    }
+  }
+
+  public void setOriginalWhereCondition(WhereCondition originalWhereCondition) {
+    this.originalWhereCondition = originalWhereCondition;
   }
 
   public boolean hasHaving() {
