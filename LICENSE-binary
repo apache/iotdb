@@ -216,7 +216,6 @@ following license. See licenses/ for text of these licenses.
 Apache License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.5.0
-org.apache.commons:commons-math3:3.5
 com.google.code.gson:gson:2.13.1
 com.google.guava.guava:32.1.2-jre
 com.fasterxml.jackson.core:jackson-annotations:2.16.2
@@ -274,8 +273,6 @@ org.jline:jline:3.26.2
 
 BSD 2-Clause
 ------------
-com.github.wendykierp:JTransforms:3.1
-pl.edu.icm:JLargeArrays:1.5
 com.github.luben:zstd-jni:1.5.6-3
 
 

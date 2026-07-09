@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.DoubleFFT1D;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.FloatFFT1D;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -40,8 +42,6 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
-import org.jtransforms.fft.DoubleFFT_1D;
-import org.jtransforms.fft.FloatFFT_1D;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -694,8 +694,8 @@ public class FFTTableFunction implements TableFunction {
       Spectrum[] spectra = new Spectrum[valueColumns.length];
 
       int copiedRows = Math.min(rows.size(), transformLength);
-      DoubleFFT_1D doubleFft = null;
-      FloatFFT_1D floatFft = null;
+      DoubleFFT1D doubleFft = null;
+      FloatFFT1D floatFft = null;
       for (int columnIndex = 0; columnIndex < valueColumns.length; columnIndex++) {
         if (valueColumns[columnIndex].usesFloatFft()) {
           float[] spectrum = new float[2 * transformLength];
@@ -703,7 +703,7 @@ public class FFTTableFunction implements TableFunction {
             spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].floatValue();
           }
           if (floatFft == null) {
-            floatFft = new FloatFFT_1D(transformLength);
+            floatFft = new FloatFFT1D(transformLength);
           }
           floatFft.complexForward(spectrum);
           spectra[columnIndex] = Spectrum.fromFloat(spectrum);
@@ -713,7 +713,7 @@ public class FFTTableFunction implements TableFunction {
             spectrum[2 * rowIndex] = rows.get(rowIndex)[columnIndex].doubleValue();
           }
           if (doubleFft == null) {
-            doubleFft = new DoubleFFT_1D(transformLength);
+            doubleFft = new DoubleFFT1D(transformLength);
           }
           doubleFft.complexForward(spectrum);
           spectra[columnIndex] = Spectrum.fromDouble(spectrum);
