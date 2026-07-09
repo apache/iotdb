@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
@@ -89,12 +90,13 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    LOGGER.info(
-        "Pipe: Inserting tablet to {}.{}. Casting type from {} to {}.",
-        devicePath,
-        measurements[columnIndex],
-        dataTypes[columnIndex],
-        dataType);
+    if (LOGGER.isInfoEnabled()) {
+      PipeLogger.log(
+          LOGGER::info,
+          "Pipe: Inserting tablet. Casting type from %s to %s.",
+          dataTypes[columnIndex],
+          dataType);
+    }
     columns[columnIndex] =
         ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
     dataTypes[columnIndex] = dataType;

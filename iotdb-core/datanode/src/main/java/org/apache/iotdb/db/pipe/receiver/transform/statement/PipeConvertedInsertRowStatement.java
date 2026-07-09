@@ -85,13 +85,13 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    PipeLogger.log(
-        LOGGER::info,
-        "Pipe: Inserting row to %s.%s. Casting type from %s to %s.",
-        devicePath,
-        measurements[columnIndex],
-        dataTypes[columnIndex],
-        dataType);
+    if (LOGGER.isInfoEnabled()) {
+      PipeLogger.log(
+          LOGGER::info,
+          "Pipe: Inserting row. Casting type from %s to %s.",
+          dataTypes[columnIndex],
+          dataType);
+    }
     values[columnIndex] =
         ValueConverter.convert(dataTypes[columnIndex], dataType, values[columnIndex]);
     dataTypes[columnIndex] = dataType;
@@ -122,15 +122,12 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {
-        PipeLogger.log(
-            LOGGER::warn,
-            "data type of %s.%s is not consistent, "
-                + "registered type %s, inserting timestamp %s, value %s",
-            devicePath,
-            measurements[i],
-            dataTypes[i],
-            time,
-            values[i]);
+        if (LOGGER.isWarnEnabled()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Pipe: Failed to parse row value during data type conversion. Registered type %s.",
+              dataTypes[i]);
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
