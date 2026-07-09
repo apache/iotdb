@@ -1313,8 +1313,6 @@ public final class DataNodePipeMessages {
       "Interrupted while waiting for the lock.";
   public static final String IS_RELEASED_AFTER_THREAD_INTERRUPTION =
       "{} is released after thread interruption.";
-  public static final String PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_BYTES =
-      "PipePeriodicalLogReducer is allocated to {} bytes.";
   public static final String PIPETSFILERESOURCE_CACHED_DEVICEISALIGNEDMAP_FOR_TSFILE =
       "PipeTsFileResource: Cached deviceIsAlignedMap for tsfile {}.";
   public static final String PIPETSFILERESOURCE_CACHED_OBJECTS_FOR_TSFILE =

@@ -1238,8 +1238,6 @@ public final class DataNodePipeMessages {
   public static final String INTERRUPTED_WHILE_WAITING_FOR_THE_LOCK = "等待锁时被中断。";
   public static final String IS_RELEASED_AFTER_THREAD_INTERRUPTION =
       "{} 在线程中断后已被释放。";
-  public static final String PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_BYTES =
-      "PipePeriodicalLogReducer 已分配 {} 字节。";
   public static final String PIPETSFILERESOURCE_CACHED_DEVICEISALIGNEDMAP_FOR_TSFILE =
       "PipeTsFileResource：已为 tsfile {} 缓存 deviceIsAlignedMap。";
   public static final String PIPETSFILERESOURCE_CACHED_OBJECTS_FOR_TSFILE =
