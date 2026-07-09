@@ -2487,5 +2487,7 @@ public final class DataNodePipeMessages {
       "Reported %s pipe metas.";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
+  public static final String CLEANED_UP_PIPE_TSFILE_DIRS_FOR_PIPE =
+      "Cleaned up Pipe TsFile dirs for pipe {}: {}";
 
 }

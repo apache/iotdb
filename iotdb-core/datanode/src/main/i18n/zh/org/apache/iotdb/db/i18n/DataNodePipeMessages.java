@@ -2325,5 +2325,7 @@ public final class DataNodePipeMessages {
       "已上报 %s 个 pipe meta。";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "传输文件 %s 出错，结果状态为 %s。";
+  public static final String CLEANED_UP_PIPE_TSFILE_DIRS_FOR_PIPE =
+      "已清理 pipe {} 的 Pipe TsFile 目录：{}";
 
 }
