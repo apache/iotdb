@@ -53,6 +53,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -292,6 +293,85 @@ public class AggregationOperatorTest {
     assertEquals(4, count);
   }
 
+  @Test
+  public void testGroupByIntermediateResultWithFinishedChild() throws Exception {
+    QueryId queryId = new QueryId("stub_query_finished_child");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    driverContext.addOperatorContext(
+        1, new PlanNodeId("finished-child-1"), FixedTsBlockOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        2, new PlanNodeId("finished-child-2"), FixedTsBlockOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        3, new PlanNodeId("aggregation"), AggregationOperator.class.getSimpleName());
+    driverContext
+        .getOperatorContexts()
+        .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
+
+    List<Operator> children = new ArrayList<>();
+    children.add(
+        new FixedTsBlockOperator(
+            driverContext.getOperatorContexts().get(0), buildCountTsBlock(new long[] {0}, 3)));
+    children.add(
+        new FixedTsBlockOperator(
+            driverContext.getOperatorContexts().get(1),
+            buildCountTsBlock(new long[] {0, 100}, 5, 7)));
+
+    List<InputLocation[]> inputLocationForCount = new ArrayList<>();
+    inputLocationForCount.add(new InputLocation[] {new InputLocation(0, 0)});
+    inputLocationForCount.add(new InputLocation[] {new InputLocation(1, 0)});
+
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
+    finalAggregators.add(
+        new TreeAggregator(
+            AccumulatorFactory.createBuiltinAccumulators(
+                    Collections.singletonList(TAggregationType.COUNT),
+                    TSDataType.INT32,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true)
+                .get(0),
+            AggregationStep.FINAL,
+            inputLocationForCount));
+
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 200, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+    AggregationOperator aggregationOperator =
+        new AggregationOperator(
+            driverContext.getOperatorContexts().get(2),
+            finalAggregators,
+            initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
+            children,
+            false,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
+    long[] expectedTimes = new long[] {0, 100};
+    long[] expectedCounts = new long[] {8, 7};
+    int count = 0;
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
+      TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int pos = 0; pos < resultTsBlock.getPositionCount(); pos++) {
+        assertEquals(expectedTimes[count], resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(expectedCounts[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
+      }
+    }
+    assertEquals(2, count);
+  }
+
   /**
    * @param aggregationTypes Aggregation function used in test
    * @param groupByTimeParameter group by time parameter
@@ -409,5 +489,70 @@ public class AggregationOperatorTest {
         children,
         false,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+  }
+
+  private TsBlock buildCountTsBlock(long[] times, long... counts) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
+    for (int i = 0; i < times.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(times[i]);
+      builder.getColumnBuilder(0).writeLong(counts[i]);
+      builder.declarePosition();
+    }
+    return builder.build();
+  }
+
+  private static class FixedTsBlockOperator implements Operator {
+
+    private final OperatorContext operatorContext;
+    private final TsBlock[] tsBlocks;
+    private int index;
+
+    private FixedTsBlockOperator(OperatorContext operatorContext, TsBlock... tsBlocks) {
+      this.operatorContext = operatorContext;
+      this.tsBlocks = tsBlocks;
+    }
+
+    @Override
+    public OperatorContext getOperatorContext() {
+      return operatorContext;
+    }
+
+    @Override
+    public TsBlock next() {
+      return tsBlocks[index++];
+    }
+
+    @Override
+    public boolean hasNext() {
+      return index < tsBlocks.length;
+    }
+
+    @Override
+    public void close() {}
+
+    @Override
+    public boolean isFinished() {
+      return !hasNext();
+    }
+
+    @Override
+    public long calculateMaxPeekMemory() {
+      return 0;
+    }
+
+    @Override
+    public long calculateMaxReturnSize() {
+      return 0;
+    }
+
+    @Override
+    public long calculateRetainedSizeAfterCallingNext() {
+      return 0;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return 0;
+    }
   }
 }

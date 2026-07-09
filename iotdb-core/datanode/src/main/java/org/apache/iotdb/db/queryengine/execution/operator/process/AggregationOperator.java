@@ -161,6 +161,9 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
       }
 
       for (int i = 0; i < inputOperatorsCount; i++) {
+        if (inputTsBlocks[i] == null) {
+          continue;
+        }
         inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
         if (inputTsBlocks[i].isEmpty()) {
           inputTsBlocks[i] = null;
