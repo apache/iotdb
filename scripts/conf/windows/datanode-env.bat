@@ -20,7 +20,8 @@
 @echo off
 
 @REM You can set datanode memory size, example '2G' or '2048M'
-set MEMORY_SIZE=
+@REM If the MEMORY_SIZE environment variable is already set, its value will be used.
+if not defined MEMORY_SIZE set MEMORY_SIZE=
 
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
