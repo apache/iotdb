@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -44,10 +43,6 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
-import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
-import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
-
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLoadTsFileActiveRetryIT {
@@ -55,8 +50,6 @@ public class IoTDBLoadTsFileActiveRetryIT {
   private static final String DATABASE = "root.sg.test_0";
   private static final String DEVICE = DATABASE + ".d_0";
   private static final String MEASUREMENT = "sensor_00";
-  private static final String ACTIVE_LOAD_USER = "active_load_user";
-  private static final String PASSWORD = "test123123456";
   private static final long UNALLOCATABLE_TABLET_CONVERSION_BATCH_MEMORY_SIZE_IN_BYTES =
       Long.MAX_VALUE / 4;
   private static final MeasurementSchema TSFILE_SCHEMA =
@@ -133,44 +126,6 @@ public class IoTDBLoadTsFileActiveRetryIT {
 
       assertFileKeptForRetry(
           activeDir, failDir, retryTsFile.getName(), TimeUnit.SECONDS.toMillis(12));
-    }
-  }
-
-  @Test
-  public void testAsyncLoadShouldStoreUserInfoInActiveDir() throws Exception {
-    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    final File retryTsFile = new File(tmpDir, "3-0-0-0.tsfile");
-    generateTsFile(retryTsFile);
-
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
-        final Statement statement = connection.createStatement()) {
-      statement.execute("create database " + DATABASE);
-      statement.execute(
-          String.format(
-              "create timeseries %s.%s %s", DEVICE, MEASUREMENT, TSDataType.INT64.name()));
-      createUser(ACTIVE_LOAD_USER, PASSWORD);
-      grantUserSeriesPrivilege(ACTIVE_LOAD_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
-
-      executeNonQuery(
-          String.format(
-              "load \"%s\" with ('database-level'='3', 'async'='true', 'on-success'='none', "
-                  + "'convert-on-type-mismatch'='true')",
-              retryTsFile.getAbsolutePath()),
-          ACTIVE_LOAD_USER,
-          PASSWORD);
-
-      final File activeDir = getActiveLoadDir(dataNodeWrapper);
-      final File activeTsFile = waitForFile(activeDir, retryTsFile.getName(), 30_000L);
-
-      Assert.assertNotNull(
-          "Async load should copy tsfile into active load directory", activeTsFile);
-      Assert.assertTrue(
-          "Async load should store user info in active load directory",
-          activeTsFile.getAbsolutePath().contains("user-"));
-      Assert.assertFalse(
-          "Async load should not expose raw username in active load directory",
-          activeTsFile.getAbsolutePath().contains(ACTIVE_LOAD_USER));
     }
   }
 

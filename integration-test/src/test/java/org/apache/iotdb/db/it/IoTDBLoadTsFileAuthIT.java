@@ -67,7 +67,6 @@ public class IoTDBLoadTsFileAuthIT {
   private static final String OTHER_PATH_WRITE_USER = "load_other_path_write_user";
   private static final String ASYNC_NO_WRITE_USER = "async_load_no_write_user";
   private static final String ASYNC_WRITE_USER = "async_load_write_user";
-  private static final String DELETED_ASYNC_LOAD_USER = "deleted_async_load_user";
   private static final String PASSWORD = "test123123456";
   private static final long UNALLOCATABLE_TABLET_CONVERSION_BATCH_MEMORY_SIZE_IN_BYTES =
       Long.MAX_VALUE / 4;
@@ -217,17 +216,6 @@ public class IoTDBLoadTsFileAuthIT {
     }
   }
 
-  private File getActiveLoadDir(final DataNodeWrapper dataNodeWrapper) {
-    return new File(
-        dataNodeWrapper.getNodePath()
-            + File.separator
-            + "ext"
-            + File.separator
-            + "load"
-            + File.separator
-            + "pending");
-  }
-
   private File getActiveLoadFailDir(final DataNodeWrapper dataNodeWrapper) {
     return new File(
         dataNodeWrapper.getNodePath()
@@ -245,20 +233,6 @@ public class IoTDBLoadTsFileAuthIT {
     while (System.currentTimeMillis() < deadline) {
       final File file = findFile(root, fileName);
       if (file != null) {
-        return file;
-      }
-      Thread.sleep(500L);
-    }
-    return null;
-  }
-
-  private File waitForFileUnderPathContaining(
-      final File root, final String fileName, final String pathSegment, final long timeoutMs)
-      throws InterruptedException {
-    final long deadline = System.currentTimeMillis() + timeoutMs;
-    while (System.currentTimeMillis() < deadline) {
-      final File file = findFile(root, fileName);
-      if (file != null && file.getAbsolutePath().contains(pathSegment)) {
         return file;
       }
       Thread.sleep(500L);

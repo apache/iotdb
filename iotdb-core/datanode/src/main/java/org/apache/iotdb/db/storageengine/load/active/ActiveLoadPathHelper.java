@@ -25,13 +25,14 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import com.google.common.io.BaseEncoding;
+
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -47,6 +48,7 @@ public final class ActiveLoadPathHelper {
   public static final String USER_KEY = "user";
   // Keep a version in the user path segment so future encryption algorithms can be added safely.
   private static final String USER_VALUE_MASK_PREFIX = "v1-";
+  private static final BaseEncoding USER_VALUE_ENCODING = BaseEncoding.base32().omitPadding();
 
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
@@ -226,9 +228,7 @@ public final class ActiveLoadPathHelper {
       return value;
     }
     return USER_VALUE_MASK_PREFIX
-        + Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+        + USER_VALUE_ENCODING.encode(value.getBytes(StandardCharsets.UTF_8));
   }
 
   private static String encodeValue(final String value) {
@@ -281,7 +281,7 @@ public final class ActiveLoadPathHelper {
         break;
       case USER_KEY:
         if (value == null || value.isEmpty()) {
-          throw new SemanticException("User name must not be empty");
+          throw new SemanticException(StorageEngineMessages.USER_NAME_MUST_NOT_BE_EMPTY);
         }
         break;
       default:
@@ -318,7 +318,7 @@ public final class ActiveLoadPathHelper {
 
   private static String decodeUserName(final String encodedUserName, final String fallback) {
     try {
-      return new String(Base64.getUrlDecoder().decode(encodedUserName), StandardCharsets.UTF_8);
+      return new String(USER_VALUE_ENCODING.decode(encodedUserName), StandardCharsets.UTF_8);
     } catch (final IllegalArgumentException e) {
       return fallback;
     }

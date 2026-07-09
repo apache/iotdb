@@ -266,7 +266,7 @@ public class ActiveLoadTsFileLoader {
     final Optional<Long> userId = AuthorityChecker.getUserId(userName);
     if (!userId.isPresent()) {
       return new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode())
-          .setMessage("The user in the active load path does not exist");
+          .setMessage(StorageEngineMessages.USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST);
     }
     session.setUserId(userId.get());
     session.setUsername(userName);
