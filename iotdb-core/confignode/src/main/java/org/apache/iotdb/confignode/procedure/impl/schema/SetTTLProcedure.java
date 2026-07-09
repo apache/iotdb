@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -116,24 +115,18 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   }
 
   void updateDataNodeTTL(final ConfigNodeProcedureEnv env) {
-    if (!broadcastTTLAndDecide(
-        env, buildSetTTLReq(plan.getPathPattern(), plan.getTTL(), plan.isDataBase()))) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(plan.getPathPattern(), plan.getTTL(), plan.isDataBase()));
+    if (hasFailedDataNode(clientHandler)) {
       LOGGER.error(ProcedureMessages.FAILED_TO_UPDATE_TTL_CACHE_OF_DATANODE);
       setFailure(
           new ProcedureException(
               new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
     }
-  }
-
-  /**
-   * Broadcast the TTL update to all DataNodes and decide whether it is safe to proceed: proceed
-   * once every unreachable DataNode is provably self-fenced (it fails closed on TTL in compaction
-   * and resyncs on recovery) instead of hard-failing on the first unreachable DataNode.
-   * Package-private and overridable for tests.
-   */
-  boolean broadcastTTLAndDecide(final ConfigNodeProcedureEnv env, final TSetTTLReq req) {
-    return new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
-        .propagate(targets -> sendTTLRequest(targets, req).getResponseMap());
   }
 
   private void capturePreviousTTLState(final ConfigNodeProcedureEnv env) {
@@ -165,11 +158,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
     final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_TTL, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(
-            clientHandler,
-            ClusterCachePropagator.BROADCAST_RPC_RETRY,
-            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler;
   }
 
@@ -177,6 +166,19 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       final String[] pathPattern, final long ttl, final boolean isDataBase) {
     return new TSetTTLReq(
         Collections.singletonList(String.join(".", pathPattern)), ttl, isDataBase);
+  }
+
+  private boolean hasFailedDataNode(
+      final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler) {
+    if (!clientHandler.getRequestIndices().isEmpty()) {
+      return true;
+    }
+    for (TSStatus status : clientHandler.getResponseMap().values()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private long getTTLOrDefault(final ConfigNodeProcedureEnv env, final String[] pathPattern) {
@@ -218,20 +220,30 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   }
 
   private void rollbackDataNodeTTL(final ConfigNodeProcedureEnv env) throws ProcedureException {
-    restoreTTLOnDataNodes(env, plan.getPathPattern(), previousTTL);
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    restoreTTLOnDataNodes(dataNodeLocationMap, plan.getPathPattern(), previousTTL);
     if (plan.isDataBase()) {
       restoreTTLOnDataNodes(
-          env, getDatabaseWildcardPathPattern(plan.getPathPattern()), previousDatabaseWildcardTTL);
+          dataNodeLocationMap,
+          getDatabaseWildcardPathPattern(plan.getPathPattern()),
+          previousDatabaseWildcardTTL);
     }
   }
 
   private void restoreTTLOnDataNodes(
-      final ConfigNodeProcedureEnv env, final String[] pathPattern, final long ttl)
+      final Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      final String[] pathPattern,
+      final long ttl)
       throws ProcedureException {
-    // Same proceed-past-fenced semantics as the forward update: a down DataNode must not block
-    // rollback (it resyncs TTL on recovery); only a live unacked DataNode fails it.
-    if (!broadcastTTLAndDecide(
-        env, buildSetTTLReq(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl, false))) {
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl, false));
+    if (hasFailedDataNode(clientHandler)) {
       throw new ProcedureException(
           new MetadataException(
               ProcedureMessages.EXCEPTION_ROLLBACK_DATANODE_TTL_CACHE_FAILED_AF9C7102

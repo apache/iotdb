@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -191,10 +190,7 @@ public class DeactivateTemplateProcedure
               new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
               dataNodeLocationMap);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequest(
-              clientHandler,
-              ClusterCachePropagator.BROADCAST_RPC_RETRY,
-              ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+          .sendAsyncRequestWithRetry(clientHandler);
       Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
       for (TSStatus status : statusMap.values()) {
         // all dataNodes must clear the related schema cache

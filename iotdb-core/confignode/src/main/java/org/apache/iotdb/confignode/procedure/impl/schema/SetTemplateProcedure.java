@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchema
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -216,25 +215,30 @@ public class SetTemplateProcedure
       return;
     }
 
-    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
-    // template cache and resyncs on recovery) instead of hard-failing on the first unreachable one.
-    if (!SchemaUtils.broadcastTemplateUpdate(
-        env.getConfigManager(),
-        () -> {
-          final TUpdateTemplateReq req = new TUpdateTemplateReq();
-          req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
-          req.setTemplateInfo(
-              TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
-          return req;
-        })) {
-      LOGGER.warn(
-          ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
-          templateName,
-          templateSetPath,
-          "an unreachable DataNode is not provably fenced");
-      setFailure(
-          new ProcedureException(new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
-      return;
+    final TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
+    req.setTemplateInfo(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
+            templateName,
+            templateSetPath,
+            dataNodeLocationMap.get(entry.getKey()));
+        setFailure(
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
+        return;
+      }
     }
     setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
   }
@@ -407,11 +411,7 @@ public class SetTemplateProcedure
     final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(
-            clientHandler,
-            ClusterCachePropagator.BROADCAST_RPC_RETRY,
-            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -523,11 +523,7 @@ public class SetTemplateProcedure
             CnToDnAsyncRequestType.UPDATE_TEMPLATE,
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(
-            clientHandler,
-            ClusterCachePropagator.BROADCAST_RPC_RETRY,
-            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache
