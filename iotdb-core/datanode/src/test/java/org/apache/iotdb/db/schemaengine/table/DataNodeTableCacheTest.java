@@ -91,6 +91,26 @@ public class DataNodeTableCacheTest {
     }
   }
 
+  @Test
+  public void rollbackRenameTableRestoresOldName() {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String newTableName = "table2";
+    cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    try {
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+
+      cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(newTableName), TABLE_NAME);
+      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, newTableName, TABLE_NAME);
+
+      Assert.assertEquals(
+          TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
+      Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, newTableName, false));
+    } finally {
+      cache.invalid(TABLE_CACHE_TEST_DATABASE);
+    }
+  }
+
   private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
     final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
     field.setAccessible(true);

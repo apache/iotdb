@@ -934,16 +934,16 @@ public class ClusterSchemaManager {
                       .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
-    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxSchemaRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.SchemaRegion);
     }
-    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxDataRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.DataRegion);
     }
 
-    if (errorResp != null) {
+    if (isErrorStatus(errorResp)) {
       LOGGER.warn(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
@@ -956,6 +956,10 @@ public class ClusterSchemaManager {
     }
 
     return StatusUtils.OK;
+  }
+
+  private static boolean isErrorStatus(final TSStatus status) {
+    return status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private static TSStatus validateMaxRegionGroupNumOnCreation(
@@ -1021,8 +1025,23 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to current min %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", minRegionGroupNum));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  minRegionGroupNum));
+    }
+
+    final int currentMaxRegionGroupNum = getMaxRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < currentMaxRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  currentMaxRegionGroupNum));
     }
 
     final int allocatedRegionGroupCount;
@@ -1037,8 +1056,11 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to allocated %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", allocatedRegionGroupCount));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  allocatedRegionGroupCount));
     }
 
     return StatusUtils.OK;

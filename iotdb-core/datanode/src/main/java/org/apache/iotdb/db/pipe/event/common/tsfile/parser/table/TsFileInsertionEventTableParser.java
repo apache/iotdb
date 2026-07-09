@@ -22,11 +22,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -94,25 +92,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       allocatedMemoryBlockForModifications =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
-      long tableSize =
-          Math.min(
-              IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
-              IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
-
       this.allocatedMemoryBlockForChunk =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeMaxReaderChunkSize());
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
       this.allocatedMemoryBlockForBatchData =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
       this.allocatedMemoryBlockForChunkMeta =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
       this.allocatedMemoryBlockForTableSchemas =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getPipeDataStructureTabletSizeInBytes());
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
       this.startTime = startTime;
       this.endTime = endTime;
@@ -240,6 +227,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
                     final Tablet tablet = tabletIterator.next();
                     recordTabletMetrics(tablet);
+                    releaseTabletMemoryBlock();
                     if (!PipeRawTabletInsertionEvent.isTabletEmpty(tablet)) {
                       bufferedTablet = tablet;
                       return true;

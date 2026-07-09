@@ -279,7 +279,11 @@ public final class DataNodePipeMessages {
       "判断 PipeInsertNodeTabletInsertionEvent({}) 的事件时间是否与时间范围 [{}, {}] 重叠时"
           + "发生异常。为保证数据完整性返回 true。";
   public static final String FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE =
-      "{}：为解析 TsFile {} 分配内存失败，tablet event 序号 {}，重试次数 {}，将持续重试。";
+      "{}：为解析 TsFile {} 分配内存失败，tablet 事件编号 {}，"
+          + "将释放解析器内存并稍后重试该 TsFile 事件。";
+  public static final String FAILED_TO_CONSUME_PARSED_TABLET_FROM_TSFILE_KEEP_PARSER =
+      "{}：消费 TsFile {} 解析出的 tablet 失败，tablet 事件编号 {}，重试次数 {}，"
+          + "将暂时保留解析器并在本地短暂重试。";
   public static final String FAILED_TO_BUILD_TABLET = "构建 tablet 失败";
   public static final String FAILED_TO_CHECK_NEXT = "check next 失败";
   public static final String FAILED_TO_CLOSE_TSFILEREADER = "关闭 TsFileReader 失败";
@@ -383,7 +387,8 @@ public final class DataNodePipeMessages {
       "两阶段聚合 pipe（pipeName={}, creationTime={}）的 endpoints 已更新为 {}";
   public static final String ERROR_OCCURRED_WHEN_CLOSING_COMBINEHANDLER_ID =
       "关闭 CombineHandler（id = {}）时发生错误";
-  public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST = "接收请求时发生错误：{}";
+  public static final String ERROR_OCCURS_WHEN_RECEIVING_REQUEST = "接收请求时发生错误：{}。";
+  public static final String LOGIN_FAILED_OR_SESSION_TIMED_OUT = "登录失败。您未被授权或会话已超时。";
   public static final String FAILED_TO_CLOSE_IOTDBSYNCCLIENT = "关闭 IoTDBSyncClient 失败";
   public static final String FAILED_TO_CLOSE_OLD_IOTDBSYNCCLIENT = "关闭 old IoTDBSyncClient 失败";
   public static final String FAILED_TO_COMBINE_COUNT = "合并 count 失败：";
@@ -1171,6 +1176,9 @@ public final class DataNodePipeMessages {
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}：不支持的 statement type {} 用于 redirection。";
   public static final String RECEIVER_IS_READY = "Receiver-{} 已就绪";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "执行 %s 时暂时内存不足。请求内存：%d bytes，已用内存：%d bytes，可用内存：%d bytes，"
+          + "总非浮动内存：%d bytes";
   public static final String REGISTER_WITH_INTERVAL_IN_SECONDS_SUCCESSFULLY =
       "成功注册 {}，间隔时间（秒）{}。";
   public static final String SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL =
@@ -2311,5 +2319,11 @@ public final class DataNodePipeMessages {
       "对齐值 chunk 索引 %d 无效，而共有 %d 个 time chunk。";
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "回滚已创建的 realtime pipe {} 失败。状态：{}";
+  public static final String LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3 =
+      "正在上报 pipe meta：%s，isCompleted：%s，remainingEventCount：%s";
+  public static final String LOG_REPORTED_ARG_PIPE_METAS_12068FC6 =
+      "已上报 %s 个 pipe meta。";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "传输文件 %s 出错，结果状态为 %s。";
 
 }

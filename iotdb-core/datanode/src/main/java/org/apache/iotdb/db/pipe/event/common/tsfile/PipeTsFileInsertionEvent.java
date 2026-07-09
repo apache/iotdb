@@ -97,6 +97,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final boolean isTsFileSealed;
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
+  private final AtomicBoolean isTsFileParserMemoryReserved = new AtomicBoolean(false);
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -105,6 +106,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
   private String tsFileDedupScopeID;
+  // False when generated tablet events should wait for an external progress report.
+  private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
@@ -465,6 +468,23 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return resource.getMaxProgressIndex();
   }
 
+  public PipeTsFileInsertionEvent skipReportOnCommitAndGeneratedEvents() {
+    return setShouldReportGeneratedEventsOnCommit(false);
+  }
+
+  public boolean shouldReportGeneratedEventsOnCommit() {
+    return shouldReportGeneratedEventsOnCommit;
+  }
+
+  private PipeTsFileInsertionEvent setShouldReportGeneratedEventsOnCommit(
+      final boolean shouldReportGeneratedEventsOnCommit) {
+    this.shouldReportGeneratedEventsOnCommit = shouldReportGeneratedEventsOnCommit;
+    if (!shouldReportGeneratedEventsOnCommit) {
+      skipReportOnCommit();
+    }
+    return this;
+  }
+
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)
         && Objects.nonNull(resource)
@@ -520,7 +540,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             startTime,
             endTime,
             isTsFileSealed)
-        .bindTsFileDedupScopeID(tsFileDedupScopeID);
+        .bindTsFileDedupScopeID(tsFileDedupScopeID)
+        .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
   }
 
   @Override
@@ -726,38 +747,84 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void consumeTabletInsertionEventsWithRetry(
       final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
-    final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
-    final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
     int tabletEventCount = 0;
-    while (iterator.hasNext()) {
-      final TabletInsertionEvent parsedEvent = iterator.next();
-      tabletEventCount++;
-      int retryCount = 0;
-      while (true) {
-        // If failed due do insufficient memory, retry until success to avoid race among multiple
-        // processor threads
+    try {
+      final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
+      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
+      while (iterator.hasNext()) {
+        final TabletInsertionEvent parsedEvent = iterator.next();
+        tabletEventCount++;
+        consumeParsedTabletInsertionEventWithRetry(
+            consumer, callerName, tabletEventCount, parsedEvent);
+      }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      close();
+      LOGGER.warn(
+          DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
+          callerName,
+          getTsFile(),
+          tabletEventCount,
+          e);
+      throw e;
+    }
+  }
+
+  private void consumeParsedTabletInsertionEventWithRetry(
+      final TabletInsertionEventConsumer consumer,
+      final String callerName,
+      final int tabletEventCount,
+      final TabletInsertionEvent parsedEvent)
+      throws Exception {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    long firstOutOfMemoryTimeInMs = Long.MIN_VALUE;
+    int retryCount = 0;
+    while (true) {
+      try {
+        consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
+        return;
+      } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+        if (firstOutOfMemoryTimeInMs == Long.MIN_VALUE) {
+          firstOutOfMemoryTimeInMs = System.currentTimeMillis();
+        }
+        if (memoryManager.shouldReleaseTsFileParserOnOutOfMemory(
+            firstOutOfMemoryTimeInMs, ++retryCount)) {
+          releaseParsedTabletEvent(parsedEvent);
+          throw e;
+        }
+        logParserRetryOnOutOfMemory(callerName, tabletEventCount, retryCount, e);
         try {
-          consumer.consume((PipeRawTabletInsertionEvent) parsedEvent);
-          break;
-        } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-          if (retryCount++ % 100 == 0) {
-            LOGGER.warn(
-                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount);
-          } else if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
-                callerName,
-                getTsFile(),
-                tabletEventCount,
-                retryCount,
-                e);
-          }
+          Thread.sleep(PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs());
+        } catch (final InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          releaseParsedTabletEvent(parsedEvent);
+          throw e;
         }
       }
+    }
+  }
+
+  private void logParserRetryOnOutOfMemory(
+      final String callerName,
+      final int tabletEventCount,
+      final int retryCount,
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    if (retryCount != 1 && retryCount % 10 != 0) {
+      return;
+    }
+    LOGGER.warn(
+        DataNodePipeMessages.FAILED_TO_CONSUME_PARSED_TABLET_FROM_TSFILE_KEEP_PARSER,
+        callerName,
+        getTsFile(),
+        tabletEventCount,
+        retryCount,
+        e);
+  }
+
+  private void releaseParsedTabletEvent(final TabletInsertionEvent parsedEvent) {
+    if (parsedEvent instanceof PipeRawTabletInsertionEvent
+        && ((PipeRawTabletInsertionEvent) parsedEvent).getReferenceCount() == 0
+        && !((PipeRawTabletInsertionEvent) parsedEvent).isReleased()) {
+      ((PipeRawTabletInsertionEvent) parsedEvent).clearReferenceCount(getClass().getName());
     }
   }
 
@@ -802,7 +869,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private void waitForResourceEnough4Parsing(final long timeoutMs) throws InterruptedException {
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
-    if (memoryManager.isEnough4TabletParsing()) {
+    if (tryReserveTsFileParserMemory(memoryManager)) {
       return;
     }
 
@@ -811,7 +878,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     final long memoryCheckIntervalMs =
         PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
-    while (!memoryManager.isEnough4TabletParsing()) {
+    while (!tryReserveTsFileParserMemory(memoryManager)) {
       Thread.sleep(memoryCheckIntervalMs);
 
       final long currentTime = System.currentTimeMillis();
@@ -846,6 +913,29 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         DataNodePipeMessages.WAIT_FOR_MEMORY_ENOUGH_FOR_PARSING_FOR,
         resource != null ? resource.getTsFilePath() : "tsfile",
         waitTimeSeconds);
+  }
+
+  private boolean tryReserveTsFileParserMemory(final PipeMemoryManager memoryManager) {
+    synchronized (isTsFileParserMemoryReserved) {
+      if (isTsFileParserMemoryReserved.get()) {
+        return true;
+      }
+
+      if (!memoryManager.tryReserveTsFileParserMemory()) {
+        return false;
+      }
+
+      isTsFileParserMemoryReserved.set(true);
+      return true;
+    }
+  }
+
+  private void releaseTsFileParserMemoryIfReserved() {
+    synchronized (isTsFileParserMemoryReserved) {
+      if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
+        PipeDataNodeResourceManager.memory().releaseTsFileParserMemory();
+      }
+    }
   }
 
   /** The method is used to prevent circular replication in IoTConsensusV2 */
@@ -923,6 +1013,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           }
           return null;
         });
+    releaseTsFileParserMemoryIfReserved();
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -963,7 +1054,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.isWithMod,
         this.modFile,
         this.sharedModFile,
-        this.eventParser);
+        this.eventParser,
+        this.isTsFileParserMemoryReserved);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -975,6 +1067,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final AtomicReference<TsFileInsertionEventParser> eventParser;
     private final String pipeName;
     private final long creationTime;
+    private final AtomicBoolean isTsFileParserMemoryReserved;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -985,7 +1078,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final boolean isWithMod,
         final File modFile,
         final File sharedModFile,
-        final AtomicReference<TsFileInsertionEventParser> eventParser) {
+        final AtomicReference<TsFileInsertionEventParser> eventParser,
+        final AtomicBoolean isTsFileParserMemoryReserved) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.creationTime = creationTime;
@@ -994,6 +1088,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       this.modFile = modFile;
       this.sharedModFile = sharedModFile;
       this.eventParser = eventParser;
+      this.isTsFileParserMemoryReserved = isTsFileParserMemoryReserved;
     }
 
     @Override
@@ -1017,6 +1112,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               }
               return null;
             });
+        synchronized (isTsFileParserMemoryReserved) {
+          if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
+            PipeDataNodeResourceManager.memory().releaseTsFileParserMemory();
+          }
+        }
       } catch (final Exception e) {
         LOGGER.warn(
             DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile.getPath(), e);
