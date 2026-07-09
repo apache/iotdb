@@ -206,7 +206,9 @@ public class IoTDBLegacyPipeReceiverAgent {
   private SessionInfo getCurrentSessionInfo() {
     final SessionManager sessionManager = SessionManager.getInstance();
     if (!sessionManager.checkLogin(sessionManager.getCurrSession())) {
-      throw new PipeException("Legacy pipe receiver requires a logged-in session.");
+      throw new PipeException(
+          DataNodePipeMessages
+              .EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF);
     }
 
     return sessionManager.getSessionInfoOfTreeModel(sessionManager.getCurrSession());

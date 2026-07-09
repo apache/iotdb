@@ -2474,4 +2474,6 @@ public final class DataNodePipeMessages {
   public static final String MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A =
       "Failed to rollback created realtime pipe {}. Status: {}";
 
+  public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
+      "Legacy pipe receiver requires a logged-in session.";
 }
