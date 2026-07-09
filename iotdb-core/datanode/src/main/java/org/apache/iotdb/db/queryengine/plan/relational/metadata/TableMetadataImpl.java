@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDev
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -98,7 +99,7 @@ public class TableMetadataImpl implements Metadata {
 
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
-  private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+  private final ITableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
   public TableFunction getTableFunction(String functionName) {

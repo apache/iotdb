@@ -61,6 +61,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+
 class ClusterSchemaFetchExecutor {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -336,6 +338,8 @@ class ClusterSchemaFetchExecutor {
         // for data from old version
         ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
         if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializedSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left.size());
           context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
         }
         resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
@@ -346,7 +350,12 @@ class ClusterSchemaFetchExecutor {
             context.reserveMemoryForSchemaTree(memCost);
           }
         }
+        long measurementCountBeforeDeserialization = deserializer.getMeasurementCount();
         deserializer.deserializeFromBatch(inputStream);
+        if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializer.getMeasurementCount() - measurementCountBeforeDeserialization);
+        }
         if (type == 3) {
           // 'type == 3' indicates this batch is finished
           resultSchemaTree.mergeSchemaTree(deserializer.finish());

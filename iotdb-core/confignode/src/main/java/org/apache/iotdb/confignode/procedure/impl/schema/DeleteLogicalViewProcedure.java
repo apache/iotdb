@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -41,7 +39,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -167,26 +164,15 @@ public class DeleteLogicalViewProcedure
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, false)) {
       // all dataNodes must clear the related schemaengine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW, requestMessage);
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
-        return;
-      }
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW, requestMessage);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
+      return;
     }
 
     setNextState(DeleteLogicalViewState.DELETE_VIEW_SCHEMA);

@@ -204,6 +204,8 @@ public class IoTDBConfig {
 
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
+  private volatile long checkDnLeaseStatusIntervalMs = 500;
+
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
@@ -2079,6 +2081,14 @@ public class IoTDBConfig {
       return;
     }
     this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public long getCheckDnLeaseStatusIntervalMs() {
+    return checkDnLeaseStatusIntervalMs;
+  }
+
+  public void setCheckDnLeaseStatusIntervalMs(long checkDnLeaseStatusIntervalMs) {
+    this.checkDnLeaseStatusIntervalMs = checkDnLeaseStatusIntervalMs;
   }
 
   public int getDeviceSchemaRequestCacheMaxSize() {

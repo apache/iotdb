@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -155,29 +156,24 @@ public class UnsetTemplateProcedure
   }
 
   private void executeInvalidateCache(final ConfigNodeProcedureEnv env) throws ProcedureException {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
-    invalidateTemplateSetInfoReq.setType(
-        TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    invalidateTemplateSetInfoReq.setTemplateInfo(getInvalidateTemplateSetInfo());
-    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
-            invalidateTemplateSetInfoReq,
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // template cache and resyncs on recovery) instead of hard-failing on the first unreachable one.
+    if (!SchemaUtils.broadcastTemplateUpdate(
+        env.getConfigManager(),
+        () -> {
+          final TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
+          invalidateTemplateSetInfoReq.setType(
+              TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
+          invalidateTemplateSetInfoReq.setTemplateInfo(getInvalidateTemplateSetInfo());
+          return invalidateTemplateSetInfoReq;
+        })) {
       // all dataNodes must clear the related template cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            ProcedureMessages.FAILED_TO_INVALIDATE_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON,
-            template.getName(),
-            path);
-        throw new ProcedureException(
-            new MetadataException(ProcedureMessages.INVALIDATE_TEMPLATE_CACHE_FAILED));
-      }
+      LOGGER.error(
+          ProcedureMessages.FAILED_TO_INVALIDATE_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON,
+          template.getName(),
+          path);
+      throw new ProcedureException(
+          new MetadataException(ProcedureMessages.INVALIDATE_TEMPLATE_CACHE_FAILED));
     }
   }
 
@@ -268,7 +264,11 @@ public class UnsetTemplateProcedure
             CnToDnAsyncRequestType.UPDATE_TEMPLATE,
             rollbackTemplateSetInfoReq,
             dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache

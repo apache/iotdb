@@ -182,6 +182,43 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
         new HashSet<>(Arrays.asList("root.sg.aligned,true,null,INF,")));
   }
 
+  @Test
+  public void
+      testAutoSplitHistoryTsFileWithUnflushedAlignedDeletionWhenReceiverAutoCreateSchemaDisabled()
+          throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.sg",
+            "create aligned timeseries root.sg.aligned(s0 INT32, s1 INT64, s2 DOUBLE)",
+            "insert into root.sg.aligned(time, s0, s1, s2) aligned "
+                + "values(1, 1, 10, 1.0), (2, 2, 20, 2.0), (3, 3, 30, 3.0)",
+            "delete timeseries root.sg.aligned.s1"));
+
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe test with source ('inclusion'='all', 'source.history.enable'='true', 'source.realtime.mode'='batch') "
+                + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+            receiverEnv.getDataNodeWrapper(0).getIpAndPortString()));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select s0,s2 from root.sg.aligned",
+        "Time,root.sg.aligned.s0,root.sg.aligned.s2,",
+        new HashSet<>(Arrays.asList("1,1,1.0,", "2,2,2.0,", "3,3,3.0,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg.aligned.*",
+        "count(timeseries),",
+        new HashSet<>(Arrays.asList("2,")));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show devices root.sg.aligned",
+        "Device,IsAligned,Template,TTL(ms),",
+        new HashSet<>(Arrays.asList("root.sg.aligned,true,null,INF,")));
+  }
+
   private QueryResult queryForResult(final Statement statement, final String sql)
       throws SQLException {
     try (final ResultSet resultSet = statement.executeQuery(sql)) {

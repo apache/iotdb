@@ -60,6 +60,8 @@ public class PipeMemoryManager {
 
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
+  private volatile long reservedTsFileParserCount;
+
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
   private final Set<PipeMemoryBlock> shrinkableBlocks = new HashSet<>();
@@ -101,6 +103,34 @@ public class PipeMemoryManager {
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
+  private static long getTsFileParserMemorySizeInBytes() {
+    return Math.max(
+        PIPE_CONFIG.getTsFileParserMemory(), PIPE_CONFIG.getPipeMemoryAllocateMinSizeInBytes());
+  }
+
+  private long getReservedTsFileParserMemorySizeInBytes() {
+    return reservedTsFileParserCount * getTsFileParserMemorySizeInBytes();
+  }
+
+  private boolean isEnough4TabletParsingWithReservedParserMemory(final long extraMemoryInBytes) {
+    final double tabletMemoryWithParserMemory =
+        (double) usedMemorySizeInBytesOfTablets
+            + getReservedTsFileParserMemorySizeInBytes()
+            + extraMemoryInBytes;
+    return tabletMemoryWithParserMemory + (double) usedMemorySizeInBytesOfTsFiles
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+        && tabletMemoryWithParserMemory
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
+  }
+
+  private boolean isHardEnough4TabletParsingWithReservedParserMemory() {
+    final double tabletMemoryWithParserMemory =
+        (double) usedMemorySizeInBytesOfTablets + getReservedTsFileParserMemorySizeInBytes();
+    return tabletMemoryWithParserMemory + (double) usedMemorySizeInBytesOfTsFiles
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+        && tabletMemoryWithParserMemory < allowedMaxMemorySizeInBytesOfTablets();
+  }
+
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
             < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
@@ -112,6 +142,54 @@ public class PipeMemoryManager {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
             < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTablets < allowedMaxMemorySizeInBytesOfTablets();
+  }
+
+  public synchronized boolean tryReserveTsFileParserMemory() {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return true;
+    }
+
+    final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
+    if (isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
+      reservedTsFileParserCount++;
+      return true;
+    }
+
+    return false;
+  }
+
+  public synchronized void releaseTsFileParserMemory() {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return;
+    }
+
+    reservedTsFileParserCount = Math.max(0, reservedTsFileParserCount - 1);
+    this.notifyAll();
+  }
+
+  public boolean shouldReleaseTsFileParserOnOutOfMemory(
+      final long firstOutOfMemoryTimeInMs, final int retryCount) {
+    final long retryIntervalInMs = PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+    final long minRetryTimeInMs = Math.max(retryIntervalInMs * 2, 1);
+    final long maxRetryTimeInMs =
+        Math.max(
+            minRetryTimeInMs, retryIntervalInMs * PIPE_CONFIG.getPipeMemoryAllocateMaxRetries());
+
+    final long elapsedTimeInMs = System.currentTimeMillis() - firstOutOfMemoryTimeInMs;
+    if (elapsedTimeInMs < minRetryTimeInMs) {
+      return false;
+    }
+
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return elapsedTimeInMs >= maxRetryTimeInMs;
+    }
+
+    if (!isHardEnough4TabletParsingWithReservedParserMemory()) {
+      return true;
+    }
+
+    return retryCount >= PIPE_CONFIG.getPipeMemoryAllocateMaxRetries()
+        || elapsedTimeInMs >= maxRetryTimeInMs;
   }
 
   public boolean isEnough4TsFileSlicing() {
@@ -328,12 +406,6 @@ public class PipeMemoryManager {
     }
 
     final long oldSize = block.getMemoryUsageInBytes();
-    if (oldSize == 0) {
-      // If the memory block is not registered, we need to register it first.
-      // Otherwise, the memory usage will be inconsistent.
-      // See registerMemoryBlock for more details.
-      allocatedBlocks.add(block);
-    }
 
     if (oldSize >= targetSize) {
       memoryBlock.release(oldSize - targetSize);
@@ -349,6 +421,8 @@ public class PipeMemoryManager {
       if (targetSize == 0) {
         allocatedBlocks.remove(block);
       }
+
+      this.notifyAll();
       return;
     }
 
@@ -358,6 +432,12 @@ public class PipeMemoryManager {
       if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
+        if (oldSize == 0) {
+          // If the memory block is not registered, we need to register it first.
+          // Otherwise, the memory usage will be inconsistent.
+          // See registerMemoryBlock for more details.
+          allocatedBlocks.add(block);
+        }
         if (block instanceof PipeTabletMemoryBlock) {
           usedMemorySizeInBytesOfTablets += sizeInBytes;
         }
@@ -485,6 +565,9 @@ public class PipeMemoryManager {
     if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
         >= memoryInBytesNeededToBeAllocated) {
       memoryBlock.forceAllocateWithoutLimitation(memoryInBytesNeededToBeAllocated);
+      if (block.getMemoryUsageInBytes() == 0) {
+        allocatedBlocks.add(block);
+      }
       if (block instanceof PipeTabletMemoryBlock) {
         usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
       }

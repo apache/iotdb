@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -168,6 +169,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
@@ -286,6 +288,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -3201,19 +3204,41 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, TableNodeStatus tableNodeStatus) {
     final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TFetchTableResp(status);
     }
-    fetchTableMap.forEach(
-        (key, value) ->
-            value.removeIf(
-                table ->
-                    procedureManager
-                        .checkDuplicateTableTask(key, null, table, null, null, null)
-                        .getRight()));
-    return clusterSchemaManager.fetchTables(fetchTableMap);
+    switch (tableNodeStatus) {
+      case USING:
+        fetchTableMap.forEach(
+            (key, value) ->
+                value.removeIf(
+                    table ->
+                        procedureManager
+                            .checkDuplicateTableTask(key, null, table, null, null, null)
+                            .getRight()));
+        return clusterSchemaManager.fetchTables(fetchTableMap, EnumSet.of(TableNodeStatus.USING));
+      case PRE_DELETE:
+        // for get the pre_delete status table, do not need checkDuplicateTableTask,
+        // just get the current table, and should find both of using and pre_delete status
+        return clusterSchemaManager.fetchTables(
+            fetchTableMap, EnumSet.of(TableNodeStatus.USING, TableNodeStatus.PRE_DELETE));
+      case PRE_CREATE:
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TDataNodeLeaseRecoveryResp().setStatus(status);
+    }
+    return new TDataNodeLeaseRecoveryResp()
+        .setStatus(RpcUtils.SUCCESS_STATUS)
+        .setTableInfo(clusterSchemaManager.getAllTableInfoForDataNodeActivation());
   }
 
   @Override

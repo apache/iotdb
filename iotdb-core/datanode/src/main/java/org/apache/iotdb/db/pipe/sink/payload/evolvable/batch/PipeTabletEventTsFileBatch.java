@@ -101,6 +101,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           (PipeInsertNodeTabletInsertionEvent) event;
       final boolean isTableModel = insertNodeTabletInsertionEvent.isTableModelEvent();
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletsSizeInBytes(tablets));
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
         if (isTabletEmpty(tablet)) {
@@ -137,6 +138,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       if (isTabletEmpty(tablet)) {
         return false;
       }
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletSizeInBytes(tablet));
       if (rawTabletInsertionEvent.isTableModelEvent()) {
         // table Model
         final Tablet prunedTablet =
@@ -175,17 +177,23 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         : tablet;
   }
 
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    return tablets.stream()
+        .filter(tablet -> !isTabletEmpty(tablet))
+        .mapToLong(PipeTabletEventTsFileBatch::calculateTabletSizeInBytes)
+        .sum();
+  }
+
+  private static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+  }
+
   private void bufferTreeModelTablet(
       final String pipeName,
       final long creationTime,
       final Tablet tablet,
       final boolean isAligned) {
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-
-    // TODO: Currently, PipeTreeModelTsFileBuilderV2 still uses PipeTreeModelTsFileBuilder as a
-    // fallback builder, so memory table writing and storing temporary tablets require double the
-    // memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -197,11 +205,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-
-    // TODO: Currently, PipeTableModelTsFileBuilderV2 still uses PipeTableModelTsFileBuilder as a
-    // fallback builder, so memory table writing and storing temporary tablets require double the
-    // memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -245,8 +248,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   @Override
   public synchronized void onSuccess() {
-    super.onSuccess();
+    clearBatchData();
 
+    super.onSuccess();
+  }
+
+  @Override
+  protected void clearBatchData() {
     pipeName2WeightMap.clear();
     tableModeTsFileBuilder.onSuccess();
     treeModeTsFileBuilder.onSuccess();
@@ -255,8 +263,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void close() {
     super.close();
-
-    pipeName2WeightMap.clear();
 
     tableModeTsFileBuilder.close();
     treeModeTsFileBuilder.close();

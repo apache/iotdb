@@ -26,6 +26,8 @@ import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerMa
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.RequestType;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public class TwoStageAggregateReceiver implements IoTDBReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageAggregateReceiver.class);
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   @Override
   public IoTDBSinkRequestVersion getVersion() {
@@ -46,6 +49,13 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
   @Override
   public TPipeTransferResp receive(TPipeTransferReq req) {
     try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT));
+      }
+
       final short rawRequestType = req.getType();
       if (RequestType.isValidatedRequestType(rawRequestType)) {
         switch (RequestType.valueOf(rawRequestType)) {
