@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataN
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -562,7 +563,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         "%s-%s",
         receiverAttributes,
         endPoints.stream()
-            .map(endPoint -> String.format("%s:%s", endPoint.getIp(), endPoint.getPort()))
+            .map(UrlUtils::convertTEndPointIpv4AndIpv6Url)
             .distinct()
             .sorted()
             .collect(Collectors.joining(",", "[", "]")));

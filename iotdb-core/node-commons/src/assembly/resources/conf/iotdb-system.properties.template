@@ -36,7 +36,7 @@ cluster_name=defaultCluster
 # For other ConfigNodes that to join the cluster, cn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this ConfigNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 cn_seed_config_node=127.0.0.1:10710
@@ -44,7 +44,7 @@ cn_seed_config_node=127.0.0.1:10710
 # dn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this DataNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 dn_seed_config_node=127.0.0.1:10710
@@ -54,7 +54,7 @@ dn_seed_config_node=127.0.0.1:10710
 ####################
 
 # Used for RPC communication inside cluster.
-# Could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 cn_internal_address=127.0.0.1
@@ -70,7 +70,7 @@ cn_internal_port=10710
 cn_consensus_port=10720
 
 # Used for connection of IoTDB native clients(Session)
-# Could set 127.0.0.1(for local test) or ipv4 address
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: restart
 # Datatype: String
 dn_rpc_address=127.0.0.1
@@ -82,7 +82,7 @@ dn_rpc_address=127.0.0.1
 dn_rpc_port=6667
 
 # Used for communication inside cluster.
-# could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 dn_internal_address=127.0.0.1

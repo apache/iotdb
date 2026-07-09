@@ -212,3 +212,27 @@ TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const string& endPointUrl) {
 
   return endPoint;
 }
+
+bool UrlUtils::isWildcardAddress(const string& host) {
+  if (host.empty()) {
+    return false;
+  }
+
+  string normalizedHost = host;
+  if (normalizedHost.size() >= 2 && normalizedHost.front() == '[' && normalizedHost.back() == ']') {
+    normalizedHost = normalizedHost.substr(1, normalizedHost.size() - 2);
+  }
+
+  if (normalizedHost == "0.0.0.0") {
+    return true;
+  }
+  if (normalizedHost.find(PORT_SEPARATOR) == string::npos) {
+    return false;
+  }
+  for (char ch : normalizedHost) {
+    if (ch != ':' && ch != '0') {
+      return false;
+    }
+  }
+  return true;
+}
