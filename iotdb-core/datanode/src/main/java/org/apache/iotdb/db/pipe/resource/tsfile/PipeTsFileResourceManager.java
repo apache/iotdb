@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
-import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -45,7 +44,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class PipeTsFileResourceManager {
@@ -67,14 +65,8 @@ public class PipeTsFileResourceManager {
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
   private static ExecutorService createPipeTsFileDirCleanupExecutor() {
-    return new WrappedThreadPoolExecutor(
-        0,
-        1,
-        60L,
-        TimeUnit.SECONDS,
-        new LinkedBlockingQueue<>(),
-        new IoTThreadFactory(ThreadName.PIPE_TSFILE_DIR_CLEANUP.getName()),
-        ThreadName.PIPE_TSFILE_DIR_CLEANUP.getName());
+    return IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+        1, 60L, TimeUnit.SECONDS, ThreadName.PIPE_TSFILE_DIR_CLEANUP.getName());
   }
 
   public static String getPipeTsFileResourcePipeName(
