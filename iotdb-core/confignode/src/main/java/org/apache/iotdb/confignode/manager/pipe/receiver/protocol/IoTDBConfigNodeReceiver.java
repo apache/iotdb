@@ -242,7 +242,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
-              String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
+              String.format(
+                  ManagerMessages.UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE, rawRequestType));
       LOGGER.warn(
           ManagerMessages.RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS,
           receiverId.get(),
@@ -250,8 +251,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
       final String error =
-          "Exception encountered while handling pipe transfer request. Root cause: "
-              + e.getMessage();
+          String.format(
+              ManagerMessages.EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST,
+              e.getMessage());
       LOGGER.warn(ManagerMessages.RECEIVER_ID, receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }

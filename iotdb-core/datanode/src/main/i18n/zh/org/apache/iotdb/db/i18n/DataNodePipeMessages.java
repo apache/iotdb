@@ -100,6 +100,8 @@ public final class DataNodePipeMessages {
       "从 processor 收集事件时发生错误";
   public static final String EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE =
       "pipe event processing 中发生异常，因为 pipe 已被删除，忽略该异常。{}";
+  public static final String TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING =
+      "Pipe 事件处理时暂时内存不足，将等待内存释放。消息：{}";
   public static final String EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_CONNECTOR_SUBTASK =
       "关闭 pipe connector 子任务 {} 时发生异常，根因：{}";
   public static final String EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK =
@@ -492,6 +494,9 @@ public final class DataNodePipeMessages {
       "等待 processor 停止时被中断";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE =
       "等待解析 TsFile %s 的权限信息时被中断。";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_CLOSING_TSFILE =
+      "等待 TsFile %s 关闭时被中断。";
+  public static final String PARSE_TSFILE_ERROR_BECAUSE = "解析 TsFile %s 失败。原因：%s";
   public static final String PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR =
       "检查权限时解析 TsFile %s 失败。原因：%s";
   public static final String READ_TSFILE_ERROR = "读取 TsFile %s 失败。";
@@ -675,6 +680,13 @@ public final class DataNodePipeMessages {
       "传输文件失败后调整超时时间失败。";
   public static final String FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER =
       "为 cached leader 借用 client {}:{} 失败。";
+  public static final String HANDSHAKE_ERROR_WITH_RECEIVER =
+      "与接收端 {}:{} 握手失败，状态码：{}，消息：{}。";
+  public static final String HANDSHAKE_ERROR_WITH_RECEIVER_1 =
+      "与接收端 {}:{} 握手失败。";
+  public static final String HANDSHAKE_ERROR_BY_HANDSHAKE_V2_RETRY_WITH_V1 =
+      "使用 PipeTransferHandshakeV2Req 与接收端 {}:{} 握手失败，改用 PipeTransferHandshakeV1Req "
+          + "重试握手。";
   public static final String FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER =
       "构建并启动 OpcUaServer 失败";
   public static final String FAILED_TO_CLOSE_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTE =
@@ -718,11 +730,21 @@ public final class DataNodePipeMessages {
       "成功创建 node 后传输 dataValue 失败";
   public static final String FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE =
       "传输 PipeDeleteNodeEvent {} (committer key={}, replicate index={}) 失败。";
+  public static final String FAILED_TO_TRANSFER_SLICE_RETRY_WHOLE_TRANSFER =
+      "传输 slice 失败。原始请求：{}-{}。将重试完整传输。";
   public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_REPLICATE =
       "传输 TabletInsertionEvent {} (committer key={}, replicate index={}) 失败。";
+  public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
+      "传输 TabletInsertionEvent {}（committer key={}，commit id={}）失败。";
+  public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH =
+      "传输 TabletInsertionEvent 批次失败。失败事件总数：{}，相关 pipe 名称：{}";
   public static final String FAILED_TO_TRANSFER_TSFILE_BATCH = "传输 tsfile batch ({}) 失败。";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "传输 tsfile event {} asynchronously 失败。";
+  public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
+      "传输 TsFileInsertionEvent {}（committer key {}，commit id {}）失败。";
+  public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
+      "传输 TsFileInsertionEvent {}（批量 TableInsertionEvent）失败。";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "更新 leader cache for device {} with endpoint {}:{} 失败。";
   public static final String FAILED_TO_WRITE = "写入失败 ";
@@ -937,6 +959,14 @@ public final class DataNodePipeMessages {
       "TIoTConsensusV2BatchTransferResp 为空";
   public static final String TIOTCONSENSUSV2TRANSFERRESP_IS_NULL = "TIoTConsensusV2TransferResp 为空";
   public static final String TPIPETRANSFERRESP_IS_NULL = "TPipeTransferResp 为空";
+  public static final String OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY =
+      "当 OPC UA sink 指向外部 server 或将 'with-quality' 设置为 true 时，%s 或 %s 必须为 %s。";
+  public static final String WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME =
+      "启用 'with-quality' 模式时，measurement 必须是 \"value-name\" 或 \"quality-name\"。";
+  public static final String SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
+      "Session {}: 检查 statement {} 权限失败，username = {}，response = {}。";
+  public static final String TRANSFER_REQUEST_BODY_TOO_LARGE_WILL_BE_SLICED =
+      "请求体过大，将切分请求。原始请求：{}-{}。请求体大小：{}，阈值：{}";
   public static final String TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED =
       "异步传输 tsfile event {} 被中断。";
   public static final String UNABLE_TO_CREATE_SECURITY_DIR = "无法创建 security dir: ";
@@ -974,6 +1004,8 @@ public final class DataNodePipeMessages {
       "LoadTsFileStatement：{} 的数据库名称为空，跳过数据类型转换。";
   public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_STATEMENT =
       "statement：{} 的数据库名称为空，跳过数据类型转换。";
+  public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_SKIP_DATA_TYPE_CONVERSION =
+      "Pipe：数据库名称为空，跳过数据类型转换。";
   public static final String DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL =
       "LoadTsFileStatement {} 的数据类型转换成功。";
   public static final String DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT =
@@ -986,6 +1018,11 @@ public final class DataNodePipeMessages {
       "转换 data type for LoadTsFileStatement: {} 失败。";
   public static final String FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE =
       "execute statement after data type conversion 失败。";
+  public static final String
+      FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE_CONVERSION_WITH_EXCEPTION_TYPE =
+          "Pipe：执行数据类型转换后的 statement 失败。异常类型：{}。";
+  public static final String FAILED_TO_PARSE_ROW_VALUE_DURING_DATA_TYPE_CONVERSION =
+      "Pipe：数据类型转换时解析 row value 失败。注册类型：{}。";
   public static final String FAILED_TO_HANDLE_CONFIG_CLIENT_ID_EXIT =
       "处理 config client (id = {}) exit 失败";
   public static final String FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS =
@@ -1164,6 +1201,10 @@ public final class DataNodePipeMessages {
   public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
       "Pipe air gap receiver {}：在 air gap receiver 处遇到 TSStatus {}，将忽略。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
+  public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
+      "Pipe：写入 row。将类型从 {} 转换为 {}。";
+  public static final String PIPE_INSERTING_TABLET_CASTING_TYPE_FROM =
+      "Pipe：写入 tablet。将类型从 {} 转换为 {}。";
   public static final String PIPE_INSERTING_TABLET_TO_CASTING_TYPE_FROM =
       "Pipe：向 {}.{} 写入 tablet。将类型从 {} 转换为 {}。";
   public static final String RECEIVERS_EXECUTOR_IS_CLOSED = "Receivers-{} 的 executor 已关闭。";
@@ -1175,6 +1216,17 @@ public final class DataNodePipeMessages {
       "Receiver id = {}：未知的 PipeRequestType，response status = {}。";
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}：不支持的 statement type {} 用于 redirection。";
+  public static final String RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
+      "Receiver id = {}: 检查 statement {} 权限失败，username = {}，response = {}。";
+  public static final String RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT =
+      "Receiver id = {}: 执行 statement {} 时遇到失败状态：{}";
+  public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
+      "Receiver id = {}: 执行 statement {} 时遇到异常：";
+  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
+      "Receiver id = {}，statement = {}，exception = {}，message = {}";
+  public static final String UNKNOWN_PIPEREQUESTTYPE = "未知 PipeRequestType %s。";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
+      "遇到异常 %s，处理请求 %s 时。";
   public static final String RECEIVER_IS_READY = "Receiver-{} 已就绪";
   public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
       "执行 %s 时暂时内存不足。请求内存：%d bytes，已用内存：%d bytes，可用内存：%d bytes，"

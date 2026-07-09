@@ -209,7 +209,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                   endPoint.getPort(),
                   e),
           e,
-          "Failed to borrow client %s:%s for cached leader.",
+          DataNodePipeMessages.FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER,
           endPoint.getIp(),
           endPoint.getPort());
     }
@@ -245,7 +245,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               PipeLogger.log(
                   LOGGER::warn,
-                  "Handshake error with receiver %s:%s, code: %s, message: %s.",
+                  DataNodePipeMessages.HANDSHAKE_ERROR_WITH_RECEIVER,
                   targetNodeUrl.getIp(),
                   targetNodeUrl.getPort(),
                   response.getStatus().getCode(),
@@ -279,7 +279,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             PipeLogger.log(
                 LOGGER::warn,
                 e,
-                "Handshake error with receiver %s:%s.",
+                DataNodePipeMessages.HANDSHAKE_ERROR_WITH_RECEIVER_1,
                 targetNodeUrl.getIp(),
                 targetNodeUrl.getPort());
             exception.set(e);
@@ -332,8 +332,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Handshake error by PipeTransferHandshakeV2Req with receiver %s:%s "
-                + "retry to handshake by PipeTransferHandshakeV1Req.",
+            DataNodePipeMessages.HANDSHAKE_ERROR_BY_HANDSHAKE_V2_RETRY_WITH_V1,
             targetNodeUrl.getIp(),
             targetNodeUrl.getPort());
 
@@ -374,7 +373,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                       targetNodeUrl.getPort(),
                       e),
               e,
-              "Failed to close client %s:%s after handshake failure when the manager is closed.",
+              DataNodePipeMessages.FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE,
               targetNodeUrl.getIp(),
               targetNodeUrl.getPort());
         }

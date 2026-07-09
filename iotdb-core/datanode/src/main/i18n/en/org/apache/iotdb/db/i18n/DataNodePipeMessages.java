@@ -108,6 +108,9 @@ public final class DataNodePipeMessages {
       "Error occurred when collecting events from processor.";
   public static final String EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE =
       "Exception in pipe event processing, ignored because pipe is dropped.{}";
+  public static final String TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING =
+      "Temporarily out of memory in pipe event processing, will wait for the memory to release. "
+          + "Message: {}";
   public static final String EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_CONNECTOR_SUBTASK =
       "Exception occurred when closing pipe connector subtask {}, root cause: {}";
   public static final String EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK =
@@ -515,6 +518,9 @@ public final class DataNodePipeMessages {
       "Interrupted waiting for processor to stop";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE =
       "Interrupted when waiting for parsing privilege for TsFile %s.";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_CLOSING_TSFILE =
+      "Interrupted when waiting for closing TsFile %s.";
+  public static final String PARSE_TSFILE_ERROR_BECAUSE = "Parse TsFile %s error. Because: %s";
   public static final String PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR =
       "Parse TsFile %s when checking privilege error. Because: %s";
   public static final String READ_TSFILE_ERROR = "Read TsFile %s error.";
@@ -710,6 +716,13 @@ public final class DataNodePipeMessages {
       "Failed to adjust timeout when failed to transfer file.";
   public static final String FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER =
       "failed to borrow client {}:{} for cached leader.";
+  public static final String HANDSHAKE_ERROR_WITH_RECEIVER =
+      "Handshake error with receiver {}:{}, code: {}, message: {}.";
+  public static final String HANDSHAKE_ERROR_WITH_RECEIVER_1 =
+      "Handshake error with receiver {}:{}.";
+  public static final String HANDSHAKE_ERROR_BY_HANDSHAKE_V2_RETRY_WITH_V1 =
+      "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} retry to handshake by "
+          + "PipeTransferHandshakeV1Req.";
   public static final String FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER =
       "Failed to build and startup OpcUaServer";
   public static final String FAILED_TO_CLOSE_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTE =
@@ -756,12 +769,23 @@ public final class DataNodePipeMessages {
       "Failed to transfer dataValue after successfully created nodes";
   public static final String FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE =
       "Failed to transfer PipeDeleteNodeEvent {} (committer key={}, replicate index={}).";
+  public static final String FAILED_TO_TRANSFER_SLICE_RETRY_WHOLE_TRANSFER =
+      "Failed to transfer slice. Origin req: {}-{}. Retry the whole transfer.";
   public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_REPLICATE =
       "Failed to transfer TabletInsertionEvent {} (committer key={}, replicate index={}).";
+  public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
+      "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).";
+  public static final String FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH =
+      "Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe "
+          + "names: {}";
   public static final String FAILED_TO_TRANSFER_TSFILE_BATCH =
       "Failed to transfer tsfile batch ({}).";
   public static final String FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY =
       "Failed to transfer tsfile event {} asynchronously.";
+  public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID =
+      "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).";
+  public static final String FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS =
+      "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents).";
   public static final String FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE =
       "Failed to update leader cache for device {} with endpoint {}:{}.";
   public static final String FAILED_TO_WRITE = "Failed to write ";
@@ -995,6 +1019,17 @@ public final class DataNodePipeMessages {
   public static final String TIOTCONSENSUSV2TRANSFERRESP_IS_NULL =
       "TIoTConsensusV2TransferResp is null";
   public static final String TPIPETRANSFERRESP_IS_NULL = "TPipeTransferResp is null";
+  public static final String OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY =
+      "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or "
+          + "%s must be %s.";
+  public static final String WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME =
+      "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or "
+          + "\"quality-name\"";
+  public static final String SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
+      "Session {}: Failed to check authority for statement {}, username = {}, response = {}.";
+  public static final String TRANSFER_REQUEST_BODY_TOO_LARGE_WILL_BE_SLICED =
+      "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
+          + "Request body size: {}, threshold: {}";
   public static final String TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED =
       "Transfer tsfile event {} asynchronously was interrupted.";
   public static final String UNABLE_TO_CREATE_SECURITY_DIR = "unable to create security dir: ";
@@ -1036,6 +1071,8 @@ public final class DataNodePipeMessages {
       "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.";
   public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_STATEMENT =
       "Database name is unexpectedly null for statement: {}. Skip data type conversion.";
+  public static final String DATABASE_NAME_IS_UNEXPECTEDLY_NULL_SKIP_DATA_TYPE_CONVERSION =
+      "Pipe: Database name is unexpectedly null. Skip data type conversion.";
   public static final String DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL =
       "Data type conversion for LoadTsFileStatement {} is successful.";
   public static final String DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT =
@@ -1049,6 +1086,11 @@ public final class DataNodePipeMessages {
       "Failed to convert data type for LoadTsFileStatement: {}.";
   public static final String FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE =
       "Failed to execute statement after data type conversion.";
+  public static final String
+      FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE_CONVERSION_WITH_EXCEPTION_TYPE =
+          "Pipe: Failed to execute statement after data type conversion. Exception type: {}.";
+  public static final String FAILED_TO_PARSE_ROW_VALUE_DURING_DATA_TYPE_CONVERSION =
+      "Pipe: Failed to parse row value during data type conversion. Registered type {}.";
   public static final String FAILED_TO_HANDLE_CONFIG_CLIENT_ID_EXIT =
       "Failed to handle config client (id = {}) exit";
   public static final String FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS =
@@ -1235,6 +1277,10 @@ public final class DataNodePipeMessages {
   public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
       "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe data transport error, {}";
+  public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
+      "Pipe: Inserting row. Casting type from {} to {}.";
+  public static final String PIPE_INSERTING_TABLET_CASTING_TYPE_FROM =
+      "Pipe: Inserting tablet. Casting type from {} to {}.";
   public static final String PIPE_INSERTING_TABLET_TO_CASTING_TYPE_FROM =
       "Pipe: Inserting tablet to {}.{}. Casting type from {} to {}.";
   public static final String RECEIVERS_EXECUTOR_IS_CLOSED = "Receivers-{}' executor is closed.";
@@ -1247,6 +1293,17 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: Unknown PipeRequestType, response status = {}.";
   public static final String RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION =
       "Receiver id = {}: Unsupported statement type {} for redirection.";
+  public static final String RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
+      "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.";
+  public static final String RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT =
+      "Receiver id = {}: Failure status encountered while executing statement {}: {}";
+  public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
+      "Receiver id = {}: Exception encountered while executing statement {}: ";
+  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
+      "Receiver id = {}, statement = {}, exception = {}, message = {}";
+  public static final String UNKNOWN_PIPEREQUESTTYPE = "Unknown PipeRequestType %s.";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
+      "Exception %s encountered while handling request %s.";
   public static final String RECEIVER_IS_READY = "Receiver-{} is ready";
   public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
       "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d bytes, "
