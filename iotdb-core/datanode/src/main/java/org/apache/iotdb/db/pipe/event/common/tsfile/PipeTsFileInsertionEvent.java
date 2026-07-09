@@ -93,6 +93,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  // False when generated tablet events should wait for an external progress report.
+  private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -388,6 +390,23 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return resource.getMaxProgressIndex();
   }
 
+  public PipeTsFileInsertionEvent skipReportOnCommitAndGeneratedEvents() {
+    return setShouldReportGeneratedEventsOnCommit(false);
+  }
+
+  public boolean shouldReportGeneratedEventsOnCommit() {
+    return shouldReportGeneratedEventsOnCommit;
+  }
+
+  private PipeTsFileInsertionEvent setShouldReportGeneratedEventsOnCommit(
+      final boolean shouldReportGeneratedEventsOnCommit) {
+    this.shouldReportGeneratedEventsOnCommit = shouldReportGeneratedEventsOnCommit;
+    if (!shouldReportGeneratedEventsOnCommit) {
+      skipReportOnCommit();
+    }
+    return this;
+  }
+
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
@@ -404,18 +423,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pattern,
-        startTime,
-        endTime,
-        isTsFileSealed);
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            pattern,
+            startTime,
+            endTime,
+            isTsFileSealed)
+        .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
   }
 
   @Override
