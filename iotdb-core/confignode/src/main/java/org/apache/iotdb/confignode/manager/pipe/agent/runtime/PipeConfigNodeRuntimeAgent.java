@@ -97,7 +97,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   private void initPipePeriodicalLogReducer() {
     PipePeriodicalLogReducer.setMemoryResizeFunction(
-        PipeConfigNodeResourceManager::resizeLogReducerMemory);
+        PipeConfigNodeResourceManager.memory()::resizeLogReducerMemory);
     PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 

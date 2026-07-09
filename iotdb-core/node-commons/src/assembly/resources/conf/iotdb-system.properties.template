@@ -731,7 +731,8 @@ disk_space_warning_threshold=0.05
 datanode_memory_proportion=3:3:1:1:1:1
 
 # ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
-# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
 # effectiveMode: restart
 confignode_memory_proportion=1:9
 
