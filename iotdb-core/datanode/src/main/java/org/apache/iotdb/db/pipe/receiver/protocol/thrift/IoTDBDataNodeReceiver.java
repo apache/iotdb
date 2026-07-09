@@ -69,6 +69,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConver
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -237,7 +238,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
-                return new TPipeTransferResp(getUnsupportedHandshakeV1Status());
+                return recordDataNodeHandshakeIfSuccess(
+                    handleTransferHandshakeV1(
+                        PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req)),
+                    req);
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
