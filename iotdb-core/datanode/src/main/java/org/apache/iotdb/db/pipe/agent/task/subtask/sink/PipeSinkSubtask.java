@@ -288,7 +288,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         ((PipeConnectorWithEventDiscard) outputPipeSink).discardEventsOfPipe(committerKey);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to discard events of pipe {} in connector subtask {}.",
+            DataNodePipeMessages.FAILED_TO_DISCARD_EVENTS_OF_PIPE_IN_CONNECTOR_SUBTASK,
             committerKey.getPipeName(),
             getDisplayTaskID(),
             e);
@@ -370,12 +370,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         closeThread.interrupt();
       }
       LOGGER.warn(
-          "Timed out after {} ms when closing pipe connector subtask {}. Continue dropping it. The close operation {}.",
+          DataNodePipeMessages.PIPE_SINK_SUBTASK_CLOSE_TIMED_OUT,
           timeoutInMs,
           getDisplayTaskID(),
           closeStarted.get()
-              ? "is still running"
-              : "will run after the current connector operation finishes");
+              ? DataNodePipeMessages.PIPE_SINK_SUBTASK_CLOSE_OPERATION_STILL_RUNNING
+              : DataNodePipeMessages
+                  .PIPE_SINK_SUBTASK_CLOSE_OPERATION_WILL_RUN_AFTER_CURRENT_CONNECTOR_OPERATION);
       return false;
     }
 

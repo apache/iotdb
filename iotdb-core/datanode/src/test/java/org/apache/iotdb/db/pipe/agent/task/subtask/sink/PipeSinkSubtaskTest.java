@@ -110,14 +110,21 @@ public class PipeSinkSubtaskTest {
     failureThread.start();
     Assert.assertTrue(handshakeEntered.await(5, TimeUnit.SECONDS));
 
+    final CountDownLatch discardReturned = new CountDownLatch(1);
     final Thread discardThread =
-        new Thread(() -> subtask.discardEventsOfPipe(new CommitterKey("pipe", 1L, 1, -1)));
+        new Thread(
+            () -> {
+              try {
+                subtask.discardEventsOfPipe(new CommitterKey("pipe", 1L, 1, -1));
+              } finally {
+                discardReturned.countDown();
+              }
+            });
     discardThread.start();
-    discardThread.join(1000);
 
     try {
-      Assert.assertFalse(discardThread.isAlive());
-      Assert.assertFalse(discardEntered.await(100, TimeUnit.MILLISECONDS));
+      Assert.assertTrue(discardReturned.await(5, TimeUnit.SECONDS));
+      Assert.assertEquals(1L, discardEntered.getCount());
       Assert.assertFalse(discardDuringHandshake.get());
     } finally {
       releaseHandshake.countDown();
