@@ -20,10 +20,13 @@
 package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PipeSourceConstant {
@@ -87,6 +90,10 @@ public class PipeSourceConstant {
   public static final String SOURCE_FORWARDING_PIPE_REQUESTS_KEY =
       "source.forwarding-pipe-requests";
   public static final boolean EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE = true;
+  public static final List<String> FORWARDING_PIPE_REQUESTS_KEYS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
 
   public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
   public static final String SOURCE_HISTORY_ENABLE_KEY = "source.history.enable";
@@ -137,7 +144,16 @@ public class PipeSourceConstant {
   public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
   public static final String EXTRACTOR_MODE_DOUBLE_LIVING_KEY = "extractor.mode.double-living";
   public static final String SOURCE_MODE_DOUBLE_LIVING_KEY = "source.mode.double-living";
+  public static final String EXTRACTOR_DOUBLE_LIVING_KEY = "extractor.double-living";
+  public static final String SOURCE_DOUBLE_LIVING_KEY = "source.double-living";
   public static final boolean EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE = false;
+  public static final List<String> DOUBLE_LIVING_KEYS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+              SOURCE_MODE_DOUBLE_LIVING_KEY,
+              EXTRACTOR_DOUBLE_LIVING_KEY,
+              SOURCE_DOUBLE_LIVING_KEY));
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
@@ -194,6 +210,31 @@ public class PipeSourceConstant {
       "extractor.consensus.sender-dn-id";
   public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
       "extractor.consensus.receiver-dn-id";
+
+  public static boolean isDoubleLiving(final PipeParameters sourceParameters) {
+    return sourceParameters.getBooleanOrDefault(
+        DOUBLE_LIVING_KEYS, EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+  }
+
+  public static void removeDoubleLivingAttributes(final Map<String, String> sourceAttributes) {
+    removeEquivalentAttributes(sourceAttributes, DOUBLE_LIVING_KEYS);
+  }
+
+  public static void disableForwardingPipeRequests(final Map<String, String> sourceAttributes) {
+    removeEquivalentAttributes(sourceAttributes, FORWARDING_PIPE_REQUESTS_KEYS);
+    sourceAttributes.put(SOURCE_FORWARDING_PIPE_REQUESTS_KEY, Boolean.FALSE.toString());
+  }
+
+  private static void removeEquivalentAttributes(
+      final Map<String, String> sourceAttributes, final List<String> equivalentKeys) {
+    final Set<String> reducedKeys =
+        equivalentKeys.stream()
+            .map(PipeParameters.KeyReducer::reduce)
+            .collect(java.util.stream.Collectors.toSet());
+    sourceAttributes
+        .keySet()
+        .removeIf(key -> reducedKeys.contains(PipeParameters.KeyReducer.reduce(key)));
+  }
 
   private PipeSourceConstant() {
     throw new IllegalStateException(PipeMessages.UTILITY_CLASS);

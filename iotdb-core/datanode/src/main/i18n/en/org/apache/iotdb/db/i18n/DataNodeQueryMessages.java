@@ -129,6 +129,45 @@ public final class DataNodeQueryMessages {
       "Free more memory than has been reserved.";
   public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
       "Estimated mods tree size decreased from %d to %d for TsFile %s.";
+  public static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while analyzing metadata for query result columns. "
+          + "The result set has too many columns. "
+          + "Before the failure, IoTDB had matched %,d source columns for result-column "
+          + "expansion, expanded %,d source columns, and generated %,d result-set columns. "
+          + "%s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: source-column memory for result expansion %s, "
+          + "generated-result-column memory %s, requested this time %s, current free memory %s. "
+          + "Original error: %s";
+  public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The matched source columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while fetching metadata for query analysis. "
+          + "The result set may have too many columns. "
+          + "Before the failure, IoTDB had deserialized %,d time-series columns from schema "
+          + "fetch results. Schema fetch memory may be reserved before safely deserializing "
+          + "the whole fetched metadata, so this count can be lower than the matched schema "
+          + "columns. %s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: fetched schema tree estimated memory %s, "
+          + "fetched schema tree reserved memory %s, requested this time %s, "
+          + "current free memory %s. Original error: %s";
+  public static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The fetched schema columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  public static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
+      ", use ALIGN BY DEVICE to reduce cross-device result columns";
+  public static final String BY_AT_LEAST_MEMORY_SIZE = " by at least %s";
+  public static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
+      " for the query engine/operator memory pool";
+  public static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s, SOFFSET=%,d";
+  public static final String NOT_SET = "not set";
+  public static final String UNKNOWN = "unknown";
 
   // --- Execution / Operator ---
 
@@ -269,8 +308,33 @@ public final class DataNodeQueryMessages {
       "The left hand value must be an identifier: ";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "The table '%s' does not contain a time column";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "Start time %d is greater than end time %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "The right hand value of time predicate must be a long: ";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of tag predicate cannot be null with '=' operator, "
+              + "please use 'IS NULL' instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of tag predicate must be a string: ";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "The operator of attribute predicate must be =, !=, <, <=, >, >=, LIKE, or IN for ";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "The right hand value of attribute predicate cannot be null with comparison operator, "
+              + "please use IS NULL or IS NOT NULL instead";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "The right hand value of attribute predicate must be a string: ";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "The column '%s' does not exist or is not a tag column";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "Too many devices (%d) matched by attribute filters in deletion, limit is %d. "
+          + "Please remove all attribute filters (%s) or add more attribute filters.";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "Only time filters are supported in LAST query";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =
@@ -804,6 +868,8 @@ public final class DataNodeQueryMessages {
       "Invalid scalar argument: ";
   public static final String ARGUMENT_SHOULD_BE_A_STRING =
       "Argument %s should be a string";
+  public static final String ARGUMENT_SHOULD_BE_A_NUMBER =
+      "Argument %s should be a number";
   public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
       "Argument %s should contain at least one path";
   public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
@@ -1652,14 +1718,10 @@ public final class DataNodeQueryMessages {
       "The column '";
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
       "' does not exist or is not a tag column";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-      "The right hand value of time predicate must be a long: ";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
       "The operator of time predicate must be <, <=, >, or >=: ";
   public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_EQ_OPERATOR_PLEASE_USE_IS_NULL =
       "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-      "The right hand value of tag predicate must be a string: ";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
       "select into: placeholder `::` can only be used at the end of the path.";
   public static final String SELECT_INTO_THE_I_OF_DOLLAR_I_SHOULD_BE_GREATER_THAN_0_AND_EQUAL_TO_OR_LESS_THAN_THE =

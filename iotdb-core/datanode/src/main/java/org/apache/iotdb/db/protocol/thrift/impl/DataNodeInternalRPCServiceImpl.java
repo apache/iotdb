@@ -212,8 +212,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
@@ -2127,7 +2127,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             new TableDeletionEntry(
                                 new DeletionPredicate(
                                     req.getTableName(),
-                                    new IDPredicate.NOP(),
+                                    new TagPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
                                 new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                             // the request is only sent to associated region

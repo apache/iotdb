@@ -1678,7 +1678,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             assignments,
             tagAndAttributeIndexMap,
             queryContext.createExternalTsFileQueryResource(
-                handle.getTableName(), handle.getTsFilePaths(), assignments));
+                handle.getTableName(),
+                handle.getTsFilePaths(),
+                assignments,
+                handle.getDeviceMetadataInfoSwapThreshold()));
 
     return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
   }

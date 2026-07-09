@@ -1124,8 +1124,8 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B =
       "partition_table_recover_worker_num should be greater than 0, but current value is {}, "
           + "ignore that and use the default value {}";
-  public static final String MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MEGABYTES_PER_SECOND_SHOULD_42BCDFBC =
-      "partition_table_recover_max_read_megabytes_per_second should be greater than 0, but current "
+  public static final String MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MB_PER_SEC_SHOULD_42BCDFBC =
+      "partition_table_recover_max_read_mb_per_sec should be greater than 0, but current "
           + "value is {}, ignore that and use the default value {}";
   public static final String MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7 =
       "The throttle threshold params: {} is deprecated, please use {}";

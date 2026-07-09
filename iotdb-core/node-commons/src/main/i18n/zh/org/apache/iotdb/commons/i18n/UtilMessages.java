@@ -110,6 +110,8 @@ public final class UtilMessages {
 
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY =
       "所有文件夹空间均已耗尽，系统切换为只读模式。";
+  public static final String CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE =
+      "无法选择文件夹但磁盘仍有可用空间，不切换为只读模式。";
   public static final String FAILED_TO_PROCESS_FOLDER = "处理文件夹 {} 失败";
   public static final String FAILED_TO_READ_FILE_STORE_PATH =
       "读取文件存储路径 '{}' 失败";

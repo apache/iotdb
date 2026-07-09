@@ -395,20 +395,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
@@ -1020,7 +1013,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             event);
       }
 
-      if (sloppyPattern || isDbNameCoveredByPattern) {
+      if (sloppyPattern
+          || isDbNameCoveredByPattern
+          || isTsFileResourceCoveredByTablePattern(
+              resource, filteredTsFileResources2TableNames.get(resource))) {
         event.skipParsingPattern();
       }
       if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
@@ -1065,6 +1061,21 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
         && PipeTsFileEpochProgressIndexKeeper.getInstance()
             .containsTsFile(dataRegionId, tsFileDedupScopeID, resource.getTsFilePath());
+  }
+
+  private boolean isTsFileResourceCoveredByTablePattern(
+      final TsFileResource resource, final Set<String> tableNames) {
+    return isModelDetected
+        && isTableModel
+        && tablePattern.isTableModelDataAllowedToBeCaptured()
+        && Objects.nonNull(resource)
+        && Objects.nonNull(tableNames)
+        && !tableNames.isEmpty()
+        && tableNames.stream()
+            .allMatch(
+                tableName ->
+                    tablePattern.matchesDatabase(resource.getDatabaseName())
+                        && tablePattern.matchesTable(tableName));
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {

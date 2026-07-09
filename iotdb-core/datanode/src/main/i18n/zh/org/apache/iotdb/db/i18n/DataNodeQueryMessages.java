@@ -129,6 +129,34 @@ public final class DataNodeQueryMessages {
       "释放的内存超过已预留的量。";
   public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
       "估算的 mods tree 大小从 %d 减少到 %d，TsFile：%s。";
+  public static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
+      "查询结果列元数据分析时内存不足。结果集包含过多列。"
+          + "失败前，IoTDB 已匹配 %,d 个用于结果列展开的源列，展开 %,d 个源列，并生成 %,d 个结果集列。"
+          + "%s"
+          + "当前序列分页为 %s。"
+          + "请使用 SLIMIT/SOFFSET 减少返回序列%s，缩小路径模式，或增加查询内存%s。"
+          + "内存详情：结果展开的源列内存 %s，生成结果列内存 %s，本次请求内存 %s，当前空闲内存 %s。"
+          + "原始错误：%s";
+  public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
+      "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
+          + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
+          + "Schema 拉取内存可能会在安全反序列化完整元数据前预留，因此该计数可能小于匹配的 schema 列数。%s"
+          + "当前序列分页为 %s。"
+          + "请使用 SLIMIT/SOFFSET 减少返回序列%s，缩小路径模式，或增加查询内存%s。"
+          + "内存详情：拉取的 schema tree 估算内存 %s，拉取的 schema tree 预留内存 %s，"
+          + "本次请求内存 %s，当前空闲内存 %s。原始错误：%s";
+  public static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "拉取的 schema 列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
+      "，使用 ALIGN BY DEVICE 可减少跨设备结果列";
+  public static final String BY_AT_LEAST_MEMORY_SIZE = "至少 %s";
+  public static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
+      "（用于查询引擎/operator 内存池）";
+  public static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s，SOFFSET=%,d";
+  public static final String NOT_SET = "未设置";
+  public static final String UNKNOWN = "未知";
 
   // --- Execution / Operator ---
 
@@ -267,8 +295,30 @@ public final class DataNodeQueryMessages {
       "左侧值必须是标识符：";
   public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
       "表 '%s' 不包含时间列";
+  public static final String START_TIME_IS_GREATER_THAN_END_TIME =
+      "开始时间 %d 大于结束时间 %d";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
+      "时间谓词的右值必须是 long 类型：";
+  public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_FOR =
+      "时间谓词的操作符必须是 <、<=、> 或 >=：";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "标签谓词在使用 '=' 操作符时右值不能为 null，请改用 'IS NULL'";
+  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
+      "标签谓词的右值必须是字符串：";
+  public static final String THE_OPERATOR_OF_ATTRIBUTE_PREDICATE_MUST_BE_FOR =
+      "属性谓词的运算符必须为 =, !=, <, <=, >, >=, LIKE 或 IN，目标：";
+  public static final String
+      THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_CANNOT_BE_NULL_WITH_COMPARISON_OPERATOR =
+          "属性谓词的右侧值不能在比较运算符中为 null，请改用 IS NULL 或 IS NOT NULL";
+  public static final String THE_RIGHT_HAND_VALUE_OF_ATTRIBUTE_PREDICATE_MUST_BE_A_STRING =
+      "属性谓词的右侧值必须为字符串：";
+  public static final String THE_COLUMN_S_DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
+      "列 '%s' 不存在或不是标签列";
+  public static final String TOO_MANY_DEVICES_MATCHED_BY_ATTRIBUTE_FILTERS_IN_DELETION =
+      "删除语句中的属性过滤条件匹配了过多设备（%d），限制为 %d。请移除所有属性过滤条件（%s），或进一步增加属性过滤条件。";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
       "LAST 查询中仅支持时间过滤器";
   public static final String VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS =
@@ -802,6 +852,8 @@ public final class DataNodeQueryMessages {
       "无效的标量参数：";
   public static final String ARGUMENT_SHOULD_BE_A_STRING =
       "参数 %s 应为字符串";
+  public static final String ARGUMENT_SHOULD_BE_A_NUMBER =
+      "参数 %s 应为数字";
   public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
       "参数 %s 应至少包含一个路径";
   public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
@@ -1714,9 +1766,6 @@ public final class DataNodeQueryMessages {
   public static final String DOES_NOT_EXIST_OR_IS_NOT_A_TAG_COLUMN =
 
       "' 不存在或不是标签列";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TIME_PREDICATE_MUST_BE_A_LONG =
-
-      "时间谓词的右值必须为 long：";
   public static final String THE_OPERATOR_OF_TIME_PREDICATE_MUST_BE_LT_LT_EQ_GT_OR_GT_EQ =
 
       "时间谓词的操作符必须为 <、<=、> 或 >=：";
@@ -1724,9 +1773,6 @@ public final class DataNodeQueryMessages {
 
 
       "使用 '=' 操作符时，标签谓词的右值不能为 null，请改用 'IS NULL'";
-  public static final String THE_RIGHT_HAND_VALUE_OF_TAG_PREDICATE_MUST_BE_A_STRING =
-
-      "标签谓词的右值必须为字符串：";
   public static final String SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH =
 
 
