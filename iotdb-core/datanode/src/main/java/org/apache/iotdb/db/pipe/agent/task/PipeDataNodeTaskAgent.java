@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -44,9 +43,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -55,7 +52,6 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
-import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -108,37 +104,17 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -197,9 +173,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           || needConstructDataRegionTask
           || needConstructSchemaRegionTask) {
         calculateMemoryUsage(
-            pipeStaticMeta,
-            Collections.singletonList(new Pair<>(consensusGroupId, pipeTaskMeta)),
-            false);
+            pipeStaticMeta, Collections.singletonList(new Pair<>(consensusGroupId, pipeTaskMeta)));
 
         final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
@@ -821,21 +795,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    final PipeMeta pipeMetaInAgent = pipeMetaKeeper.getPipeMeta(staticMeta.getPipeName());
-    final boolean ignoreRegisteredSinkSubtasks =
-        Objects.nonNull(pipeMetaInAgent)
-            && (!pipeMetaInAgent.getStaticMeta().equals(staticMeta)
-                || PipeStatus.DROPPED.equals(pipeMetaInAgent.getRuntimeMeta().getStatus().get()));
-    calculateMemoryUsage(
-        staticMeta,
-        collectPipeTasksToBeCreated(pipeMetaFromCoordinator),
-        ignoreRegisteredSinkSubtasks);
+    calculateMemoryUsage(staticMeta, collectPipeTasksToBeCreated(pipeMetaFromCoordinator));
   }
 
   private void calculateMemoryUsage(
-      final PipeStaticMeta staticMeta,
-      final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated,
-      final boolean ignoreRegisteredSinkSubtasks)
+      final PipeStaticMeta staticMeta, final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated)
       throws IllegalPathException {
     if (!PipeConfig.getInstance().isPipeEnableMemoryCheck()
         || !isInnerSource(staticMeta.getExtractorParameters())
@@ -849,8 +813,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     final MemoryEstimation memoryEstimation =
-        calculateIncrementalMemoryUsage(
-            staticMeta, pipeTasksToBeCreated, ignoreRegisteredSinkSubtasks);
+        calculateIncrementalMemoryUsage(staticMeta, pipeTasksToBeCreated);
     calculateInsertNodeQueueMemory(
         staticMeta.getExtractorParameters(), memoryEstimation.dataRegionTaskCount);
 
@@ -919,48 +882,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private MemoryEstimation calculateIncrementalMemoryUsage(
       final PipeStaticMeta staticMeta,
-      final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated,
-      final boolean ignoreRegisteredSinkSubtasks) {
-    long needMemory = 0;
+      final List<Pair<Integer, PipeTaskMeta>> pipeTasksToBeCreated) {
     int dataRegionTaskCount = 0;
-    final Set<String> sinkSubtasksToBeCreated = new HashSet<>();
 
     for (final Pair<Integer, PipeTaskMeta> regionIdAndTaskMeta : pipeTasksToBeCreated) {
-      final int regionId = regionIdAndTaskMeta.getLeft();
-      final PipeTaskMeta pipeTaskMeta = regionIdAndTaskMeta.getRight();
-      final PipeParameters sourceParameters =
-          PipeDataNodeTaskBuilder.blendUserAndSystemParameters(
-              staticMeta.getExtractorParameters(), pipeTaskMeta);
-      final PipeParameters sinkParameters =
-          PipeDataNodeTaskBuilder.blendUserAndSystemParameters(
-              staticMeta.getConnectorParameters(), pipeTaskMeta);
-      PipeDataNodeTaskBuilder.preprocessParameters(sourceParameters, sinkParameters);
-
-      final boolean isDataRegionTask = isDataRegionTask(regionId);
-      if (isDataRegionTask) {
+      if (isDataRegionTask(regionIdAndTaskMeta.getLeft())) {
         dataRegionTaskCount++;
-        needMemory += calculateTsFileParserMemory(sourceParameters, sinkParameters);
-      }
-
-      final String sinkSubtaskId =
-          PipeSinkSubtaskManager.generateAttributeSortedString(sinkParameters, regionId);
-      if (isDataRegionTask
-          && !sinkSubtasksToBeCreated.contains(sinkSubtaskId)
-          && (ignoreRegisteredSinkSubtasks
-              || !PipeSinkSubtaskManager.instance()
-                  .hasRegisteredSubtasks(sinkParameters, regionId))) {
-        sinkSubtasksToBeCreated.add(sinkSubtaskId);
-        final int sinkSubtaskNum =
-            PipeSinkSubtaskManager.calculateSinkSubtaskNum(sinkParameters, regionId);
-        needMemory += calculateSinkBatchMemory(sinkParameters) * sinkSubtaskNum;
-        needMemory +=
-            calculateSendTsFileReadBufferMemory(sourceParameters, sinkParameters) * sinkSubtaskNum;
       }
     }
 
-    if (dataRegionTaskCount > 0) {
-      needMemory += calculateAssignerMemory(staticMeta.getExtractorParameters());
-    }
+    // TsFile parser, sink batch, and TsFile read buffer memory are allocated dynamically from
+    // PipeMemoryManager only while they are active.
+    final long needMemory =
+        dataRegionTaskCount > 0 ? calculateAssignerMemory(staticMeta.getExtractorParameters()) : 0;
     return new MemoryEstimation(needMemory, dataRegionTaskCount);
   }
 
@@ -1037,210 +971,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LOGGER.warn(message);
       throw new PipeException(message);
     }
-  }
-
-  private long calculateTsFileParserMemory(
-      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
-
-    // If the source is not history, we do not need to allocate memory
-    boolean isExtractorHistory =
-        sourceParameters.getBooleanOrDefault(
-                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
-                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
-            || sourceParameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-
-    // If the source is history, and has start/end time, we need to allocate memory
-    boolean isTSFileParser =
-        isExtractorHistory
-            && sourceParameters.hasAnyAttributes(
-                EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY);
-
-    isTSFileParser =
-        isTSFileParser
-            || (isExtractorHistory
-                && sourceParameters.hasAnyAttributes(
-                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY));
-
-    // if the source has start/end time, we need to allocate memory
-    isTSFileParser =
-        isTSFileParser
-            || sourceParameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY);
-
-    isTSFileParser =
-        isTSFileParser
-            || sourceParameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY);
-
-    // If the source has pattern or path, we need to allocate memory
-    isTSFileParser =
-        isTSFileParser
-            || sourceParameters.hasAnyAttributes(
-                EXTRACTOR_PATTERN_KEY,
-                SOURCE_PATTERN_KEY,
-                EXTRACTOR_PATTERN_INCLUSION_KEY,
-                SOURCE_PATTERN_INCLUSION_KEY,
-                EXTRACTOR_PATTERN_EXCLUSION_KEY,
-                SOURCE_PATTERN_EXCLUSION_KEY);
-
-    isTSFileParser =
-        isTSFileParser
-            || sourceParameters.hasAnyAttributes(
-                EXTRACTOR_PATH_KEY,
-                SOURCE_PATH_KEY,
-                EXTRACTOR_PATH_INCLUSION_KEY,
-                SOURCE_PATH_INCLUSION_KEY,
-                EXTRACTOR_PATH_EXCLUSION_KEY,
-                SOURCE_PATH_EXCLUSION_KEY);
-
-    // If the source is not hybrid, we do need to allocate memory
-    isTSFileParser =
-        isTSFileParser
-            || !PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(
-                sinkParameters.getStringOrDefault(
-                    Arrays.asList(
-                        PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
-                    PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE));
-
-    if (!isTSFileParser) {
-      return 0;
-    }
-
-    return PipeConfig.getInstance().getTsFileParserMemory();
-  }
-
-  private static long calculateSinkBatchMemory(final PipeParameters sinkParameters) {
-    final String format =
-        sinkParameters.getStringOrDefault(
-            Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
-            PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
-    final boolean usingTsFileBatch = PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
-
-    // TsFile format always uses a batch. Other formats only use a batch when batch mode is enabled.
-    final boolean needUseBatch =
-        usingTsFileBatch
-            || sinkParameters.getBooleanOrDefault(
-                Arrays.asList(
-                    PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY,
-                    PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
-
-    if (!needUseBatch) {
-      return 0;
-    }
-
-    final long batchSizeInBytes =
-        sinkParameters.getLongOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY,
-                PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY),
-            usingTsFileBatch
-                ? PipeSinkConstant.CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
-                : PipeSinkConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
-
-    return batchSizeInBytes * calculateBatchShardCount(sinkParameters, usingTsFileBatch);
-  }
-
-  private static long calculateBatchShardCount(
-      final PipeParameters sinkParameters, final boolean usingTsFileBatch) {
-    if (usingTsFileBatch
-        || !sinkParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY,
-                PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY),
-            PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE)) {
-      return 1;
-    }
-
-    // Plain batches always allocate the default batch and may lazily allocate one batch per target
-    // endpoint when leader cache splits events by endpoint.
-    return 1L + calculateTargetEndPointCount(sinkParameters);
-  }
-
-  private static int calculateTargetEndPointCount(final PipeParameters sinkParameters) {
-    final Set<TEndPoint> targetEndPoints = new HashSet<>();
-    try {
-      addTargetEndPoint(
-          targetEndPoints,
-          sinkParameters,
-          PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY,
-          PipeSinkConstant.CONNECTOR_IOTDB_HOST_KEY,
-          PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY);
-      addTargetEndPoint(
-          targetEndPoints,
-          sinkParameters,
-          PipeSinkConstant.SINK_IOTDB_IP_KEY,
-          PipeSinkConstant.SINK_IOTDB_HOST_KEY,
-          PipeSinkConstant.SINK_IOTDB_PORT_KEY);
-      if (sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY)) {
-        targetEndPoints.addAll(
-            NodeUrlUtils.parseTEndPointUrls(
-                Arrays.asList(
-                    sinkParameters
-                        .getStringByKeys(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY)
-                        .replace(" ", "")
-                        .split(","))));
-      }
-      if (sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY)) {
-        targetEndPoints.addAll(
-            NodeUrlUtils.parseTEndPointUrls(
-                Arrays.asList(
-                    sinkParameters
-                        .getStringByKeys(PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY)
-                        .replace(" ", "")
-                        .split(","))));
-      }
-    } catch (final Exception ignored) {
-      return 1;
-    }
-    return Math.max(1, targetEndPoints.size());
-  }
-
-  private static void addTargetEndPoint(
-      final Set<TEndPoint> targetEndPoints,
-      final PipeParameters sinkParameters,
-      final String ipKey,
-      final String hostKey,
-      final String portKey) {
-    if (sinkParameters.hasAttribute(ipKey) && sinkParameters.hasAttribute(portKey)) {
-      targetEndPoints.add(
-          new TEndPoint(
-              sinkParameters.getStringByKeys(ipKey), sinkParameters.getIntByKeys(portKey)));
-    }
-    if (sinkParameters.hasAttribute(hostKey) && sinkParameters.hasAttribute(portKey)) {
-      targetEndPoints.add(
-          new TEndPoint(
-              sinkParameters.getStringByKeys(hostKey), sinkParameters.getIntByKeys(portKey)));
-    }
-  }
-
-  private static long calculateSendTsFileReadBufferMemory(
-      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
-    // If the source is history enable, we need to transfer tsfile
-    boolean needTransferTsFile =
-        sourceParameters.getBooleanOrDefault(
-                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
-                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
-            || sourceParameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-
-    String format =
-        sinkParameters.getStringOrDefault(
-            Arrays.asList(PipeSinkConstant.CONNECTOR_FORMAT_KEY, PipeSinkConstant.SINK_FORMAT_KEY),
-            PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE);
-
-    // If the sink format is tsfile and hybrid, we need to transfer tsfile
-    needTransferTsFile =
-        needTransferTsFile
-            || PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE.equals(format)
-            || PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE.equals(format);
-
-    if (!needTransferTsFile) {
-      return 0;
-    }
-
-    return PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
   }
 
   private long calculateAssignerMemory(final PipeParameters sourceParameters) {

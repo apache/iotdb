@@ -29,6 +29,8 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.PipeConsensusAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
@@ -67,7 +69,8 @@ public class PipeConsensusTsFileInsertionEventHandler
   private final boolean transferMod;
 
   private final int readFileBufferSize;
-  private final byte[] readBuffer;
+  private PipeTsFileMemoryBlock memoryBlock;
+  private byte[] readBuffer;
   private long position;
 
   private RandomAccessFile reader;
@@ -101,8 +104,15 @@ public class PipeConsensusTsFileInsertionEventHandler
     transferMod = event.isWithMod();
     currentFile = transferMod ? modFile : tsFile;
 
-    readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
-    readBuffer = new byte[readFileBufferSize];
+    final long maxFileLength =
+        transferMod && Objects.nonNull(modFile)
+            ? Math.max(tsFile.length(), modFile.length())
+            : tsFile.length();
+    readFileBufferSize =
+        (int)
+            Math.min(
+                (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                Math.max(maxFileLength, 1L));
     position = 0;
 
     reader =
@@ -122,6 +132,12 @@ public class PipeConsensusTsFileInsertionEventHandler
 
     this.client = client;
     client.setShouldReturnSelf(false);
+
+    if (readBuffer == null) {
+      memoryBlock =
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+      readBuffer = new byte[readFileBufferSize];
+    }
 
     final int readLength = reader.read(readBuffer);
     if (readLength == -1) {
@@ -233,6 +249,8 @@ public class PipeConsensusTsFileInsertionEventHandler
           client.returnSelf();
         }
 
+        releaseReadBufferMemoryBlock();
+
         long duration = System.nanoTime() - createTime;
         metric.recordConnectorTsFileTransferTimer(duration);
       }
@@ -292,10 +310,20 @@ public class PipeConsensusTsFileInsertionEventHandler
       connector.addFailureEventToRetryQueue(event);
       metric.recordRetryCounter();
 
+      releaseReadBufferMemoryBlock();
+
       if (client != null) {
         client.setShouldReturnSelf(true);
         client.returnSelf();
       }
+    }
+  }
+
+  private void releaseReadBufferMemoryBlock() {
+    if (memoryBlock != null) {
+      memoryBlock.close();
+      memoryBlock = null;
+      readBuffer = null;
     }
   }
 }

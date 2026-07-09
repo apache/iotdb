@@ -568,8 +568,14 @@ public class ClusterSchemaTree implements ISchemaTree {
     private Map<Integer, Template> templateMap = new HashMap<>();
     private boolean isFirstBatch = true;
 
+    private long measurementCount = 0;
+
     public boolean isFirstBatch() {
       return isFirstBatch;
+    }
+
+    public long getMeasurementCount() {
+      return measurementCount;
     }
 
     public void deserializeFromBatch(InputStream inputStream) throws IOException {
@@ -579,6 +585,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         if (nodeType == SCHEMA_MEASUREMENT_NODE) {
           SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
           stack.push(measurementNode);
+          measurementCount++;
           if (measurementNode.isLogicalView()) {
             hasLogicalView = true;
           }
@@ -636,6 +643,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       // templateMap is set to the returned schema tree, so we should create a new one
       templateMap = new HashMap<>();
       isFirstBatch = true;
+      measurementCount = 0;
     }
   }
 

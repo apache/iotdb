@@ -30,6 +30,10 @@ public class PipeSourceConstant {
   public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
   public static final String EXTRACTOR_IOTDB_PASSWORD_KEY = "extractor.password";
   public static final String SOURCE_IOTDB_PASSWORD_KEY = "source.password";
+  public static final String EXTRACTOR_IOTDB_USER_ID = "extractor.user-id";
+  public static final String SOURCE_IOTDB_USER_ID = "source.user-id";
+  public static final String EXTRACTOR_IOTDB_CLI_HOSTNAME = "extractor.cli-hostname";
+  public static final String SOURCE_IOTDB_CLI_HOSTNAME = "source.cli-hostname";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";

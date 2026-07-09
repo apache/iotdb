@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
@@ -139,12 +138,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
     this.allocatedMemoryBlockForChunk =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
       currentModifications =
@@ -209,6 +205,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                     throw new NoSuchElementException();
                   }
 
+                  // Release the previous parser-owned tablet buffer before allocating the next
+                  // tablet.
+                  releaseTabletMemoryBlock();
                   // currentIsAligned is initialized when TsFileInsertionScanDataContainer is
                   // constructed.
                   // When the getNextTablet function is called, currentIsAligned may be updated,
@@ -230,6 +229,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                         sourceEvent,
                         isLast);
                   } finally {
+                    // The raw event owns the generated tablet; only release the parser-side memory
+                    // accounting.
+                    releaseTabletMemoryBlock();
                     if (isLast) {
                       recordParseEndTimeIfNecessary();
                       close();

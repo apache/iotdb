@@ -291,6 +291,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // check for semantic errors
       queryStatement.semanticCheck();
 
+      context.initResultSetColumnMemoryTracking(
+          queryStatement.getSeriesLimit(),
+          queryStatement.getSeriesOffset(),
+          queryStatement.isAlignByDevice());
       // fetch model inference information and check
       analyzeModelInference(analysis, queryStatement);
 
@@ -766,6 +770,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             groupByLevelHelper.applyLevels(
                 isCountStar, resultExpression, resultColumn.getAlias(), analysis);
         Expression normalizedOutputExpression = normalizeExpression(outputExpression);
+        queryContext.recordGeneratedResultSetColumn(normalizedOutputExpression.ramBytesUsed());
         analyzeExpressionType(analysis, normalizedOutputExpression);
         outputExpressionSet.add(
             new Pair<>(
@@ -830,6 +835,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
 
           Expression normalizedExpression = normalizeExpression(resultExpression);
+          queryContext.recordGeneratedResultSetColumn(normalizedExpression.ramBytesUsed());
           analyzeExpressionType(analysis, normalizedExpression);
           outputExpressions.add(
               new Pair<>(
@@ -926,6 +932,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Expression lowerCaseMeasurementExpression = toLowerCaseExpression(measurementExpression);
           analyzeExpressionType(analysis, lowerCaseMeasurementExpression);
 
+          queryContext.recordGeneratedResultSetColumn(
+              lowerCaseMeasurementExpression.ramBytesUsed());
           outputExpressions.add(
               new Pair<>(
                   lowerCaseMeasurementExpression,
