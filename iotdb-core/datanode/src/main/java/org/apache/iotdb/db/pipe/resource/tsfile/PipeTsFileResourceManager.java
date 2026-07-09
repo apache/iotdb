@@ -60,7 +60,8 @@ public class PipeTsFileResourceManager {
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
   private final Map<String, String> pipeNameToPipeTsFileDirPathMap = new ConcurrentHashMap<>();
-  private final Set<String> pipeNameSetUnderDeletion = ConcurrentHashMap.newKeySet();
+  private final Set<String> pipeTsFileResourcePipeNameSetUnderDeletion =
+      ConcurrentHashMap.newKeySet();
   private final ExecutorService pipeTsFileDirCleanupExecutor = createPipeTsFileDirCleanupExecutor();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
@@ -241,8 +242,7 @@ public class PipeTsFileResourceManager {
       final String filePath = hardlinkOrCopiedFile.getPath();
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
       if (resource != null
-          && resource.decreaseReferenceCount(
-              Objects.isNull(pipeName) || !pipeNameSetUnderDeletion.contains(pipeName))) {
+          && resource.decreaseReferenceCount(shouldDeleteFileWhenNoReference(pipeName))) {
         getResourceMap(pipeName).remove(filePath);
       }
     } finally {
@@ -263,20 +263,27 @@ public class PipeTsFileResourceManager {
     decreaseFileReference(new File(getCommonFilePath(file)), null);
   }
 
-  public void markPipeTsFileDirUnderDeletion(final @Nonnull String pipeName) {
-    pipeNameSetUnderDeletion.add(pipeName);
+  private boolean shouldDeleteFileWhenNoReference(
+      final @Nullable String pipeTsFileResourcePipeName) {
+    return Objects.isNull(pipeTsFileResourcePipeName)
+        || !pipeTsFileResourcePipeNameSetUnderDeletion.contains(pipeTsFileResourcePipeName);
   }
 
-  public void unmarkPipeTsFileDirUnderDeletion(final @Nonnull String pipeName) {
-    pipeNameSetUnderDeletion.remove(pipeName);
+  public void markPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.add(pipeTsFileResourcePipeName);
   }
 
-  public void cleanPipeTsFileDirAsync(final @Nonnull String pipeName) {
-    final String pipeTsFileDirPath = pipeNameToPipeTsFileDirPathMap.remove(pipeName);
-    hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(pipeName);
+  public void unmarkPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
+  }
+
+  public void cleanPipeTsFileDirAsync(final @Nonnull String pipeTsFileResourcePipeName) {
+    final String pipeTsFileDirPath =
+        pipeNameToPipeTsFileDirPathMap.remove(pipeTsFileResourcePipeName);
+    hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(pipeTsFileResourcePipeName);
 
     if (Objects.isNull(pipeTsFileDirPath)) {
-      pipeNameSetUnderDeletion.remove(pipeName);
+      pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
       return;
     }
 
@@ -286,10 +293,10 @@ public class PipeTsFileResourceManager {
             FileUtils.deleteFileOrDirectory(new File(pipeTsFileDirPath), true);
             LOGGER.info(
                 DataNodePipeMessages.CLEANED_UP_PIPE_TSFILE_DIRS_FOR_PIPE,
-                pipeName,
+                pipeTsFileResourcePipeName,
                 pipeTsFileDirPath);
           } finally {
-            pipeNameSetUnderDeletion.remove(pipeName);
+            pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
           }
         });
   }
