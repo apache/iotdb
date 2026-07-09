@@ -97,10 +97,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -1381,8 +1381,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitInsertTablets(InsertTablets node, Void context) {
     final InsertMultiTabletsStatement insertMultiTabletsStatement = node.getInnerTreeStatement();
-    final InsertMultiTabletsNode insertMultiTabletsNode =
-        new InsertMultiTabletsNode(idAllocator.genPlanNodeId());
+    final RelationalInsertMultiTabletsNode insertMultiTabletsNode =
+        new RelationalInsertMultiTabletsNode(idAllocator.genPlanNodeId());
     for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
       insertMultiTabletsNode.addInsertTabletNode(
           fromInsertTabletStatement(

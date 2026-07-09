@@ -96,6 +96,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(id);
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<Integer> index = new ArrayList<>();
+    List<InsertTabletNode> insertTabletNodes = new ArrayList<>();
+    for (int i = 0; i < insertNodes.size(); i++) {
+      insertTabletNodes.add((InsertTabletNode) insertNodes.get(i));
+      index.add(i);
+    }
+    return new RelationalInsertMultiTabletsNode(this.getPlanNodeId(), index, insertTabletNodes);
+  }
+
   @TestOnly
   public RelationalInsertTabletNode(
       PlanNodeId id,
@@ -307,16 +318,26 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
-    for (int i = 0; measurements != null && i < measurements.length; i++) {
-      if (shouldSerializeMeasurement(i)) {
-        columnCategories[i].serialize(byteBuffer);
-      }
-    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
+  }
+
+  @Override
+  void subSerialize(ByteBuffer buffer) {
+    super.subSerialize(buffer);
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        columnCategories[i].serialize(buffer);
+      }
+    }
+  }
+
+  @Override
+  void subSerialize(DataOutputStream stream) throws IOException {
+    super.subSerialize(stream);
     for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);

@@ -205,6 +205,7 @@ public class ConsensusLogToTabletConverter {
       case INSERT_ROWS_OF_ONE_DEVICE:
         return convertInsertRowsOfOneDeviceNode((InsertRowsOfOneDeviceNode) insertNode);
       case INSERT_MULTI_TABLET:
+      case RELATIONAL_INSERT_MULTI_TABLETS:
         return convertInsertMultiTabletsNode((InsertMultiTabletsNode) insertNode);
       case RELATIONAL_INSERT_ROW:
         return convertRelationalInsertRowNode((RelationalInsertRowNode) insertNode);
