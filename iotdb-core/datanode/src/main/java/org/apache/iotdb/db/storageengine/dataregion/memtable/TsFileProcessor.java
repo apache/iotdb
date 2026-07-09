@@ -560,7 +560,10 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
     for (int i = start; i < end; i++) {
-      results[i] = RpcUtils.SUCCESS_STATUS;
+      if (results[i] == null
+          || results[i].getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        results[i] = RpcUtils.SUCCESS_STATUS;
+      }
     }
 
     tsFileResource.updateStartTime(
