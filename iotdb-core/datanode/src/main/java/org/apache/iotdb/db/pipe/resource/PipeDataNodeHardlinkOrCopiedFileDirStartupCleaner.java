@@ -68,15 +68,8 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     final List<File> stalePipeDirs = new ArrayList<>();
     for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       final File localDataDir = new File(dataDir);
-      collectInterruptedStalePipeDirs(localDataDir, pipeHardlinkBaseDirName, stalePipeDirs);
-      collectInterruptedStalePipeDirs(
-          new File(
-              localDataDir,
-              pipeHardlinkBaseDirName
-                  + File.separator
-                  + PipeConfig.getInstance().getPipeHardlinkTsFileDirName()),
-          "",
-          stalePipeDirs);
+      collectInterruptedPipeBaseStaleDirs(localDataDir, pipeHardlinkBaseDirName, stalePipeDirs);
+      collectInterruptedPipeTsFileStaleDirs(localDataDir, pipeHardlinkBaseDirName, stalePipeDirs);
 
       final File pipeHardLinkDir = new File(localDataDir, pipeHardlinkBaseDirName);
       if (pipeHardLinkDir.isDirectory()) {
@@ -87,15 +80,33 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     registerPeriodicalCleanupJob(periodicalJobRegistrar);
   }
 
-  private static void collectInterruptedStalePipeDirs(
+  private static void collectInterruptedPipeBaseStaleDirs(
       final File localDataDir,
       final String pipeHardlinkBaseDirName,
       final List<File> stalePipeDirs) {
+    collectInterruptedStalePipeDirs(
+        localDataDir, pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX, stalePipeDirs);
+  }
+
+  private static void collectInterruptedPipeTsFileStaleDirs(
+      final File localDataDir,
+      final String pipeHardlinkBaseDirName,
+      final List<File> stalePipeDirs) {
+    collectInterruptedStalePipeDirs(
+        new File(
+            localDataDir,
+            pipeHardlinkBaseDirName
+                + File.separator
+                + PipeConfig.getInstance().getPipeHardlinkTsFileDirName()),
+        STALE_PIPE_DIR_SUFFIX,
+        stalePipeDirs);
+  }
+
+  private static void collectInterruptedStalePipeDirs(
+      final File parentDir, final String staleDirNameToken, final List<File> stalePipeDirs) {
     final File[] stalePipeDirFiles =
-        localDataDir.listFiles(
-            file ->
-                file.isDirectory()
-                    && file.getName().contains(pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX));
+        parentDir.listFiles(
+            file -> file.isDirectory() && file.getName().contains(staleDirNameToken));
     if (stalePipeDirFiles == null) {
       return;
     }
@@ -129,21 +140,20 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     }
   }
 
-  private static File moveAside(final File pipeHardLinkDir, final String pipeHardlinkBaseDirName)
+  private static File moveAside(final File pipeDir, final String staleDirNamePrefix)
       throws IOException {
-    final File parentDir = pipeHardLinkDir.getParentFile();
+    final File parentDir = pipeDir.getParentFile();
     if (parentDir == null) {
       throw new IOException(
-          DataNodePipeMessages.EXCEPTION_FAILED_TO_GET_PARENT_DIR_OF_8CE21C1D + pipeHardLinkDir);
+          DataNodePipeMessages.EXCEPTION_FAILED_TO_GET_PARENT_DIR_OF_8CE21C1D + pipeDir);
     }
 
     final long timestamp = System.currentTimeMillis();
     for (int i = 0; ; ++i) {
       final File stalePipeDir =
-          new File(
-              parentDir, pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX + timestamp + "-" + i);
+          new File(parentDir, staleDirNamePrefix + STALE_PIPE_DIR_SUFFIX + timestamp + "-" + i);
       if (!stalePipeDir.exists()) {
-        Files.move(pipeHardLinkDir.toPath(), stalePipeDir.toPath());
+        Files.move(pipeDir.toPath(), stalePipeDir.toPath());
         return stalePipeDir;
       }
     }
