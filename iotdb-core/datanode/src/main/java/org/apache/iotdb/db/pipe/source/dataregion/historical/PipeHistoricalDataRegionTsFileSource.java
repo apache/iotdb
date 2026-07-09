@@ -697,6 +697,24 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
   }
 
+  private boolean isTsFileResourceCoveredByPattern(final TsFileResource resource) {
+    final Set<IDeviceID> deviceSet;
+    try {
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+          PipeDataNodeResourceManager.tsfile()
+              .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
+      deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
+    } catch (final IOException e) {
+      return false;
+    }
+
+    return !deviceSet.isEmpty()
+        && deviceSet.stream()
+            .allMatch(
+                deviceID -> pipePattern.coversDevice(((PlainDeviceID) deviceID).toStringID()));
+  }
+
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
     return !(resource.getFileEndTime() < historicalDataExtractionStartTime
         || historicalDataExtractionEndTime < resource.getFileStartTime());
@@ -837,7 +855,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       event.skipReportOnCommitAndGeneratedEvents();
     }
 
-    if (sloppyPattern || isDbNameCoveredByPattern) {
+    if (sloppyPattern || isDbNameCoveredByPattern || isTsFileResourceCoveredByPattern(resource)) {
       event.skipParsingPattern();
     }
 
