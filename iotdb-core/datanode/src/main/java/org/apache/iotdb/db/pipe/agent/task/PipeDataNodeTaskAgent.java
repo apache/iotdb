@@ -318,7 +318,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final String taskId = pipeName + "_" + creationTime;
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
-    PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDirAsync(pipeTsFileResourcePipeName);
+    PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
 
     return true;
   }
@@ -360,7 +360,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
-      PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDirAsync(pipeTsFileResourcePipeName);
+      PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {

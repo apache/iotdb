@@ -1266,6 +1266,8 @@ public final class DataNodePipeMessages {
       "已通过周期性任务删除全部过期的 Pipe hardlink 目录。";
   public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
       "为周期性删除移动 Pipe hardlink 目录 {} 失败，改为同步删除。";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_SKIPPING_PERIODICAL_DELETE =
+      "为周期性删除移动 Pipe hardlink 目录 {} 失败，跳过注册原目录以避免删除重建 Pipe 的文件。";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "发现 Pipe snapshot 目录，正在删除：{},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =
@@ -2325,7 +2327,5 @@ public final class DataNodePipeMessages {
       "已上报 %s 个 pipe meta。";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "传输文件 %s 出错，结果状态为 %s。";
-  public static final String CLEANED_UP_PIPE_TSFILE_DIRS_FOR_PIPE =
-      "已清理 pipe {} 的 Pipe TsFile 目录：{}";
 
 }

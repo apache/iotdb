@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -43,8 +42,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class PipeTsFileResourceManager {
 
@@ -62,13 +59,7 @@ public class PipeTsFileResourceManager {
   private final Map<String, String> pipeNameToPipeTsFileDirPathMap = new ConcurrentHashMap<>();
   private final Set<String> pipeTsFileResourcePipeNameSetUnderDeletion =
       ConcurrentHashMap.newKeySet();
-  private final ExecutorService pipeTsFileDirCleanupExecutor = createPipeTsFileDirCleanupExecutor();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
-
-  private static ExecutorService createPipeTsFileDirCleanupExecutor() {
-    return IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
-        1, 60L, TimeUnit.SECONDS, ThreadName.PIPE_TSFILE_DIR_CLEANUP.getName());
-  }
 
   public static String getPipeTsFileResourcePipeName(
       final @Nullable String pipeName, final long creationTime) {
@@ -277,7 +268,7 @@ public class PipeTsFileResourceManager {
     pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
   }
 
-  public void cleanPipeTsFileDirAsync(final @Nonnull String pipeTsFileResourcePipeName) {
+  public void cleanPipeTsFileDir(final @Nonnull String pipeTsFileResourcePipeName) {
     final String pipeTsFileDirPath =
         pipeNameToPipeTsFileDirPathMap.remove(pipeTsFileResourcePipeName);
     hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(pipeTsFileResourcePipeName);
@@ -287,18 +278,9 @@ public class PipeTsFileResourceManager {
       return;
     }
 
-    pipeTsFileDirCleanupExecutor.execute(
-        () -> {
-          try {
-            FileUtils.deleteFileOrDirectory(new File(pipeTsFileDirPath), true);
-            LOGGER.info(
-                DataNodePipeMessages.CLEANED_UP_PIPE_TSFILE_DIRS_FOR_PIPE,
-                pipeTsFileResourcePipeName,
-                pipeTsFileDirPath);
-          } finally {
-            pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
-          }
-        });
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.submitStalePipeDirForPeriodicalCleanup(
+        new File(pipeTsFileDirPath));
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
   }
 
   // Warning: Shall not be called by the assigner
