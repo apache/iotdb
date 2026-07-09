@@ -124,7 +124,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
                 event.getReplicateIndexForIoTV2(),
                 exception),
         exception,
-        "Failed to transfer TabletInsertionEvent %s (committer key=%s, replicate index=%s).",
+        DataNodePipeMessages.FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_REPLICATE,
         event.coreReportMessage(),
         event.getCommitterKey(),
         event.getReplicateIndexForIoTV2());

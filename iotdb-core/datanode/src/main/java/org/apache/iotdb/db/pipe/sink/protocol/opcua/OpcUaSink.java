@@ -191,8 +191,10 @@ public class OpcUaSink implements PipeConnector {
       validator.validate(
           arg -> !((boolean) arg),
           String.format(
-              "OPC UA initial fetch only supports the internal OPC UA server. Do not set %s or %s.",
-              CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY),
+              DataNodePipeMessages
+                  .EXCEPTION_OPC_UA_INITIAL_FETCH_ONLY_SUPPORTS_THE_INTERNAL_OPC_UA_SERVER_DO_NOT_SET_ARG_OR_ARG_FC9B3718,
+              CONNECTOR_OPC_UA_NODE_URL_KEY,
+              SINK_OPC_UA_NODE_URL_KEY),
           pointsToOuterServer);
     }
 
@@ -204,7 +206,8 @@ public class OpcUaSink implements PipeConnector {
       validator.validate(
           CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
           String.format(
-              "When the OPC UA sink points to an outer server, sets 'with-quality' to true, or enables initial fetch, the %s or %s must be %s.",
+              DataNodePipeMessages
+                  .EXCEPTION_WHEN_THE_OPC_UA_SINK_POINTS_TO_AN_OUTER_SERVER_SETS_WITH_QUALITY_TO_TRUE_OR_ENABLES_INITIAL_FETCH_THE_ARG_OR_ARG_MUST_BE_ARG_EE8A0633,
               CONNECTOR_OPC_UA_MODEL_KEY,
               SINK_OPC_UA_MODEL_KEY,
               CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),

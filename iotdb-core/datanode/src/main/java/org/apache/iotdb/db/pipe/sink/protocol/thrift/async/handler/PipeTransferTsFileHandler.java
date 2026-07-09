@@ -188,7 +188,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                   DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
                   sink.isClosed() ? "CLOSED" : "NOT CLOSED",
                   tsFile),
-          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
+          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
@@ -432,7 +432,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         PipeLogger.log(
             LOGGER::warn,
             exception,
-            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID,
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
             events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()));
@@ -440,7 +440,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         PipeLogger.log(
             LOGGER::warn,
             exception,
-            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS,
             tsFile);
       }
     } catch (final Exception e) {
@@ -513,7 +513,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                   DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
                   sink.isClosed() ? "CLOSED" : "NOT CLOSED",
                   tsFile),
-          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
+          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;

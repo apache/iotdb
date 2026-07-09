@@ -93,7 +93,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       PipeLogger.log(
           LOGGER::warn,
           exception,
-          "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).",
+          DataNodePipeMessages.FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID,
           event.coreReportMessage(),
           event.getCommitterKey(),
           event.getCommitId());

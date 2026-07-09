@@ -249,14 +249,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       PipeLogger.log(
           LOGGER::info,
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+          DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
           e.getMessage());
       return false;
     } catch (final Exception e) {
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(
             LOGGER::info,
-            "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+            DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
             e.getMessage());
         return false;
       }

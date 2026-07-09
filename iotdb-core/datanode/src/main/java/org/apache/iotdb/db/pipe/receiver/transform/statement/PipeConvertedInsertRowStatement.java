@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
@@ -92,13 +93,13 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    PipeLogger.log(
-        LOGGER::info,
-        "Pipe: Inserting row to %s.%s. Casting type from %s to %s.",
-        devicePath,
-        measurements[columnIndex],
-        dataTypes[columnIndex],
-        dataType);
+    if (LOGGER.isInfoEnabled()) {
+      PipeLogger.log(
+          LOGGER::info,
+          DataNodePipeMessages.PIPE_INSERTING_ROW_CASTING_TYPE_FROM,
+          dataTypes[columnIndex],
+          dataType);
+    }
     values[columnIndex] =
         ValueConverter.convert(dataTypes[columnIndex], dataType, values[columnIndex]);
     dataTypes[columnIndex] = dataType;
@@ -138,15 +139,12 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {
-        PipeLogger.log(
-            LOGGER::warn,
-            "data type of %s.%s is not consistent, "
-                + "registered type %s, inserting timestamp %s, value %s",
-            devicePath,
-            measurements[i],
-            dataTypes[i],
-            time,
-            values[i]);
+        if (LOGGER.isWarnEnabled()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              DataNodePipeMessages.FAILED_TO_PARSE_ROW_VALUE_DURING_DATA_TYPE_CONVERSION,
+              dataTypes[i]);
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {

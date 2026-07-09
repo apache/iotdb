@@ -237,7 +237,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                   DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_TRY_TO_REMOVE_EVENT_AFTER,
                   consensusGroupId,
                   event),
-          "IoTConsensusV2-ConsensusGroup-%s: try to remove event-%s after iotConsensusV2AsyncConnector being closed. Ignore it.",
+          DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_TRY_TO_REMOVE_EVENT_AFTER,
           consensusGroupId,
           event);
       return;
@@ -258,7 +258,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                   consensusGroupId,
                   event,
                   transferBuffer.size()),
-          "IoTConsensusV2-ConsensusGroup-%s: event-%s not found in transferBuffer, skip removing. queue size = %s",
+          DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_NOT_FOUND_IN_TRANSFERBUFFER,
           consensusGroupId,
           event,
           transferBuffer.size());
@@ -581,7 +581,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                           .IOTCONSENSUSV2_CONSENSUSGROUP_RETRYEVENTQUEUE_IS_NOT_EMPTY_AFTER,
                       consensusGroupId,
                       retryEventQueue.size()),
-              "IoTConsensusV2-ConsensusGroup-%s: retryEventQueue is not empty after 20 seconds. retryQueue size: %s",
+              DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_RETRYEVENTQUEUE_IS_NOT_EMPTY_AFTER,
               consensusGroupId,
               retryEventQueue.size());
           return;
@@ -604,7 +604,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                     retryInterval,
                     peekedEvent.getReplicateIndexForIoTV2(),
                     peekedEvent),
-            "IoTConsensusV2-ConsensusGroup-%s: retry with interval %s for index %s %s",
+            DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_RETRY_WITH_INTERVAL_FOR_INDEX,
             consensusGroupId,
             retryInterval,
             peekedEvent.getReplicateIndexForIoTV2(),
@@ -627,7 +627,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                             DataNodePipeMessages
                                 .IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT,
                             peekedEvent),
-                    "IoTConsensusV2AsyncConnector does not support transfer generic event: %s.",
+                    DataNodePipeMessages
+                        .IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT,
                     peekedEvent);
               }
             },
@@ -707,7 +708,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                   consensusGroupId,
                   event,
                   event.getReplicateIndexForIoTV2()),
-          "IoTConsensusV2-ConsensusGroup-%s: Event %s replicate index %s transfer failed, will be added to retry queue.",
+          DataNodePipeMessages
+              .IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED_1,
           consensusGroupId,
           event,
           event.getReplicateIndexForIoTV2());
@@ -720,7 +722,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
                   consensusGroupId,
                   event,
                   event.getReplicateIndexForIoTV2()),
-          "IoTConsensusV2-ConsensusGroup-%s: Event %s replicate index %s transfer failed, added to retry queue failed, this event will be ignored.",
+          DataNodePipeMessages.IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED,
           consensusGroupId,
           event,
           event.getReplicateIndexForIoTV2());

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -77,14 +78,23 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
   private Optional<TSStatus> tryExecute(final Statement statement, final String databaseName) {
     try {
       if (Objects.isNull(databaseName)) {
-        LOGGER.warn(
-            DataNodePipeMessages.DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_STATEMENT, statement);
+        if (LOGGER.isWarnEnabled()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              DataNodePipeMessages.DATABASE_NAME_IS_UNEXPECTEDLY_NULL_SKIP_DATA_TYPE_CONVERSION);
+        }
         return Optional.empty();
       }
 
       return Optional.of(statementExecutor.execute(statement, databaseName));
     } catch (final Exception e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE, e);
+      if (LOGGER.isWarnEnabled()) {
+        PipeLogger.log(
+            LOGGER::warn,
+            DataNodePipeMessages
+                .FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE_CONVERSION_WITH_EXCEPTION_TYPE,
+            e.getClass().getName());
+      }
       return Optional.empty();
     }
   }
