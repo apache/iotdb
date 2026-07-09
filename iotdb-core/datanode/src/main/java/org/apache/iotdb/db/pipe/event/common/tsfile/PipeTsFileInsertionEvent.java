@@ -108,6 +108,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
   private String tsFileDedupScopeID;
+  // False when generated tablet events should wait for an external progress report.
+  private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
@@ -547,6 +549,23 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return resource.getMaxProgressIndex();
   }
 
+  public PipeTsFileInsertionEvent skipReportOnCommitAndGeneratedEvents() {
+    return setShouldReportGeneratedEventsOnCommit(false);
+  }
+
+  public boolean shouldReportGeneratedEventsOnCommit() {
+    return shouldReportGeneratedEventsOnCommit;
+  }
+
+  private PipeTsFileInsertionEvent setShouldReportGeneratedEventsOnCommit(
+      final boolean shouldReportGeneratedEventsOnCommit) {
+    this.shouldReportGeneratedEventsOnCommit = shouldReportGeneratedEventsOnCommit;
+    if (!shouldReportGeneratedEventsOnCommit) {
+      skipReportOnCommit();
+    }
+    return this;
+  }
+
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)
         && Objects.nonNull(resource)
@@ -603,7 +622,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 startTime,
                 endTime,
                 isTsFileSealed)
-            .bindTsFileDedupScopeID(tsFileDedupScopeID);
+            .bindTsFileDedupScopeID(tsFileDedupScopeID)
+            .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
 
     copiedEvent.hasObjectData = this.hasObjectData;
 
