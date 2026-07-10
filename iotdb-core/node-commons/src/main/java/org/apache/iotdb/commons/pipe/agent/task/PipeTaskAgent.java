@@ -163,7 +163,16 @@ public abstract class PipeTaskAgent {
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       final PipeMeta pipeMetaFromCoordinator) {
-    acquireWriteLock();
+    final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
     } finally {
@@ -355,7 +364,15 @@ public abstract class PipeTaskAgent {
   protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleDropPipeInternal(pipeName);
     } finally {
