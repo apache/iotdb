@@ -418,9 +418,11 @@ public class DataNodeTableCache implements ITableCache {
     return instanceVersion.get();
   }
 
+  @Override
   public Map<String, Map<String, TsTable>> getTableSnapshot() {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       return databaseTableMap.entrySet().stream()
           .collect(
               Collectors.toMap(
