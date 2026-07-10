@@ -2577,4 +2577,6 @@ public final class DataNodePipeMessages {
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
 
+  public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
+      "Legacy pipe receiver requires a logged-in session.";
 }
