@@ -82,9 +82,12 @@ public class InsertTablets extends WrappedInsertStatement {
 
   @Override
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
+    final DeviceSchemaValidationAggregator validationAggregator =
+        new DeviceSchemaValidationAggregator();
     for (InsertTabletStatement insertTabletStatement :
         getInnerTreeStatement().getInsertTabletStatementList()) {
-      metadata.validateDeviceSchema(new InsertTablet(insertTabletStatement, context), context);
+      validationAggregator.add(new InsertTablet(insertTabletStatement, context));
     }
+    validationAggregator.forEach(validation -> metadata.validateDeviceSchema(validation, context));
   }
 }

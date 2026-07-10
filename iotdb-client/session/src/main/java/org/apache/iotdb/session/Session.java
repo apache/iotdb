@@ -2924,13 +2924,14 @@ public class Session implements ISession {
       updateRelationalTabletsReq(tabletGroup, connection, tablet);
       return;
     }
+    final Map<SessionConnection, Map<IDeviceID, Tablet>> subTabletsByConnection =
+        new LinkedHashMap<>();
     for (int row = 0; row < tablet.getRowSize(); row++) {
       final IDeviceID deviceID = tablet.getDeviceID(row);
       final SessionConnection connection = getTableModelSessionConnection(deviceID);
       final Tablet subTablet =
-          tabletGroup
-              .computeIfAbsent(connection, ignored -> new RelationalTabletsReq())
-              .tabletByDevice
+          subTabletsByConnection
+              .computeIfAbsent(connection, ignored -> new LinkedHashMap<>())
               .computeIfAbsent(deviceID, ignored -> createEmptyRelationalTabletLike(tablet));
       for (int column = 0; column < subTablet.getSchemas().size(); column++) {
         subTablet.addValue(
@@ -2940,6 +2941,12 @@ public class Session implements ISession {
       }
       subTablet.addTimestamp(subTablet.getRowSize(), tablet.getTimestamp(row));
     }
+    subTabletsByConnection.forEach(
+        (connection, subTablets) ->
+            subTablets
+                .values()
+                .forEach(
+                    subTablet -> updateRelationalTabletsReq(tabletGroup, connection, subTablet)));
   }
 
   private SessionConnection getTableModelSessionConnection(final IDeviceID deviceID)
@@ -3090,20 +3097,18 @@ public class Session implements ISession {
     final List<RelationalTabletWithColumnIndexMap> mergedTablets = new ArrayList<>(tablets.size());
     boolean anyMerged = false;
     for (final Tablet tablet : sortedTablets) {
-      boolean merged = false;
-      for (int i = 0; i < mergedTablets.size(); i++) {
-        final RelationalTabletWithColumnIndexMap candidate = mergedTablets.get(i);
-        if (canMergeRelationalTablets(candidate.tablet, candidate.columnIndexMap, tablet)) {
-          mergedTablets.set(i, mergeRelationalTablets(candidate, tablet));
-          merged = true;
+      final RelationalTabletWithColumnIndexMap relationalTablet =
+          new RelationalTabletWithColumnIndexMap(tablet, getColumnIndexMap(tablet));
+      if (!mergedTablets.isEmpty()) {
+        final int lastIndex = mergedTablets.size() - 1;
+        final RelationalTabletWithColumnIndexMap candidate = mergedTablets.get(lastIndex);
+        if (canMergeRelationalTablets(candidate, relationalTablet)) {
+          mergedTablets.set(lastIndex, mergeRelationalTablets(candidate, relationalTablet.tablet));
           anyMerged = true;
-          break;
+          continue;
         }
       }
-      if (!merged) {
-        mergedTablets.add(
-            new RelationalTabletWithColumnIndexMap(tablet, getColumnIndexMap(tablet)));
-      }
+      mergedTablets.add(relationalTablet);
     }
     if (anyMerged) {
       consecutiveRelationalTabletMergeMissCount = 0;
@@ -3137,25 +3142,33 @@ public class Session implements ISession {
   }
 
   private boolean canMergeRelationalTablets(
-      final Tablet left, final Map<String, Integer> leftColumnIndexMap, final Tablet right) {
-    if (!Objects.equals(left.getTableName(), right.getTableName())) {
+      final RelationalTabletWithColumnIndexMap left,
+      final RelationalTabletWithColumnIndexMap right) {
+    final Tablet leftTablet = left.tablet;
+    final Tablet rightTablet = right.tablet;
+    if (!Objects.equals(leftTablet.getTableName(), rightTablet.getTableName())) {
       return false;
     }
-    final List<IMeasurementSchema> rightSchemas = right.getSchemas();
+    if (left.hasRows() && right.hasRows() && left.maxTimestamp > right.minTimestamp) {
+      return false;
+    }
+    final List<IMeasurementSchema> rightSchemas = rightTablet.getSchemas();
     int duplicatedColumnCount = 0;
     for (int rightIndex = 0; rightIndex < rightSchemas.size(); rightIndex++) {
       final IMeasurementSchema rightSchema = rightSchemas.get(rightIndex);
-      final Integer leftIndex = leftColumnIndexMap.get(rightSchema.getMeasurementName());
+      final Integer leftIndex = left.columnIndexMap.get(rightSchema.getMeasurementName());
       if (leftIndex == null) {
         continue;
       }
-      if (left.getSchemas().get(leftIndex).getType() != rightSchema.getType()
-          || left.getColumnTypes().get(leftIndex) != right.getColumnTypes().get(rightIndex)) {
+      if (leftTablet.getSchemas().get(leftIndex).getType() != rightSchema.getType()
+          || leftTablet.getColumnTypes().get(leftIndex)
+              != rightTablet.getColumnTypes().get(rightIndex)) {
         return false;
       }
       duplicatedColumnCount++;
     }
-    return (double) duplicatedColumnCount / Math.max(left.getSchemas().size(), rightSchemas.size())
+    return (double) duplicatedColumnCount
+            / Math.max(leftTablet.getSchemas().size(), rightSchemas.size())
         > 0.5;
   }
 
@@ -3299,11 +3312,21 @@ public class Session implements ISession {
 
     private final Tablet tablet;
     private final Map<String, Integer> columnIndexMap;
+    private long minTimestamp = Long.MAX_VALUE;
+    private long maxTimestamp = Long.MIN_VALUE;
 
     private RelationalTabletWithColumnIndexMap(
         final Tablet tablet, final Map<String, Integer> columnIndexMap) {
       this.tablet = tablet;
       this.columnIndexMap = columnIndexMap;
+      for (int row = 0; row < tablet.getRowSize(); row++) {
+        minTimestamp = Math.min(minTimestamp, tablet.getTimestamp(row));
+        maxTimestamp = Math.max(maxTimestamp, tablet.getTimestamp(row));
+      }
+    }
+
+    private boolean hasRows() {
+      return tablet.getRowSize() > 0;
     }
   }
 
@@ -3312,7 +3335,6 @@ public class Session implements ISession {
     private final TSInsertTabletsReq request = new TSInsertTabletsReq();
     private final List<IDeviceID> deviceIDs = new ArrayList<>();
     private final List<Tablet> tablets = new ArrayList<>();
-    private final Map<IDeviceID, Tablet> tabletByDevice = new LinkedHashMap<>();
 
     private void addTablet(final Tablet tablet) {
       tablets.add(tablet);
@@ -3321,7 +3343,6 @@ public class Session implements ISession {
     private void buildRequest() {
       request.setWriteToTable(true);
       tablets.forEach(this::addTabletToRequest);
-      tabletByDevice.values().forEach(this::addTabletToRequest);
     }
 
     private void addTabletToRequest(final Tablet tablet) {
