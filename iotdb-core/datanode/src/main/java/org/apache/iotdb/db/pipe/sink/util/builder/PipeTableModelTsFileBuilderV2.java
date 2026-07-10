@@ -79,6 +79,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+    fallbackBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   @Override

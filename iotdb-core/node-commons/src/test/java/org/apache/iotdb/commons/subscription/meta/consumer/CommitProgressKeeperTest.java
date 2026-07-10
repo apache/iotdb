@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -104,6 +105,30 @@ public class CommitProgressKeeperTest {
   }
 
   @Test
+  public void testSnapshotLoadHandlesShortReads() throws Exception {
+    final CommitProgressKeeper keeper = new CommitProgressKeeper();
+    final String key = CommitProgressKeeper.generateKey("cg", "topic", "1_1", 3);
+    final RegionProgress regionProgress = createRegionProgress("1_1", 7, 100L, 10L);
+    keeper.updateRegionProgress(key, serialize(regionProgress));
+
+    final Path snapshot = Files.createTempFile("commit-progress-keeper-short-read", ".snapshot");
+    try {
+      try (FileOutputStream fos = new FileOutputStream(snapshot.toFile())) {
+        keeper.processTakeSnapshot(fos);
+      }
+
+      final CommitProgressKeeper restored = new CommitProgressKeeper();
+      try (FileInputStream fis = new OneByteAtATimeFileInputStream(snapshot)) {
+        restored.processLoadSnapshot(fis);
+      }
+
+      assertEquals(regionProgress, RegionProgress.deserialize(restored.getRegionProgress(key)));
+    } finally {
+      Files.deleteIfExists(snapshot);
+    }
+  }
+
+  @Test
   public void testRegionProgressMapSerializationRoundTrip() throws Exception {
     final String firstKey = CommitProgressKeeper.generateKey("cg", "topicA", "1_1", 3);
     final String secondKey = CommitProgressKeeper.generateKey("cg", "topicB", "1_2", 5);
@@ -158,6 +183,23 @@ public class CommitProgressKeeperTest {
       regionProgress.serialize(dos);
       dos.flush();
       return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
+    }
+  }
+
+  private static class OneByteAtATimeFileInputStream extends FileInputStream {
+
+    private OneByteAtATimeFileInputStream(final Path path) throws IOException {
+      super(path.toFile());
+    }
+
+    @Override
+    public int read(final byte[] bytes) throws IOException {
+      return read(bytes, 0, bytes.length);
+    }
+
+    @Override
+    public int read(final byte[] bytes, final int offset, final int length) throws IOException {
+      return super.read(bytes, offset, Math.min(length, 1));
     }
   }
 }

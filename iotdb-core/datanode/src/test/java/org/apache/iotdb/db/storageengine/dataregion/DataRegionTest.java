@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -111,6 +112,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
@@ -1276,6 +1278,66 @@ public class DataRegionTest {
     } finally {
       dataRegion1.syncDeleteDataFiles();
       COMMON_CONFIG.setLastCacheEnable(originalLastCacheEnable);
+    }
+  }
+
+  @Test
+  public void testInsertTabletTypeRetryDoesNotReplaySuccessfulFragments() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.retry_tablet");
+    final TsFileProcessor firstProcessor = Mockito.mock(TsFileProcessor.class);
+    final TsFileProcessor secondProcessor = Mockito.mock(TsFileProcessor.class);
+    final AtomicInteger insertionCount = new AtomicInteger();
+    final org.mockito.stubbing.Answer<Void> insertionAnswer =
+        invocation -> {
+          if (insertionCount.incrementAndGet() == 2) {
+            throw new DataTypeInconsistentException(TSDataType.INT32, TSDataType.INT64);
+          }
+          return null;
+        };
+    Mockito.doAnswer(insertionAnswer)
+        .when(firstProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    Mockito.doAnswer(insertionAnswer)
+        .when(secondProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+
+    final long firstTime = 1L;
+    final long secondTime = firstTime + TimePartitionUtils.getTimePartitionInterval();
+    final long firstPartitionId = TimePartitionUtils.getTimePartitionId(firstTime);
+    Assert.assertNotEquals(firstPartitionId, TimePartitionUtils.getTimePartitionId(secondTime));
+    dataRegion1.setTsFileProcessorSupplier(
+        (timePartitionId, sequence) ->
+            timePartitionId == firstPartitionId ? firstProcessor : secondProcessor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.retry_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {firstTime, secondTime},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.assertEquals(3, insertionCount.get());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
     }
   }
 

@@ -21,7 +21,9 @@ package org.apache.iotdb.commons.subscription.meta.consumer;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -93,36 +95,47 @@ public class CommitProgressKeeper {
 
   public void processLoadSnapshot(final FileInputStream fileInputStream) throws IOException {
     regionProgressMap.clear();
+    final DataInputStream dataInputStream = new DataInputStream(fileInputStream);
     final byte[] sizeBytes = new byte[4];
-    if (fileInputStream.read(sizeBytes) != 4) {
+    if (!readFully(dataInputStream, sizeBytes)) {
       return;
     }
     final int regionSize = ByteBuffer.wrap(sizeBytes).getInt();
     for (int i = 0; i < regionSize; i++) {
       final byte[] keyLenBytes = new byte[4];
-      if (fileInputStream.read(keyLenBytes) != 4) {
+      if (!readFully(dataInputStream, keyLenBytes)) {
         throw new IOException(
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484);
       }
       final int keyLen = ByteBuffer.wrap(keyLenBytes).getInt();
       final byte[] keyBytes = new byte[keyLen];
-      if (fileInputStream.read(keyBytes) != keyLen) {
+      if (!readFully(dataInputStream, keyBytes)) {
         throw new IOException(
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE);
       }
       final String key = new String(keyBytes, StandardCharsets.UTF_8);
       final byte[] valueLenBytes = new byte[4];
-      if (fileInputStream.read(valueLenBytes) != 4) {
+      if (!readFully(dataInputStream, valueLenBytes)) {
         throw new IOException(
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0);
       }
       final int valueLen = ByteBuffer.wrap(valueLenBytes).getInt();
       final byte[] valueBytes = new byte[valueLen];
-      if (fileInputStream.read(valueBytes) != valueLen) {
+      if (!readFully(dataInputStream, valueBytes)) {
         throw new IOException(
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521);
       }
       regionProgressMap.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
+    }
+  }
+
+  private static boolean readFully(final DataInputStream stream, final byte[] bytes)
+      throws IOException {
+    try {
+      stream.readFully(bytes);
+      return true;
+    } catch (final EOFException ignored) {
+      return false;
     }
   }
 

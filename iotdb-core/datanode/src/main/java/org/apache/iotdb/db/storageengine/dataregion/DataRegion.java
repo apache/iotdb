@@ -202,6 +202,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1344,14 +1345,36 @@ public class DataRegion implements IDataRegionForQuery {
     rangeList.add(newRange);
   }
 
+  private Map<Long, List<int[]>[]> splitUnprocessedTabletRows(
+      final InsertTabletNode insertTabletNode,
+      final int start,
+      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs,
+      final BitSet processedRows) {
+    final Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
+    int deviceStart = start;
+    for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+      final int deviceEnd = deviceEndOffsetPair.getRight();
+      int rangeStart = processedRows.nextClearBit(deviceStart);
+      while (rangeStart < deviceEnd) {
+        final int nextProcessed = processedRows.nextSetBit(rangeStart);
+        final int rangeEnd =
+            nextProcessed < 0 || nextProcessed > deviceEnd ? deviceEnd : nextProcessed;
+        split(insertTabletNode, rangeStart, rangeEnd, splitInfo);
+        rangeStart = processedRows.nextClearBit(rangeEnd);
+      }
+      deviceStart = deviceEnd;
+    }
+    return splitInfo;
+  }
+
   private boolean doInsert(
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
       long[] infoForMetrics,
-      boolean markLastFragmentOnFinalWrite)
+      boolean markLastFragmentOnFinalWrite,
+      TabletInsertionProgress progress)
       throws DataTypeInconsistentException {
-    boolean noFailure = true;
     int remainingFragmentCount = 0;
     if (markLastFragmentOnFinalWrite) {
       for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
@@ -1371,36 +1394,38 @@ public class DataRegion implements IDataRegionForQuery {
       if (sequenceRangeList != null) {
         insertTabletNode.setLastFragment(
             markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
-        noFailure =
+        final boolean fragmentSucceeded =
             insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    sequenceRangeList,
-                    true,
-                    results,
-                    timePartitionId,
-                    noFailure,
-                    infoForMetrics)
-                && noFailure;
+                insertTabletNode,
+                sequenceRangeList,
+                true,
+                results,
+                timePartitionId,
+                progress.noFailure,
+                infoForMetrics);
+        markInsertTabletRangesProcessed(sequenceRangeList, progress.processedRows);
+        progress.noFailure = fragmentSucceeded && progress.noFailure;
         remainingFragmentCount--;
       }
       List<int[]> unSequenceRangeList = rangeLists[0];
       if (unSequenceRangeList != null) {
         insertTabletNode.setLastFragment(
             markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
-        noFailure =
+        final boolean fragmentSucceeded =
             insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    unSequenceRangeList,
-                    false,
-                    results,
-                    timePartitionId,
-                    noFailure,
-                    infoForMetrics)
-                && noFailure;
+                insertTabletNode,
+                unSequenceRangeList,
+                false,
+                results,
+                timePartitionId,
+                progress.noFailure,
+                infoForMetrics);
+        markInsertTabletRangesProcessed(unSequenceRangeList, progress.processedRows);
+        progress.noFailure = fragmentSucceeded && progress.noFailure;
         remainingFragmentCount--;
       }
     }
-    return noFailure;
+    return progress.noFailure;
   }
 
   /**
@@ -1457,31 +1482,51 @@ public class DataRegion implements IDataRegionForQuery {
       List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs,
       boolean markLastFragmentOnFinalWrite) {
     final int initialStart = start;
+    final TabletInsertionProgress progress =
+        new TabletInsertionProgress(insertTabletNode.getRowCount());
     try {
-      Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
-      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        int end = deviceEndOffsetPair.getRight();
-        split(insertTabletNode, start, end, splitInfo);
-        start = end;
-      }
+      final Map<Long, List<int[]>[]> splitInfo =
+          splitUnprocessedTabletRows(
+              insertTabletNode, initialStart, deviceEndOffsetPairs, progress.processedRows);
       return doInsert(
-          insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
+          insertTabletNode,
+          splitInfo,
+          results,
+          infoForMetrics,
+          markLastFragmentOnFinalWrite,
+          progress);
     } catch (DataTypeInconsistentException e) {
       // the exception will trigger a flush, which requires the flush time to be recalculated
-      start = initialStart;
-      Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
-      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        int end = deviceEndOffsetPair.getRight();
-        split(insertTabletNode, start, end, splitInfo);
-        start = end;
-      }
+      final Map<Long, List<int[]>[]> splitInfo =
+          splitUnprocessedTabletRows(
+              insertTabletNode, initialStart, deviceEndOffsetPairs, progress.processedRows);
       try {
         return doInsert(
-            insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
+            insertTabletNode,
+            splitInfo,
+            results,
+            infoForMetrics,
+            markLastFragmentOnFinalWrite,
+            progress);
       } catch (DataTypeInconsistentException ex) {
         logger.error(StorageEngineMessages.DATA_INCONSISTENT_NOT_TRIGGER_TWICE, ex);
+        progress.noFailure = false;
+        for (int i = initialStart; i < insertTabletNode.getRowCount(); i++) {
+          if (!progress.processedRows.get(i)) {
+            results[i] = RpcUtils.getStatus(ex.getErrorCode(), ex.getMessage());
+          }
+        }
         return false;
       }
+    }
+  }
+
+  private static final class TabletInsertionProgress {
+    private final BitSet processedRows;
+    private boolean noFailure = true;
+
+    private TabletInsertionProgress(final int rowCount) {
+      processedRows = new BitSet(rowCount);
     }
   }
 
@@ -1615,6 +1660,13 @@ public class DataRegion implements IDataRegionForQuery {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
     return true;
+  }
+
+  private void markInsertTabletRangesProcessed(
+      final List<int[]> rangeList, final BitSet processedRows) {
+    for (final int[] rangePair : rangeList) {
+      processedRows.set(rangePair[0], rangePair[1]);
+    }
   }
 
   private void markInsertTabletRangesFailed(
