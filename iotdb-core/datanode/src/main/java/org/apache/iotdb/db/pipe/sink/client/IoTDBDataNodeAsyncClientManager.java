@@ -405,7 +405,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   }
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
-    if (!useLeaderCache || deviceId == null || endPoint == null) {
+    if (!useLeaderCache
+        || deviceId == null
+        || endPoint == null
+        || UrlUtils.isWildcardAddress(endPoint.getIp())) {
       return;
     }
 
