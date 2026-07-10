@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -39,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -126,8 +129,7 @@ public class LoadUtil {
       LOGGER.warn(StorageEngineMessages.LOAD_ACTIVE_LISTENING_DIR_NOT_SET);
       return false;
     }
-    final Map<String, String> attributes =
-        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     loadObjectFileDirAsyncToTargetDir(file, targetDir, isDeleteAfterLoad);
@@ -139,6 +141,23 @@ public class LoadUtil {
         targetDir, new File(getTsFileModsV2Path(file.getAbsolutePath())), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
     return true;
+  }
+
+  private static Map<String, String> appendCurrentUserIfAbsent(
+      final Map<String, String> loadAttributes) {
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes)
+            ? new LinkedHashMap<>(loadAttributes)
+            : new LinkedHashMap<>();
+    if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
+      final IClientSession session = SessionManager.getInstance().getCurrSession();
+      attributes.put(
+          ActiveLoadPathHelper.USER_KEY,
+          session == null || session.getUsername() == null
+              ? AuthorityChecker.SUPER_USER
+              : session.getUsername());
+    }
+    return attributes;
   }
 
   public static boolean loadFilesToActiveDir(
@@ -164,8 +183,7 @@ public class LoadUtil {
       LOGGER.warn(StorageEngineMessages.LOAD_ACTIVE_LISTENING_DIR_NOT_SET);
       return false;
     }
-    final Map<String, String> attributes =
-        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     for (final String file : files) {
