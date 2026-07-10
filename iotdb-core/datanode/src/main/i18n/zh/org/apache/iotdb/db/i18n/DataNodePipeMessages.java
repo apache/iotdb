@@ -1330,6 +1330,8 @@ public final class DataNodePipeMessages {
       "已通过周期性任务删除全部过期的 Pipe hardlink 目录。";
   public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
       "为周期性删除移动 Pipe hardlink 目录 {} 失败，改为同步删除。";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_SKIPPING_PERIODICAL_DELETE =
+      "为周期性删除移动 Pipe hardlink 目录 {} 失败，跳过注册原目录以避免删除重建 Pipe 的文件。";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "发现 Pipe snapshot 目录，正在删除：{},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =

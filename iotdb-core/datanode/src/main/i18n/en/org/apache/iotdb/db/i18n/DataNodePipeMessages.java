@@ -1414,6 +1414,8 @@ public final class DataNodePipeMessages {
       "Finished deleting all stale pipe hardlink dirs by periodical job.";
   public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC =
       "Failed to move pipe hardlink dir {} for periodical deletion, deleting it synchronously.";
+  public static final String PIPE_HARDLINK_DIR_MOVE_FAILED_SKIPPING_PERIODICAL_DELETE =
+      "Failed to move pipe hardlink dir {} for periodical deletion, skip registering the original dir to avoid deleting files of a recreated pipe.";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
       "Pipe snapshot dir found, deleting it: {},";
   public static final String SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK =

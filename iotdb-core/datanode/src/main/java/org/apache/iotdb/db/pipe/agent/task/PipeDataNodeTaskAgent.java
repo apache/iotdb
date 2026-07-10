@@ -59,6 +59,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
@@ -304,13 +305,20 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean dropPipe(final String pipeName, final long creationTime) {
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    PipeDataNodeResourceManager.tsfile().markPipeTsFileDirUnderDeletion(pipeTsFileResourcePipeName);
+
     if (!super.dropPipe(pipeName, creationTime)) {
+      PipeDataNodeResourceManager.tsfile()
+          .unmarkPipeTsFileDirUnderDeletion(pipeTsFileResourcePipeName);
       return false;
     }
 
     final String taskId = pipeName + "_" + creationTime;
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
+    PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
 
     return true;
   }
@@ -319,6 +327,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   protected boolean dropPipe(final String pipeName) {
     // Get the pipe meta first because it is removed after super#dropPipe(pipeName)
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final String pipeTsFileResourcePipeName =
+        Objects.isNull(pipeMeta)
+            ? null
+            : PipeTsFileResourceManager.getPipeTsFileResourcePipeName(
+                pipeName, pipeMeta.getStaticMeta().getCreationTime());
+    if (Objects.nonNull(pipeTsFileResourcePipeName)) {
+      PipeDataNodeResourceManager.tsfile()
+          .markPipeTsFileDirUnderDeletion(pipeTsFileResourcePipeName);
+    }
 
     // Record whether there are pipe tasks before dropping the pipe
     final boolean hasPipeTasks;
@@ -331,6 +348,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     if (!super.dropPipe(pipeName)) {
+      if (Objects.nonNull(pipeTsFileResourcePipeName)) {
+        PipeDataNodeResourceManager.tsfile()
+            .unmarkPipeTsFileDirUnderDeletion(pipeTsFileResourcePipeName);
+      }
       return false;
     }
 
@@ -339,6 +360,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
+      PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
       if (!hasPipeTasks && PipeStaticMeta.isSubscriptionPipe(pipeName)) {

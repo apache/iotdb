@@ -37,6 +37,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -49,6 +50,9 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
       "PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner#cleanTsFileDir()";
   private static final long DELETE_MAX_PATH_COUNT_PER_ROUND = 100_000L;
   private static final long DELETE_MAX_TIME_PER_ROUND_MS = 1_000L;
+  private static final PeriodicalStalePipeDirCleaner PERIODICAL_STALE_PIPE_DIR_CLEANER =
+      new PeriodicalStalePipeDirCleaner();
+  private static final AtomicBoolean PERIODICAL_CLEANUP_JOB_REGISTERED = new AtomicBoolean(false);
 
   /**
    * Delete the data directory and all of its subdirectories that contain the
@@ -71,7 +75,8 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
         moveAsideAndCollect(pipeHardLinkDir, pipeHardlinkBaseDirName, stalePipeDirs);
       }
     }
-    registerPeriodicalCleanupJob(periodicalJobRegistrar, stalePipeDirs);
+    PERIODICAL_STALE_PIPE_DIR_CLEANER.addStalePipeDirs(stalePipeDirs);
+    registerPeriodicalCleanupJob(periodicalJobRegistrar);
   }
 
   private static void collectInterruptedStalePipeDirs(
@@ -82,7 +87,7 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
         localDataDir.listFiles(
             file ->
                 file.isDirectory()
-                    && file.getName().startsWith(pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX));
+                    && file.getName().contains(pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX));
     if (stalePipeDirFiles == null) {
       return;
     }
@@ -137,15 +142,45 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
   }
 
   private static void registerPeriodicalCleanupJob(
-      final PeriodicalJobRegistrar periodicalJobRegistrar, final List<File> stalePipeDirs) {
-    if (stalePipeDirs.isEmpty()) {
+      final PeriodicalJobRegistrar periodicalJobRegistrar) {
+    if (!PERIODICAL_CLEANUP_JOB_REGISTERED.compareAndSet(false, true)) {
       return;
     }
 
     periodicalJobRegistrar.register(
         PERIODICAL_CLEANUP_JOB_ID,
-        new PeriodicalStalePipeDirCleaner(stalePipeDirs)::cleanOneRound,
+        PERIODICAL_STALE_PIPE_DIR_CLEANER::cleanOneRound,
         PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
+  }
+
+  public static void submitStalePipeDirForPeriodicalCleanup(final File stalePipeDir) {
+    if (stalePipeDir == null) {
+      return;
+    }
+
+    final File stalePipeDirToDelete;
+    if (stalePipeDir.isDirectory()) {
+      try {
+        stalePipeDirToDelete = moveAside(stalePipeDir, stalePipeDir.getName());
+        LOGGER.info(
+            DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE,
+            stalePipeDir,
+            stalePipeDirToDelete);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_HARDLINK_DIR_MOVE_FAILED_SKIPPING_PERIODICAL_DELETE,
+            stalePipeDir,
+            e);
+        return;
+      }
+    } else {
+      stalePipeDirToDelete = stalePipeDir;
+    }
+
+    LOGGER.info(
+        DataNodePipeMessages.PIPE_STALE_HARDLINK_DIR_FOUND_REGISTERING_PERIODICAL_DELETE,
+        stalePipeDirToDelete);
+    PERIODICAL_STALE_PIPE_DIR_CLEANER.addStalePipeDir(stalePipeDirToDelete);
   }
 
   private static CleanupRoundResult deleteQuietlyWithThrottle(final File stalePipeDir) {
@@ -230,33 +265,36 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
 
   private static class PeriodicalStalePipeDirCleaner {
 
-    private final List<File> stalePipeDirs;
-    private int currentDirIndex;
-    private boolean finished;
+    private final ConcurrentLinkedQueue<File> stalePipeDirs = new ConcurrentLinkedQueue<>();
+    private File currentStalePipeDir;
 
-    private PeriodicalStalePipeDirCleaner(final List<File> stalePipeDirs) {
-      this.stalePipeDirs = stalePipeDirs;
-      currentDirIndex = 0;
-      finished = false;
+    private void addStalePipeDir(final File stalePipeDir) {
+      stalePipeDirs.offer(stalePipeDir);
+    }
+
+    private void addStalePipeDirs(final List<File> stalePipeDirs) {
+      stalePipeDirs.forEach(this::addStalePipeDir);
     }
 
     private void cleanOneRound() {
-      if (finished) {
-        return;
-      }
-
       long deletedPathCount = 0;
-      while (currentDirIndex < stalePipeDirs.size()) {
-        final File stalePipeDir = stalePipeDirs.get(currentDirIndex);
-        final CleanupRoundResult result = deleteQuietlyWithThrottle(stalePipeDir);
+      while (true) {
+        if (currentStalePipeDir == null) {
+          currentStalePipeDir = stalePipeDirs.poll();
+        }
+        if (currentStalePipeDir == null) {
+          return;
+        }
+
+        final CleanupRoundResult result = deleteQuietlyWithThrottle(currentStalePipeDir);
         deletedPathCount += result.deletedPathCount;
 
         if (result.finished) {
           LOGGER.info(
               DataNodePipeMessages.PIPE_HARDLINK_DIR_PERIODICAL_DELETE_FINISHED,
-              stalePipeDir,
+              currentStalePipeDir,
               result.success);
-          ++currentDirIndex;
+          currentStalePipeDir = null;
           continue;
         }
 
@@ -264,14 +302,11 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
           LOGGER.info(
               DataNodePipeMessages.PIPE_HARDLINK_DIR_PERIODICAL_DELETE_PROGRESS,
               deletedPathCount,
-              stalePipeDir,
+              currentStalePipeDir,
               result.success);
         }
         return;
       }
-
-      finished = true;
-      LOGGER.info(DataNodePipeMessages.PIPE_HARDLINK_DIR_PERIODICAL_DELETE_ALL_FINISHED);
     }
   }
 
