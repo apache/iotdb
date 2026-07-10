@@ -2776,7 +2776,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()));
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
