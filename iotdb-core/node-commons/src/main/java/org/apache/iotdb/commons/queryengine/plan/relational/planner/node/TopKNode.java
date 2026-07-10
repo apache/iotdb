@@ -50,6 +50,13 @@ public class TopKNode extends MultiChildProcessNode {
 
   private final boolean childrenDataInOrder;
 
+  // Marked during distributed optimize when TopK runtime filter should be generated.
+  private boolean useTopKRuntimeFilter;
+
+  // Sort direction of the runtime filter threshold; meaningful only when useTopKRuntimeFilter is
+  // true.
+  private boolean topKRuntimeFilterAscending = true;
+
   public TopKNode(
       PlanNodeId id,
       OrderingScheme scheme,
@@ -79,7 +86,11 @@ public class TopKNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TopKNode(getPlanNodeId(), orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode cloned =
+        new TopKNode(getPlanNodeId(), orderingScheme, count, outputSymbols, childrenDataInOrder);
+    cloned.useTopKRuntimeFilter = useTopKRuntimeFilter;
+    cloned.topKRuntimeFilterAscending = topKRuntimeFilterAscending;
+    return cloned;
   }
 
   @Override
@@ -102,6 +113,8 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, byteBuffer);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, byteBuffer);
+    ReadWriteIOUtils.write(useTopKRuntimeFilter, byteBuffer);
+    ReadWriteIOUtils.write(topKRuntimeFilterAscending, byteBuffer);
   }
 
   @Override
@@ -114,6 +127,8 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, stream);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, stream);
+    ReadWriteIOUtils.write(useTopKRuntimeFilter, stream);
+    ReadWriteIOUtils.write(topKRuntimeFilterAscending, stream);
   }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
@@ -125,8 +140,14 @@ public class TopKNode extends MultiChildProcessNode {
       outputSymbols.add(Symbol.deserialize(byteBuffer));
     }
     boolean childrenDataInOrder = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean useTopKRuntimeFilter = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean topKRuntimeFilterAscending = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode topKNode =
+        new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    topKNode.useTopKRuntimeFilter = useTopKRuntimeFilter;
+    topKNode.topKRuntimeFilterAscending = topKRuntimeFilterAscending;
+    return topKNode;
   }
 
   @Override
@@ -139,7 +160,11 @@ public class TopKNode extends MultiChildProcessNode {
     checkArgument(
         children.size() == newChildren.size(),
         QueryMessages.EXCEPTION_WRONG_NUMBER_OF_NEW_CHILDREN_817AF800);
-    return new TopKNode(id, newChildren, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode topKNode =
+        new TopKNode(id, newChildren, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    topKNode.useTopKRuntimeFilter = useTopKRuntimeFilter;
+    topKNode.topKRuntimeFilterAscending = topKRuntimeFilterAscending;
+    return topKNode;
   }
 
   public OrderingScheme getOrderingScheme() {
@@ -154,6 +179,22 @@ public class TopKNode extends MultiChildProcessNode {
     return childrenDataInOrder;
   }
 
+  public boolean isUseTopKRuntimeFilter() {
+    return useTopKRuntimeFilter;
+  }
+
+  public void setUseTopKRuntimeFilter(boolean useTopKRuntimeFilter) {
+    this.useTopKRuntimeFilter = useTopKRuntimeFilter;
+  }
+
+  public boolean isTopKRuntimeFilterAscending() {
+    return topKRuntimeFilterAscending;
+  }
+
+  public void setTopKRuntimeFilterAscending(boolean topKRuntimeFilterAscending) {
+    this.topKRuntimeFilterAscending = topKRuntimeFilterAscending;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -162,12 +203,20 @@ public class TopKNode extends MultiChildProcessNode {
     TopKNode sortNode = (TopKNode) o;
     return Objects.equal(orderingScheme, sortNode.orderingScheme)
         && Objects.equal(outputSymbols, sortNode.outputSymbols)
-        && Objects.equal(count, sortNode.count);
+        && Objects.equal(count, sortNode.count)
+        && useTopKRuntimeFilter == sortNode.useTopKRuntimeFilter
+        && topKRuntimeFilterAscending == sortNode.topKRuntimeFilterAscending;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), orderingScheme, outputSymbols, count);
+    return Objects.hashCode(
+        super.hashCode(),
+        orderingScheme,
+        outputSymbols,
+        count,
+        useTopKRuntimeFilter,
+        topKRuntimeFilterAscending);
   }
 
   @Override

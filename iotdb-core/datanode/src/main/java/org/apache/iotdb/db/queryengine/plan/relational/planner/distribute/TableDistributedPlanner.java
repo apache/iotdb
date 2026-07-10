@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TopKRuntimeFilterOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.util.Collections;
@@ -176,7 +177,27 @@ public class TableDistributedPlanner {
         .forEach((k, v) -> mppQueryContext.getTypeProvider().putTableModelType(k, v));
 
     // add exchange node for distributed plan
-    return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+    PlanNode planWithExchange =
+        new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+
+    // Mark TopK runtime filter producer/consumer after exchange insertion.
+    if (analysis.isQuery()) {
+      planWithExchange =
+          new TopKRuntimeFilterOptimizer()
+              .optimize(
+                  planWithExchange,
+                  new PlanOptimizer.Context(
+                      mppQueryContext.getSession(),
+                      analysis,
+                      metadata,
+                      mppQueryContext,
+                      new SymbolAllocator(),
+                      mppQueryContext.getQueryId(),
+                      NOOP,
+                      PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+    }
+
+    return planWithExchange;
   }
 
   private DistributedQueryPlan generateDistributedPlan(

@@ -217,8 +217,17 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public boolean isFinished() throws Exception {
-    return (retainedTsBlock == null)
-        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
+    if (retainedTsBlock != null) {
+      return false;
+    }
+    if (seriesScanOptions.limitConsumedUp()) {
+      return true;
+    }
+    if (currentDeviceIndex >= deviceCount) {
+      return true;
+    }
+    // QueryDataSource 中 seq/unseq 均无 RF 候选文件时，立即结束（hasNext → false）
+    return shouldStopScanByRuntimeFilter();
   }
 
   @Override
@@ -241,8 +250,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    if (this.seriesScanUtil != null) {
-      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    if (currentDeviceIndex < deviceCount) {
+      setupCurrentDeviceScan();
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
@@ -251,17 +260,27 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   protected void moveToNextDevice() {
+    if (shouldStopScanByRuntimeFilter()) {
+      currentDeviceIndex = deviceCount;
+      return;
+    }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
-      // construct AlignedSeriesScanUtil for next device
-      constructAlignedSeriesScanUtil();
-
-      // reset QueryDataSource
-      queryDataSource.reset();
-      this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      this.operatorContext.recordSpecifiedInfo(
-          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+      setupCurrentDeviceScan();
     }
+  }
+
+  /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
+  private boolean shouldStopScanByRuntimeFilter() {
+    return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
+  }
+
+  private void setupCurrentDeviceScan() {
+    constructAlignedSeriesScanUtil();
+    queryDataSource.reset();
+    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   protected void constructAlignedSeriesScanUtil() {

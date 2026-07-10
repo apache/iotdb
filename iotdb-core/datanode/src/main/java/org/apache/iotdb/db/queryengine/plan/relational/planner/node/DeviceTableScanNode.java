@@ -79,6 +79,9 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected transient boolean containsNonAlignedDevice;
 
+  // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
+  @Nullable protected PlanNodeId topKRuntimeFilterSourceId;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -129,20 +132,23 @@ public class DeviceTableScanNode extends TableScanNode {
 
   @Override
   public DeviceTableScanNode clone() {
-    return new DeviceTableScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice);
+    DeviceTableScanNode cloned =
+        new DeviceTableScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice);
+    cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return cloned;
   }
 
   protected static void serializeMemberVariables(
@@ -170,6 +176,13 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
+
+    if (node.topKRuntimeFilterSourceId != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      node.topKRuntimeFilterSourceId.serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   protected static void serializeMemberVariables(
@@ -198,6 +211,13 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
+
+    if (node.topKRuntimeFilterSourceId != null) {
+      ReadWriteIOUtils.write(true, stream);
+      node.topKRuntimeFilterSourceId.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   protected static void deserializeMemberVariables(
@@ -227,6 +247,10 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      node.topKRuntimeFilterSourceId = PlanNodeId.deserialize(byteBuffer);
+    }
   }
 
   @Override
@@ -305,6 +329,14 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setContainsNonAlignedDevice() {
     this.containsNonAlignedDevice = true;
+  }
+
+  public Optional<PlanNodeId> getTopKRuntimeFilterSourceId() {
+    return Optional.ofNullable(topKRuntimeFilterSourceId);
+  }
+
+  public void setTopKRuntimeFilterSourceId(PlanNodeId topKRuntimeFilterSourceId) {
+    this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 
   public String toString() {

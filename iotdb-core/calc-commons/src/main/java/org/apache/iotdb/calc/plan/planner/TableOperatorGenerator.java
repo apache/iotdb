@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.planner;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AssignUniqueIdOperator;
@@ -910,7 +911,16 @@ public abstract class TableOperatorGenerator<
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
         (int) node.getCount(),
-        node.isChildrenDataInOrder());
+        node.isChildrenDataInOrder(),
+        getTopKRuntimeFilter(context, node));
+  }
+
+  protected TopKRuntimeFilter getTopKRuntimeFilter(C context, TopKNode node) {
+    return null;
+  }
+
+  protected TopKRuntimeFilter getTopKRuntimeFilter(C context) {
+    return getTopKRuntimeFilter(context, null);
   }
 
   protected List<TSDataType> getOutputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {

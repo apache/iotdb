@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -70,11 +71,21 @@ public class QueryDataSource implements IQueryDataSource {
 
   private String databaseName = null;
 
+  /**
+   * Remaining seq/unseq TsFileResources that may still contain rows qualifying for TopK runtime
+   * filter. Initialized to list sizes and decremented when a file is skipped at resource level.
+   * When both counters reach zero, the scan can exit early.
+   */
+  private int seqValidSize;
+
+  private int unseqValidSize;
+
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
+    initValidSize();
   }
 
   public QueryDataSource(
@@ -82,6 +93,7 @@ public class QueryDataSource implements IQueryDataSource {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
     this.databaseName = databaseName;
+    initValidSize();
   }
 
   // used for compaction, because in compaction task(unlike query, each QueryDataSource only serve
@@ -91,6 +103,83 @@ public class QueryDataSource implements IQueryDataSource {
     this.unseqResources = other.unseqResources;
     this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
     this.databaseName = other.databaseName;
+    this.seqValidSize = other.seqValidSize;
+    this.unseqValidSize = other.unseqValidSize;
+  }
+
+  /** Initializes seq/unseq valid resource counters from list sizes. */
+  private void initValidSize() {
+    seqValidSize = getSeqResourcesSize();
+    unseqValidSize = getUnseqResourcesSize();
+  }
+
+  public int getSeqValidSize() {
+    return seqValidSize;
+  }
+
+  public int getUnseqValidSize() {
+    return unseqValidSize;
+  }
+
+  /** Returns true if either seq or unseq may still contain RF-qualifying resources. */
+  public boolean hasValidResource() {
+    return seqValidSize > 0 || unseqValidSize > 0;
+  }
+
+  /**
+   * Decrements the remaining file count when a TsFileResource is pruned by TopK runtime filter at
+   * resource level. Counters are shared across all devices in this scan; when both reach zero, the
+   * entire scan can stop without switching to subsequent devices.
+   */
+  public void decreaseValidSize(boolean isSeq) {
+    if (isSeq) {
+      if (seqValidSize > 0) {
+        seqValidSize--;
+      }
+    } else if (unseqValidSize > 0) {
+      unseqValidSize--;
+    }
+  }
+
+  /**
+   * Decrements validSize when a TsFileResource is first pruned by TopK runtime filter at resource
+   * level. File lists are time-ordered, so RF pruning is monotonic from one end: ASC prunes a
+   * suffix, DESC prunes a prefix. {@link #seqValidSize} / {@link #unseqValidSize} then double as
+   * the cross-device scan watermark.
+   */
+  public void decreaseValidSizeForRuntimeFilter(boolean isSeq, int index, boolean ascending) {
+    if (isRuntimeFilterPruned(isSeq, index, ascending)) {
+      return;
+    }
+    decreaseValidSize(isSeq);
+  }
+
+  /**
+   * Truncates seq validSize when RF fails at {@code index}. Seq files are time-ordered, so all
+   * files on the pruned side of {@code index} can be excluded at once: ASC suffix {@code [index,
+   * size)}, DESC prefix {@code [0, index]}.
+   */
+  public void truncateSeqValidSizeForRuntimeFilter(int index, boolean ascending) {
+    int size = getSeqResourcesSize();
+    if (ascending) {
+      seqValidSize = Math.min(seqValidSize, index);
+    } else {
+      seqValidSize = Math.min(seqValidSize, size - index - 1);
+    }
+  }
+
+  /**
+   * Returns true if this file index was already pruned by RF at resource level on a prior device.
+   */
+  public boolean isRuntimeFilterPruned(boolean isSeq, int index, boolean ascending) {
+    int validSize = isSeq ? seqValidSize : unseqValidSize;
+    int size = isSeq ? getSeqResourcesSize() : getUnseqResourcesSize();
+    if (ascending) {
+      // ASC: pruned files form suffix [validSize, size)
+      return index >= validSize;
+    }
+    // DESC: pruned files form prefix [0, size - validSize)
+    return index < size - validSize;
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -144,6 +233,11 @@ public class QueryDataSource implements IQueryDataSource {
     return curSeqSatisfied;
   }
 
+  public boolean isSeqSatisfiedByRuntimeFilter(
+      IDeviceID deviceID, int curIndex, TopKRuntimeFilter filter, boolean debug) {
+    return isResourceSatisfiedByRuntimeFilter(curIndex, filter, true, debug);
+  }
+
   public long getCurrentSeqOrderTime(int curIndex) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
@@ -194,6 +288,11 @@ public class QueryDataSource implements IQueryDataSource {
     }
 
     return curUnSeqSatisfied;
+  }
+
+  public boolean isUnSeqSatisfiedByRuntimeFilter(
+      int curIndex, TopKRuntimeFilter filter, boolean debug) {
+    return isResourceSatisfiedByRuntimeFilter(curIndex, filter, false, debug);
   }
 
   public long getCurrentUnSeqOrderTime(int curIndex) {
@@ -263,6 +362,22 @@ public class QueryDataSource implements IQueryDataSource {
     curUnSeqIndex = -1;
     curUnSeqOrderTime = 0;
     curUnSeqSatisfied = null;
+  }
+
+  private boolean isResourceSatisfiedByRuntimeFilter(
+      int curIndex, TopKRuntimeFilter filter, boolean isSeq, boolean debug) {
+    if (filter == null) {
+      return true;
+    }
+    TsFileResource tsFileResource =
+        isSeq ? seqResources.get(curIndex) : unseqResources.get(unSeqFileOrderIndex[curIndex]);
+    if (tsFileResource == null) {
+      return false;
+    }
+    // Resource-level RF uses the TsFile's global time range, not per-device bounds.
+    long startTime = tsFileResource.getFileStartTime();
+    long endTime = tsFileResource.isClosed() ? tsFileResource.getFileEndTime() : Long.MAX_VALUE;
+    return filter.mayQualifyRange(startTime, endTime);
   }
 
   public String getDatabaseName() {

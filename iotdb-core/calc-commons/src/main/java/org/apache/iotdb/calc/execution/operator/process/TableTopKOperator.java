@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
@@ -39,8 +40,33 @@ public class TableTopKOperator extends TopKOperator {
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator,
       int topValue,
+      boolean childrenDataInOrder,
+      TopKRuntimeFilter topKRuntimeFilter) {
+    super(
+        operatorContext,
+        childrenOperators,
+        dataTypes,
+        comparator,
+        topValue,
+        childrenDataInOrder,
+        topKRuntimeFilter);
+  }
+
+  public TableTopKOperator(
+      CommonOperatorContext operatorContext,
+      List<Operator> childrenOperators,
+      List<TSDataType> dataTypes,
+      Comparator<SortKey> comparator,
+      int topValue,
       boolean childrenDataInOrder) {
-    super(operatorContext, childrenOperators, dataTypes, comparator, topValue, childrenDataInOrder);
+    this(
+        operatorContext,
+        childrenOperators,
+        dataTypes,
+        comparator,
+        topValue,
+        childrenDataInOrder,
+        null);
   }
 
   @Override

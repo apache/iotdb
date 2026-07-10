@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
@@ -46,6 +48,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -185,6 +188,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
@@ -220,6 +224,86 @@ public class DataNodeTableOperatorGenerator
 
   public DataNodeTableOperatorGenerator(Metadata metadata) {
     super(metadata);
+  }
+
+  /**
+   * Producer side: register a shared {@link TopKRuntimeFilter} before visiting TopK children so
+   * nested Scan nodes can resolve the same instance during operator generation.
+   */
+  private TopKRuntimeFilter registerTopKRuntimeFilterForTopK(
+      TopKNode node, LocalExecutionPlanContext context) {
+    if (node == null || !node.isUseTopKRuntimeFilter() || context.dataNodeQueryContext == null) {
+      return null;
+    }
+    return context.dataNodeQueryContext.registerTopKRuntimeFilter(
+        node.getPlanNodeId().getId(), new TopKRuntimeFilter(node.isTopKRuntimeFilterAscending()));
+  }
+
+  /**
+   * Consumer side: lookup the shared filter by root TopK plan node id ({@code
+   * topKRuntimeFilterSourceId}).
+   */
+  private TopKRuntimeFilter resolveTopKRuntimeFilterForDeviceScan(
+      DeviceTableScanNode scanNode, LocalExecutionPlanContext context) {
+    if (scanNode == null
+        || context.dataNodeQueryContext == null
+        || !scanNode.getTopKRuntimeFilterSourceId().isPresent()) {
+      return null;
+    }
+    return context.dataNodeQueryContext.getTopKRuntimeFilter(
+        scanNode.getTopKRuntimeFilterSourceId().get().getId());
+  }
+
+  @Override
+  protected TopKRuntimeFilter getTopKRuntimeFilter(
+      LocalExecutionPlanContext context, TopKNode node) {
+    return registerTopKRuntimeFilterForTopK(node, context);
+  }
+
+  private void applyTopKRuntimeFilter(
+      SeriesScanOptions.Builder builder,
+      DeviceTableScanNode scanNode,
+      LocalExecutionPlanContext context,
+      TopKRuntimeFilter preResolvedFilter) {
+    TopKRuntimeFilter filter =
+        preResolvedFilter != null
+            ? preResolvedFilter
+            : resolveTopKRuntimeFilterForDeviceScan(scanNode, context);
+    if (filter != null) {
+      builder.withTopKRuntimeFilter(filter);
+    }
+  }
+
+  @Override
+  public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {
+    TopKRuntimeFilter filter = registerTopKRuntimeFilterForTopK(node, context);
+
+    CommonOperatorContext operatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), TableTopKOperator.class.getSimpleName());
+    List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
+    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
+    genSortInformation(
+        node.getOutputSymbols(),
+        node.getOrderingScheme(),
+        sortItemIndexList,
+        sortItemDataTypeList,
+        context.getTableTypeProvider());
+    return new TableTopKOperator(
+        operatorContext,
+        children,
+        dataTypes,
+        getComparatorForTable(
+            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+        (int) node.getCount(),
+        node.isChildrenDataInOrder(),
+        filter);
   }
 
   @Override
@@ -626,6 +710,7 @@ public class DataNodeTableOperatorGenerator
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
               }
+              applyTopKRuntimeFilter(builder, node, context, null);
               SeriesScanOptions options = builder.build();
               options.setTTLForTableView(viewTTL);
               seriesScanOptionsList.add(options);
@@ -1091,16 +1176,84 @@ public class DataNodeTableOperatorGenerator
         maxTsBlockLineNum);
   }
 
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructAbstractTableScanOperatorParameter(
+          DeviceTableScanNode node,
+          LocalExecutionPlanContext context,
+          String className,
+          Map<String, String> fieldColumnsRenameMap,
+          long viewTTL,
+          TopKRuntimeFilter topKRuntimeFilter) {
+
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
+    List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
+    List<String> measurementColumnNames = commonParameter.measurementColumnNames;
+    List<ColumnSchema> columnSchemas = commonParameter.columnSchemas;
+    int[] columnsIndexArray = commonParameter.columnsIndexArray;
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            commonParameter.columnSchemaMap,
+            measurementColumnNames,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate(),
+            node,
+            topKRuntimeFilter);
+    seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
+
+    OperatorContext operatorContext = addOperatorContext(context, node.getPlanNodeId(), className);
+
+    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    if (context.getTypeProvider().getTemplatedInfo() != null) {
+      maxTsBlockLineNum =
+          (int)
+              Math.min(
+                  context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
+    }
+
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    allSensors.add("");
+
+    return new AbstractTableScanOperator.AbstractTableScanOperatorParameter(
+        allSensors,
+        operatorContext,
+        node.getPlanNodeId(),
+        columnSchemas,
+        columnsIndexArray,
+        node.getDeviceEntries(),
+        node.getScanOrder(),
+        seriesScanOptions,
+        measurementColumnNames,
+        measurementSchemas,
+        maxTsBlockLineNum);
+  }
+
   // used for TableScanOperator
   private AbstractTableScanOperator.AbstractTableScanOperatorParameter
       constructAbstractTableScanOperatorParameter(
           DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    return constructAbstractTableScanOperatorParameter(node, context, null);
+  }
+
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructAbstractTableScanOperatorParameter(
+          DeviceTableScanNode node,
+          LocalExecutionPlanContext context,
+          TopKRuntimeFilter topKRuntimeFilter) {
     return constructAbstractTableScanOperatorParameter(
         node,
         context,
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
-        Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        topKRuntimeFilter);
   }
 
   @Override
@@ -1119,9 +1272,10 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
 
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-        constructAbstractTableScanOperatorParameter(node, context);
+        constructAbstractTableScanOperatorParameter(node, context, topKRuntimeFilter);
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
@@ -1932,6 +2086,34 @@ public class DataNodeTableOperatorGenerator
       long pushDownOffset,
       boolean pushLimitToEachDevice,
       Expression pushDownPredicate) {
+    return buildSeriesScanOptions(
+        context,
+        columnSchemaMap,
+        measurementColumnNames,
+        measurementColumnsIndexMap,
+        timeColumnName,
+        timePredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        pushDownPredicate,
+        null,
+        null);
+  }
+
+  private SeriesScanOptions buildSeriesScanOptions(
+      LocalExecutionPlanContext context,
+      Map<Symbol, ColumnSchema> columnSchemaMap,
+      List<String> measurementColumnNames,
+      Map<String, Integer> measurementColumnsIndexMap,
+      String timeColumnName,
+      Optional<Expression> timePredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      Expression pushDownPredicate,
+      DeviceTableScanNode scanNode,
+      TopKRuntimeFilter topKRuntimeFilter) {
     SeriesScanOptions.Builder scanOptionsBuilder =
         timePredicate
             .map(expression -> getSeriesScanOptionsBuilder(context, expression))
@@ -1949,6 +2131,9 @@ public class DataNodeTableOperatorGenerator
               timeColumnName,
               context.getZoneId(),
               TimestampPrecisionUtils.currPrecision));
+    }
+    if (scanNode != null) {
+      applyTopKRuntimeFilter(scanOptionsBuilder, scanNode, context, topKRuntimeFilter);
     }
     return scanOptionsBuilder.build();
   }
