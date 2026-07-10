@@ -27,6 +27,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Optional;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -234,10 +235,11 @@ public class UtilsTest {
   @Test
   public void testParseSslConfigFromBracketedIpv6Url() throws IoTDBURLException {
     IoTDBConnectionParams params =
-        Utils.parseUrl("jdbc:iotdb://[::1]:6667?use_ssl=true", new Properties());
+        Utils.parseUrl("jdbc:iotdb://[::1]:6667/root.ipv6?use_ssl=true", new Properties());
 
     assertEquals("::1", params.getHost());
     assertEquals(6667, params.getPort());
+    assertEquals(Optional.of("root.ipv6"), params.getDb());
     assertTrue(params.isUseSSL());
   }
 }
