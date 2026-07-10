@@ -235,11 +235,13 @@ public class UtilsTest {
   @Test
   public void testParseSslConfigFromBracketedIpv6Url() throws IoTDBURLException {
     IoTDBConnectionParams params =
-        Utils.parseUrl("jdbc:iotdb://[::1]:6667/root.ipv6?use_ssl=true", new Properties());
+        Utils.parseUrl(
+            "jdbc:iotdb://[::1]:6667/ipv6_db?use_ssl=true&sql_dialect=table", new Properties());
 
     assertEquals("::1", params.getHost());
     assertEquals(6667, params.getPort());
-    assertEquals(Optional.of("root.ipv6"), params.getDb());
+    assertEquals(Optional.of("ipv6_db"), params.getDb());
+    assertEquals(Constant.TABLE_DIALECT, params.getSqlDialect());
     assertTrue(params.isUseSSL());
   }
 }
