@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -37,23 +38,108 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CommitProgressKeeper {
 
   private static final String KEY_SEPARATOR = "##";
+  private static final String KEY_COMPONENT_SEPARATOR = ".";
+  private static final String VERSIONED_KEY_PREFIX = "v2:";
 
   private final Map<String, ByteBuffer> regionProgressMap = new ConcurrentHashMap<>();
 
   public CommitProgressKeeper() {}
+
+  public static String generateRegionKey(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    return VERSIONED_KEY_PREFIX
+        + encodeKeyComponent(consumerGroupId)
+        + KEY_COMPONENT_SEPARATOR
+        + encodeKeyComponent(topicName)
+        + KEY_COMPONENT_SEPARATOR
+        + encodeKeyComponent(regionId);
+  }
+
+  public static String generateRegionKeyPrefix(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    return generateRegionKey(consumerGroupId, topicName, regionId) + KEY_SEPARATOR;
+  }
 
   public static String generateKey(
       final String consumerGroupId,
       final String topicName,
       final String regionId,
       final int dataNodeId) {
-    return consumerGroupId
-        + KEY_SEPARATOR
-        + topicName
-        + KEY_SEPARATOR
-        + regionId
-        + KEY_SEPARATOR
-        + dataNodeId;
+    return generateRegionKeyPrefix(consumerGroupId, topicName, regionId) + dataNodeId;
+  }
+
+  public static String generateLegacyRegionKeyPrefix(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionId + KEY_SEPARATOR;
+  }
+
+  public static String generateLegacyKey(
+      final String consumerGroupId,
+      final String topicName,
+      final String regionId,
+      final int dataNodeId) {
+    return generateLegacyRegionKeyPrefix(consumerGroupId, topicName, regionId) + dataNodeId;
+  }
+
+  public static boolean isLegacyKeyUnambiguous(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    return !String.valueOf(consumerGroupId).contains(KEY_SEPARATOR)
+        && !String.valueOf(topicName).contains(KEY_SEPARATOR)
+        && !String.valueOf(regionId).contains(KEY_SEPARATOR);
+  }
+
+  public static boolean isValidDataNodeProgressKey(final String key, final String keyPrefix) {
+    if (!key.startsWith(keyPrefix)) {
+      return false;
+    }
+    return isCanonicalDataNodeId(key.substring(keyPrefix.length()));
+  }
+
+  public void removeTopicProgress(final String consumerGroupId, final String topicName) {
+    final String versionedTopicKeyPrefix =
+        VERSIONED_KEY_PREFIX
+            + encodeKeyComponent(consumerGroupId)
+            + KEY_COMPONENT_SEPARATOR
+            + encodeKeyComponent(topicName)
+            + KEY_COMPONENT_SEPARATOR;
+    final String legacyTopicKeyPrefix =
+        String.valueOf(consumerGroupId) + KEY_SEPARATOR + String.valueOf(topicName) + KEY_SEPARATOR;
+    final boolean legacyTopicKeyIsUnambiguous =
+        isLegacyKeyUnambiguous(consumerGroupId, topicName, "");
+    regionProgressMap
+        .keySet()
+        .removeIf(
+            key ->
+                isValidRegionAndDataNodeProgressKey(key, versionedTopicKeyPrefix)
+                    || (legacyTopicKeyIsUnambiguous
+                        && isValidRegionAndDataNodeProgressKey(key, legacyTopicKeyPrefix)));
+  }
+
+  private static boolean isValidRegionAndDataNodeProgressKey(
+      final String key, final String topicKeyPrefix) {
+    if (!key.startsWith(topicKeyPrefix)) {
+      return false;
+    }
+    final String suffix = key.substring(topicKeyPrefix.length());
+    final int separatorIndex = suffix.indexOf(KEY_SEPARATOR);
+    return separatorIndex > 0
+        && separatorIndex == suffix.lastIndexOf(KEY_SEPARATOR)
+        && isCanonicalDataNodeId(suffix.substring(separatorIndex + KEY_SEPARATOR.length()));
+  }
+
+  private static boolean isCanonicalDataNodeId(final String value) {
+    try {
+      final int dataNodeId = Integer.parseInt(value);
+      return dataNodeId >= 0 && Integer.toString(dataNodeId).equals(value);
+    } catch (final NumberFormatException e) {
+      return false;
+    }
+  }
+
+  private static String encodeKeyComponent(final String component) {
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(String.valueOf(component).getBytes(StandardCharsets.UTF_8));
   }
 
   public void updateRegionProgress(final String key, final ByteBuffer committedRegionProgress) {

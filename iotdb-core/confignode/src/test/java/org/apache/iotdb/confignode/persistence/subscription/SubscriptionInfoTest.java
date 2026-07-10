@@ -20,7 +20,11 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
@@ -33,10 +37,12 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class SubscriptionInfoTest {
@@ -169,6 +175,40 @@ public class SubscriptionInfoTest {
     // The absolute lease expiry is DataNode-local runtime state; it is never a topic attribute and
     // must not appear in SHOW TOPICS output.
     Assert.assertFalse(showTopicInfo.getTopicAttributes().contains("owner-lease-expire-time-ms"));
+  }
+
+  @Test
+  public void testAlterConsumerGroupRemovesUnsubscribedTopicProgress() {
+    final String consumerGroupId = "consumer-group";
+    final String consumerId = "consumer";
+    final String removedTopic = "removed-topic";
+    final String retainedTopic = "retained-topic";
+    final String regionId = "DataRegion[1]";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final ConsumerGroupMeta currentMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
+    currentMeta.addSubscription(consumerId, Set.of(removedTopic, retainedTopic));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+
+    final CommitProgressKeeper keeper = subscriptionInfo.getCommitProgressKeeper();
+    final String removedVersionedKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, removedTopic, regionId, 1);
+    final String removedLegacyKey =
+        CommitProgressKeeper.generateLegacyKey(consumerGroupId, removedTopic, regionId, 2);
+    final String retainedKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, retainedTopic, regionId, 1);
+    keeper.updateRegionProgress(removedVersionedKey, ByteBuffer.wrap(new byte[] {1}));
+    keeper.updateRegionProgress(removedLegacyKey, ByteBuffer.wrap(new byte[] {2}));
+    keeper.updateRegionProgress(retainedKey, ByteBuffer.wrap(new byte[] {3}));
+
+    final ConsumerGroupMeta updatedMeta = currentMeta.deepCopy();
+    updatedMeta.removeSubscription(consumerId, Collections.singleton(removedTopic));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(updatedMeta));
+
+    Assert.assertNull(keeper.getRegionProgress(removedVersionedKey));
+    Assert.assertNull(keeper.getRegionProgress(removedLegacyKey));
+    Assert.assertNotNull(keeper.getRegionProgress(retainedKey));
   }
 
   private TopicMeta createTopicMeta(

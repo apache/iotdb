@@ -37,9 +37,69 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CommitProgressKeeperTest {
+
+  @Test
+  public void testVersionedKeysAvoidLegacySeparatorCollision() {
+    final String firstKey = CommitProgressKeeper.generateKey("a##b", "c", "1_1", 3);
+    final String secondKey = CommitProgressKeeper.generateKey("a", "b##c", "1_1", 3);
+
+    assertNotEquals(firstKey, secondKey);
+    assertEquals(
+        CommitProgressKeeper.generateLegacyKey("a##b", "c", "1_1", 3),
+        CommitProgressKeeper.generateLegacyKey("a", "b##c", "1_1", 3));
+    assertTrue(
+        firstKey.startsWith(CommitProgressKeeper.generateRegionKeyPrefix("a##b", "c", "1_1")));
+  }
+
+  @Test
+  public void testValidatesProgressKeyGrammarAndLegacyEligibility() {
+    final String prefix = CommitProgressKeeper.generateRegionKeyPrefix("cg", "topic", "1_1");
+
+    assertTrue(
+        CommitProgressKeeper.isValidDataNodeProgressKey(
+            CommitProgressKeeper.generateKey("cg", "topic", "1_1", 3), prefix));
+    assertFalse(CommitProgressKeeper.isValidDataNodeProgressKey(prefix + "3##4", prefix));
+    assertFalse(CommitProgressKeeper.isValidDataNodeProgressKey(prefix + "03", prefix));
+    assertTrue(CommitProgressKeeper.isLegacyKeyUnambiguous("cg", "topic", "1_1"));
+    assertFalse(CommitProgressKeeper.isLegacyKeyUnambiguous("cg##suffix", "topic", "1_1"));
+  }
+
+  @Test
+  public void testRemoveTopicProgressRemovesVersionedAndLegacyKeys() {
+    final CommitProgressKeeper keeper = new CommitProgressKeeper();
+    final ByteBuffer progress = ByteBuffer.wrap(new byte[] {1});
+    final String versionedKey = CommitProgressKeeper.generateKey("cg", "topic", "1_1", 1);
+    final String legacyKey = CommitProgressKeeper.generateLegacyKey("cg", "topic", "1_2", 2);
+    final String delimiterKey = CommitProgressKeeper.generateKey("a##b", "c", "1_3", 3);
+    final String ambiguousLegacyKey = CommitProgressKeeper.generateLegacyKey("a##b", "c", "1_3", 3);
+    final String otherTopicKey = CommitProgressKeeper.generateKey("cg", "other", "1_1", 1);
+    final String masqueradingLegacyKey =
+        CommitProgressKeeper.generateLegacyKey(
+            CommitProgressKeeper.generateRegionKey("cg", "topic", ""), "legacyTopic", "1_4", 4);
+    keeper.updateRegionProgress(versionedKey, progress);
+    keeper.updateRegionProgress(legacyKey, progress);
+    keeper.updateRegionProgress(delimiterKey, progress);
+    keeper.updateRegionProgress(ambiguousLegacyKey, progress);
+    keeper.updateRegionProgress(otherTopicKey, progress);
+    keeper.updateRegionProgress(masqueradingLegacyKey, progress);
+
+    keeper.removeTopicProgress("cg", "topic");
+    keeper.removeTopicProgress("a##b", "c");
+
+    assertNull(keeper.getRegionProgress(versionedKey));
+    assertNull(keeper.getRegionProgress(legacyKey));
+    assertNull(keeper.getRegionProgress(delimiterKey));
+    assertNotNull(keeper.getRegionProgress(ambiguousLegacyKey));
+    assertNotNull(keeper.getRegionProgress(otherTopicKey));
+    assertNotNull(keeper.getRegionProgress(masqueradingLegacyKey));
+  }
 
   @Test
   public void testUpdateAndReplaceAllUseDefensiveCopies() throws Exception {

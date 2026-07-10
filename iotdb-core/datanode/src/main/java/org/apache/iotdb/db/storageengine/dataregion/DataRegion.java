@@ -834,7 +834,7 @@ public class DataRegion implements IDataRegionForQuery {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.merge(deviceId, endTime, Math::max);
       }
     }
     if (config.isEnableSeparateData()) {
@@ -1880,10 +1880,11 @@ public class DataRegion implements IDataRegionForQuery {
       InsertRowsNode subInsertRowsNode = entry.getValue();
       subInsertRowsNode.setLastFragment(--remainingFragments == 0);
       try {
-        List<TsFileProcessor> insertedProcessors =
+        InsertRowsExecutionResult executionResult =
             insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
-        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-        for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+        executedInsertRowNodeList.addAll(executionResult.insertedRows);
+        insertRowsNode.getResults().putAll(executionResult.failedResults);
+        for (TsFileProcessor tsFileProcessor : executionResult.insertedProcessors) {
           // check memtable size and may asyncTryToFlush the work memtable
           if (tsFileProcessor.shouldFlush()) {
             fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
@@ -1896,14 +1897,16 @@ public class DataRegion implements IDataRegionForQuery {
     return executedInsertRowNodeList;
   }
 
-  private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
+  private InsertRowsExecutionResult insertRowsWithTypeConsistencyCheck(
       TsFileProcessor tsFileProcessor, InsertRowsNode subInsertRowsNode, long[] infoForMetrics)
       throws WriteProcessException {
     try {
       // register TableSchema (and maybe more) for table insertion
       registerToTsFile(subInsertRowsNode, tsFileProcessor);
       tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
-      return Collections.singletonList(tsFileProcessor);
+      InsertRowsExecutionResult executionResult = new InsertRowsExecutionResult();
+      executionResult.recordSuccess(tsFileProcessor, subInsertRowsNode);
+      return executionResult;
     } catch (DataTypeInconsistentException e) {
       InsertRowNode firstRow = subInsertRowsNode.getInsertRowNodeList().get(0);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(firstRow.getTime());
@@ -1980,11 +1983,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private List<TsFileProcessor> retryInsertRowsAfterFlush(
+  private InsertRowsExecutionResult retryInsertRowsAfterFlush(
       final InsertRowsNode subInsertRowsNode,
       final long timePartitionId,
-      final long[] infoForMetrics)
-      throws WriteProcessException {
+      final long[] infoForMetrics) {
+    final InsertRowsExecutionResult executionResult = new InsertRowsExecutionResult();
     final Map<TsFileProcessor, InsertRowsNode> retriedProcessorMap = new HashMap<>();
     for (int i = 0; i < subInsertRowsNode.getInsertRowNodeList().size(); i++) {
       final InsertRowNode insertRowNode = subInsertRowsNode.getInsertRowNodeList().get(i);
@@ -1992,9 +1995,14 @@ public class DataRegion implements IDataRegionForQuery {
           config.isEnableSeparateData()
               && insertRowNode.getTime()
                   > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
-      final TsFileProcessor retriedProcessor =
-          getOrCreateTsFileProcessor(timePartitionId, isSequence);
       final int insertRowNodeIndex = subInsertRowsNode.getInsertRowNodeIndexList().get(i);
+      final TsFileProcessor retriedProcessor;
+      try {
+        retriedProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+      } catch (WriteProcessException e) {
+        executionResult.recordFailure(insertRowNodeIndex, e);
+        continue;
+      }
       retriedProcessorMap.compute(
           retriedProcessor,
           (k, v) -> {
@@ -2006,18 +2014,47 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
-    final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
     int remainingRetriedFragments = retriedProcessorMap.size();
     for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
       final InsertRowsNode retriedInsertRowsNode = retriedEntry.getValue();
       retriedInsertRowsNode.setLastFragment(
           subInsertRowsNode.isLastFragment() && --remainingRetriedFragments == 0);
-      registerToTsFile(retriedInsertRowsNode, retriedProcessor);
-      retriedProcessor.insertRows(retriedInsertRowsNode, infoForMetrics);
-      insertedProcessors.add(retriedProcessor);
+      try {
+        registerToTsFile(retriedInsertRowsNode, retriedProcessor);
+        retriedProcessor.insertRows(retriedInsertRowsNode, infoForMetrics);
+        executionResult.recordSuccess(retriedProcessor, retriedInsertRowsNode);
+      } catch (WriteProcessException e) {
+        executionResult.recordFailure(retriedInsertRowsNode, e);
+      }
     }
-    return insertedProcessors;
+    return executionResult;
+  }
+
+  private static final class InsertRowsExecutionResult {
+    private final List<TsFileProcessor> insertedProcessors = new ArrayList<>();
+    private final List<InsertRowNode> insertedRows = new ArrayList<>();
+    private final Map<Integer, TSStatus> failedResults = new HashMap<>();
+
+    private void recordSuccess(
+        final TsFileProcessor tsFileProcessor, final InsertRowsNode insertRowsNode) {
+      insertedProcessors.add(tsFileProcessor);
+      insertedRows.addAll(insertRowsNode.getInsertRowNodeList());
+    }
+
+    private void recordFailure(
+        final InsertRowsNode insertRowsNode, final WriteProcessException exception) {
+      final TSStatus failureStatus =
+          RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      for (final int failedIndex : insertRowsNode.getInsertRowNodeIndexList()) {
+        failedResults.put(failedIndex, failureStatus);
+      }
+    }
+
+    private void recordFailure(final int failedIndex, final WriteProcessException exception) {
+      failedResults.put(
+          failedIndex, RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+    }
   }
 
   private void recordInsertRowsFailure(
@@ -4868,10 +4905,11 @@ public class DataRegion implements IDataRegionForQuery {
         InsertRowsNode subInsertRowsNode = entry.getValue();
         subInsertRowsNode.setLastFragment(--remainingFragments == 0);
         try {
-          List<TsFileProcessor> insertedProcessors =
+          InsertRowsExecutionResult executionResult =
               insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
-          executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-          for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+          executedInsertRowNodeList.addAll(executionResult.insertedRows);
+          insertRowsOfOneDeviceNode.getResults().putAll(executionResult.failedResults);
+          for (TsFileProcessor tsFileProcessor : executionResult.insertedProcessors) {
             // check memtable size and may asyncTryToFlush the work memtable
             if (tsFileProcessor.shouldFlush()) {
               fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());

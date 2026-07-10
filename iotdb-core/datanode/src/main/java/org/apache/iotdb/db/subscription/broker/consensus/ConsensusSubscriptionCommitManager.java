@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -127,7 +128,7 @@ public class ConsensusSubscriptionCommitManager {
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName());
 
-  /** Key: "consumerGroupId##topicName##regionId" -> progress tracking state */
+  /** Key: versioned, encoded (consumerGroupId, topicName, regionId) -> progress tracking state. */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
       new ConcurrentHashMap<>();
 
@@ -414,13 +415,26 @@ public class ConsensusSubscriptionCommitManager {
   public Map<String, ByteBuffer> collectAllRegionProgress(final int dataNodeId) {
     recoverAllTopicStatesIfNeeded();
     final Map<String, ByteBuffer> result = new ConcurrentHashMap<>();
-    final String suffix = KEY_SEPARATOR + dataNodeId;
     for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
         commitStates.entrySet()) {
+      final CommitStateKey stateKey = commitStateKeys.get(entry.getKey());
+      if (Objects.isNull(stateKey)) {
+        continue;
+      }
       final RegionProgress regionProgress = entry.getValue().getCommittedRegionProgress();
       final ByteBuffer serialized = serializeRegionProgress(regionProgress);
       if (Objects.nonNull(serialized)) {
-        result.put(entry.getKey() + suffix, serialized);
+        result.put(
+            CommitProgressKeeper.generateKey(
+                stateKey.consumerGroupId, stateKey.topicName, stateKey.regionIdStr, dataNodeId),
+            serialized);
+        if (CommitProgressKeeper.isLegacyKeyUnambiguous(
+            stateKey.consumerGroupId, stateKey.topicName, stateKey.regionIdStr)) {
+          result.put(
+              CommitProgressKeeper.generateLegacyKey(
+                  stateKey.consumerGroupId, stateKey.topicName, stateKey.regionIdStr, dataNodeId),
+              serialized.asReadOnlyBuffer());
+        }
       }
     }
     return result;
@@ -578,7 +592,7 @@ public class ConsensusSubscriptionCommitManager {
 
   // ======================== Helper Methods ========================
 
-  // Kept as the in-memory and ConfigNode sync key separator for the existing progress protocol.
+  // Used for encoded topic file keys and writer-scoped broadcast throttle keys.
   private static final String KEY_SEPARATOR = "##";
 
   private String generateKey(
@@ -588,7 +602,7 @@ public class ConsensusSubscriptionCommitManager {
 
   private String generateKey(
       final String consumerGroupId, final String topicName, final String regionIdStr) {
-    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionIdStr;
+    return CommitProgressKeeper.generateRegionKey(consumerGroupId, topicName, regionIdStr);
   }
 
   private CommitStateKey getCommitStateKey(
@@ -1356,6 +1370,7 @@ public class ConsensusSubscriptionCommitManager {
         final ProgressKey current = new ProgressKey(broadcastWriterId, currentWriterProgress);
         if (broadcastKey.compareTo(current) > 0) {
           committedWriterPositions.put(broadcastWriterId, broadcastKey.toWriterProgress());
+          progress.incrementPersistenceThrottleCounter();
           syncPersistedProgress();
         }
       }

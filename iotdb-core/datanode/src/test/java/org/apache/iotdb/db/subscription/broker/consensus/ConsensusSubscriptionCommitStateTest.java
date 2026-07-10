@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
@@ -169,8 +170,24 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testBroadcastAdvanceIncrementsPersistenceCounter() {
+    final String regionId = "3_3";
+    final WriterId writerId = new WriterId(regionId, 8);
+    final SubscriptionConsensusProgress progress =
+        new SubscriptionConsensusProgress(new RegionProgress(new LinkedHashMap<>()), 7L);
+    final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
+        new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(regionId, progress);
+
+    state.updateFromBroadcast(writerId, new WriterProgress(101L, 1L));
+    assertEquals(8L, progress.getPersistenceThrottleCounter());
+
+    state.updateFromBroadcast(writerId, new WriterProgress(100L, 0L));
+    assertEquals(8L, progress.getPersistenceThrottleCounter());
+  }
+
+  @Test
   public void testBroadcastThrottleKeyIsPerWriter() {
-    final String baseKey = "cg##topic##1_1";
+    final String baseKey = CommitProgressKeeper.generateRegionKey("cg", "topic", "1_1");
     final WriterId writerA = new WriterId("1_1", 7);
     final WriterId writerB = new WriterId("1_1", 8);
 
@@ -213,12 +230,23 @@ public class ConsensusSubscriptionCommitStateTest {
 
       assertEquals(
           progress1,
-          RegionProgress.deserialize(collectedProgress.get("cg##topic##" + region1Id + "##11"))
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateKey("cg", "topic", region1Id, 11)))
+              .getWriterPositions()
+              .get(writer1));
+      assertEquals(
+          progress1,
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateLegacyKey("cg", "topic", region1Id, 11)))
               .getWriterPositions()
               .get(writer1));
       assertEquals(
           progress2,
-          RegionProgress.deserialize(collectedProgress.get("cg##topic##" + region2Id + "##11"))
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateKey("cg", "topic", region2Id, 11)))
               .getWriterPositions()
               .get(writer2));
     } finally {
@@ -258,7 +286,7 @@ public class ConsensusSubscriptionCommitStateTest {
           progress,
           RegionProgress.deserialize(
                   collectedProgress.get(
-                      consumerGroupId + "##" + topicName + "##" + regionId + "##13"))
+                      CommitProgressKeeper.generateKey(consumerGroupId, topicName, regionId, 13)))
               .getWriterPositions()
               .get(writerId));
     } finally {
@@ -286,9 +314,49 @@ public class ConsensusSubscriptionCommitStateTest {
 
       assertEquals(
           progress,
-          RegionProgress.deserialize(collectedProgress.get("cg##goodTopic##" + regionId + "##12"))
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateKey("cg", "goodTopic", regionId, 12)))
               .getWriterPositions()
               .get(writerId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testCommitStatesDoNotCollideWhenIdentifiersContainSeparator() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("systemWithCollidingLegacyKeys");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId region = new DataRegionId(10);
+      final String regionId = region.toString();
+      final WriterId firstWriterId = new WriterId(regionId, 7);
+      final WriterId secondWriterId = new WriterId(regionId, 8);
+      final WriterProgress firstProgress = new WriterProgress(100L, 1L);
+      final WriterProgress secondProgress = new WriterProgress(200L, 2L);
+
+      manager.receiveProgressBroadcast("a##b", "c", regionId, firstWriterId, firstProgress);
+      manager.receiveProgressBroadcast("a", "b##c", regionId, secondWriterId, secondProgress);
+
+      final Map<String, ByteBuffer> collectedProgress =
+          newCommitManager(systemDir).collectAllRegionProgress(14);
+      assertEquals(2, collectedProgress.size());
+      assertEquals(
+          firstProgress,
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateKey("a##b", "c", regionId, 14)))
+              .getWriterPositions()
+              .get(firstWriterId));
+      assertEquals(
+          secondProgress,
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      CommitProgressKeeper.generateKey("a", "b##c", regionId, 14)))
+              .getWriterPositions()
+              .get(secondWriterId));
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }

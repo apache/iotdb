@@ -136,6 +136,46 @@ public class PipeTsFileBuilderV2Test {
   }
 
   @Test
+  public void testClassicTableModelBuilderDeletesEarlierDatabaseFilesOnFailure() throws Exception {
+    final AtomicInteger fileIndex = new AtomicInteger();
+    final List<File> createdFiles = new ArrayList<>();
+    final PipeTableModelTsFileBuilder builder =
+        new PipeTableModelTsFileBuilder(new AtomicLong(5), new AtomicLong(0)) {
+          @Override
+          protected File createFile() throws IOException {
+            final int index = fileIndex.incrementAndGet();
+            final File file =
+                new File(temporaryPipeReceiverDir, "classic-table-" + index + ".tsfile");
+            createdFiles.add(file);
+            if (index == 2) {
+              Assert.assertTrue(createdFiles.get(0).isFile());
+              if (!file.mkdir()) {
+                throw new IOException("Failed to create invalid classic file path");
+              }
+            }
+            return file;
+          }
+        };
+    try {
+      builder.bufferTableModelTablet("database1", createTableModelTablet("table1"));
+      builder.bufferTableModelTablet("database2", createTableModelTablet("table2"));
+
+      try {
+        builder.convertTabletToTsFileWithDBInfo();
+        Assert.fail("Expected the second database conversion to fail");
+      } catch (final Exception expected) {
+        // expected
+      }
+
+      Assert.assertEquals(2, createdFiles.size());
+      createdFiles.forEach(file -> Assert.assertFalse(file.exists()));
+    } finally {
+      builder.close();
+      createdFiles.forEach(FileUtils::deleteQuietly);
+    }
+  }
+
+  @Test
   public void testTreeModelBuilderPreservesColumnsAfterNullSchema() throws Exception {
     final PipeTreeModelTsFileBuilderV2 builder =
         new PipeTreeModelTsFileBuilderV2(new AtomicLong(3), new AtomicLong(0));

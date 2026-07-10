@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -804,10 +805,17 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
-      pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
-      LOGGER.info(
-          ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
-          latestSnapshotRootDir);
+      try {
+        PipeConfigNodeAgent.runtime()
+            .reconcileListenerReferences(pipeInfo.getPipeTaskInfo().getPipeMetaList());
+        pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
+        LOGGER.info(
+            ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
+            latestSnapshotRootDir);
+      } catch (final IllegalPathException e) {
+        result.set(false);
+        LOGGER.error(ConfigNodeMessages.LOAD_SNAPSHOT_ERROR, e);
+      }
     }
     // Propagate any snapshot-load failure so callers (e.g. the AddPeer flow) do not treat a
     // partially or wholly failed load as success.
