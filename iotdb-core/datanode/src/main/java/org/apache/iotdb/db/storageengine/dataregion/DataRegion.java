@@ -4290,6 +4290,7 @@ public class DataRegion implements IDataRegionForQuery {
                 objectNode.isGeneratedByRemoteConsensusLeader());
         RelationalInsertRowNode valueNode =
             objectNode.genValueInsertRowNode(tableSchemaForObjectRow);
+        valueNode.setProgressIndex(objectNode.getProgressIndex());
         if (isGeneratedByPipe) {
           valueNode.markAsGeneratedByPipe();
         }
