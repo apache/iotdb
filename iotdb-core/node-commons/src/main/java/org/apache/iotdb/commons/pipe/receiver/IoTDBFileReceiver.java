@@ -585,7 +585,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return;
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         PipeMessages.RECEIVER_WRITING_FILE_NOT_EXIST,
         receiverId.get(),
         fileName,
@@ -602,7 +602,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // This may be useless, because receiver file dir is created when handshake. just in case.
     if (!receiverFileDirWithIdSuffix.get().exists()) {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
+        LOGGER.debug(
             PipeMessages.RECEIVER_FILE_DIR_CREATED,
             receiverId.get(),
             receiverFileDirWithIdSuffix.get().getPath());
@@ -623,7 +623,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               PipeMessages.FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE, writingFile.getPath()));
     }
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(
+    LOGGER.debug(
         PipeMessages.RECEIVER_WRITING_FILE_CREATED, receiverId.get(), writingFile.getPath());
   }
 
@@ -780,7 +780,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         shouldDeleteSealedFile = false;
-        LOGGER.info(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePath);
+        LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePath);
       } else {
         PipeLogger.log(
             LOGGER::warn,
@@ -888,7 +888,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
+        LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
       } else {
         PipeLogger.log(
             LOGGER::warn,

@@ -1114,6 +1114,8 @@ public final class DataNodeQueryMessages {
       "cancel query {} on node {} failed.";
   public static final String CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION =
       "cannot dispatch FI for load operation";
+  public static final String MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800 =
+      "Unexpected errors: %s";
   public static final String RECEIVE_LOAD_NODE_FROM_UUID =
       "Receive load node from uuid {}.";
   public static final String LOAD_TSFILE_NODE_ERROR =

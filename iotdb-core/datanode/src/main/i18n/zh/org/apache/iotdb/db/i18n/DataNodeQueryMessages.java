@@ -1098,6 +1098,8 @@ public final class DataNodeQueryMessages {
       "在节点 {} 上取消查询 {} 失败。";
   public static final String CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION =
       "无法为加载操作分发 FI";
+  public static final String MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800 =
+      "意外错误：%s";
   public static final String RECEIVE_LOAD_NODE_FROM_UUID =
       "接收来自 uuid {} 的加载节点。";
   public static final String LOAD_TSFILE_NODE_ERROR =
