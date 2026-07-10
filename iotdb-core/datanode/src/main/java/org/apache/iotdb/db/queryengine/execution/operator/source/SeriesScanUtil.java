@@ -2460,7 +2460,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextSeqResource() {
       TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID)) {
-        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex, false)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
           curSeqFileIndex--;
           continue;
         }
@@ -2471,12 +2471,11 @@ public class SeriesScanUtil implements Accountable {
                   deviceID, curSeqFileIndex, filter, false)) {
             break;
           }
-          dataSource.truncateSeqValidSizeForRuntimeFilter(curSeqFileIndex, false);
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
           if (!dataSource.hasValidResource()) {
             runtimeFilterExhausted = true;
+            return false;
           }
-          curSeqFileIndex = -1;
-          break;
         }
         curSeqFileIndex--;
       }
@@ -2487,7 +2486,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextUnseqResource() {
       TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID)) {
-        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex, false)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
           curUnseqFileIndex++;
           continue;
         }
@@ -2497,9 +2496,10 @@ public class SeriesScanUtil implements Accountable {
               || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter, false)) {
             break;
           }
-          dataSource.decreaseValidSizeForRuntimeFilter(false, curUnseqFileIndex, false);
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
           if (!dataSource.hasValidResource()) {
             runtimeFilterExhausted = true;
+            return false;
           }
         }
         curUnseqFileIndex++;
@@ -2616,7 +2616,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextSeqResource() {
       TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID)) {
-        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex, true)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
           curSeqFileIndex++;
           continue;
         }
@@ -2627,12 +2627,11 @@ public class SeriesScanUtil implements Accountable {
                   deviceID, curSeqFileIndex, filter, false)) {
             break;
           }
-          dataSource.truncateSeqValidSizeForRuntimeFilter(curSeqFileIndex, true);
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
           if (!dataSource.hasValidResource()) {
             runtimeFilterExhausted = true;
+            return false;
           }
-          curSeqFileIndex = dataSource.getSeqResourcesSize();
-          break;
         }
         curSeqFileIndex++;
       }
@@ -2643,7 +2642,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextUnseqResource() {
       TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID)) {
-        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex, true)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
           curUnseqFileIndex++;
           continue;
         }
@@ -2653,9 +2652,10 @@ public class SeriesScanUtil implements Accountable {
               || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter, false)) {
             break;
           }
-          dataSource.decreaseValidSizeForRuntimeFilter(false, curUnseqFileIndex, true);
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
           if (!dataSource.hasValidResource()) {
             runtimeFilterExhausted = true;
+            return false;
           }
         }
         curUnseqFileIndex++;

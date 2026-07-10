@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -27,6 +28,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
@@ -72,13 +74,18 @@ public class QueryDataSource implements IQueryDataSource {
   private String databaseName = null;
 
   /**
-   * Remaining seq/unseq TsFileResources that may still contain rows qualifying for TopK runtime
-   * filter. Initialized to list sizes and decremented when a file is skipped at resource level.
-   * When both counters reach zero, the scan can exit early.
+   * Physical seq/unseq TsFile indices pruned by TopK runtime filter at resource level. Shared
+   * across all devices in this scan.
    */
-  private int seqValidSize;
+  private final BitSet seqInvalidatedByRuntimeFilter = new BitSet();
 
-  private int unseqValidSize;
+  private final BitSet unseqInvalidatedByRuntimeFilter = new BitSet();
+
+  /**
+   * Remaining seq + unseq TsFileResources that may still contain RF-qualifying rows. Decremented
+   * once per newly marked file; when zero, the scan can exit early.
+   */
+  private int validSize;
 
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
@@ -103,83 +110,50 @@ public class QueryDataSource implements IQueryDataSource {
     this.unseqResources = other.unseqResources;
     this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
     this.databaseName = other.databaseName;
-    this.seqValidSize = other.seqValidSize;
-    this.unseqValidSize = other.unseqValidSize;
+    this.validSize = other.validSize;
+    this.seqInvalidatedByRuntimeFilter.or(other.seqInvalidatedByRuntimeFilter);
+    this.unseqInvalidatedByRuntimeFilter.or(other.unseqInvalidatedByRuntimeFilter);
   }
 
-  /** Initializes seq/unseq valid resource counters from list sizes. */
   private void initValidSize() {
-    seqValidSize = getSeqResourcesSize();
-    unseqValidSize = getUnseqResourcesSize();
+    validSize = getSeqResourcesSize() + getUnseqResourcesSize();
   }
 
-  public int getSeqValidSize() {
-    return seqValidSize;
+  @TestOnly
+  public int getValidSize() {
+    return validSize;
   }
 
-  public int getUnseqValidSize() {
-    return unseqValidSize;
-  }
-
-  /** Returns true if either seq or unseq may still contain RF-qualifying resources. */
+  /** Returns true if any seq/unseq file may still contain RF-qualifying resources. */
   public boolean hasValidResource() {
-    return seqValidSize > 0 || unseqValidSize > 0;
+    return validSize > 0;
+  }
+
+  /** Marks the seq file at physical {@code index} as pruned by TopK RF at resource level. */
+  public void setSeqTsFileResourceInvalidated(int physicalIndex) {
+    if (!seqInvalidatedByRuntimeFilter.get(physicalIndex)) {
+      seqInvalidatedByRuntimeFilter.set(physicalIndex);
+      validSize--;
+    }
   }
 
   /**
-   * Decrements the remaining file count when a TsFileResource is pruned by TopK runtime filter at
-   * resource level. Counters are shared across all devices in this scan; when both reach zero, the
-   * entire scan can stop without switching to subsequent devices.
+   * Marks the unseq file at traversal {@code orderIndex} as pruned by TopK RF at resource level.
    */
-  public void decreaseValidSize(boolean isSeq) {
+  public void setUnseqTsFileResourceInvalidated(int orderIndex) {
+    int physicalIndex = unSeqFileOrderIndex[orderIndex];
+    if (!unseqInvalidatedByRuntimeFilter.get(physicalIndex)) {
+      unseqInvalidatedByRuntimeFilter.set(physicalIndex);
+      validSize--;
+    }
+  }
+
+  /** Returns true if this file was already pruned by RF at resource level on a prior device. */
+  public boolean isRuntimeFilterPruned(boolean isSeq, int index) {
     if (isSeq) {
-      if (seqValidSize > 0) {
-        seqValidSize--;
-      }
-    } else if (unseqValidSize > 0) {
-      unseqValidSize--;
+      return seqInvalidatedByRuntimeFilter.get(index);
     }
-  }
-
-  /**
-   * Decrements validSize when a TsFileResource is first pruned by TopK runtime filter at resource
-   * level. File lists are time-ordered, so RF pruning is monotonic from one end: ASC prunes a
-   * suffix, DESC prunes a prefix. {@link #seqValidSize} / {@link #unseqValidSize} then double as
-   * the cross-device scan watermark.
-   */
-  public void decreaseValidSizeForRuntimeFilter(boolean isSeq, int index, boolean ascending) {
-    if (isRuntimeFilterPruned(isSeq, index, ascending)) {
-      return;
-    }
-    decreaseValidSize(isSeq);
-  }
-
-  /**
-   * Truncates seq validSize when RF fails at {@code index}. Seq files are time-ordered, so all
-   * files on the pruned side of {@code index} can be excluded at once: ASC suffix {@code [index,
-   * size)}, DESC prefix {@code [0, index]}.
-   */
-  public void truncateSeqValidSizeForRuntimeFilter(int index, boolean ascending) {
-    int size = getSeqResourcesSize();
-    if (ascending) {
-      seqValidSize = Math.min(seqValidSize, index);
-    } else {
-      seqValidSize = Math.min(seqValidSize, size - index - 1);
-    }
-  }
-
-  /**
-   * Returns true if this file index was already pruned by RF at resource level on a prior device.
-   */
-  public boolean isRuntimeFilterPruned(boolean isSeq, int index, boolean ascending) {
-    int validSize = isSeq ? seqValidSize : unseqValidSize;
-    int size = isSeq ? getSeqResourcesSize() : getUnseqResourcesSize();
-    if (ascending) {
-      // ASC: pruned files form suffix [validSize, size)
-      return index >= validSize;
-    }
-    // DESC: pruned files form prefix [0, size - validSize)
-    return index < size - validSize;
+    return unseqInvalidatedByRuntimeFilter.get(unSeqFileOrderIndex[index]);
   }
 
   public List<TsFileResource> getSeqResources() {
