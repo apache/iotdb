@@ -418,7 +418,6 @@ public class DataNodeTableCache implements ITableCache {
     return instanceVersion.get();
   }
 
-<<<<<<< feature/subscription-column-filter
   public Map<String, Map<String, TsTable>> getTableSnapshot() {
     readWriteLock.readLock().lock();
     try {
@@ -441,9 +440,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-=======
   @Override
->>>>>>> master
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);
