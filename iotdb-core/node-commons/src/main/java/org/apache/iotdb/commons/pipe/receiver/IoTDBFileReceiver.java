@@ -523,7 +523,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return;
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         "Receiver id = {}: Writing file {} is not existed or name is not correct, try to create it. "
             + "Current writing file is {}.",
         receiverId.get(),
@@ -541,7 +541,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // This may be useless, because receiver file dir is created when handshake. just in case.
     if (!receiverFileDirWithIdSuffix.get().exists()) {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Receiver file dir {} was created.",
             receiverId.get(),
             receiverFileDirWithIdSuffix.get().getPath());
@@ -556,7 +556,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     writingFile = targetPath.toFile();
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(
+    LOGGER.debug(
         "Receiver id = {}: Writing file {} was created. Ready to write file pieces.",
         receiverId.get(),
         writingFile.getPath());
@@ -730,7 +730,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         shouldDeleteSealedFile = false;
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePath);
       } else {
         PipeLogger.log(
@@ -835,7 +835,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePaths);
       } else {
         PipeLogger.log(
