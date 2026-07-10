@@ -151,8 +151,7 @@ public class VisibilityUtils {
       return calculateStrictlyFromExtractorParameters(extractorParameters);
     }
 
-    if (extractorParameters.getBooleanOrDefault(
-        DOUBLE_LIVING_KEYS, PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)) {
+    if (PipeSourceConstant.isDoubleLiving(extractorParameters)) {
       return Visibility.BOTH;
     }
     return calculateFromCaptureParameters(extractorParameters, isTreeDialect(extractorParameters));
