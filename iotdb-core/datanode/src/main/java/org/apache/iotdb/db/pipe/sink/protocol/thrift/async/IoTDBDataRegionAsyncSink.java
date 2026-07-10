@@ -282,7 +282,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             ignored ->
                 LOGGER.warn(DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH, dbTsFilePairs, e),
             e,
-            "Failed to transfer tsfile batch (%s).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH,
             dbTsFilePairs);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
@@ -490,7 +490,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                       pipeTransferTsFileHandler.getTsFile(),
                       e),
               e,
-              "Transfer tsfile event %s asynchronously was interrupted.",
+              DataNodePipeMessages.TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED,
               pipeTransferTsFileHandler.getTsFile());
         }
 
@@ -502,7 +502,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                     pipeTransferTsFileHandler.getTsFile(),
                     e),
             e,
-            "Failed to transfer tsfile event %s asynchronously.",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
             pipeTransferTsFileHandler.getTsFile());
       }
     }

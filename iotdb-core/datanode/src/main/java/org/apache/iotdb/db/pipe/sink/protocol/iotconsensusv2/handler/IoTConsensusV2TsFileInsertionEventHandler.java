@@ -320,7 +320,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
                 event.getReplicateIndexForIoTV2(),
                 exception),
         exception,
-        "IoTConsensusV2-%s: Failed to transfer TsFileInsertionEvent %s (committer key %s, replicate index %s).",
+        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY,
         consensusPipeName,
         tsFile,
         event.getCommitterKey(),

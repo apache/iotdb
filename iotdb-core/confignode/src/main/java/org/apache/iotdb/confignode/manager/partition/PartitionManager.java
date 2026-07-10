@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -140,10 +141,10 @@ public class PartitionManager {
   private SeriesPartitionExecutor executor;
 
   private static final String CONSENSUS_READ_ERROR =
-      "Failed in the read API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
@@ -347,8 +348,11 @@ public class PartitionManager {
 
       final String errMsg =
           String.format(
-              "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s",
-              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
+              ManagerMessages
+                  .LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES,
+              unassignedSlotNum.get(),
+              totalSlotNum.get(),
+              errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -511,8 +515,11 @@ public class PartitionManager {
 
       String errMsg =
           String.format(
-              "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s",
-              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
+              ManagerMessages
+                  .LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES,
+              unassignedSlotNum.get(),
+              totalSlotNum.get(),
+              errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -529,7 +536,7 @@ public class PartitionManager {
         || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
       return RpcUtils.getStatus(
           TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+          ManagerMessages.DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED);
     }
 
     synchronized (this) {
@@ -555,7 +562,8 @@ public class PartitionManager {
                         RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
                         RepairDataPartitionTableProgressState.IDLE.name(),
                         0.0)
-                    .setMessage("No running DataPartitionTable integrity check procedure"));
+                    .setMessage(
+                        ManagerMessages.NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE));
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
@@ -1077,7 +1085,7 @@ public class PartitionManager {
     }
     String msg =
         String.format(
-            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            ManagerMessages.SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST,
             regionId);
     LOGGER.warn(msg);
     return Optional.empty();

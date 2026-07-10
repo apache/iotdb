@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -549,6 +550,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.restartDataNode(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.reloadCacheAfterLeaseRecovery(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1526,10 +1533,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap)
+  public TFetchTableResp fetchTables(Map<String, Set<String>> fetchTableMap, byte tableNodeStatus)
       throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.fetchTables(fetchTableMap, tableNodeStatus),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

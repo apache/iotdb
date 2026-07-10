@@ -31,8 +31,7 @@ public final class DataNodeSchemaMessages {
   public static final String RECOVER_SPEND = "恢复 [{}] 耗时：{} ms";
   public static final String SCHEMA_REGION_FAILED_TO_RECOVER =
       "SchemaRegion [%d] 在 StorageGroup [%s] 中恢复失败。";
-  public static final String SCHEMA_REGION_ALREADY_DELETED =
-      "SchemaRegion(id = {}) 已被删除，已跳过";
+  public static final String SCHEMA_REGION_ALREADY_DELETED = "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "计算时间序列数量时获取表 {}.{} 失败，可能是集群正在重启或表正在被删除。";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
@@ -43,27 +42,22 @@ public final class DataNodeSchemaMessages {
 
   // ======================== MemSchemaEngineStatistics 相关消息 ========================
 
-  public static final String CURRENT_SERIES_MEMORY_TOO_LARGE =
-      "当前时间序列内存 {} 过大...";
+  public static final String CURRENT_SERIES_MEMORY_TOO_LARGE = "当前时间序列内存 {} 过大...";
   public static final String CURRENT_SERIES_MEMORY_BACK_TO_NORMAL =
       "当前时间序列内存 {} 已恢复正常水平，总时间序列数量为 {}。";
-  public static final String WRONG_SCHEMA_ENGINE_STATISTICS_TYPE =
-      "SchemaEngineStatistics 类型错误";
+  public static final String WRONG_SCHEMA_ENGINE_STATISTICS_TYPE = "SchemaEngineStatistics 类型错误";
 
   // ======================== MemSchemaRegionStatistics 相关消息 ========================
 
-  public static final String WRONG_SCHEMA_REGION_STATISTICS_TYPE =
-      "SchemaRegionStatistics 类型错误";
+  public static final String WRONG_SCHEMA_REGION_STATISTICS_TYPE = "SchemaRegionStatistics 类型错误";
 
   // ======================== SchemaRegionUtils 相关消息 ========================
 
   public static final String CANNOT_GET_FILES_IN_SCHEMA_REGION_DIR =
       "无法获取 schema region 目录 %s 中的文件";
   public static final String DELETE_SCHEMA_REGION_FILE = "删除 schema region 文件 {}";
-  public static final String DELETE_SCHEMA_REGION_FILE_FAILED =
-      "删除 schema region 文件 {} 失败。";
-  public static final String FAILED_TO_DELETE_SCHEMA_REGION_FILE =
-      "删除 schema region 文件 %s 失败";
+  public static final String DELETE_SCHEMA_REGION_FILE_FAILED = "删除 schema region 文件 {} 失败。";
+  public static final String FAILED_TO_DELETE_SCHEMA_REGION_FILE = "删除 schema region 文件 %s 失败";
   public static final String DELETE_SCHEMA_REGION_FOLDER = "删除 schema region 目录 {}";
   public static final String DELETE_SCHEMA_REGION_FOLDER_FAILED =
       "删除 schema region 目录 {} 失败。";
@@ -564,28 +558,23 @@ public final class DataNodeSchemaMessages {
 
   // ======================== DataNodeTableCache 相关消息 ========================
 
-  public static final String INIT_TABLE_CACHE_SUCCESS =
-      "DataNodeTableCache 初始化成功";
-  public static final String PRE_UPDATE_TABLE_SUCCESS =
-      "预更新表 {}.{} 成功";
-  public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
-      "预重命名旧表 {}.{} 成功";
-  public static final String ROLLBACK_UPDATE_TABLE_SUCCESS =
-      "回滚更新表 {}.{} 成功";
-  public static final String ROLLBACK_RENAME_OLD_TABLE_SUCCESS =
-      "回滚重命名旧表 {}.{} 成功。";
-  public static final String COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL =
-      "提交更新表 {}.{} 成功，{}";
-  public static final String COMMIT_UPDATE_TABLE_SUCCESS =
-      "提交更新表 {}.{} 成功。";
-  public static final String RENAME_OLD_TABLE_SUCCESS =
-      "重命名旧表 {}.{} 成功。";
+  public static final String INIT_TABLE_CACHE_SUCCESS = "DataNodeTableCache 初始化成功";
+  public static final String PRE_UPDATE_TABLE_SUCCESS = "预更新表 {}.{} 成功";
+  public static final String PRE_RENAME_OLD_TABLE_SUCCESS = "预重命名旧表 {}.{} 成功";
+  public static final String ROLLBACK_UPDATE_TABLE_SUCCESS = "回滚更新表 {}.{} 成功";
+  public static final String ROLLBACK_RENAME_OLD_TABLE_SUCCESS = "回滚重命名旧表 {}.{} 成功。";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL = "提交更新表 {}.{} 成功，{}";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS = "提交更新表 {}.{} 成功。";
+  public static final String RENAME_OLD_TABLE_SUCCESS = "重命名旧表 {}.{} 成功。";
+  public static final String COMMIT_DELETE_TABLE_SUCCESS = "提交删除表 {}.{} 操作成功。";
+  public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
+      "从configNode拉取元数据更新DataNodeTableCache失败";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
-  public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
-      "通过表拉取更新表 {}.{}，{}";
-  public static final String UPDATE_TABLE_BY_FETCH =
-      "通过表拉取更新表 {}.{}。";
+  public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
+  public static final String UPDATE_TABLE_BY_FETCH = "通过表拉取更新表 {}.{}";
+  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
+      "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
   public static final String COMPARE_TABLE_ADDED = "新增表：";
   public static final String COMPARE_TABLE_REMOVED = "已移除表：";
   public static final String COMPARE_TABLE_NAME = "表名：";
@@ -598,6 +587,18 @@ public final class DataNodeSchemaMessages {
   // ======================== ClusterTemplateManager 相关消息 ========================
 
   public static final String ILLEGAL_PATH_LOG = "非法路径 {}";
+
+  // ======================== MetadataLeaseManager 相关消息 ========================
+
+  public static final String FAILED_TO_SUBMIT_METADATA_PULL_TASK = "提交元数据拉取任务失败。";
+  public static final String UNEXPECTED_METADATA_STATE = "元数据状态异常，当前为 {}，不应存在其他元数据拉取线程。";
+  public static final String METADATA_LEASE_CACHE_CLEARING_IN_PROGRESS =
+      "当前元数据状态为 {}，可能有其他线程正在清理元数据缓存，请稍后重试。";
+  public static final String FAILED_TO_CLEAR_METADATA_CACHE = "清理元数据缓存失败。";
+  public static final String FAILED_TO_MARK_METADATA_STATE_AS_PULLING =
+      "无法将元数据状态 {} 标记为 PULLING，因为已有其他元数据拉取线程正在运行。";
+  public static final String FAILED_TO_PULL_OR_INIT_METADATA = "拉取元数据失败。";
+  public static final String METADATA_LEASE_IS_FENCED = "元数据租约已过期, 本地缓存不可用";
 
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------

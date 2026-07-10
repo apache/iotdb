@@ -49,6 +49,17 @@ public final class ManagerMessages {
       "[CreateRegionGroups] Starting to create the following RegionGroups:";
   public static final String CREATE_DATAPARTITION_FAILED_BECAUSE =
       "Create DataPartition failed because: ";
+  public static final String
+      DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED =
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.";
+  public static final String
+      LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES =
+          "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s";
+  public static final String NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE =
+      "No running DataPartitionTable integrity check procedure";
+  public static final String
+      LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES =
+          "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s";
   public static final String CREATE_SCHEMAPARTITION_FAILED_BECAUSE =
       "Create SchemaPartition failed because: ";
   public static final String DATABASE_DOESN_T_EXIST = "Database: {} doesn't exist";
@@ -277,6 +288,8 @@ public final class ManagerMessages {
       "LoadStatistics service is stopped successfully.";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
+  public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
+      "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist";
   public static final String MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO =
       "Mismatched CRC32 code when deserializing service info.";
   public static final String NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE =
@@ -357,6 +370,10 @@ public final class ManagerMessages {
       "Receiver id = {}: Failure status encountered while executing plan {}: {}";
   public static final String RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN =
       "Receiver id = {}: Permission check failed while executing plan {}: {}";
+  public static final String UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE =
+      "Unsupported PipeRequestType on ConfigNode %s.";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST =
+      "Exception encountered while handling pipe transfer request. Root cause: %s";
   public static final String RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS =
       "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.";
   public static final String RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY =

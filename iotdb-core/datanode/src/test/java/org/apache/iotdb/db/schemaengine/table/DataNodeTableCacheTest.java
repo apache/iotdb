@@ -39,7 +39,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void interruptedFetchDoesNotLeakSemaphorePermit() throws Exception {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(DATABASE);
     try {
       final Semaphore fetchTableSemaphore = getFetchTableSemaphore(cache);
@@ -60,7 +60,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void commitUpdateTableIsIdempotent() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
@@ -77,7 +77,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void commitAfterRollbackUpdateTableIsIgnored() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
@@ -93,7 +93,7 @@ public class DataNodeTableCacheTest {
 
   @Test
   public void rollbackRenameTableRestoresOldName() {
-    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final ITableCache cache = DataNodeTableCache.getInstance();
     final String newTableName = "table2";
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
@@ -111,7 +111,7 @@ public class DataNodeTableCacheTest {
     }
   }
 
-  private Semaphore getFetchTableSemaphore(final DataNodeTableCache cache) throws Exception {
+  private Semaphore getFetchTableSemaphore(final ITableCache cache) throws Exception {
     final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
     field.setAccessible(true);
     return (Semaphore) field.get(cache);

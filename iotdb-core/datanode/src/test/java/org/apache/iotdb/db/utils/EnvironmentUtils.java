@@ -353,7 +353,7 @@ public class EnvironmentUtils {
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
     config.setThriftServerAwaitTimeForStopService(60);
-
+    CommonDescriptor.getInstance().getConfig().setMetadataLeaseFenceMs(Long.MAX_VALUE);
     createAllDir();
 
     try {
