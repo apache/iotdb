@@ -1282,6 +1282,47 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testInsertTabletRejectMarksAllRowsFailed() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.reject_tablet");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.doThrow(new WriteProcessRejectException("mock tablet rejection"))
+        .when(processor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.reject_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {1L, 2L},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (final BatchProcessException e) {
+      for (final TSStatus status : e.getFailingStatus()) {
+        Assert.assertEquals(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), status.getCode());
+      }
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
   public void testInsertTabletTypeRetryDoesNotReplaySuccessfulFragments() throws Exception {
     final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.retry_tablet");
     final TsFileProcessor firstProcessor = Mockito.mock(TsFileProcessor.class);

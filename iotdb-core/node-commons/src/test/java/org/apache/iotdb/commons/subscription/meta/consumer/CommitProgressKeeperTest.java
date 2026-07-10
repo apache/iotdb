@@ -129,6 +129,30 @@ public class CommitProgressKeeperTest {
   }
 
   @Test
+  public void testSnapshotLoadRejectsTruncatedSizeHeader() throws Exception {
+    final Path snapshot =
+        Files.createTempFile("commit-progress-keeper-truncated-size", ".snapshot");
+    try {
+      Files.write(snapshot, new byte[0]);
+      try (FileInputStream fis = new FileInputStream(snapshot.toFile())) {
+        new CommitProgressKeeper().processLoadSnapshot(fis);
+      }
+
+      Files.write(snapshot, new byte[] {0, 0, 0});
+      try (FileInputStream fis = new FileInputStream(snapshot.toFile())) {
+        try {
+          new CommitProgressKeeper().processLoadSnapshot(fis);
+          org.junit.Assert.fail("Expected IOException for a truncated size header");
+        } catch (final IOException expected) {
+          // expected
+        }
+      }
+    } finally {
+      Files.deleteIfExists(snapshot);
+    }
+  }
+
+  @Test
   public void testRegionProgressMapSerializationRoundTrip() throws Exception {
     final String firstKey = CommitProgressKeeper.generateKey("cg", "topicA", "1_1", 3);
     final String secondKey = CommitProgressKeeper.generateKey("cg", "topicB", "1_2", 5);

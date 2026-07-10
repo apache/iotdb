@@ -97,9 +97,12 @@ public class CommitProgressKeeper {
     regionProgressMap.clear();
     final DataInputStream dataInputStream = new DataInputStream(fileInputStream);
     final byte[] sizeBytes = new byte[4];
-    if (!readFully(dataInputStream, sizeBytes)) {
+    final int firstSizeByte = dataInputStream.read();
+    if (firstSizeByte < 0) {
       return;
     }
+    sizeBytes[0] = (byte) firstSizeByte;
+    dataInputStream.readFully(sizeBytes, 1, sizeBytes.length - 1);
     final int regionSize = ByteBuffer.wrap(sizeBytes).getInt();
     for (int i = 0; i < regionSize; i++) {
       final byte[] keyLenBytes = new byte[4];
