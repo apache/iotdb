@@ -102,7 +102,7 @@
         <jna.version>5.14.0</jna.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
-        <logback.version>1.5.34</logback.version>
+        <logback.version>1.5.35</logback.version>
         <lz4-java.version>1.10.1</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>17</maven.compiler.source>
