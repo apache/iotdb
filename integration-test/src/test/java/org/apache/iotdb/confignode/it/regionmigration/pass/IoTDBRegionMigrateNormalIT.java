@@ -58,9 +58,9 @@ public class IoTDBRegionMigrateNormalIT extends IoTDBRegionOperationReliabilityI
 
     try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         final Statement statement = makeItCloseQuietly(connection.createStatement())) {
-      assertCounts(statement, 1, 1);
-      statement.execute("INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)");
       assertCounts(statement, 2, 2);
+      statement.execute("INSERT INTO root.sg.d1(timestamp,speed,temperature) values(102, 5, 6)");
+      assertCounts(statement, 3, 3);
     }
   }
 
