@@ -158,9 +158,18 @@ class InferenceManager:
                 continue
             infer_req: InferenceRequest = self._result_queue.get()
             with self._result_wrapper_lock:
-                self._result_wrapper_map[infer_req.req_id].set_result(
-                    infer_req.get_final_output()
+                result_wrapper = self._result_wrapper_map.get(infer_req.req_id)
+            if result_wrapper is None:
+                logger.warning(
+                    f"[Inference][Req-{infer_req.req_id}] The inference result arrived after the request wrapper was removed."
                 )
+                continue
+            if infer_req.error is not None:
+                result_wrapper.set_exception(
+                    InferenceModelInternalException(infer_req.error)
+                )
+            else:
+                result_wrapper.set_result(infer_req.get_final_output())
 
     def _process_request(self, req):
         req_id = req.req_id
@@ -198,11 +207,17 @@ class InferenceManager:
         if self._pool_controller.has_running_pools(model_id):
             # Only forecast task can use pool
             output_length = int(inference_attrs.get("output_length", 96))
+            request_kwargs = (
+                {"inputs": model_inputs}
+                if isinstance(model_inputs, torch.Tensor)
+                else {"model_inputs": model_inputs}
+            )
             infer_req = InferenceRequest(
                 req_id=generate_req_id(),
                 model_id=model_id,
-                inputs=torch.stack([data["targets"] for data in model_inputs], dim=0),
                 output_length=output_length,
+                inference_attrs=inference_attrs,
+                **request_kwargs,
             )
             outputs = self._process_request(infer_req)
         else:

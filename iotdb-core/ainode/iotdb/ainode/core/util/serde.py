@@ -59,6 +59,18 @@ START_INDEX = 2
 
 # Full data deserialized from iotdb tsblock is composed of [timestampList, multiple valueList, None, length].
 # We only get valueList currently.
+def _expand_null_values(
+    data: np.ndarray, null_indicator, position_count: int
+) -> np.ndarray:
+    if null_indicator is None:
+        return data
+
+    expanded = np.full(position_count, np.nan, dtype=np.float32)
+    if data.size > 0:
+        expanded[np.logical_not(null_indicator)] = data.astype(np.float32)
+    return expanded
+
+
 def convert_tsblock_to_tensor(tsblock_data: bytes):
     full_data = deserialize(tsblock_data)
     # ensure the byteorder is correct.
@@ -66,6 +78,9 @@ def convert_tsblock_to_tensor(tsblock_data: bytes):
         if data.dtype.byteorder not in ("=", "|"):
             np_data = data.byteswap()
             full_data[1][i] = np_data.view(np_data.dtype.newbyteorder())
+        full_data[1][i] = _expand_null_values(
+            full_data[1][i], full_data[2][i], full_data[3]
+        )
     # the size should be [batch_size, target_count, sequence_length]
     tensor_data = torch.from_numpy(np.stack(full_data[1], axis=0)).unsqueeze(0).float()
     # data should be on CPU before passing to the inference request

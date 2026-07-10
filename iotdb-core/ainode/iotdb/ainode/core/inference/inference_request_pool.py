@@ -22,6 +22,7 @@ import time
 import traceback
 from collections import defaultdict
 from enum import Enum
+from typing import Any
 
 import numpy as np
 import torch
@@ -108,6 +109,65 @@ class InferenceRequestPool(mp.Process):
                 f"[Inference][{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
             )
 
+    @staticmethod
+    def _freeze_inference_attrs(value: Any):
+        if isinstance(value, dict):
+            return tuple(
+                sorted(
+                    (key, InferenceRequestPool._freeze_inference_attrs(item))
+                    for key, item in value.items()
+                )
+            )
+        if isinstance(value, (list, tuple)):
+            return tuple(
+                InferenceRequestPool._freeze_inference_attrs(item) for item in value
+            )
+        try:
+            hash(value)
+        except TypeError:
+            return repr(value)
+        return value
+
+    @staticmethod
+    def _move_model_input_to_device(value: Any, backend: DeviceManager, device):
+        if isinstance(value, torch.Tensor):
+            return backend.move_tensor(value, device)
+        if isinstance(value, dict):
+            return {
+                key: InferenceRequestPool._move_model_input_to_device(
+                    item, backend, device
+                )
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                InferenceRequestPool._move_model_input_to_device(item, backend, device)
+                for item in value
+            ]
+        if isinstance(value, tuple):
+            return tuple(
+                InferenceRequestPool._move_model_input_to_device(item, backend, device)
+                for item in value
+            )
+        return value
+
+    def _build_batch_input_list(self, requests: list[InferenceRequest]):
+        if all(not request.has_covariates() for request in requests):
+            batch_inputs = self._backend.move_tensor(
+                self._batcher.batch_request(requests), self.device
+            )
+            return [{"targets": batch_inputs[i]} for i in range(batch_inputs.size(0))]
+
+        batch_input_list = []
+        for request in requests:
+            for model_input in request.model_inputs:
+                batch_input_list.append(
+                    self._move_model_input_to_device(
+                        model_input, self._backend, self.device
+                    )
+                )
+        return batch_input_list
+
     def _requests_activate_loop(self):
         while not self._stop_event.is_set():
             time.sleep(self.WAITING_INTERVAL_IN_MS / 1000)
@@ -118,43 +178,60 @@ class InferenceRequestPool(mp.Process):
 
         grouped_requests = defaultdict(list)
         for req in all_requests:
-            key = (req.target_count, req.input_length, req.output_length)
+            if req.has_covariates():
+                key = (req.req_id,)
+            else:
+                key = (
+                    req.target_count,
+                    req.input_length,
+                    req.output_length,
+                    self._freeze_inference_attrs(req.inference_attrs),
+                )
             grouped_requests[key].append(req)
         grouped_requests = list(grouped_requests.values())
 
         for requests in grouped_requests:
-            batch_inputs = self._backend.move_tensor(
-                self._batcher.batch_request(requests), self.device
-            )
-            batch_input_list = []
-            for i in range(batch_inputs.size(0)):
-                batch_input_list.append({"targets": batch_inputs[i]})
-            batch_inputs = self._inference_pipeline.preprocess(
-                batch_input_list,
-                output_length=requests[0].output_length,
-                auto_adapt=True,
-            )
-            if isinstance(self._inference_pipeline, ForecastPipeline):
-                batch_output = self._inference_pipeline.forecast(
-                    batch_inputs,
-                    output_length=requests[0].output_length,
-                    revin=True,
+            try:
+                inference_attrs = requests[0].inference_attrs
+                batch_input_list = self._build_batch_input_list(requests)
+                batch_inputs = self._inference_pipeline.preprocess(
+                    batch_input_list,
+                    **inference_attrs,
                 )
-            elif isinstance(self._inference_pipeline, ClassificationPipeline):
-                batch_output = self._inference_pipeline.classify(
-                    batch_inputs,
-                    # more infer kwargs can be added here
+                if isinstance(self._inference_pipeline, ForecastPipeline):
+                    batch_output = self._inference_pipeline.forecast(
+                        batch_inputs,
+                        **inference_attrs,
+                    )
+                elif isinstance(self._inference_pipeline, ClassificationPipeline):
+                    batch_output = self._inference_pipeline.classify(
+                        batch_inputs,
+                        **inference_attrs,
+                    )
+                elif isinstance(self._inference_pipeline, ChatPipeline):
+                    batch_output = self._inference_pipeline.chat(
+                        batch_inputs,
+                        **inference_attrs,
+                    )
+                else:
+                    batch_output = None
+                    self._logger.error("[Inference] Unsupported pipeline type.")
+                batch_output_list = self._inference_pipeline.postprocess(
+                    batch_output, **inference_attrs
                 )
-            elif isinstance(self._inference_pipeline, ChatPipeline):
-                batch_output = self._inference_pipeline.chat(
-                    batch_inputs,
-                    # more infer kwargs can be added here
+                batch_output = torch.stack(
+                    [output for output in batch_output_list], dim=0
                 )
-            else:
-                batch_output = None
-                self._logger.error("[Inference] Unsupported pipeline type.")
-            batch_output_list = self._inference_pipeline.postprocess(batch_output)
-            batch_output = torch.stack([output for output in batch_output_list], dim=0)
+            except Exception as e:
+                error_traceback = traceback.format_exc()
+                self._logger.error(
+                    f"[Inference][{self.device}][Pool-{self.pool_id}] Failed to execute requests "
+                    f"{[request.req_id for request in requests]}: {e}\n{error_traceback}"
+                )
+                for request in requests:
+                    request.mark_failed(f"{e}\n{error_traceback}")
+                    self._finished_queue.put(request)
+                continue
 
             offset = 0
             for request in requests:
