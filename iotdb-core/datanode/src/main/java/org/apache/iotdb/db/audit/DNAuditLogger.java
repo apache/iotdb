@@ -391,10 +391,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private boolean ensureAuditDatabaseInTreeModel() {
     Statement statement =
         StatementGenerator.createStatement(
-            "CREATE DATABASE "
-                + SystemConstant.AUDIT_DATABASE
-                + " WITH MAX_SCHEMA_REGION_GROUP_NUM=1, MAX_DATA_REGION_GROUP_NUM=1",
-            ZoneId.systemDefault());
+            "CREATE DATABASE " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
     ExecutionResult result =
         coordinator.executeForTreeModel(
             statement,

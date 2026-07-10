@@ -399,10 +399,17 @@ public class ClusterSchemaManager {
           getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
 
       try {
+        // The table-model __audit view stores its underlying data in tree-model root.__audit.
+        final String databaseForRegionCount =
+            Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)
+                ? SchemaConstant.AUDIT_DATABASE
+                : database;
         databaseInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
+            getPartitionManager()
+                .getRegionGroupCount(databaseForRegionCount, TConsensusGroupType.SchemaRegion));
         databaseInfo.setDataRegionNum(
-            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
+            getPartitionManager()
+                .getRegionGroupCount(databaseForRegionCount, TConsensusGroupType.DataRegion));
       } catch (final DatabaseNotExistsException e) {
         // Skip pre-deleted Database
         LOGGER.warn(
@@ -934,6 +941,11 @@ public class ClusterSchemaManager {
 
     if (isSystemDatabase || isAuditDatabase) {
       databaseSchema.setMinDataRegionGroupNum(1);
+      if (isAuditDatabase) {
+        databaseSchema.setMaxSchemaRegionGroupNum(1);
+        databaseSchema.setMaxDataRegionGroupNum(1);
+        return StatusUtils.OK;
+      }
     } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
       databaseSchema.setMinDataRegionGroupNum(
           ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
