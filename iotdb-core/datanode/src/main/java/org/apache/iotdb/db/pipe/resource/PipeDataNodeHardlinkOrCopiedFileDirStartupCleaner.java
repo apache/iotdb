@@ -69,14 +69,6 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       final File localDataDir = new File(dataDir);
       collectInterruptedStalePipeDirs(localDataDir, pipeHardlinkBaseDirName, stalePipeDirs);
-      collectInterruptedStalePipeDirs(
-          new File(
-              localDataDir,
-              pipeHardlinkBaseDirName
-                  + File.separator
-                  + PipeConfig.getInstance().getPipeHardlinkTsFileDirName()),
-          "",
-          stalePipeDirs);
 
       final File pipeHardLinkDir = new File(localDataDir, pipeHardlinkBaseDirName);
       if (pipeHardLinkDir.isDirectory()) {
