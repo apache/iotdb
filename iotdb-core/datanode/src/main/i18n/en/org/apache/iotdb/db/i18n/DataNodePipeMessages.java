@@ -228,10 +228,20 @@ public final class DataNodePipeMessages {
       "PipeEventCollector: The event {} is already released, skipping it.";
   public static final String PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS =
       "Pipe: connector subtask {} ({}) was closed within {} ms";
+  public static final String FAILED_TO_DISCARD_EVENTS_OF_PIPE_IN_CONNECTOR_SUBTASK =
+      "Failed to discard events of pipe {} in connector subtask {}.";
   public static final String PIPE_META_NOT_FOUND = "Pipe meta not found: ";
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
+  public static final String PIPE_SINK_SUBTASK_CLOSE_OPERATION_STILL_RUNNING =
+      "is still running";
+  public static final String
+      PIPE_SINK_SUBTASK_CLOSE_OPERATION_WILL_RUN_AFTER_CURRENT_CONNECTOR_OPERATION =
+          "will run after the current connector operation finishes";
+  public static final String PIPE_SINK_SUBTASK_CLOSE_TIMED_OUT =
+      "Timed out after {} ms when closing pipe connector subtask {}. Continue dropping it. "
+          + "The close operation {}.";
   public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
       "Pipe sink subtask {} is delayed for {} ms before polling events to avoid frequent "
           + "handshakes after client borrow failures.";

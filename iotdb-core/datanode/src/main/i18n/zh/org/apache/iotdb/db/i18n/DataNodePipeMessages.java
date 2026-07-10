@@ -217,9 +217,17 @@ public final class DataNodePipeMessages {
       "PipeEventCollector：事件 {} 已被释放，跳过处理。";
   public static final String PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS =
       "Pipe：connector 子任务 {} ({}) 在 {} ms 内已关闭";
+  public static final String FAILED_TO_DISCARD_EVENTS_OF_PIPE_IN_CONNECTOR_SUBTASK =
+      "Pipe {} 在 connector 子任务 {} 中的事件丢弃失败。";
   public static final String PIPE_META_NOT_FOUND = "未找到 pipe 元数据：";
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "带属性 {} 的 Pipe sink 子任务绑定到 sinkExecutor {} 和 callbackExecutor {}。";
+  public static final String PIPE_SINK_SUBTASK_CLOSE_OPERATION_STILL_RUNNING = "仍在运行";
+  public static final String
+      PIPE_SINK_SUBTASK_CLOSE_OPERATION_WILL_RUN_AFTER_CURRENT_CONNECTOR_OPERATION =
+          "将在当前 connector 操作完成后运行";
+  public static final String PIPE_SINK_SUBTASK_CLOSE_TIMED_OUT =
+      "关闭 pipe connector 子任务超时 {} ms：{}。继续丢弃该子任务。关闭操作{}。";
   public static final String PIPE_SINK_SUBTASK_DELAYED_TO_AVOID_FREQUENT_HANDSHAKES =
       "Pipe sink 子任务 {} 在拉取事件前延迟 {} ms，以避免客户端借用失败后频繁握手。";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
