@@ -244,14 +244,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private final IModelFetcher modelFetcher;
+  private final TreeAnalysisMutationJournal mutationJournal;
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+  public AnalyzeVisitor(
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      TreeAnalysisMutationJournal mutationJournal) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
     this.modelFetcher = ModelFetcher.getInstance();
+    this.mutationJournal = mutationJournal;
   }
 
   @Override
@@ -284,15 +289,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-    // used for retry
-    queryStatement.setWhereConditionBackToOriginal();
-
     Analysis analysis = new Analysis();
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
 
     try {
       // check for semantic errors
-      queryStatement.semanticCheck();
+      boolean originalCountTimeAggregation = queryStatement.isCountTimeAggregation();
+      try {
+        queryStatement.semanticCheck();
+      } finally {
+        if (queryStatement.isCountTimeAggregation() != originalCountTimeAggregation) {
+          mutationJournal.recordCountTimeAggregationChange(
+              queryStatement, originalCountTimeAggregation);
+        }
+      }
 
       context.initResultSetColumnMemoryTracking(
           queryStatement.getSeriesLimit(),
@@ -322,7 +332,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (deviceList.size() > 1
             && TemplatedAnalyze.canBuildPlanUseTemplate(
-                analysis, queryStatement, partitionFetcher, schemaTree, context, deviceList)) {
+                analysis,
+                queryStatement,
+                partitionFetcher,
+                schemaTree,
+                context,
+                deviceList,
+                mutationJournal)) {
           // when device size is less than 1, there is no need to use template optimization, i.e. no
           // need to extract common variables
           return analysis;
@@ -330,6 +346,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
+          mutationJournal.recordLimitOffsetPushDown(queryStatement);
           deviceList =
               pushDownLimitOffsetInGroupByTimeForDevice(
                   deviceList, queryStatement, context.getZoneId());
@@ -514,7 +531,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     queryStatement =
         (QueryStatement)
             concatPathRewriter.rewrite(
-                queryStatement, new PathPatternTree(queryStatement.useWildcard()), context);
+                queryStatement,
+                new PathPatternTree(queryStatement.useWildcard()),
+                context,
+                mutationJournal);
     analysis.setStatement(queryStatement);
 
     // request schema fetch API
@@ -575,29 +595,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression globalTimePredicate = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
-      WhereCondition whereCondition = queryStatement.getWhereCondition();
-      Expression predicate = whereCondition.getPredicate();
-
-      WhereCondition originalWhereCondition = new WhereCondition(predicate);
-
-      Pair<Expression, Boolean> resultPair =
-          PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
-      globalTimePredicate = resultPair.left;
+      Expression predicate = queryStatement.getWhereCondition().getPredicate();
+      PredicateUtils.GlobalTimePredicateExtractionResult extractionResult =
+          PredicateUtils.extractGlobalTimePredicate(predicate);
+      globalTimePredicate = extractionResult.getGlobalTimePredicate();
       if (globalTimePredicate != null) {
         globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
       }
-      hasValueFilter = resultPair.right;
-
-      predicate = PredicateUtils.simplifyPredicate(predicate);
+      hasValueFilter = extractionResult.hasValueFilter();
+      Expression residualPredicate =
+          PredicateUtils.simplifyPredicate(extractionResult.getResidualPredicate());
 
       // set where condition to null if predicate is true or time filter.
-      if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
-        queryStatement.setWhereCondition(null);
-      } else {
-        whereCondition.setPredicate(predicate);
+      if (!hasValueFilter || residualPredicate.equals(ConstantOperand.TRUE)) {
+        mutationJournal.replaceWhereCondition(queryStatement, null);
+      } else if (residualPredicate != predicate) {
+        mutationJournal.replaceWhereCondition(
+            queryStatement, WhereCondition.fromNormalizedPredicate(residualPredicate));
       }
-
-      queryStatement.setOriginalWhereCondition(originalWhereCondition);
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
     analysis.setHasValueFilter(hasValueFilter);
@@ -1904,7 +1919,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       orderByExpressions.add(orderByExpression);
     }
     analysis.setOrderByExpressions(orderByExpressions);
-    queryStatement.updateSortItems(orderByExpressions);
+    mutationJournal.updateSortItems(queryStatement, orderByExpressions);
   }
 
   private void analyzeOrderBy(
@@ -2074,7 +2089,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
-    queryStatement.updateSortItems(deviceViewOrderByExpression);
+    mutationJournal.updateSortItems(queryStatement, deviceViewOrderByExpression);
     analysis.setDeviceToSortItems(deviceToSortItems);
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
@@ -2394,7 +2409,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
+    mutationJournal.clearOrderByComponent(queryStatement);
 
     List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
     List<Expression> sourceColumns =
@@ -2449,7 +2464,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
+    mutationJournal.clearOrderByComponent(queryStatement);
 
     List<Expression> sourceColumns =
         outputExpressions.stream()
@@ -3407,17 +3422,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeGlobalTimeConditionInShowMetaData(
       WhereCondition timeCondition, Analysis analysis) {
     Expression predicate = timeCondition.getPredicate();
-    Pair<Expression, Boolean> resultPair =
-        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
-    if (resultPair.right) {
+    PredicateUtils.GlobalTimePredicateExtractionResult extractionResult =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+    if (extractionResult.hasValueFilter()) {
       throw new SemanticException(
           "Value Filter can't exist in the condition of SHOW/COUNT clause, only time condition supported");
     }
-    if (resultPair.left == null) {
+    if (extractionResult.getGlobalTimePredicate() == null) {
       throw new SemanticException(
           "Time condition can't be empty in the condition of SHOW/COUNT clause");
     }
-    Expression globalTimePredicate = resultPair.left;
+    Expression globalTimePredicate = extractionResult.getGlobalTimePredicate();
     globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
     analysis.setGlobalTimePredicate(globalTimePredicate);
   }

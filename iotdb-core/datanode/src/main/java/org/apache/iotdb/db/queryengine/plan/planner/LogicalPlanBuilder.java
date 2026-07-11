@@ -486,11 +486,10 @@ public class LogicalPlanBuilder {
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    List<SortItem> sortItemList = queryStatement.getSortItemList();
-
-    if (sortItemList.isEmpty()) {
-      sortItemList = new ArrayList<>();
-    }
+    // DEVICE and TIME are implicit merge keys for DeviceView. Append them to a planning-owned copy
+    // so rebuilding the plan after a dispatch failure does not mutate the parsed statement or
+    // accumulate duplicate keys.
+    List<SortItem> sortItemList = new ArrayList<>(queryStatement.getSortItemList());
     if (!queryStatement.isOrderByDevice()) {
       sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
