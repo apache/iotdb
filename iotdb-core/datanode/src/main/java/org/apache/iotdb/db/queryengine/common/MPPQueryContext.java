@@ -57,6 +57,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.Collections;
@@ -171,7 +173,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean debug = false;
 
-  private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
+  // This state belongs to one top-level execution. Inner CTE and scalar-subquery executions share
+  // the same instance so they can consume materialized data without putting runtime state on ASTs.
+  private CteMaterializationContext cteMaterializationContext = new CteMaterializationContext();
 
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
   // Key: CTE table reference
@@ -276,7 +280,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   private void cleanUpCte() {
-    cteQueries.clear();
+    cteMaterializationContext.clear();
     cteExplainResults.clear();
     cteMaterializationCosts.clear();
     subQueryTables.clear();
@@ -907,23 +911,37 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void addCteQuery(Table table, Query query) {
-    cteQueries.put(NodeRef.of(table), query);
+    cteMaterializationContext.addCteQuery(table, query);
   }
 
   public Map<NodeRef<Table>, Query> getCteQueries() {
-    return cteQueries;
+    return cteMaterializationContext.getCteQueries();
   }
 
+  public boolean isCteMaterializationAttempted(Query query) {
+    return cteMaterializationContext.isMaterializationAttempted(query);
+  }
+
+  public void recordCteMaterializationResult(Query query, @Nullable CteDataStore dataStore) {
+    cteMaterializationContext.recordMaterializationResult(query, dataStore);
+  }
+
+  @Nullable
+  public CteDataStore getCteDataStore(Query query) {
+    return cteMaterializationContext.getCteDataStore(query);
+  }
+
+  @Nullable
   public CteDataStore getCteDataStore(Table table) {
-    Query query = cteQueries.get(NodeRef.of(table));
-    if (query == null) {
-      return null;
-    }
-    return query.getCteDataStore();
+    return cteMaterializationContext.getCteDataStore(table);
   }
 
-  public void setCteQueries(Map<NodeRef<Table>, Query> cteQueries) {
-    this.cteQueries = cteQueries;
+  public CteMaterializationContext getCteMaterializationContext() {
+    return cteMaterializationContext;
+  }
+
+  public void setCteMaterializationContext(CteMaterializationContext cteMaterializationContext) {
+    this.cteMaterializationContext = cteMaterializationContext;
   }
 
   public void addSubQueryTables(Query query, List<Identifier> tables) {

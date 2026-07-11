@@ -123,11 +123,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         List<Identifier> tables = context.getTables(query);
         List<WithQuery> withQueries =
             with.getQueries().stream()
-                .filter(
-                    x ->
-                        tables.contains(x.getName())
-                            && !x.getQuery().isMaterialized()
-                            && !x.getQuery().isDone())
+                .filter(x -> tables.contains(x.getName()) && !x.getQuery().isMaterialized())
                 .collect(Collectors.toList());
 
         if (!withQueries.isEmpty()) {
@@ -152,7 +148,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               "Try to Fetch Uncorrelated Scalar Subquery Result for Predicate",
               LocalExecutionPlanner.getInstance().metadata,
-              context.getCteQueries(),
+              context.getCteMaterializationContext(),
               ExplainType.NONE,
               ExplainOutputFormat.GRAPHVIZ,
               context.getTimeOut(),

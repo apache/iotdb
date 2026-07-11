@@ -136,7 +136,7 @@ public class CteSubqueryTest {
             Mockito.any(), // SessionInfo
             Mockito.anyString(), // String
             Mockito.any(), // Metadata
-            Mockito.anyMap(), // Map<NodeRef<Table>, CteDataStore>
+            Mockito.any(), // CteMaterializationContext
             Mockito.any(), // ExplainType
             Mockito.any(), // ExplainOutputFormat
             Mockito.anyLong(), // timeOut
