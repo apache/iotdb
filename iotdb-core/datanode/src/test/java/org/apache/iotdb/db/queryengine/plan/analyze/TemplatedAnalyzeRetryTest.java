@@ -70,6 +70,7 @@ public class TemplatedAnalyzeRetryTest {
     FunctionExpression analyzedCountTimeExpression =
         (FunctionExpression) analysis.getAggregationExpressions().iterator().next();
     assertNotSame(countTimeExpression, analyzedCountTimeExpression);
+    assertEquals("count_time(*)", analyzedCountTimeExpression.getExpressionString());
     assertEquals("count_time(Time)", analyzedCountTimeExpression.getOutputSymbol());
 
     // QueryExecution analyzes the same statement again when retrying a dispatch failure.

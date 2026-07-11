@@ -181,12 +181,17 @@ public class TemplatedAggregationAnalyze {
         FunctionExpression countTimeExpression = (FunctionExpression) selectExpression;
         // The parsed count_time(*) expression belongs to the statement and may be analyzed again
         // after a dispatch failure. Build a template-only expression instead of replacing its
-        // wildcard child in place.
+        // wildcard child in place. Prime the copy's expression string before replacing the child:
+        // the result header must remain count_time(*), while the planning output symbol must be
+        // count_time(Time), just as it was when the parsed expression was mutated in place.
         FunctionExpression templatedCountTimeExpression =
             new FunctionExpression(
                 countTimeExpression.getFunctionName(),
                 new LinkedHashMap<>(countTimeExpression.getFunctionAttributes()),
-                Collections.singletonList(new TimestampOperand()));
+                new ArrayList<>(countTimeExpression.getExpressions()));
+        templatedCountTimeExpression.getExpressionString();
+        templatedCountTimeExpression.setExpressions(
+            Collections.singletonList(new TimestampOperand()));
         templatedCountTimeExpression.setFunctionType(countTimeExpression.getFunctionType());
 
         outputExpressions.add(new Pair<>(templatedCountTimeExpression, resultColumn.getAlias()));
