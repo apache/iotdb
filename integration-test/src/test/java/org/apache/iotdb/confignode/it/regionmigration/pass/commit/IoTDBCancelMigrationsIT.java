@@ -30,6 +30,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -41,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,9 +66,15 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   private static final String SHOW_MIGRATIONS = "show migrations";
   private static final String CANCEL_ALL_MIGRATIONS = "cancel all migrations";
   private static final String MIGRATE_REGION_FORMAT = "migrate region %d from %d to %d";
+  private static final String MULTI_REGION_MIGRATE_FORMAT = "migrate region %s from %d to %d";
   private static final String EXTEND_REGION_FORMAT = "extend region %d to %d";
   private static final String REMOVE_REGION_FORMAT = "remove region %d from %d";
   private static final String RECONSTRUCT_REGION_FORMAT = "reconstruct region %d on %d";
+  private static final String CANCEL_TREE_USER = "cancel_migration_tree_user";
+  private static final String CANCEL_TABLE_USER = "cancel_migration_table_user";
+  private static final String CANCEL_USER_PASSWORD = "CancelMigration@123456";
+  private static final String NO_MIGRATION_CANCEL_RESPONSE =
+      "Successfully signalled 0 migration(s) to cancel";
 
   @Test
   public void cancelMigrateRegionByTreeDialectTest() throws Exception {
@@ -96,6 +105,99 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
       awaitNoMigrations(statement);
       awaitRegionMembers(statement, selectedRegion, regionMap.get(selectedRegion));
       awaitCommandThreadFinished(migration);
+    }
+  }
+
+  @Test
+  public void cancelAllMigrationsIdleIsIdempotentForBothDialectsTest() throws Exception {
+    initCluster(1, 1, 3);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
+      awaitNoMigrations(statement);
+
+      String treeResponse =
+          executeCancelAndGetMessage(BaseEnv.TREE_SQL_DIALECT, "CaNcEl AlL MiGrAtIoNs");
+      Assert.assertEquals(NO_MIGRATION_CANCEL_RESPONSE, treeResponse);
+      awaitNoMigrations(statement);
+      Assert.assertEquals(regionMap, getDataRegionMap(statement));
+
+      String tableResponse =
+          executeCancelAndGetMessage(BaseEnv.TABLE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS);
+      Assert.assertEquals(NO_MIGRATION_CANCEL_RESPONSE, tableResponse);
+      awaitNoMigrations(statement);
+      Assert.assertEquals(regionMap, getDataRegionMap(statement));
+    }
+  }
+
+  @Test
+  public void cancelAllMigrationsPermissionTest() throws Exception {
+    initCluster(1, 1, 1);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      statement.execute(
+          String.format("create user %s '%s'", CANCEL_TREE_USER, CANCEL_USER_PASSWORD));
+      statement.execute(
+          String.format("create user %s '%s'", CANCEL_TABLE_USER, CANCEL_USER_PASSWORD));
+
+      Assert.assertEquals(
+          NO_MIGRATION_CANCEL_RESPONSE,
+          executeCancelAndGetMessage(BaseEnv.TREE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS));
+      Assert.assertEquals(
+          NO_MIGRATION_CANCEL_RESPONSE,
+          executeCancelAndGetMessage(BaseEnv.TABLE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS));
+
+      assertCancelPermissionDenied(
+          CANCEL_TREE_USER, CANCEL_USER_PASSWORD, BaseEnv.TREE_SQL_DIALECT, "SYSTEM");
+      assertCancelPermissionDenied(
+          CANCEL_TABLE_USER, CANCEL_USER_PASSWORD, BaseEnv.TABLE_SQL_DIALECT, "SYSTEM");
+
+      statement.execute(String.format("grant system on root.** to user %s", CANCEL_TREE_USER));
+      executeCancelAs(CANCEL_TREE_USER, CANCEL_USER_PASSWORD, BaseEnv.TREE_SQL_DIALECT);
+      assertCancelPermissionDenied(
+          CANCEL_TABLE_USER, CANCEL_USER_PASSWORD, BaseEnv.TABLE_SQL_DIALECT, "SYSTEM");
+
+      executeAdminCommand(
+          BaseEnv.TABLE_SQL_DIALECT, String.format("grant system to user %s", CANCEL_TABLE_USER));
+      executeCancelAs(CANCEL_TABLE_USER, CANCEL_USER_PASSWORD, BaseEnv.TABLE_SQL_DIALECT);
+    }
+  }
+
+  @Test
+  public void cancelAllMigrationsClientReceiptIncludesCancelledCountTest() throws Exception {
+    initClusterWithDataRegionGroups(1, 1, 3, 4, AddRegionPeerState.DO_ADD_REGION_PEER);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
+      Set<Integer> allDataNodes = getAllDataNodes(statement);
+      int sourceDataNode = selectDataNodeHostingRegions(allDataNodes, regionMap, 2);
+      List<Integer> selectedRegions =
+          regionsOnDataNode(regionMap, sourceDataNode).stream()
+              .limit(2)
+              .collect(Collectors.toList());
+      int targetDataNode = selectDataNodeExcept(allDataNodes, sourceDataNode);
+
+      CapturedMigrations migrations =
+          runAndCaptureMigrations(
+              String.format(
+                  MULTI_REGION_MIGRATE_FORMAT,
+                  selectedRegions.stream().map(String::valueOf).collect(Collectors.joining(",")),
+                  sourceDataNode,
+                  targetDataNode),
+              "MIGRATE",
+              selectedRegions);
+
+      String response = executeCancelAndGetMessage(BaseEnv.TREE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS);
+      Assert.assertEquals("Successfully signalled 2 migration(s) to cancel", response);
+
+      awaitNoMigrations(statement);
+      for (Integer regionId : selectedRegions) {
+        awaitRegionMembers(statement, regionId, regionMap.get(regionId));
+      }
+      awaitCommandThreadFinished(migrations);
     }
   }
 
@@ -186,6 +288,16 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
       int schemaReplicationFactor,
       int dataNodeNum,
       Enum<?>... configNodeKillPoints) {
+    initClusterWithDataRegionGroups(
+        dataReplicationFactor, schemaReplicationFactor, dataNodeNum, 1, configNodeKillPoints);
+  }
+
+  private void initClusterWithDataRegionGroups(
+      int dataReplicationFactor,
+      int schemaReplicationFactor,
+      int dataNodeNum,
+      int dataRegionGroupNum,
+      Enum<?>... configNodeKillPoints) {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -193,9 +305,9 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(dataReplicationFactor)
         .setSchemaReplicationFactor(schemaReplicationFactor)
-        .setDataRegionGroupExtensionPolicy("AUTO")
+        .setDataRegionGroupExtensionPolicy(dataRegionGroupNum > 1 ? "CUSTOM" : "AUTO")
         .setSchemaRegionGroupExtensionPolicy("AUTO")
-        .setDefaultDataRegionGroupNumPerDatabase(1)
+        .setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupNum)
         .setDefaultSchemaRegionGroupNumPerDatabase(1);
     EnvFactory.getEnv().registerConfigNodeKillPoints(killPointNames(configNodeKillPoints));
     EnvFactory.getEnv().initClusterEnvironment(1, dataNodeNum);
@@ -217,10 +329,54 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   }
 
   private void executeCancel(String sqlDialect) throws Exception {
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection(sqlDialect));
+    executeCancelAndGetMessage(sqlDialect, CANCEL_ALL_MIGRATIONS);
+  }
+
+  private String executeCancelAndGetMessage(String sqlDialect, String command) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(sqlDialect);
+        Statement statement = connection.createStatement()) {
+      statement.execute(command);
+      return getLastStatementMessage(connection);
+    }
+  }
+
+  private void executeCancelAs(String username, String password, String sqlDialect)
+      throws Exception {
+    try (Connection connection =
+            makeItCloseQuietly(EnvFactory.getEnv().getConnection(username, password, sqlDialect));
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       statement.execute(CANCEL_ALL_MIGRATIONS);
     }
+  }
+
+  private void executeAdminCommand(String sqlDialect, String command) throws Exception {
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection(sqlDialect));
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      statement.execute(command);
+    }
+  }
+
+  private void assertCancelPermissionDenied(
+      String username, String password, String sqlDialect, String expectedPrivilege) {
+    SQLException exception =
+        Assert.assertThrows(
+            SQLException.class, () -> executeCancelAs(username, password, sqlDialect));
+    Assert.assertTrue(
+        exception.getMessage(),
+        exception
+            .getMessage()
+            .contains(
+                "No permissions for this operation, please add privilege " + expectedPrivilege));
+  }
+
+  private String getLastStatementMessage(Connection connection) {
+    Connection underlyingConnection = connection;
+    if (connection instanceof ClusterTestConnection) {
+      underlyingConnection =
+          ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection();
+    }
+    Assert.assertTrue(underlyingConnection instanceof IoTDBConnection);
+    return ((IoTDBConnection) underlyingConnection).getLastStatementMessage();
   }
 
   private CapturedMigration runAndCaptureMigration(
@@ -262,6 +418,40 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
     return new CapturedMigration(captured.get(), commandThread);
   }
 
+  private CapturedMigrations runAndCaptureMigrations(
+      String command, String expectedOperationType, List<Integer> expectedRegions)
+      throws Exception {
+    AtomicReference<Exception> commandError = new AtomicReference<>();
+    AtomicBoolean stopRetry = new AtomicBoolean(false);
+    Thread commandThread =
+        new Thread(
+            () -> executeCommand(command, false, stopRetry, commandError),
+            "cancel-migrations-multi-region-command");
+    commandThread.start();
+
+    try (Connection pollConnection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement pollStatement = makeItCloseQuietly(pollConnection.createStatement())) {
+      Awaitility.await()
+          .atMost(2, TimeUnit.MINUTES)
+          .pollInterval(50, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                List<MigrationRow> rows =
+                    queryMigrationRows(pollStatement, expectedOperationType, expectedRegions);
+                if (rows.size() >= expectedRegions.size()) {
+                  stopRetry.set(true);
+                  return true;
+                }
+                if (commandError.get() != null && !commandThread.isAlive()) {
+                  throw commandError.get();
+                }
+                return false;
+              });
+    }
+
+    return new CapturedMigrations(commandThread);
+  }
+
   private void executeCommand(
       String command,
       boolean retryCommand,
@@ -288,14 +478,33 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   }
 
   private void awaitCommandThreadFinished(CapturedMigration migration) throws Exception {
-    migration.commandThread.join(TimeUnit.MINUTES.toMillis(2));
+    awaitCommandThreadFinished(migration.commandThread);
+  }
+
+  private void awaitCommandThreadFinished(CapturedMigrations migrations) throws Exception {
+    awaitCommandThreadFinished(migrations.commandThread);
+  }
+
+  private void awaitCommandThreadFinished(Thread commandThread) throws Exception {
+    commandThread.join(TimeUnit.MINUTES.toMillis(2));
     Assert.assertFalse(
-        "The original migration command should finish after cancellation",
-        migration.commandThread.isAlive());
+        "The original migration command should finish after cancellation", commandThread.isAlive());
   }
 
   private MigrationRow queryMigrationRow(
       Statement statement, String expectedOperationType, Integer expectedRegion) throws Exception {
+    List<MigrationRow> rows =
+        queryMigrationRows(
+            statement,
+            expectedOperationType,
+            expectedRegion == null ? null : Arrays.asList(expectedRegion));
+    return rows.isEmpty() ? null : rows.get(0);
+  }
+
+  private List<MigrationRow> queryMigrationRows(
+      Statement statement, String expectedOperationType, List<Integer> expectedRegions)
+      throws Exception {
+    List<MigrationRow> rows = new ArrayList<>();
     try (ResultSet rs = statement.executeQuery(SHOW_MIGRATIONS)) {
       while (rs.next()) {
         String regionType = rs.getString(ColumnHeaderConstant.TYPE);
@@ -305,17 +514,18 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
         String operationType = rs.getString(ColumnHeaderConstant.OPERATION_TYPE);
         int regionId = rs.getInt(ColumnHeaderConstant.REGION_ID);
         if (!expectedOperationType.equals(operationType)
-            || (expectedRegion != null && expectedRegion != regionId)) {
+            || (expectedRegions != null && !expectedRegions.contains(regionId))) {
           continue;
         }
-        return new MigrationRow(
-            operationType,
-            regionId,
-            readNullableInt(rs, ColumnHeaderConstant.FROM_NODE_ID),
-            readNullableInt(rs, ColumnHeaderConstant.TO_NODE_ID));
+        rows.add(
+            new MigrationRow(
+                operationType,
+                regionId,
+                readNullableInt(rs, ColumnHeaderConstant.FROM_NODE_ID),
+                readNullableInt(rs, ColumnHeaderConstant.TO_NODE_ID)));
       }
     }
-    return null;
+    return rows;
   }
 
   private Integer readNullableInt(ResultSet rs, String columnName) throws Exception {
@@ -351,12 +561,43 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
     }
   }
 
+  private int selectDataNodeHostingRegions(
+      Set<Integer> allDataNodes, Map<Integer, Set<Integer>> regionMap, int minRegionNum) {
+    return allDataNodes.stream()
+        .filter(dataNodeId -> regionsOnDataNode(regionMap, dataNodeId).size() >= minRegionNum)
+        .findAny()
+        .orElseThrow(() -> new RuntimeException("cannot find DataNode hosting enough regions"));
+  }
+
+  private int selectDataNodeExcept(Set<Integer> allDataNodes, int excludedDataNode) {
+    return allDataNodes.stream()
+        .filter(dataNodeId -> dataNodeId != excludedDataNode)
+        .findAny()
+        .orElseThrow(() -> new RuntimeException("cannot find another DataNode"));
+  }
+
+  private List<Integer> regionsOnDataNode(Map<Integer, Set<Integer>> regionMap, int dataNodeId) {
+    return regionMap.entrySet().stream()
+        .filter(entry -> entry.getValue().contains(dataNodeId))
+        .map(Map.Entry::getKey)
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
   private static class CapturedMigration {
     final MigrationRow row;
     final Thread commandThread;
 
     private CapturedMigration(MigrationRow row, Thread commandThread) {
       this.row = row;
+      this.commandThread = commandThread;
+    }
+  }
+
+  private static class CapturedMigrations {
+    final Thread commandThread;
+
+    private CapturedMigrations(Thread commandThread) {
       this.commandThread = commandThread;
     }
   }

@@ -656,5 +656,7 @@ public final class ManagerMessages {
   public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer 已成功停止。";
   public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
       "数据库 {} 没有可用的 {} RegionGroup。PartitionInfo 中可见的 RegionGroup 及其 LoadCache 状态：{}";
+  public static final String MESSAGE_SUCCESSFULLY_SIGNALLED_ARG_MIGRATION_S_TO_CANCEL_BFC79B2E =
+      "已成功向 %d 个迁移任务发出取消信号";
 
 }

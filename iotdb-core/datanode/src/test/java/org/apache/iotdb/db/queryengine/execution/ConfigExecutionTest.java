@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -58,6 +59,18 @@ public class ConfigExecutionTest {
     execution.start();
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+  }
+
+  @Test
+  public void normalConfigTaskWithStatusMessageTest() {
+    TSStatus status =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("task message");
+    IConfigTask task = (clientManager) -> immediateFuture(new ConfigTaskResult(status));
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
+    execution.start();
+    ExecutionResult result = execution.getStatus();
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    assertEquals("task message", result.status.getMessage());
   }
 
   @Test

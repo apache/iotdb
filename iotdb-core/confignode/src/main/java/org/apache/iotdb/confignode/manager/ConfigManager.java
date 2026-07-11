@@ -2212,7 +2212,9 @@ public class ConfigManager implements IManager {
       int cancelledCount = procedureManager.cancelAllMigrations();
       return RpcUtils.getStatus(
           TSStatusCode.SUCCESS_STATUS,
-          "Successfully signalled " + cancelledCount + " migration(s) to cancel");
+          String.format(
+              ManagerMessages.MESSAGE_SUCCESSFULLY_SIGNALLED_ARG_MIGRATION_S_TO_CANCEL_BFC79B2E,
+              cancelledCount));
     }
     return status;
   }
