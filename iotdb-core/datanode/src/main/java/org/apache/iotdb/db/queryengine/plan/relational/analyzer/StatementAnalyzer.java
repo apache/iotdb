@@ -5400,20 +5400,24 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node, context);
+      final ShowDevice workingNode = node.copyForAnalysis();
+      analysis.setStatement(workingNode);
+      analyzeQueryDevice(workingNode, context);
       // TODO: use real scope when parameter in offset and limit is supported
-      if (Objects.nonNull(node.getOffset())) {
-        analyzeOffset(node.getOffset(), null);
+      if (Objects.nonNull(workingNode.getOffset())) {
+        analyzeOffset(workingNode.getOffset(), null);
       }
-      if (Objects.nonNull(node.getLimit())) {
-        analyzeLimit(node.getLimit(), null);
+      if (Objects.nonNull(workingNode.getLimit())) {
+        analyzeLimit(workingNode.getLimit(), null);
       }
       return null;
     }
 
     @Override
     public Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node, context);
+      final CountDevice workingNode = node.copyForAnalysis();
+      analysis.setStatement(workingNode);
+      analyzeQueryDevice(workingNode, context);
       return null;
     }
 

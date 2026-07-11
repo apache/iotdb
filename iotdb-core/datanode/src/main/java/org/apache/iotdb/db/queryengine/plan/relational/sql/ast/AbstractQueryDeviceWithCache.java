@@ -62,6 +62,23 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(database, tableName);
   }
 
+  /**
+   * Copies only the parsed input of a device query into a fresh analysis working statement.
+   *
+   * <p>The analyzer and schema fetcher populate {@link AbstractTraverseDevice} with resolved names,
+   * translated predicates, cache results, and partition filters. A parsed statement, however, may
+   * be retained by a prepared statement and analyzed again by another execution or by a dispatch
+   * retry. Keeping those derived fields out of this copy constructor ensures that every execution
+   * starts from the same raw SQL AST without copying the expression tree.
+   */
+  protected AbstractQueryDeviceWithCache(final AbstractQueryDeviceWithCache source) {
+    super(source.getLocation().orElse(null), source.table, source.where);
+    this.database = source.database;
+    this.tableName = source.tableName;
+  }
+
+  public abstract AbstractQueryDeviceWithCache copyForAnalysis();
+
   public boolean parseRawExpression(
       final TsTable tableInstance,
       final List<String> attributeColumns,
