@@ -91,7 +91,18 @@ public class IoTDBShowMigrationsIT extends IoTDBRegionOperationReliabilityITFram
 
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
-    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    // Pin every statement to a single DataNode. SHOW MIGRATIONS reflects live, non-finished
+    // procedure state on the ConfigNode, so a row appears/disappears while the operation is in
+    // flight. The default fan-out connection runs each read against all three DataNodes and
+    // requires identical result sets; because the three parallel queries hit the ConfigNode at
+    // slightly different instants, one can observe the migration row a moment before/after the
+    // others, yielding an InconsistentDataException (e.g. next() -> [false, false, true]). Reading
+    // from one DataNode removes that cross-node comparison; correctness is unaffected since every
+    // DataNode forwards SHOW MIGRATIONS to the same ConfigNode.
+    try (final Connection connection =
+            makeItCloseQuietly(
+                EnvFactory.getEnv()
+                    .getConnection(EnvFactory.getEnv().getDataNodeWrapperList().get(0)));
         final Statement statement = makeItCloseQuietly(connection.createStatement())) {
       // prepare some real data so that EXTEND has TsFiles to copy, widening the in-flight window
       statement.execute(INSERTION1);
@@ -174,8 +185,14 @@ public class IoTDBShowMigrationsIT extends IoTDBRegionOperationReliabilityITFram
             });
     commandThread.start();
 
+    // Poll from a single DataNode: SHOW MIGRATIONS reflects live procedure state, so a fan-out
+    // read across DataNodes can see the in-flight row on some nodes but not others and fail the
+    // cross-node consistency check. See the note in extendAndRemoveShownInMigrationsTest.
     final AtomicReference<MigrationRow> captured = new AtomicReference<>();
-    try (final Connection pollConn = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (final Connection pollConn =
+            makeItCloseQuietly(
+                EnvFactory.getEnv()
+                    .getConnection(EnvFactory.getEnv().getDataNodeWrapperList().get(0)));
         final Statement pollStmt = makeItCloseQuietly(pollConn.createStatement())) {
       Awaitility.await()
           .atMost(2, TimeUnit.MINUTES)
