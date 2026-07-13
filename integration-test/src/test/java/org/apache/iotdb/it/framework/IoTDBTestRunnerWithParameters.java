@@ -44,7 +44,7 @@ public class IoTDBTestRunnerWithParameters extends BlockJUnit4ClassRunnerWithPar
   public void run(RunNotifier notifier) {
     final String testClassName = getTestClass().getJavaClass().getSimpleName();
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
-      EnvFactory.getEnv().setTestClassName(testClassName);
+      EnvFactory.setTestClassName(testClassName);
     }
     MultiEnvFactory.setTestClassName(testClassName);
     listener = new IoTDBTestListener(this.getName());

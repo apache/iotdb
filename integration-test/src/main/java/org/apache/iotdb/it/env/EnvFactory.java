@@ -34,9 +34,17 @@ import org.slf4j.Logger;
 public class EnvFactory {
   private static BaseEnv env;
   private static final Logger logger = IoTDBTestLogger.logger;
+  private static String currentClassName;
 
   private EnvFactory() {
     // Empty constructor
+  }
+
+  public static void setTestClassName(final String testClassName) {
+    currentClassName = testClassName;
+    if (env != null) {
+      env.setTestClassName(testClassName);
+    }
   }
 
   public static BaseEnv getEnv() {
@@ -72,6 +80,9 @@ public class EnvFactory {
             logger.warn("Unknown env type: {}", envType);
             System.exit(-1);
             break;
+        }
+        if (env != null) {
+          env.setTestClassName(currentClassName);
         }
       } catch (ClassNotFoundException e) {
         logger.error("Get env error", e);

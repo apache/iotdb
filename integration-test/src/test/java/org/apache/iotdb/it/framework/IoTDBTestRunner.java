@@ -46,7 +46,7 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC+08:00"));
     final String testClassName = getTestClass().getJavaClass().getSimpleName();
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
-      EnvFactory.getEnv().setTestClassName(testClassName);
+      EnvFactory.setTestClassName(testClassName);
     }
     MultiEnvFactory.setTestClassName(testClassName);
     listener = new IoTDBTestListener(this.getName());
