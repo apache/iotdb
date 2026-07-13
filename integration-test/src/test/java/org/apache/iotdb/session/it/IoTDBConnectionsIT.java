@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -244,10 +246,12 @@ public class IoTDBConnectionsIT {
       return;
     }
     int closedDataNodeId = (int) allDataNodeId.toArray()[0];
+    DataNodeWrapper closedDataNode =
+        EnvFactory.getEnv().dataNodeIdToWrapper(closedDataNodeId).orElseThrow();
     try (Connection connection =
             EnvFactory.getEnv()
                 .getConnection(
-                    EnvFactory.getEnv().dataNodeIdToWrapper(closedDataNodeId).get(),
+                    closedDataNode,
                     CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
                     CommonDescriptor.getInstance().getConfig().getAdminPassword(),
                     BaseEnv.TABLE_SQL_DIALECT);
@@ -269,7 +273,7 @@ public class IoTDBConnectionsIT {
     }
 
     // close the number closedDataNodeId datanode
-    EnvFactory.getEnv().dataNodeIdToWrapper(closedDataNodeId).get().stop();
+    closedDataNode.stop();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -319,7 +323,7 @@ public class IoTDBConnectionsIT {
     }
 
     // revert environment
-    EnvFactory.getEnv().dataNodeIdToWrapper(closedDataNodeId).get().start();
+    closedDataNode.start();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Wait for restart check
@@ -341,6 +345,26 @@ public class IoTDBConnectionsIT {
         TimeUnit.SECONDS.sleep(1);
       }
     }
+
+    // The ConfigNode may report the restarted DataNode as Running before its client RPC service is
+    // ready. Wait for a direct connection so that subsequent tests do not race with the restart.
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              try (Connection ignored =
+                  EnvFactory.getEnv()
+                      .getWriteOnlyConnectionWithSpecifiedDataNode(
+                          closedDataNode,
+                          CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                          BaseEnv.TABLE_SQL_DIALECT)) {
+                return true;
+              } catch (SQLException e) {
+                return false;
+              }
+            });
   }
 
   @Test
