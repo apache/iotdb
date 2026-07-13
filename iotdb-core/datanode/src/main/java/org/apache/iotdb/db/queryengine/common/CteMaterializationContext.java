@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,9 +37,9 @@ import java.util.Optional;
  * <p>A relational {@link Query} AST can be cached by a prepared statement and reused by independent
  * executions. Materialized data therefore cannot be stored on that AST. This context is owned by an
  * {@link MPPQueryContext} instead and is shared only with inner queries spawned while executing the
- * same top-level query.
+ * same top-level query. It is designed to be accessed only by the planner thread.
  */
-public class CteMaterializationContext {
+public final class CteMaterializationContext {
 
   private final Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
@@ -51,7 +52,7 @@ public class CteMaterializationContext {
   }
 
   public Map<NodeRef<Table>, Query> getCteQueries() {
-    return cteQueries;
+    return Collections.unmodifiableMap(cteQueries);
   }
 
   public boolean isMaterializationAttempted(Query query) {

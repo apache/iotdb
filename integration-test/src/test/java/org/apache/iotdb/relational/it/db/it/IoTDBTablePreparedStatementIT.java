@@ -191,6 +191,37 @@ public class IoTDBTablePreparedStatementIT {
   }
 
   @Test
+  public void testMaterializedCteIsRefetchedForEachExecute() {
+    String[] expectedHeader = new String[] {"_col0"};
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute(
+          "PREPARE materialized_cte_stmt FROM "
+              + "WITH cte AS MATERIALIZED (SELECT * FROM test_table) SELECT COUNT(*) FROM cte");
+
+      executePreparedStatementAndVerify(
+          connection,
+          statement,
+          "EXECUTE materialized_cte_stmt",
+          expectedHeader,
+          new String[] {"5,"});
+
+      statement.execute("INSERT INTO test_table VALUES (2025-01-01T00:05:00, 6, 'Frank', 600.1)");
+
+      executePreparedStatementAndVerify(
+          connection,
+          statement,
+          "EXECUTE materialized_cte_stmt",
+          expectedHeader,
+          new String[] {"6,"});
+      statement.execute("DEALLOCATE PREPARE materialized_cte_stmt");
+    } catch (SQLException e) {
+      fail("testMaterializedCteIsRefetchedForEachExecute failed: " + e.getMessage());
+    }
+  }
+
+  @Test
   public void testPrepareWithMultipleParameters() {
     String[] expectedHeader = new String[] {"time", "id", "name", "value"};
     String[] retArray = new String[] {"2025-01-01T00:01:00.000Z,2,Bob,200.3,"};
