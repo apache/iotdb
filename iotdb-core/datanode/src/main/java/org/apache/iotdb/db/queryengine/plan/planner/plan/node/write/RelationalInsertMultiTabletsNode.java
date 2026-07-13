@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -58,9 +59,11 @@ public class RelationalInsertMultiTabletsNode extends InsertMultiTabletsNode {
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, RelationalInsertMultiTabletsNode> splitMap = new HashMap<>();
+    final List<TEndPoint> redirectNodeList = new ArrayList<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
       InsertTabletNode insertTabletNode = insertTabletNodeList.get(i);
       List<WritePlanNode> tmpResult = insertTabletNode.splitByPartition(analysis);
+      redirectNodeList.addAll(analysis.getRedirectNodeList());
       for (WritePlanNode subNode : tmpResult) {
         TRegionReplicaSet dataRegionReplicaSet = ((InsertNode) subNode).getDataRegionReplicaSet();
         RelationalInsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -75,6 +78,7 @@ public class RelationalInsertMultiTabletsNode extends InsertMultiTabletsNode {
         tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
       }
     }
+    analysis.setRedirectNodeList(redirectNodeList);
     return new ArrayList<>(splitMap.values());
   }
 
