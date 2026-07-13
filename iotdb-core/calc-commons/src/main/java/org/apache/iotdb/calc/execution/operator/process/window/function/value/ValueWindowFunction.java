@@ -21,8 +21,10 @@ package org.apache.iotdb.calc.execution.operator.process.window.function.value;
 
 import org.apache.iotdb.calc.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 
 public abstract class ValueWindowFunction implements WindowFunction {
   @Override
@@ -44,6 +46,13 @@ public abstract class ValueWindowFunction implements WindowFunction {
 
   public abstract void transform(
       Partition partition, ColumnBuilder builder, int index, int frameStart, int frameEnd);
+
+  protected void writeDefaultValue(
+      Partition partition, int defaultValChannel, int index, ColumnBuilder builder) {
+    TypeServices.DEFAULT_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(builder.getDataType()))
+        .write(partition, defaultValChannel, index, builder);
+  }
 
   @Override
   public boolean needPeerGroup() {

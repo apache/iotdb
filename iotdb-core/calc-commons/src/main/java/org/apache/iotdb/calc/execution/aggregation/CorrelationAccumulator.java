@@ -59,27 +59,15 @@ public class CorrelationAccumulator implements Accumulator {
         continue;
       }
 
-      double x = getDoubleValue(columns[1], i, seriesDataTypes[0]);
-      double y = getDoubleValue(columns[2], i, seriesDataTypes[1]);
+      double x = getDoubleValue(columns[1], i);
+      double y = getDoubleValue(columns[2], i);
 
       update(x, y);
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new IllegalArgumentException("Unsupported data type: " + dataType);
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {

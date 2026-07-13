@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
@@ -40,6 +41,7 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -376,30 +378,7 @@ public abstract class TopKOperator implements ProcessOperator {
   private long getMemoryUsageOfOneMergeSortKey() {
     long memory = 0;
     for (TSDataType dataType : dataTypes) {
-      switch (dataType) {
-        case BOOLEAN:
-          memory += 1;
-          break;
-        case INT32:
-        case FLOAT:
-        case DATE:
-          memory += 4;
-          break;
-        case INT64:
-        case DOUBLE:
-        case VECTOR:
-        case TIMESTAMP:
-          memory += 8;
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          memory += 16;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + dataType);
-      }
+      memory += TypeServices.MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.call(Type.fromTsDataType(dataType));
     }
     return memory;
   }

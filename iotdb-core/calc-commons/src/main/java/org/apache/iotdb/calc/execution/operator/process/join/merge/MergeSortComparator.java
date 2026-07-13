@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.calc.execution.operator.process.join.merge;
 
-import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -65,47 +66,8 @@ public class MergeSortComparator {
   }
 
   public static Comparator<SortKey> getComparator(TSDataType dataType, int index, boolean asc) {
-    Comparator<SortKey> comparator;
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        comparator =
-            Comparator.comparingInt(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        comparator =
-            Comparator.comparingLong(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
-        break;
-      case FLOAT:
-        comparator =
-            Comparator.comparingDouble(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
-        break;
-      case DOUBLE:
-        comparator =
-            Comparator.comparingDouble(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        comparator =
-            Comparator.comparing(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
-        break;
-      case BOOLEAN:
-        comparator =
-            Comparator.comparing(
-                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
-        break;
-      default:
-        throw new IllegalArgumentException(
-            String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, dataType));
-    }
+    Comparator<SortKey> comparator =
+        TypeServices.COMPARATOR_SERVICE.call(Type.fromTsDataType(dataType)).apply(index);
     if (!asc) {
       comparator = comparator.reversed();
     }

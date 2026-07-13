@@ -22,8 +22,6 @@ package org.apache.iotdb.calc.execution.operator.process.window.function.value;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.List;
 
@@ -78,39 +76,6 @@ public class LagFunction extends ValueWindowFunction {
       writeDefaultValue(partition, defaultValChannel, index, builder);
     } else {
       builder.appendNull();
-    }
-  }
-
-  private void writeDefaultValue(
-      Partition partition, int defaultValChannel, int index, ColumnBuilder builder) {
-    TSDataType dataType = builder.getDataType();
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        builder.writeInt(partition.getInt(defaultValChannel, index));
-        return;
-      case INT64:
-      case TIMESTAMP:
-        builder.writeLong(partition.getLong(defaultValChannel, index));
-        return;
-      case FLOAT:
-        builder.writeFloat(partition.getFloat(defaultValChannel, index));
-        return;
-      case DOUBLE:
-        builder.writeDouble(partition.getDouble(defaultValChannel, index));
-        return;
-      case BOOLEAN:
-        builder.writeBoolean(partition.getBoolean(defaultValChannel, index));
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        builder.writeBinary(partition.getBinary(defaultValChannel, index));
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            "Unsupported default value's data type in Lag: " + dataType);
     }
   }
 
