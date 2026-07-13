@@ -57,6 +57,7 @@ import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
 import com.timecho.iotdb.os.utils.RemoteStorageBlock;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSPath;
@@ -339,7 +340,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return timeIndex;
     }
 
-    return buildDeviceTimeIndex();
+    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /** deserialize from disk */
