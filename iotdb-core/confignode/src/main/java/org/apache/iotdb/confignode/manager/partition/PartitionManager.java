@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -280,7 +281,12 @@ public class PartitionManager {
           return resp;
         }
 
-        LOGGER.error("Create SchemaPartition failed because: ", e);
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            "Create SchemaPartition failed because: "
+                + e.getClass().getName()
+                + String.valueOf(e.getMessage()))) {
+          LOGGER.error("Create SchemaPartition failed because: ", e);
+        }
         resp.setStatus(
             new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                 .setMessage(e.getMessage()));
