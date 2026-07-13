@@ -82,7 +82,6 @@ public class QueryStatement extends AuthorityInformationStatement {
   private SelectComponent selectComponent;
   private FromComponent fromComponent;
   private WhereCondition whereCondition;
-
   private HavingCondition havingCondition;
 
   // row limit for result set. The default value is 0, which means no limit

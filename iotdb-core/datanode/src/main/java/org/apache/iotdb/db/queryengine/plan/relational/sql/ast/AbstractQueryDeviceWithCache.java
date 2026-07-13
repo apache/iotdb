@@ -68,8 +68,15 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
    * <p>The analyzer and schema fetcher populate {@link AbstractTraverseDevice} with resolved names,
    * translated predicates, cache results, and partition filters. A parsed statement, however, may
    * be retained by a prepared statement and analyzed again by another execution or by a dispatch
-   * retry. Keeping those derived fields out of this copy constructor ensures that every execution
-   * starts from the same raw SQL AST without copying the expression tree.
+   * retry. Cache results, column headers, partition keys, and tag/fuzzy filters are therefore not
+   * carried into the working statement, so every execution starts from the same parsed input.
+   *
+   * <p>The raw {@code where} tree is intentionally shared with the parser-owned statement. This
+   * analysis path treats it as read-only: expression rewriters return a replacement root (possibly
+   * reusing unchanged nodes), and only the working statement's {@code where} reference is replaced.
+   * Schema predicate parsing also only reads the AST and stores derived filters on the working
+   * statement. A deep expression copy would therefore add per-execution cost without improving
+   * retry isolation.
    */
   protected AbstractQueryDeviceWithCache(final AbstractQueryDeviceWithCache source) {
     super(source.getLocation().orElse(null), source.table, source.where);
