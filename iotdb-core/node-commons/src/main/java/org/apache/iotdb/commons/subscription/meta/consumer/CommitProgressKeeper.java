@@ -190,6 +190,10 @@ public class CommitProgressKeeper {
     sizeBytes[0] = (byte) firstSizeByte;
     dataInputStream.readFully(sizeBytes, 1, sizeBytes.length - 1);
     final int regionSize = ByteBuffer.wrap(sizeBytes).getInt();
+    validateLength(
+        regionSize,
+        dataInputStream.available() / (2 * Integer.BYTES),
+        PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F);
     for (int i = 0; i < regionSize; i++) {
       final byte[] keyLenBytes = new byte[4];
       if (!readFully(dataInputStream, keyLenBytes)) {
@@ -197,6 +201,11 @@ public class CommitProgressKeeper {
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484);
       }
       final int keyLen = ByteBuffer.wrap(keyLenBytes).getInt();
+      final int remainingEntryCount = regionSize - i - 1;
+      validateLength(
+          keyLen,
+          dataInputStream.available() - Integer.BYTES - remainingEntryCount * 2 * Integer.BYTES,
+          PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98);
       final byte[] keyBytes = new byte[keyLen];
       if (!readFully(dataInputStream, keyBytes)) {
         throw new IOException(
@@ -209,12 +218,23 @@ public class CommitProgressKeeper {
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0);
       }
       final int valueLen = ByteBuffer.wrap(valueLenBytes).getInt();
+      validateLength(
+          valueLen,
+          dataInputStream.available() - remainingEntryCount * 2 * Integer.BYTES,
+          PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F);
       final byte[] valueBytes = new byte[valueLen];
       if (!readFully(dataInputStream, valueBytes)) {
         throw new IOException(
             PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521);
       }
       regionProgressMap.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
+    }
+  }
+
+  private static void validateLength(final int value, final int maximum, final String message)
+      throws IOException {
+    if (value < 0 || value > maximum) {
+      throw new IOException(String.format(message, value));
     }
   }
 
@@ -257,18 +277,38 @@ public class CommitProgressKeeper {
       return new HashMap<>();
     }
     final int size = buffer.getInt();
-    final Map<String, ByteBuffer> result = new HashMap<>(size);
+    validateLengthArgument(
+        size,
+        buffer.remaining() / (2 * Integer.BYTES),
+        PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F);
+    final Map<String, ByteBuffer> result = new HashMap<>();
     for (int i = 0; i < size; i++) {
       final int keyLen = buffer.getInt();
+      final int remainingEntryCount = size - i - 1;
+      validateLengthArgument(
+          keyLen,
+          buffer.remaining() - Integer.BYTES - remainingEntryCount * 2 * Integer.BYTES,
+          PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98);
       final byte[] keyBytes = new byte[keyLen];
       buffer.get(keyBytes);
       final String key = new String(keyBytes, StandardCharsets.UTF_8);
       final int valueLen = buffer.getInt();
+      validateLengthArgument(
+          valueLen,
+          buffer.remaining() - remainingEntryCount * 2 * Integer.BYTES,
+          PipeMessages.EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F);
       final byte[] valueBytes = new byte[valueLen];
       buffer.get(valueBytes);
       result.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
     }
     return result;
+  }
+
+  private static void validateLengthArgument(
+      final int value, final int maximum, final String message) {
+    if (value < 0 || value > maximum) {
+      throw new IllegalArgumentException(String.format(message, value));
+    }
   }
 
   private static ByteBuffer copyBuffer(final ByteBuffer buffer) {

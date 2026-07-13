@@ -213,6 +213,87 @@ public class CommitProgressKeeperTest {
   }
 
   @Test
+  public void testSnapshotLoadRejectsNegativeLengths() throws Exception {
+    final Path snapshot = Files.createTempFile("commit-progress-keeper-negative", ".snapshot");
+    try {
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(-1);
+      }
+      assertSnapshotLoadFails(snapshot);
+
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(1);
+        dos.writeInt(-1);
+      }
+      assertSnapshotLoadFails(snapshot);
+
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(1);
+        dos.writeInt(1);
+        dos.writeByte('k');
+        dos.writeInt(-1);
+      }
+      assertSnapshotLoadFails(snapshot);
+    } finally {
+      Files.deleteIfExists(snapshot);
+    }
+  }
+
+  @Test
+  public void testSnapshotLoadRejectsLengthsExceedingRemainingBytes() throws Exception {
+    final Path snapshot = Files.createTempFile("commit-progress-keeper-oversized", ".snapshot");
+    try {
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(Integer.MAX_VALUE);
+      }
+      assertSnapshotLoadFails(snapshot);
+
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(1);
+        dos.writeInt(Integer.MAX_VALUE);
+      }
+      assertSnapshotLoadFails(snapshot);
+
+      try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(snapshot.toFile()))) {
+        dos.writeInt(1);
+        dos.writeInt(0);
+        dos.writeInt(Integer.MAX_VALUE);
+      }
+      assertSnapshotLoadFails(snapshot);
+    } finally {
+      Files.deleteIfExists(snapshot);
+    }
+  }
+
+  @Test
+  public void testRegionProgressMapDeserializationRejectsNegativeLengths() {
+    assertDeserializeRegionProgressFails(ByteBuffer.allocate(Integer.BYTES).putInt(-1).flip());
+    assertDeserializeRegionProgressFails(
+        ByteBuffer.allocate(2 * Integer.BYTES).putInt(1).putInt(-1).flip());
+    assertDeserializeRegionProgressFails(
+        ByteBuffer.allocate(3 * Integer.BYTES + 1)
+            .putInt(1)
+            .putInt(1)
+            .put((byte) 'k')
+            .putInt(-1)
+            .flip());
+  }
+
+  @Test
+  public void testRegionProgressMapDeserializationRejectsLengthsExceedingRemainingBytes() {
+    assertDeserializeRegionProgressFails(
+        ByteBuffer.allocate(Integer.BYTES).putInt(Integer.MAX_VALUE).flip());
+    assertDeserializeRegionProgressFails(
+        ByteBuffer.allocate(2 * Integer.BYTES).putInt(1).putInt(Integer.MAX_VALUE).flip());
+    assertDeserializeRegionProgressFails(
+        ByteBuffer.allocate(3 * Integer.BYTES)
+            .putInt(1)
+            .putInt(0)
+            .putInt(Integer.MAX_VALUE)
+            .flip());
+  }
+
+  @Test
   public void testRegionProgressMapSerializationRoundTrip() throws Exception {
     final String firstKey = CommitProgressKeeper.generateKey("cg", "topicA", "1_1", 3);
     final String secondKey = CommitProgressKeeper.generateKey("cg", "topicB", "1_2", 5);
@@ -232,6 +313,26 @@ public class CommitProgressKeeperTest {
             ByteBuffer.wrap(baos.toByteArray()));
     assertEquals(firstProgress, RegionProgress.deserialize(restored.get(firstKey)));
     assertEquals(secondProgress, RegionProgress.deserialize(restored.get(secondKey)));
+  }
+
+  private static void assertSnapshotLoadFails(final Path snapshot) throws Exception {
+    try (FileInputStream fis = new FileInputStream(snapshot.toFile())) {
+      try {
+        new CommitProgressKeeper().processLoadSnapshot(fis);
+        org.junit.Assert.fail("Expected IOException for invalid snapshot lengths");
+      } catch (final IOException expected) {
+        // expected
+      }
+    }
+  }
+
+  private static void assertDeserializeRegionProgressFails(final ByteBuffer buffer) {
+    try {
+      CommitProgressKeeper.deserializeRegionProgressFromBuffer(buffer);
+      org.junit.Assert.fail("Expected IllegalArgumentException for invalid buffer lengths");
+    } catch (final IllegalArgumentException expected) {
+      // expected
+    }
   }
 
   private static RegionProgress createRegionProgress(
