@@ -86,7 +86,7 @@ public class TsFileEpochManager {
             : Collections.singletonMap(node.getDeviceID(), node.getMeasurements()));
   }
 
-  private Map<IDeviceID, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
+  static Map<IDeviceID, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
       InsertRowsNode insertRowsNode) {
     final Map<IDeviceID, String[]> device2Measurements = new HashMap<>();
     final Map<IDeviceID, Set<String>> device2DistinctMeasurements = new HashMap<>();
