@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.Map;
+
 public interface ITableCache {
 
   void init(final byte[] tableInitializationBytes);
@@ -50,6 +52,8 @@ public interface ITableCache {
   TsTable getTable(final String database, final String tableName);
 
   TsTable getTable(String database, final String tableName, final boolean force);
+
+  Map<String, Map<String, TsTable>> getTableSnapshot();
 
   String tryGetInternColumnName(
       final @Nonnull String database,

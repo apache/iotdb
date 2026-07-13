@@ -40,6 +40,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
@@ -1403,7 +1405,13 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean hasHistoricalWalLag() {
-    return nextExpectedSearchIndex.get() < consensusReqReader.getCurrentSearchIndex();
+    return hasUnreadWalEntriesBehindCursor();
+  }
+
+  private boolean hasUnreadWalEntriesBehindCursor() {
+    final long currentSearchIndex = consensusReqReader.getCurrentSearchIndex();
+    // Local search indexes start at 1; 0 is the empty-WAL sentinel.
+    return currentSearchIndex > 0 && nextExpectedSearchIndex.get() <= currentSearchIndex;
   }
 
   private static boolean hasLocalSearchIndex(final IndexedConsensusRequest request) {
@@ -1420,22 +1428,27 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private void appendRealtimeRequest(
+  private boolean appendRealtimeRequest(
       final IndexedConsensusRequest request,
       final DeliveryBatchState batchState,
+      final long expectedSeekGeneration,
       final int maxTablets,
       final long maxBatchBytes,
       final boolean fromPending) {
     final PreparedEntry preparedEntry = prepareEntry(request);
     if (Objects.isNull(preparedEntry)) {
-      return;
+      return true;
     }
-    appendPreparedEntryViaRealtimeWriter(batchState, preparedEntry, maxTablets, maxBatchBytes);
+    if (!appendPreparedEntryViaRealtimeWriter(
+        batchState, preparedEntry, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
+      return false;
+    }
     if (fromPending) {
       markAcceptedFromPending();
     } else {
       markAcceptedFromWal();
     }
+    return true;
   }
 
   /**
@@ -1495,7 +1508,10 @@ public class ConsensusPrefetchingQueue {
         continue;
       }
 
-      appendRealtimeRequest(request, lingerBatch, maxTablets, maxBatchBytes, true);
+      if (!appendRealtimeRequest(
+          request, lingerBatch, expectedSeekGeneration, maxTablets, maxBatchBytes, true)) {
+        return false;
+      }
       markMaterializedProgress(request);
       processedCount++;
       advanceLocalCursorIfPresent(request);
@@ -1630,7 +1646,10 @@ public class ConsensusPrefetchingQueue {
           continue;
         }
 
-        appendRealtimeRequest(walEntry, batchState, maxTablets, maxBatchBytes, false);
+        if (!appendRealtimeRequest(
+            walEntry, batchState, expectedSeekGeneration, maxTablets, maxBatchBytes, false)) {
+          return false;
+        }
         markMaterializedProgress(walEntry);
         advanceLocalCursorIfPresent(walEntry);
       } catch (final Exception e) {
@@ -1766,10 +1785,6 @@ public class ConsensusPrefetchingQueue {
       maxObservedTimestamp = maxTs;
     }
     final List<Tablet> tablets = converter.convert(insertNode);
-    if (tablets.isEmpty()) {
-      return null;
-    }
-
     return new PreparedEntry(tablets, physicalTime, writerNodeId, localSeq, searchIndex);
   }
 
@@ -1789,10 +1804,6 @@ public class ConsensusPrefetchingQueue {
       final long endSearchIndex,
       final long commitLocalSeq,
       final long expectedSeekGeneration) {
-    if (tablets.isEmpty()) {
-      return true;
-    }
-
     if (seekGeneration.get() != expectedSeekGeneration) {
       LOGGER.debug(
           DataNodePipeMessages
@@ -1810,6 +1821,10 @@ public class ConsensusPrefetchingQueue {
     final WriterProgress writerProgress = commitContext.getWriterProgress();
     commitManager.recordMapping(
         consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (tablets.isEmpty()) {
+      return commitManager.commit(
+          consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    }
 
     // nextOffset <= 0 means all tablets delivered in single batch
     // -tablets.size() indicates total count
@@ -1820,7 +1835,11 @@ public class ConsensusPrefetchingQueue {
 
     final SubscriptionEvent event =
         new SubscriptionEvent(
-            SubscriptionPollResponseType.TABLETS.getType(), payload, commitContext);
+            SubscriptionPollResponseType.TABLETS.getType(),
+            payload,
+            commitContext,
+            SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isTimeSelected(),
+            getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
     prefetchingQueue.add(event);
 
@@ -1835,6 +1854,25 @@ public class ConsensusPrefetchingQueue {
 
     // After enqueuing the data event, control metadata is handled separately from user data.
     return true;
+  }
+
+  private Map<String, Map<String, Boolean>> getTimeSelectedByTable(
+      final String databaseName, final List<Tablet> tablets) {
+    if (Objects.isNull(databaseName) || Objects.isNull(tablets) || tablets.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    final ColumnFilterMatcher matcher =
+        SubscriptionAgent.broker().getColumnFilterMatcher(topicName);
+    final Map<String, Boolean> tableMap = new HashMap<>();
+    for (final Tablet tablet : tablets) {
+      if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
+        tableMap.put(
+            tablet.getTableName(), matcher.isTimeSelected(databaseName, tablet.getTableName()));
+      }
+    }
+    return tableMap.isEmpty()
+        ? Collections.emptyMap()
+        : Collections.singletonMap(databaseName, tableMap);
   }
 
   private SubscriptionCommitContext buildWriterCommitContext(final long localSeq) {
@@ -1876,13 +1914,14 @@ public class ConsensusPrefetchingQueue {
     return estimatedBytes;
   }
 
-  private void appendPreparedEntryViaRealtimeWriter(
+  private boolean appendPreparedEntryViaRealtimeWriter(
       final DeliveryBatchState batchState,
       final PreparedEntry preparedEntry,
+      final long expectedSeekGeneration,
       final int maxTablets,
       final long maxBatchBytes) {
     bufferRealtimeEntry(preparedEntry);
-    drainRealtimeWriters(batchState, maxTablets, maxBatchBytes);
+    return drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes);
   }
 
   private int getRealtimeBufferedEntryCount() {
@@ -1900,7 +1939,9 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes) {
     while (!realtimeEntriesByWriter.isEmpty()) {
       final int bufferedBefore = getRealtimeBufferedEntryCount();
-      drainRealtimeWriters(batchState, maxTablets, maxBatchBytes);
+      if (!drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
+        return false;
+      }
 
       final int bufferedAfter = getRealtimeBufferedEntryCount();
       if (bufferedAfter == 0 || prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
@@ -1941,9 +1982,12 @@ public class ConsensusPrefetchingQueue {
         || writerChanged);
   }
 
-  private void drainRealtimeWriters(
-      final DeliveryBatchState batchState, final int maxTablets, final long maxBatchBytes) {
-    drainWriterEntries(
+  private boolean drainRealtimeWriters(
+      final DeliveryBatchState batchState,
+      final long expectedSeekGeneration,
+      final int maxTablets,
+      final long maxBatchBytes) {
+    return drainWriterEntries(
         batchState,
         this::buildRealtimeWriterFrontiers,
         this::peekRealtimeEntry,
@@ -1952,10 +1996,11 @@ public class ConsensusPrefetchingQueue {
         Integer.MAX_VALUE,
         maxTablets,
         maxBatchBytes,
-        true);
+        true,
+        expectedSeekGeneration);
   }
 
-  private <T extends WriterBufferedEntry> void drainWriterEntries(
+  private <T extends WriterBufferedEntry> boolean drainWriterEntries(
       final DeliveryBatchState batchState,
       final Supplier<PriorityQueue<WriterFrontier>> frontierSupplier,
       final Function<Integer, T> headSupplier,
@@ -1964,33 +2009,62 @@ public class ConsensusPrefetchingQueue {
       final int maxEntries,
       final int maxTablets,
       final long maxBatchBytes,
-      final boolean trackLingerTime) {
+      final boolean trackLingerTime,
+      final long expectedSeekGeneration) {
     while (true) {
       final PriorityQueue<WriterFrontier> frontiers = frontierSupplier.get();
       if (frontiers.isEmpty()) {
-        return;
+        return true;
       }
       final WriterFrontier frontier = frontiers.peek();
       if (Objects.isNull(frontier) || frontier.isBarrier) {
-        return;
+        return true;
       }
       final T writerHead = headSupplier.apply(frontier.writerNodeId);
       if (Objects.isNull(writerHead)) {
-        return;
+        return true;
       }
       if (!releasePredicate.test(writerHead)) {
-        return;
+        return true;
+      }
+
+      if (writerHead.getTablets().isEmpty()) {
+        if (!commitEmptyWriterEntry(batchState, writerHead, expectedSeekGeneration)) {
+          return false;
+        }
+        removeHeadAction.accept(frontier.writerNodeId, writerHead);
+        continue;
       }
 
       final long entryEstimatedBytes = estimateTabletsBytes(writerHead.getTablets());
       if (!canAppendWriterEntry(
           batchState, writerHead, entryEstimatedBytes, maxEntries, maxTablets, maxBatchBytes)) {
-        return;
+        return true;
       }
 
       removeHeadAction.accept(frontier.writerNodeId, writerHead);
       batchState.append(writerHead, entryEstimatedBytes, trackLingerTime);
     }
+  }
+
+  private boolean commitEmptyWriterEntry(
+      final DeliveryBatchState batchState,
+      final WriterBufferedEntry entry,
+      final long expectedSeekGeneration) {
+    if (!batchState.isEmpty() && !flushBatch(batchState, expectedSeekGeneration)) {
+      return false;
+    }
+
+    updateBatchWriterProgress(entry.getPhysicalTime(), entry.getWriterNodeId());
+    final boolean committed =
+        createAndEnqueueEvent(
+            Collections.emptyList(),
+            entry.getSearchIndex(),
+            entry.getSearchIndex(),
+            entry.getLocalSeq(),
+            expectedSeekGeneration);
+    resetBatchWriterProgress();
+    return committed;
   }
 
   private boolean flushBatch(
@@ -3226,8 +3300,7 @@ public class ConsensusPrefetchingQueue {
             + inFlightEvents.size()
             + pendingEntries.size()
             + getRealtimeBufferedEntryCount();
-    final boolean hasUnreadWalEntries =
-        nextExpectedSearchIndex.get() < consensusReqReader.getCurrentSearchIndex();
+    final boolean hasUnreadWalEntries = hasUnreadWalEntriesBehindCursor();
     return queuedLag + (hasUnreadWalEntries ? 1 : 0);
   }
 

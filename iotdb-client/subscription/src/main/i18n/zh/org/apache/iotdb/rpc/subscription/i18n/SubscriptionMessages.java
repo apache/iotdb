@@ -132,6 +132,8 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTREEREADER_TABLE_MODEL_TSFILE_68621ECF = "%s 不支持对表模型 TsFile 调用 openTreeReader()。";
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTABLEREADER_TREE_MODEL_TSFILE_CEC27860 = "%s 不支持对树模型 TsFile 调用 openTableReader()。";
   public static final String EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B = "未知的列 category: ";
+  public static final String EXCEPTION_RESULTSET_COLUMN_INDEX_OUT_OF_BOUND_ARG_2D8CC5A3 =
+      "ResultSet 列索引越界: %d";
   public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "不支持的数据类型 %s。";
   public static final String LOG_SUBSCRIPTIONPUSHCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_741801C2 = "SubscriptionPushConsumer {} 从主题 {} poll 到空消息，耗时 {} 毫秒";
   public static final String LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D = "消费者 listener 消费消息时抛出异常：{}";
