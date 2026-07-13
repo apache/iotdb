@@ -287,6 +287,9 @@ public class LoadCache {
   /**
    * Cache the latest heartbeat sample of a AINode.
    *
+   * <p>The heartbeat handler owns the processing flag and resets it after the whole callback
+   * finishes, so this method must not release the flag early.
+   *
    * @param nodeId the id of the AINode
    * @param sample the latest heartbeat sample
    */
@@ -296,7 +299,6 @@ public class LoadCache {
     nodeCacheMap
         .computeIfAbsent(nodeId, empty -> new AINodeHeartbeatCache(nodeId))
         .cacheHeartbeatSample(sample);
-    Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
   }
 
   public void resetHeartbeatProcessing(int nodeId) {

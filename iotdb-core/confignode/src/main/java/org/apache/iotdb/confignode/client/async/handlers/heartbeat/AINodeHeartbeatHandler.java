@@ -28,11 +28,15 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class AINodeHeartbeatHandler implements AsyncMethodCallback<TAIHeartbeatResp> {
 
   private final int nodeId;
 
   private final LoadManager loadManager;
+
+  private final AtomicBoolean heartbeatProcessingReset = new AtomicBoolean(false);
 
   public AINodeHeartbeatHandler(int nodeId, LoadManager loadManager) {
     this.nodeId = nodeId;
@@ -41,17 +45,31 @@ public class AINodeHeartbeatHandler implements AsyncMethodCallback<TAIHeartbeatR
 
   @Override
   public void onComplete(TAIHeartbeatResp aiHeartbeatResp) {
-    loadManager
-        .getLoadCache()
-        .cacheAINodeHeartbeatSample(nodeId, new NodeHeartbeatSample(aiHeartbeatResp));
+    try {
+      loadManager
+          .getLoadCache()
+          .cacheAINodeHeartbeatSample(nodeId, new NodeHeartbeatSample(aiHeartbeatResp));
+    } finally {
+      resetHeartbeatProcessing();
+    }
   }
 
   @Override
   public void onError(Exception e) {
-    if (ThriftClient.isConnectionBroken(e)) {
-      loadManager.forceUpdateNodeCache(
-          NodeType.AINode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+    try {
+      if (ThriftClient.isConnectionBroken(e)) {
+        loadManager.forceUpdateNodeCache(
+            NodeType.AINode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+      }
+    } finally {
+      resetHeartbeatProcessing();
     }
-    loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
+  }
+
+  /** Release the heartbeat processing flag at most once for this handler. */
+  public void resetHeartbeatProcessing() {
+    if (heartbeatProcessingReset.compareAndSet(false, true)) {
+      loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
+    }
   }
 }

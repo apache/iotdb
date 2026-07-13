@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.timecho.iotdb.commons.commission.obligation.ObligationStatus;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -101,14 +102,16 @@ public class ShowClusterTask implements IConfigTask {
           .getColumnBuilder(6)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
-    if (activateInfo == null || activateInfo.getStatus() == null) {
-      builder.getColumnBuilder(7).appendNull();
-    } else {
-      builder
-          .getColumnBuilder(7)
-          .writeBinary(new Binary(activateInfo.getStatus(), TSFileConfig.STRING_CHARSET));
-    }
+    builder
+        .getColumnBuilder(7)
+        .writeBinary(new Binary(getActivationStatus(activateInfo), TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
+  }
+
+  static String getActivationStatus(TNodeActivateInfo activateInfo) {
+    return activateInfo == null || activateInfo.getStatus() == null
+        ? ObligationStatus.UNKNOWN.toSimpleString()
+        : activateInfo.getStatus();
   }
 
   public static void buildTsBlock(

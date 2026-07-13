@@ -104,13 +104,7 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
-    if (activateInfo == null || activateInfo.getStatus() == null) {
-      builder.getColumnBuilder(13).appendNull();
-    } else {
-      builder
-          .getColumnBuilder(13)
-          .writeBinary(new Binary(activateInfo.getStatus(), TSFileConfig.STRING_CHARSET));
-    }
+    writeActivationStatus(builder, activateInfo);
     builder.declarePosition();
   }
 
@@ -162,13 +156,7 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
-    if (activateInfo == null || activateInfo.getStatus() == null) {
-      builder.getColumnBuilder(13).appendNull();
-    } else {
-      builder
-          .getColumnBuilder(13)
-          .writeBinary(new Binary(activateInfo.getStatus(), TSFileConfig.STRING_CHARSET));
-    }
+    writeActivationStatus(builder, activateInfo);
     builder.declarePosition();
   }
 
@@ -287,14 +275,17 @@ public class ShowClusterDetailsTask implements IConfigTask {
           .getColumnBuilder(12)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
-    if (activateInfo == null || activateInfo.getStatus() == null) {
-      builder.getColumnBuilder(13).appendNull();
-    } else {
-      builder
-          .getColumnBuilder(13)
-          .writeBinary(new Binary(activateInfo.getStatus(), TSFileConfig.STRING_CHARSET));
-    }
+    writeActivationStatus(builder, activateInfo);
     builder.declarePosition();
+  }
+
+  private static void writeActivationStatus(
+      TsBlockBuilder builder, TNodeActivateInfo activateInfo) {
+    builder
+        .getColumnBuilder(13)
+        .writeBinary(
+            new Binary(
+                ShowClusterTask.getActivationStatus(activateInfo), TSFileConfig.STRING_CHARSET));
   }
 
   public static void buildTSBlock(

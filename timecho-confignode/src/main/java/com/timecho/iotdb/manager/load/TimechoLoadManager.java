@@ -19,6 +19,8 @@
 
 package com.timecho.iotdb.manager.load;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -33,6 +35,7 @@ import com.timecho.iotdb.manager.ITimechoManager;
 import com.timecho.iotdb.manager.load.service.TimechoHeartbeatService;
 import com.timecho.iotdb.manager.regulate.RegulateManager;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -108,12 +111,24 @@ public class TimechoLoadManager extends LoadManager {
                         shouldRefreshConfigNodeActivationStatusPlaceholder(cache)
                             ? createConfigNodeActivationStatusPlaceholder()
                             : cache));
-    // Remove if present
-    for (Integer cnId : loadCache.getActivationStatusCacheMap().keySet()) {
-      if (!configNodeIdSet.contains(cnId)) {
-        loadCache.getActivationStatusCacheMap().remove(cnId);
-      }
-    }
+    removeUnregisteredActivationStatusCaches(
+        loadCache.getActivationStatusCacheMap(),
+        configNodeIdSet,
+        configManager.getNodeManager().getRegisteredDataNodes(),
+        configManager.getNodeManager().getRegisteredAINodes());
+  }
+
+  static void removeUnregisteredActivationStatusCaches(
+      Map<Integer, ActivationStatusCache> activationStatusCacheMap,
+      Set<Integer> configNodeIdSet,
+      Iterable<TDataNodeConfiguration> registeredDataNodes,
+      Iterable<TAINodeConfiguration> registeredAINodes) {
+    Set<Integer> registeredNodeIdSet = new HashSet<>(configNodeIdSet);
+    registeredDataNodes.forEach(
+        dataNode -> registeredNodeIdSet.add(dataNode.getLocation().getDataNodeId()));
+    registeredAINodes.forEach(
+        aiNode -> registeredNodeIdSet.add(aiNode.getLocation().getAiNodeId()));
+    activationStatusCacheMap.keySet().removeIf(id -> !registeredNodeIdSet.contains(id));
   }
 
   private boolean shouldRefreshConfigNodeActivationStatusPlaceholder(

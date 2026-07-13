@@ -311,19 +311,32 @@ public class HeartbeatService {
   /**
    * Send heartbeat requests to all the Registered AINodes.
    *
-   * @param registeredAINodes DataNodes that registered in cluster
+   * @param registeredAINodes AINodes that registered in cluster
    */
-  private void pingRegisteredAINodes(
+  protected void pingRegisteredAINodes(
       TAIHeartbeatReq heartbeatReq, List<TAINodeConfiguration> registeredAINodes) {
     // Send heartbeat requests
     for (TAINodeConfiguration aiNodeInfo : registeredAINodes) {
+      int aiNodeId = aiNodeInfo.getLocation().getAiNodeId();
+      if (loadCache.checkAndSetHeartbeatProcessing(aiNodeId)) {
+        // Skip the AINode that is processing heartbeat
+        continue;
+      }
       AINodeHeartbeatHandler handler =
-          new AINodeHeartbeatHandler(
-              aiNodeInfo.getLocation().getAiNodeId(), configManager.getLoadManager());
-      AsyncAINodeHeartbeatClientPool.getInstance()
-          .getAINodeHeartBeat(
-              aiNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+          new AINodeHeartbeatHandler(aiNodeId, configManager.getLoadManager());
+      try {
+        sendAINodeHeartbeat(aiNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+      } catch (RuntimeException | Error e) {
+        handler.resetHeartbeatProcessing();
+        throw e;
+      }
     }
+  }
+
+  protected void sendAINodeHeartbeat(
+      TEndPoint endPoint, TAIHeartbeatReq heartbeatReq, AINodeHeartbeatHandler handler) {
+    AsyncAINodeHeartbeatClientPool.getInstance()
+        .getAINodeHeartBeat(endPoint, heartbeatReq, handler);
   }
 
   private ConsensusManager getConsensusManager() {

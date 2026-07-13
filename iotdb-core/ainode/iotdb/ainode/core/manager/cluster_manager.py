@@ -18,16 +18,23 @@
 import psutil
 
 from iotdb.ainode.core.config import AINodeDescriptor
+from iotdb.ainode.core.log import Logger
 from iotdb.thrift.ainode.ttypes import TAIHeartbeatReq, TAIHeartbeatResp
 from iotdb.thrift.common.ttypes import TLoadSample
 
 AIN_CONFIG = AINodeDescriptor().get_config()
+logger = Logger()
 
 
 class ClusterManager:
     @staticmethod
     def get_heart_beat(req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-        AIN_CONFIG.set_activated(req.activated)
+        if req.activated is None:
+            logger.warning(
+                "AINode received a heartbeat without activation status; retaining the current activation status."
+            )
+        else:
+            AIN_CONFIG.set_activated(req.activated)
         if req.needSamplingLoad:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory_percent = psutil.virtual_memory().percent
