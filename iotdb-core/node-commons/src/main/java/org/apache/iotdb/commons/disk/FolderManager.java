@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
@@ -124,7 +125,9 @@ public class FolderManager {
 
   private void changeToReadOnlyIfDiskFull(DiskSpaceInsufficientException e) {
     if (!hasFolderWithAvailableDiskSpace()) {
-      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+      if (LoggerPeriodicalLogReducer.shouldLog(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY)) {
+        logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+      }
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
     } else {

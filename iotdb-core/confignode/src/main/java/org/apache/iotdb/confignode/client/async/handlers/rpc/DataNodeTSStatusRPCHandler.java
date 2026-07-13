@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -91,6 +92,9 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
   }
 
   private void logFailure(final String format, final Object... args) {
+    if (!LoggerPeriodicalLogReducer.shouldLog(format, args)) {
+      return;
+    }
     if (requestType == CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME) {
       LOGGER.warn(format, args);
     } else {

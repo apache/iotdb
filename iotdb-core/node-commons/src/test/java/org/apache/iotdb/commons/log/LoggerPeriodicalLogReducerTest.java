@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.resource.log;
+package org.apache.iotdb.commons.log;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -28,20 +28,20 @@ import org.junit.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipePeriodicalLogReducerTest {
+public class LoggerPeriodicalLogReducerTest {
 
   @After
   public void tearDown() {
-    PipePeriodicalLogReducer.setMemoryResizeFunction(null);
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(null);
   }
 
   @Test
   public void testLogReducesDuplicateMessages() {
     final AtomicInteger logCount = new AtomicInteger(0);
-    final String message = "PipePeriodicalLogReducerTest-" + System.nanoTime();
+    final String message = "LoggerPeriodicalLogReducerTest-" + System.nanoTime();
 
-    Assert.assertTrue(PipePeriodicalLogReducer.log(log -> logCount.incrementAndGet(), message));
-    Assert.assertFalse(PipePeriodicalLogReducer.log(log -> logCount.incrementAndGet(), message));
+    Assert.assertTrue(LoggerPeriodicalLogReducer.log(log -> logCount.incrementAndGet(), message));
+    Assert.assertFalse(LoggerPeriodicalLogReducer.log(log -> logCount.incrementAndGet(), message));
     Assert.assertEquals(1, logCount.get());
   }
 
@@ -50,16 +50,17 @@ public class PipePeriodicalLogReducerTest {
     final AtomicLong requestedSizeInBytes = new AtomicLong(-1);
     final long allocatedSizeInBytes = 1024;
 
-    PipePeriodicalLogReducer.setMemoryResizeFunction(
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(
         sizeInBytes -> {
           requestedSizeInBytes.set(sizeInBytes);
           return allocatedSizeInBytes;
         });
 
     Assert.assertEquals(
-        PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes(), requestedSizeInBytes.get());
+        CommonDescriptor.getInstance().getConfig().getLoggerCacheMaxSizeInBytes(),
+        requestedSizeInBytes.get());
     Assert.assertEquals(
         allocatedSizeInBytes,
-        PipePeriodicalLogReducer.LOGGER_CACHE.policy().eviction().get().getMaximum());
+        LoggerPeriodicalLogReducer.LOGGER_CACHE.policy().eviction().get().getMaximum());
   }
 }

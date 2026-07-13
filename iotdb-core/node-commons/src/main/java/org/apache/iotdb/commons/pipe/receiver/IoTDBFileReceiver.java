@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -181,13 +182,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       try {
         receiverFileBaseDir = getReceiverFileBaseDir();
         if (Objects.isNull(receiverFileBaseDir)) {
-          PipeLogger.log(
-              LOGGER::warn, PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL, receiverId.get());
+          if (LoggerPeriodicalLogReducer.shouldLog(PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL)) {
+            PipeLogger.log(
+                LOGGER::warn, PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL, receiverId.get());
+          }
           return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
         }
       } catch (Exception e) {
-        PipeLogger.log(
-            LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL, receiverId.get());
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL
+                + e.getClass().getName()
+                + e.getMessage())) {
+          PipeLogger.log(
+              LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL, receiverId.get());
+        }
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
 

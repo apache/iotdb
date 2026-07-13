@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.resource.log;
 
-import org.slf4j.helpers.MessageFormatter;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -28,11 +28,12 @@ import java.util.function.Consumer;
 public class PipeLogger {
   private static PipePeriodicalLogger logger =
       (loggerFunction, rawMessage, formatter) ->
-          loggerFunction.accept(formatMessage(rawMessage, formatter));
+          loggerFunction.accept(LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter));
 
   public static void log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
-    logger.log(loggerFunction, "%s", formatMessage(rawMessage, formatter));
+    logger.log(
+        loggerFunction, "%s", LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter));
   }
 
   public static void log(
@@ -42,7 +43,10 @@ public class PipeLogger {
       final Object... formatter) {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     throwable.printStackTrace(new PrintStream(out));
-    logger.log(loggerFunction, "%s", formatMessage(rawMessage, formatter) + "\n" + out);
+    logger.log(
+        loggerFunction,
+        "%s",
+        LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter) + "\n" + out);
   }
 
   public static void setLogger(final PipePeriodicalLogger logger) {
@@ -51,16 +55,6 @@ public class PipeLogger {
 
   private PipeLogger() {
     // static
-  }
-
-  static String formatMessage(final String rawMessage, final Object... formatter) {
-    if (formatter == null || formatter.length == 0) {
-      return rawMessage;
-    }
-    if (rawMessage.contains("{}")) {
-      return MessageFormatter.arrayFormat(rawMessage, formatter).getMessage();
-    }
-    return String.format(rawMessage, formatter);
   }
 
   @FunctionalInterface
