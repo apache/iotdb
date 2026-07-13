@@ -159,6 +159,11 @@ struct TDataNodeRestartResp {
   4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
+struct TDataNodeLeaseRecoveryResp{
+ 1: required common.TSStatus status
+ 2: optional binary tableInfo
+}
+
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
 }
@@ -1343,6 +1348,11 @@ service IConfigNodeRPCService {
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
 
+  /**
+  * get all metadate cache when the heartbeart renew the lease
+  */
+  TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery();
+
    // ======================================================
    // AINode
    // ======================================================
@@ -2095,7 +2105,7 @@ service IConfigNodeRPCService {
 
   TDescTable4InformationSchemaResp descTables4InformationSchema()
 
-  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap, byte tableNodeStatus)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 

@@ -192,6 +192,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -1902,7 +1903,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
-          .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
+          .invalidateAndPreDelete(
+              PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
@@ -2290,6 +2292,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req) throws TException {
     TDataNodeHeartbeatResp resp = new TDataNodeHeartbeatResp();
 
+    // Renew the metadata lease: receiving a ConfigNode heartbeat means this DataNode is still in
+    // contact with the cluster and may keep trusting its ConfigNode-pushed metadata caches.
+    MetadataLeaseManager.getInstance().triggerCheckWithHeartBeat();
+
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
       // Always get logical clock before judging leader
@@ -2337,6 +2343,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
+    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
+    // treat
+    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());
     }

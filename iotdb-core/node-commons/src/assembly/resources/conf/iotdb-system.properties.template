@@ -752,6 +752,23 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# A DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, templates, TTL,
+# permissions, ...) if it has not received a ConfigNode heartbeat within this duration, so a
+# partitioned DataNode stops trusting stale caches. Kept aligned with
+# failure_detector_fixed_threshold_in_ms so a DataNode fences itself around the same time the
+# cluster would consider it down. The ConfigNode also uses this to decide how long it must wait
+# before treating an unreachable DataNode as safely fenced.
+# effectiveMode: restart
+# Datatype: long
+metadata_lease_fence_ms=20000
+
+# Interval at which a DataNode checks whether its metadata lease has expired and self-fences local
+# metadata caches. Keep this value smaller than the ConfigNode-side safe-fence wait so the DataNode
+# can finish self-isolation before the ConfigNode treats it as fenced.
+# effectiveMode: restart
+# Datatype: long
+check_dn_lease_status_interval_ms=500
+
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
@@ -808,7 +825,8 @@ partition_table_recover_max_read_mb_per_sec=10
 datanode_memory_proportion=3:3:1:1:1:1
 
 # ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
-# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
 # effectiveMode: restart
 confignode_memory_proportion=1:9
 
@@ -1730,11 +1748,19 @@ data_region_iot_max_pending_batches_num = 5
 # Datatype: double
 data_region_iot_max_memory_ratio_for_queue = 0.6
 
-# The maximum transit size in byte per second for region migration
+# The maximum size in byte per second for region migration transfer.
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
+
+# The maximum estimated remove cost in byte per second for region migration file cleanup.
+# Each regular file remove costs 64 KiB, and each directory remove costs 4 KiB.
+# The default value equals about 256 regular file removes per second.
+# values less than or equal to 0 means no limit
+# effectiveMode: hot_reload
+# Datatype: long
+region_migration_file_remove_speed_limit_bytes_per_second = 16777216
 
 # The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
 # IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is

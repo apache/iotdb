@@ -929,7 +929,7 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       PipeLogger.log(
           LOGGER::warn,
-          "Session {}: Failed to check authority for statement {}, username = {}, response = {}.",
+          DataNodePipeMessages.SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
           session.getClientAddress() + ":" + session.getClientPort(),
           statement.getType().name(),
           session.getUsername(),

@@ -477,6 +477,13 @@ public class CommonConfig {
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
+  // The DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, template,
+  // TTL, permission, ...) if it has not received a ConfigNode heartbeat within this duration. Kept
+  // aligned with the failure detector threshold so a partitioned DataNode stops trusting stale
+  // caches around the same time the cluster would consider it dead. Also used by the ConfigNode to
+  // derive how long it must wait before treating an unreachable DataNode as safely fenced.
+  private volatile long metadataLeaseFenceMs = 20_000;
+
   private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
   // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
   // the queries
@@ -2940,6 +2947,14 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
+  }
+
+  public long getMetadataLeaseFenceMs() {
+    return metadataLeaseFenceMs;
+  }
+
+  public void setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    this.metadataLeaseFenceMs = metadataLeaseFenceMs;
   }
 
   public int getArenaNum() {

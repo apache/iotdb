@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -1189,6 +1190,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
+  public TSStatus rollbackPreDeleteTable(final RollbackPreDeleteTablePlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.rollbackPreDeleteTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+  }
+
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     return executeWithLock(
         () ->
@@ -1345,7 +1353,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               database2Tables.getKey(),
               tableModelMTree.getSpecificTablesUnderSpecificDatabase(
                   getQualifiedDatabasePartialPath(database2Tables.getKey()),
-                  database2Tables.getValue()));
+                  database2Tables.getValue(),
+                  plan.getTableNodeStatusSet()));
         } catch (final DatabaseNotSetException ignore) {
           // continue
         }
@@ -1449,7 +1458,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllPreCreateTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getAllPreCreateTables();
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_CREATE);
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreDeleteTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_DELETE);
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);

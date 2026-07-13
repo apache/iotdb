@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -98,18 +97,8 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   }
 
   private void initPipePeriodicalLogReducer() {
-    final IMemoryBlock pipeLogReducerMemoryBlock = PipeConfigNodeResourceManager.logReducerMemory();
     PipePeriodicalLogReducer.setMemoryResizeFunction(
-        targetSizeInBytes -> {
-          final long nonNegativeTargetSizeInBytes = Math.max(0, targetSizeInBytes);
-          final long oldSizeInBytes = pipeLogReducerMemoryBlock.getUsedMemoryInBytes();
-          if (oldSizeInBytes < nonNegativeTargetSizeInBytes) {
-            pipeLogReducerMemoryBlock.allocate(nonNegativeTargetSizeInBytes - oldSizeInBytes);
-          } else if (oldSizeInBytes > nonNegativeTargetSizeInBytes) {
-            pipeLogReducerMemoryBlock.release(oldSizeInBytes - nonNegativeTargetSizeInBytes);
-          }
-          return pipeLogReducerMemoryBlock.getUsedMemoryInBytes();
-        });
+        PipeConfigNodeResourceManager.memory()::resizeLogReducerMemory);
     PipeLogger.setLogger(PipePeriodicalLogReducer::log);
   }
 

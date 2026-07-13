@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -36,11 +38,15 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletCon
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -70,12 +76,19 @@ public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
 
+  private static final ColumnFilterMatcher EMPTY_COLUMN_FILTER_MATCHER =
+      ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
+
   /** Subscription brokers grouped by consumer group. */
   private final Map<String, List<ISubscriptionBroker>> consumerGroupIdToBrokers =
       new ConcurrentHashMap<>();
 
   private final Cache<Integer> prefetchingQueueCount =
       new Cache<>(this::getPrefetchingQueueCountInternal);
+
+  private final Map<String, ColumnFilterMatcher> topicNameToColumnFilterMatcher =
+      new ConcurrentHashMap<>();
+  private final ColumnFilterBinder columnFilterBinder = new ColumnFilterBinder();
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -650,6 +663,101 @@ public class SubscriptionBrokerAgent {
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
       broker.refreshConsensusQueueOrderMode(topicName, orderMode);
     }
+  }
+
+  public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
+    final ColumnFilterMatcher matcher;
+    try {
+      final Map<String, Map<String, TsTable>> bindingTables =
+          getColumnFilterBindingTables(topicConfig);
+      if (Objects.isNull(bindingTables)) {
+        topicNameToColumnFilterMatcher.remove(topicName);
+        LOGGER.info(
+            DataNodeMiscMessages.SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE, topicName);
+        return;
+      }
+      matcher =
+          ColumnFilterMatcher.fromBoundColumnFilter(
+              columnFilterBinder.bind(topicConfig, bindingTables));
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
+      topicNameToColumnFilterMatcher.put(topicName, EMPTY_COLUMN_FILTER_MATCHER);
+      return;
+    }
+    topicNameToColumnFilterMatcher.put(topicName, matcher);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS, topicName);
+  }
+
+  public ColumnFilterMatcher getColumnFilterMatcher(final String topicName) {
+    final ColumnFilterMatcher matcher = topicNameToColumnFilterMatcher.get(topicName);
+    if (Objects.nonNull(matcher)) {
+      return matcher;
+    }
+
+    final TopicConfig topicConfig =
+        SubscriptionAgent.topic().getTopicConfigs(Collections.singleton(topicName)).get(topicName);
+    if (Objects.isNull(topicConfig)) {
+      return ColumnFilterMatcher.matchAll();
+    }
+
+    try {
+      refreshColumnFilter(topicName, topicConfig);
+      return topicNameToColumnFilterMatcher.getOrDefault(
+          topicName, getDefaultColumnFilterMatcher(topicConfig));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodeMiscMessages.SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
+      return EMPTY_COLUMN_FILTER_MATCHER;
+    }
+  }
+
+  private static ColumnFilterMatcher getDefaultColumnFilterMatcher(final TopicConfig topicConfig) {
+    return Objects.nonNull(topicConfig)
+            && topicConfig.isTableTopic()
+            && !topicConfig.isColumnFilterTrivial()
+        ? EMPTY_COLUMN_FILTER_MATCHER
+        : ColumnFilterMatcher.matchAll();
+  }
+
+  private static Map<String, Map<String, TsTable>> getColumnFilterBindingTables(
+      final TopicConfig topicConfig) {
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isColumnFilterTrivial()) {
+      return Collections.emptyMap();
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return DataNodeTableCache.getInstance().getTableSnapshot();
+    }
+
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    return Objects.isNull(table)
+        ? null
+        : Collections.singletonMap(database, Collections.singletonMap(tableName, table));
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
+  }
+
+  public void dropColumnFilter(final String topicName) {
+    topicNameToColumnFilterMatcher.remove(topicName);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_COLUMN_FILTER, topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(

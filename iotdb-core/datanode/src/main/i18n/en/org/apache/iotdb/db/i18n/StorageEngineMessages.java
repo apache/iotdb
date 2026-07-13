@@ -538,11 +538,14 @@ public final class StorageEngineMessages {
   public static final String FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER = "Failed to count active listening dirs file number.";
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active load metric collector periodical jobs registered";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "Database name must not be empty.";
+  public static final String USER_NAME_MUST_NOT_BE_EMPTY = "User name must not be empty.";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "Error occurred when executing active load periodical job.";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active load periodical jobs executor is started successfully.";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active load periodical jobs executor is stopped successfully.";
   public static final String ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE =
       "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to temporary unavailability, will retry later. Status: {}";
+  public static final String USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST =
+      "The user in the active load path does not exist";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "Error occurred during moving file {} to fail directory.";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "Failed to count failed files in fail directory.";
 

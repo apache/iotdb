@@ -29,6 +29,7 @@ import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.query.dataset.AbstractResultSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.query.dataset.ResultSetMetadata;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -43,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -56,6 +58,18 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
   private final List<ResultSet> resultSetView;
 
   public SubscriptionRecordHandler(final Map<String, List<Tablet>> tablets) {
+    this(tablets, true);
+  }
+
+  public SubscriptionRecordHandler(
+      final Map<String, List<Tablet>> tablets, final boolean timeSelected) {
+    this(tablets, timeSelected, Collections.emptyMap());
+  }
+
+  public SubscriptionRecordHandler(
+      final Map<String, List<Tablet>> tablets,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     final List<SubscriptionResultSet> resultSets = new ArrayList<>();
     for (final Map.Entry<String, List<Tablet>> entry : tablets.entrySet()) {
       final String databaseName = entry.getKey();
@@ -67,7 +81,11 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
         if (Objects.isNull(tablet)) {
           continue;
         }
-        resultSets.add(new SubscriptionResultSet(tablet, databaseName));
+        resultSets.add(
+            new SubscriptionResultSet(
+                tablet,
+                databaseName,
+                resolveTimeSelected(timeSelectedByTable, timeSelected, databaseName, tablet)));
       }
     }
     this.resultSets = Collections.unmodifiableList(resultSets);
@@ -90,11 +108,42 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     resultSets.forEach(SubscriptionResultSet::removeUserData);
   }
 
+  private static boolean resolveTimeSelected(
+      final Map<String, Map<String, Boolean>> timeSelectedByTable,
+      final boolean defaultTimeSelected,
+      final String databaseName,
+      final Tablet tablet) {
+    if (Objects.isNull(timeSelectedByTable) || timeSelectedByTable.isEmpty()) {
+      return defaultTimeSelected;
+    }
+    if (Objects.isNull(tablet)
+        || Objects.isNull(databaseName)
+        || Objects.isNull(tablet.getTableName())) {
+      return defaultTimeSelected;
+    }
+
+    final Map<String, Boolean> tableMap =
+        timeSelectedByTable.get(databaseName.trim().toLowerCase(Locale.ROOT));
+    if (Objects.isNull(tableMap)) {
+      return defaultTimeSelected;
+    }
+
+    final Boolean tableTimeSelected =
+        tableMap.get(tablet.getTableName().trim().toLowerCase(Locale.ROOT));
+    return Objects.nonNull(tableTimeSelected)
+        ? Boolean.TRUE.equals(tableTimeSelected)
+        : defaultTimeSelected;
+  }
+
   public static class SubscriptionResultSet extends AbstractResultSet {
 
     private Tablet tablet;
 
     @Nullable private final String databaseName;
+
+    private final boolean timeSelected;
+
+    private final int visibleColumnCount;
 
     private final List<RowPosition> sortedRowPositions;
 
@@ -104,10 +153,21 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     private volatile boolean userDataRemoved = false;
 
-    private SubscriptionResultSet(final Tablet tablet, @Nullable final String databaseName) {
+    private SubscriptionResultSet(
+        final Tablet tablet, @Nullable final String databaseName, final boolean timeSelected) {
       super(generateColumnNames(tablet, databaseName), generateColumnTypes(tablet));
       this.tablet = tablet;
       this.databaseName = databaseName;
+      this.timeSelected = timeSelected;
+      this.visibleColumnCount = tablet.getSchemas().size() + (shouldExposeTime() ? 1 : 0);
+      if (!shouldExposeTime()) {
+        resultSetMetadata = new SubscriptionResultSetMetadata(tablet);
+        columnNameToColumnIndexMap.clear();
+        final List<IMeasurementSchema> schemas = tablet.getSchemas();
+        for (int i = 0; i < schemas.size(); ++i) {
+          columnNameToColumnIndexMap.put(schemas.get(i).getMeasurementName(), i + 1);
+        }
+      }
       this.sortedRowPositions = generateSortedRowPositions(tablet);
     }
 
@@ -135,24 +195,14 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
       return columnCategoryList =
           Stream.concat(
-                  Stream.of(ColumnCategory.TIME),
+                  shouldExposeTime() ? Stream.of(ColumnCategory.TIME) : Stream.empty(),
                   tablet.getColumnTypes().stream()
-                      .map(
-                          columnCategory -> {
-                            switch (columnCategory) {
-                              case FIELD:
-                                return ColumnCategory.FIELD;
-                              case TAG:
-                                return ColumnCategory.TAG;
-                              case ATTRIBUTE:
-                                return ColumnCategory.ATTRIBUTE;
-                              default:
-                                throw new IllegalArgumentException(
-                                    SubscriptionMessages.EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B
-                                        + columnCategory);
-                            }
-                          }))
+                      .map(SubscriptionResultSet::convertColumnCategory))
               .collect(Collectors.toList());
+    }
+
+    public boolean isTimeSelected() {
+      return timeSelected;
     }
 
     public Tablet getTablet() {
@@ -172,7 +222,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     public int getColumnCount() {
       ensureUserDataAvailable();
-      return tablet.getSchemas().size() + 1;
+      return visibleColumnCount;
     }
 
     public List<String> getColumnNames() {
@@ -315,9 +365,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
       final BitMap[] bitMaps = tablet.getBitMaps();
       for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
         final Field field;
-        if (bitMaps != null
-            && bitMaps[columnIndex] != null
-            && bitMaps[columnIndex].isMarked(rowPosition)) {
+        if (isNullValue(tablet.getValues(), bitMaps, columnIndex, rowPosition)) {
           field = new Field(null);
         } else {
           final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
@@ -338,9 +386,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
       final BitMap[] bitMaps = currentTablet.getBitMaps();
       for (int columnIndex = 0; columnIndex < currentTablet.getSchemas().size(); ++columnIndex) {
-        if (bitMaps != null
-            && bitMaps[columnIndex] != null
-            && bitMaps[columnIndex].isMarked(currentRowIndex)) {
+        if (isNullValue(currentTablet.getValues(), bitMaps, columnIndex, currentRowIndex)) {
           continue;
         }
 
@@ -383,6 +429,52 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
         }
       }
       return record;
+    }
+
+    private static boolean isNullValue(
+        final Object[] values, final BitMap[] bitMaps, final int columnIndex, final int rowIndex) {
+      if (Objects.isNull(values)
+          || columnIndex >= values.length
+          || Objects.isNull(values[columnIndex])) {
+        return true;
+      }
+      return bitMaps != null
+          && columnIndex < bitMaps.length
+          && bitMaps[columnIndex] != null
+          && bitMaps[columnIndex].isMarked(rowIndex);
+    }
+
+    @Override
+    protected Field getField(final int index) {
+      if (shouldExposeTime()) {
+        return super.getField(index);
+      }
+      if (index <= 0 || index > visibleColumnCount) {
+        throw new IndexOutOfBoundsException(
+            String.format(
+                SubscriptionMessages.EXCEPTION_RESULTSET_COLUMN_INDEX_OUT_OF_BOUND_ARG_2D8CC5A3,
+                index));
+      }
+      return currentRow.getField(index - 1);
+    }
+
+    private boolean shouldExposeTime() {
+      return !isTableData() || timeSelected;
+    }
+
+    private static ColumnCategory convertColumnCategory(
+        final org.apache.tsfile.enums.ColumnCategory columnCategory) {
+      switch (columnCategory) {
+        case FIELD:
+          return ColumnCategory.FIELD;
+        case TAG:
+          return ColumnCategory.TAG;
+        case ATTRIBUTE:
+          return ColumnCategory.ATTRIBUTE;
+        default:
+          throw new IllegalArgumentException(
+              SubscriptionMessages.EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B + columnCategory);
+      }
     }
 
     private static Field generateFieldFromTabletValue(
@@ -429,6 +521,25 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
       private RowPosition(final long timestamp, final int rowIndex) {
         this.timestamp = timestamp;
         this.rowIndex = rowIndex;
+      }
+    }
+
+    private static class SubscriptionResultSetMetadata implements ResultSetMetadata {
+
+      private final List<IMeasurementSchema> schemas;
+
+      private SubscriptionResultSetMetadata(final Tablet tablet) {
+        this.schemas = tablet.getSchemas();
+      }
+
+      @Override
+      public String getColumnName(final int index) {
+        return schemas.get(index - 1).getMeasurementName();
+      }
+
+      @Override
+      public TSDataType getColumnType(final int index) {
+        return schemas.get(index - 1).getType();
       }
     }
   }

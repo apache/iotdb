@@ -49,6 +49,17 @@ public final class ManagerMessages {
       "[CreateRegionGroups] 开始创建以下 RegionGroup：";
   public static final String CREATE_DATAPARTITION_FAILED_BECAUSE =
       "创建 DataPartition 失败，原因：";
+  public static final String
+      DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED =
+          "DataPartitionTableIntegrityCheckProcedure 已提交。";
+  public static final String
+      LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES =
+          "获取或创建数据库的数据分区时缺少 %d/%d 个 DataPartition 分配结果，数据库：%s";
+  public static final String NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE =
+      "没有正在运行的 DataPartitionTable 完整性检查流程";
+  public static final String
+      LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES =
+          "获取或创建数据库的模式分区时缺少 %d/%d 个 SchemaPartition 分配结果，数据库：%s";
   public static final String CREATE_SCHEMAPARTITION_FAILED_BECAUSE =
       "创建 SchemaPartition 失败，原因：";
   public static final String DATABASE_DOESN_T_EXIST = "Database: {} 不存在";
@@ -275,6 +286,8 @@ public final class ManagerMessages {
       "LoadStatistics 服务已成功停止。";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
+  public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
+      "提交 RegionMigrateProcedure 失败，因为 RegionGroup：%s 不存在";
   public static final String MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO =
       "反序列化 service info 时 CRC32 码不匹配。";
   public static final String NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE =
@@ -352,6 +365,10 @@ public final class ManagerMessages {
       "Receiver id = {}: 执行计划 {} 时遇到失败状态：{}";
   public static final String RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN =
       "Receiver id = {}: 执行计划 {} 时权限检查失败：{}";
+  public static final String UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE =
+      "ConfigNode 上不支持的 PipeRequestType %s。";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST =
+      "处理 pipe transfer 请求时遇到异常。根因：%s";
   public static final String RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS =
       "Receiver id = {}: ConfigNode 上不支持的 PipeRequestType，响应状态 = {}。";
   public static final String RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY =

@@ -22,7 +22,10 @@ package org.apache.iotdb.db.subscription.event.batch;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -30,11 +33,13 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -51,7 +56,9 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
-    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
+    this.batch =
+        new PipeTabletEventTsFileBatch(
+            maxDelayInMs, maxBatchSizeInBytes, this::pruneTableModelTablet);
   }
 
   @Override
@@ -93,11 +100,18 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
     if (batch.isEmpty()) {
-      return null;
+      enrichedEvents.clear();
+      return Collections.emptyList();
     }
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
+    if (dbTsFilePairs.isEmpty()) {
+      batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
+      batch.onSuccess();
+      enrichedEvents.clear();
+      return Collections.emptyList();
+    }
     final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     for (final Pair<String, File> pair : dbTsFilePairs) {
@@ -115,6 +129,12 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected boolean shouldEmit() {
-    return batch.shouldEmit();
+    return (!enrichedEvents.isEmpty() && batch.isEmpty()) || batch.shouldEmit();
+  }
+
+  private Tablet pruneTableModelTablet(final String databaseName, final Tablet tablet) {
+    final ColumnFilterMatcher matcher =
+        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+    return TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, matcher);
   }
 }

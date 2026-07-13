@@ -66,7 +66,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
 
   private long timeoutMS;
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();

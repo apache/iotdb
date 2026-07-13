@@ -260,8 +260,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -300,6 +303,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {
 
   public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+
+  private static final ColumnFilterParser COLUMN_FILTER_PARSER = new ColumnFilterParser();
 
   private final IClientSession clientSession;
 
@@ -1476,6 +1481,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     // Inject table model into the topic attributes
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    validateAndNormalizeColumnFilter(node.getTopicAttributes());
 
     return new CreateTopicTask(node);
   }
@@ -1487,8 +1493,43 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    validateAndNormalizeColumnFilter(node.getTopicAttributes());
 
     return new AlterTopicTask(node);
+  }
+
+  private static void validateAndNormalizeColumnFilter(final Map<String, String> topicAttributes) {
+    String columnFilterKey = null;
+    String columnFilter = null;
+    boolean hasColumnFilter = false;
+    for (final Map.Entry<String, String> entry : topicAttributes.entrySet()) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(entry.getKey())) {
+        if (hasColumnFilter) {
+          throw new SemanticException(
+              String.format(
+                  "Failed to create or alter topic, duplicate %s attributes are not allowed",
+                  TopicConstant.COLUMN_FILTER_KEY));
+        }
+        hasColumnFilter = true;
+        columnFilterKey = entry.getKey();
+        columnFilter = entry.getValue();
+      }
+    }
+
+    if (!hasColumnFilter) {
+      return;
+    }
+
+    if (!TopicConstant.COLUMN_FILTER_KEY.equals(columnFilterKey)) {
+      topicAttributes.remove(columnFilterKey);
+      topicAttributes.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+    }
+
+    try {
+      COLUMN_FILTER_PARSER.parseAndValidate(columnFilter);
+    } catch (final SubscriptionException e) {
+      throw new SemanticException(e.getMessage());
+    }
   }
 
   @Override

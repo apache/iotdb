@@ -70,7 +70,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private long firstExecutionTime;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public CreateCQProcedure(ScheduledExecutorService executor) {
     super();
