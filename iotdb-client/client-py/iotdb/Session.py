@@ -101,6 +101,10 @@ def _is_wildcard_address(host):
     normalized_host = host
     if normalized_host.startswith("[") and normalized_host.endswith("]"):
         normalized_host = normalized_host[1:-1]
+    if normalized_host == "0.0.0.0":
+        return True
+    if ":" not in normalized_host:
+        return False
     try:
         return ipaddress.ip_address(normalized_host).is_unspecified
     except ValueError:

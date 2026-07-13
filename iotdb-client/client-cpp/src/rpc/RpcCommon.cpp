@@ -218,21 +218,20 @@ bool UrlUtils::isWildcardAddress(const string& host) {
     return false;
   }
 
-  string normalizedHost = host;
-  if (normalizedHost.size() >= 2 && normalizedHost.front() == '[' && normalizedHost.back() == ']') {
-    normalizedHost = normalizedHost.substr(1, normalizedHost.size() - 2);
-  }
-
-  if (normalizedHost == "0.0.0.0") {
+  const bool bracketed = host.size() >= 2 && host.front() == '[' && host.back() == ']';
+  const size_t begin = bracketed ? 1 : 0;
+  const size_t end = bracketed ? host.size() - 1 : host.size();
+  if (end - begin == 7 && host.compare(begin, end - begin, "0.0.0.0") == 0) {
     return true;
   }
-  if (normalizedHost.find(PORT_SEPARATOR) == string::npos) {
-    return false;
-  }
-  for (char ch : normalizedHost) {
-    if (ch != ':' && ch != '0') {
+
+  bool hasColon = false;
+  for (size_t index = begin; index < end; ++index) {
+    if (host[index] == ':') {
+      hasColon = true;
+    } else if (host[index] != '0') {
       return false;
     }
   }
-  return true;
+  return hasColon;
 }

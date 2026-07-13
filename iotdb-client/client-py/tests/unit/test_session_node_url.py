@@ -58,6 +58,7 @@ def test_init_from_node_urls_rejects_malformed_bracketed_ipv6(node_url):
     "host",
     [
         "0.0.0.0",
+        "[0.0.0.0]",
         "::",
         "[::]",
         "0:0:0:0:0:0:0:0",
@@ -73,7 +74,9 @@ def test_wildcard_address(host):
     [
         None,
         "127.0.0.1",
+        "192.0.2.1",
         "localhost",
+        "example.com",
         "::1",
         "[::1]",
     ],
