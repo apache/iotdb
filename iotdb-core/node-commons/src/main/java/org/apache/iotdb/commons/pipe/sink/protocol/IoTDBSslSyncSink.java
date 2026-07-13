@@ -101,8 +101,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When ssl transport is enabled, specify a complete trust-store pair under the "
-                    + "same alias: %s and %s, %s and %s, or %s and %s",
+                PipeMessages.SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED,
                 CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
                 CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
@@ -129,8 +128,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         .validate(
             args -> (boolean) args[0] == (boolean) args[1],
             String.format(
-                "SSL key-store path and password must be specified together under the same "
-                    + "alias: %s and %s, %s and %s, or %s and %s",
+                PipeMessages.SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER,
                 CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
                 CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,

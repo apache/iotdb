@@ -859,6 +859,10 @@ public final class DataNodePipeMessages {
       "Redirect to position {} in transferring tsFile {}.";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store 路径和密码必须在同一别名下同时指定：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SUCCESSFULLY_ADDED_ITEM = "成功 added item {}。";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
       "成功 converted progID {} to CLSID: {{}}";

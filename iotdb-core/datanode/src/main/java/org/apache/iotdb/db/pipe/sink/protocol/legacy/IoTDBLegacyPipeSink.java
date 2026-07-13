@@ -156,8 +156,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s or %s is true, specify a complete trust-store pair under the same "
-                    + "alias: %s and %s, %s and %s, or %s and %s",
+                DataNodePipeMessages.SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED,
                 CONNECTOR_IOTDB_SSL_ENABLE_KEY,
                 SINK_IOTDB_SSL_ENABLE_KEY,
                 CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
@@ -183,8 +182,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> (boolean) args[0] == (boolean) args[1],
             String.format(
-                "SSL key-store path and password must be specified together under the same "
-                    + "alias: %s and %s, %s and %s, or %s and %s",
+                DataNodePipeMessages.SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER,
                 CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
                 CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
