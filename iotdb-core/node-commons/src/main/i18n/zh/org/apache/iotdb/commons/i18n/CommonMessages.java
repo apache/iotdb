@@ -70,7 +70,7 @@ public final class CommonMessages {
 
   // --- log ---
   public static final String LOG_LOGGERPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_C8373CF5 =
-      "LoggerPeriodicalLogReducer \u5df2\u5206\u914d {} \u5b57\u8282\u3002";
+      "LoggerPeriodicalLogReducer 已分配 {} 字节。";
 
   // --- partition ---
   public static final String DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED =
