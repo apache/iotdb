@@ -41,7 +41,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 
@@ -93,13 +95,17 @@ public class SchemaValidator {
       final MPPQueryContext context,
       final AccessControl accessControl) {
     try {
+      final String database = unQualifyDatabaseName(insertStatement.getDatabase());
+      final Set<String> checkedTables = new HashSet<>();
       for (InsertTabletStatement tabletStatement :
           insertStatement.getInnerTreeStatement().getInsertTabletStatementList()) {
+        final String tableName = tabletStatement.getDevicePath().getFullPath();
+        if (!checkedTables.add(tableName)) {
+          continue;
+        }
         accessControl.checkCanInsertIntoTable(
             context.getSession().getUserName(),
-            new QualifiedObjectName(
-                unQualifyDatabaseName(insertStatement.getDatabase()),
-                tabletStatement.getDevicePath().getFullPath()),
+            new QualifiedObjectName(database, tableName),
             context);
       }
       insertStatement.validateTableSchema(metadata, context);

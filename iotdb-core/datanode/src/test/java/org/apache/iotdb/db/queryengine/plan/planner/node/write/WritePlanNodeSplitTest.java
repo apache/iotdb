@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -361,6 +362,48 @@ public class WritePlanNodeSplitTest {
       } else {
         Assert.assertNull(tabletNode.getBitMaps());
       }
+    }
+  }
+
+  @Test
+  public void testSplitRelationalInsertMultiTabletsCollectsRedirectNodes()
+      throws IllegalPathException {
+    final RelationalInsertMultiTabletsNode insertMultiTabletsNode =
+        new RelationalInsertMultiTabletsNode(new PlanNodeId("plan node 2"));
+    final List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+    for (int tabletIndex = 0; tabletIndex < 2; tabletIndex++) {
+      final RelationalInsertTabletNode insertTabletNode =
+          new RelationalInsertTabletNode(new PlanNodeId("plan node 2"));
+      insertTabletNode.setTargetPath(new PartialPath("root.sg1"));
+      insertTabletNode.setTimes(new long[] {1, 101});
+      insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT32});
+      insertTabletNode.setColumns(
+          new Object[] {
+            new Binary[] {
+              new Binary("d" + tabletIndex + "0", StandardCharsets.UTF_8),
+              new Binary("d" + tabletIndex + "1", StandardCharsets.UTF_8)
+            },
+            new int[] {tabletIndex * 2, tabletIndex * 2 + 1}
+          });
+      insertTabletNode.setColumnCategories(
+          new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+      insertTabletNode.setRowCount(2);
+      insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, tabletIndex);
+      for (int row = 0; row < insertTabletNode.getRowCount(); row++) {
+        final DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+        queryParam.setDeviceID(insertTabletNode.getDeviceID(row));
+        queryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+        dataPartitionQueryParams.add(queryParam);
+      }
+    }
+    final Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(getDataPartition(dataPartitionQueryParams));
+
+    insertMultiTabletsNode.splitByPartition(analysis);
+
+    Assert.assertEquals(4, analysis.getRedirectNodeList().size());
+    for (final TEndPoint redirectNode : analysis.getRedirectNodeList()) {
+      Assert.assertNotNull(redirectNode);
     }
   }
 
