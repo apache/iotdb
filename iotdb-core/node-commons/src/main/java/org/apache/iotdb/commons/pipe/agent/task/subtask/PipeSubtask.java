@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -57,7 +58,7 @@ public abstract class PipeSubtask
   // For fail-over
   public static final int MAX_RETRY_TIMES = 5;
   protected final AtomicInteger retryCount = new AtomicInteger(0);
-  protected Event lastEvent;
+  protected volatile Event lastEvent;
 
   protected PipeSubtask(final String taskID, final long creationTime) {
     super();
@@ -124,7 +125,7 @@ public abstract class PipeSubtask
 
     if (totalRetryCount != 0) {
       LOGGER.warn(
-          "Successfully executed subtask {}({}) after {} retries.",
+          PipeMessages.LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07,
           getDisplayTaskID(),
           this.getClass().getSimpleName(),
           totalRetryCount);

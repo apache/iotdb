@@ -277,10 +277,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source.table-name", "test.*");
       sourceAttributes.put("user", "root");
 
-      processorAttributes.put("processor", "rename-database-processor");
-      processorAttributes.put("processor.new-db-name", "Test1");
-
       sinkAttributes.put("sink", "write-back-sink");
+      sinkAttributes.put("sink.database", "Test1");
       sinkAttributes.put("user", "root");
 
       final TSStatus status =

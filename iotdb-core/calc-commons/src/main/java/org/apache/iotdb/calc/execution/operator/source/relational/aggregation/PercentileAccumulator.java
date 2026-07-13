@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.SemanticException;
 
@@ -69,7 +70,9 @@ public class PercentileAccumulator implements TableAccumulator {
   public void addInput(Column[] arguments, AggregationMask mask) {
     if (arguments.length != 2) {
       throw new SemanticException(
-          String.format("PERCENTILE requires 2 arguments, but got %d", arguments.length));
+          String.format(
+              CalcMessages.EXCEPTION_PERCENTILE_REQUIRES_2_ARGUMENTS_BUT_GOT_ARG_F3F1882F,
+              arguments.length));
     }
     if (!percentageInitialized) {
       percentage = arguments[1].getDouble(0);
@@ -91,7 +94,9 @@ public class PercentileAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Percentile Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_E0C2513D,
+                seriesDataType));
     }
     updateMemoryReservation();
   }
@@ -148,7 +153,9 @@ public class PercentileAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_8ACED24D,
+                seriesDataType));
     }
   }
 
@@ -159,7 +166,8 @@ public class PercentileAccumulator implements TableAccumulator {
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    throw new UnsupportedOperationException("PercentileAccumulator does not support statistics");
+    throw new UnsupportedOperationException(
+        CalcMessages.EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79);
   }
 
   @Override

@@ -32,11 +32,14 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -162,6 +165,8 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.enums.TSDataType;
@@ -260,6 +265,20 @@ public class ProcedureManager {
         LOGGER.info(ManagerMessages.PROCEDUREMANAGER_IS_STOPPED_SUCCESSFULLY);
       }
       executor.removeInternalProcedure(partitionTableCleaner);
+    }
+  }
+
+  /**
+   * Reload the completed-procedure cleaner with the current {@code
+   * procedure_completed_clean_interval} and {@code procedure_completed_evict_ttl}. Only takes
+   * effect on the running (leader) ConfigNode; on a follower the executor is stopped and the fresh
+   * values are picked up when {@link #startExecutor} runs after the next leader switch.
+   */
+  public void updateCompletedProcedureCleaner() {
+    if (executor.isRunning()) {
+      executor.restartCompletedCleaner(
+          CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+          CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
     }
   }
 
@@ -881,7 +900,6 @@ public class ProcedureManager {
                 new Pair<>("Coordinator", coordinator)),
             req.getModel());
 
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
@@ -1245,10 +1263,29 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Resolve the location of a registered DataNode, or return {@code null} if the given id does not
+   * belong to any registered DataNode (e.g. it is a ConfigNode id or simply does not exist). {@link
+   * org.apache.iotdb.confignode.manager.node.NodeManager#getRegisteredDataNode} returns an empty
+   * {@link TDataNodeConfiguration} whose location is {@code null} in that case, so callers must not
+   * dereference the result blindly.
+   */
+  private TDataNodeLocation getRegisteredDataNodeLocationOrNull(int dataNodeId) {
+    return configManager.getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+  }
+
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     final TDataNodeLocation targetDataNode =
-        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+    if (targetDataNode == null) {
+      // The target id is not a registered DataNode. Reject here instead of pushing a null down into
+      // checkReconstructRegion, which would otherwise throw a NullPointerException.
+      return new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+    }
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
@@ -1260,7 +1297,9 @@ public class ProcedureManager {
                 .orElseThrow(
                     () ->
                         new IllegalArgumentException(
-                            ManagerMessages.REGION_ID + x + " is invalid"));
+                            ManagerMessages.REGION_ID
+                                + x
+                                + ManagerMessages.EXCEPTION_INVALID_2928F475));
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(
@@ -1352,7 +1391,15 @@ public class ProcedureManager {
 
       // find target dn
       final TDataNodeLocation targetDataNode =
-          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+          getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+      if (targetDataNode == null) {
+        // The target id is not a registered DataNode. Reject here instead of pushing a null down
+        // into checkExtendRegion, which would otherwise throw a NullPointerException.
+        return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+      }
       // select coordinator for adding peer
       RegionMaintainHandler handler = env.getRegionMaintainHandler();
       // TODO: choose the DataNode which has lowest load
@@ -1491,7 +1538,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523,
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
@@ -1544,7 +1592,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create pipe plugin[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893,
                     pipePluginMeta.getPluginName()));
       }
     } catch (IOException e) {
@@ -1785,9 +1834,13 @@ public class ProcedureManager {
               new SubscriptionHandleLeaderChangeProcedure(
                   regionGroupToOldAndNewLeaderPairMap, runtimeVersion));
       LOGGER.info(
-          "SubscriptionHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
+          ManagerMessages
+              .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075,
+          procedureId);
     } catch (Exception e) {
-      LOGGER.warn("SubscriptionHandleLeaderChangeProcedure was failed to submit.", e);
+      LOGGER.warn(
+          ManagerMessages.LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F,
+          e);
     }
   }
 
@@ -1844,6 +1897,7 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
+      injectTreeViewSourceAttributes(req.getTopicAttributes());
       CreateTopicProcedure procedure = new CreateTopicProcedure(req);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
@@ -1883,6 +1937,8 @@ public class ProcedureManager {
                     req.getTopicName()));
       }
 
+      injectTreeViewSourceAttributes(updatedTopicMeta.getConfig().getAttribute());
+
       AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
@@ -1902,6 +1958,79 @@ public class ProcedureManager {
             .unblockOwnerLeaseRenewal(req.getTopicName());
       }
     }
+  }
+
+  private void injectTreeViewSourceAttributes(final Map<String, String> topicAttributes) {
+    if (Objects.isNull(topicAttributes)) {
+      return;
+    }
+
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    if (!topicConfig.isTableTopic()) {
+      return;
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return;
+    }
+
+    final Optional<TsTable> table;
+    try {
+      table = configManager.getClusterSchemaManager().getTableIfExists(database, tableName);
+    } catch (final MetadataException e) {
+      LOGGER.debug(
+          "Skip injecting tree-view source attributes for topic table {}.{} because schema lookup failed",
+          database,
+          tableName,
+          e);
+      return;
+    }
+    table.ifPresent(viewTable -> injectTreeViewSourceAttributes(topicAttributes, viewTable));
+  }
+
+  @TestOnly
+  static void injectTreeViewSourceAttributes(
+      final Map<String, String> topicAttributes, final TsTable table) {
+    if (Objects.isNull(topicAttributes)
+        || Objects.isNull(table)
+        || !TreeViewSchema.isTreeViewTable(table)) {
+      return;
+    }
+    topicAttributes.putIfAbsent(
+        PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.TRUE.toString());
+    topicAttributes.putIfAbsent(
+        PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.FALSE.toString());
+    if (!containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATTERN_KEY)
+        && !containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATH_KEY)
+        && !containsKeyIgnoreCase(
+            topicAttributes, PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY)) {
+      topicAttributes.put(
+          PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+          TreeViewSchema.getPrefixPattern(table).toString());
+    }
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean containsKeyIgnoreCase(
+      final Map<String, String> attributes, final String targetKey) {
+    return attributes.keySet().stream().anyMatch(targetKey::equalsIgnoreCase);
   }
 
   public TSStatus dropTopic(String topicName) {
@@ -2368,10 +2497,16 @@ public class ProcedureManager {
     }
   }
 
+  // only care about the AbstractAlterOrDropTableProcedure(except the drop table/view)
+  // and the DeleteDatabaseProcedure
   public Map<String, List<String>> getAllExecutingTables() {
     final Map<String, List<String>> result = new HashMap<>();
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       if (procedure.isFinished()) {
+        continue;
+      }
+      // the table with pre-delete status will be collected by getAllPreDeleteTables()
+      if (procedure instanceof DropTableProcedure) {
         continue;
       }
       // CreateTableOrViewProcedure is covered by the default process, thus we can ignore it here

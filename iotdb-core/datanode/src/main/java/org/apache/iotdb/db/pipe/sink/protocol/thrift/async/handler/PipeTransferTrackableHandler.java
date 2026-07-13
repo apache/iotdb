@@ -161,7 +161,7 @@ public abstract class PipeTransferTrackableHandler
 
     PipeLogger.log(
         LOGGER::warn,
-        "The body size of the request is too large. The request will be sliced. Origin req: %s-%s. Request body size: %s, threshold: %s",
+        DataNodePipeMessages.TRANSFER_REQUEST_BODY_TOO_LARGE_WILL_BE_SLICED,
         req.getVersion(),
         req.getType(),
         req.body.limit(),
@@ -227,7 +227,8 @@ public abstract class PipeTransferTrackableHandler
                   shouldReturnSelf,
                   new PipeConnectionException(
                       String.format(
-                          "Failed to transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s",
+                          DataNodePipeMessages
+                              .PIPE_EXCEPTION_FAILED_TO_TRANSFER_SLICE_ORIGIN_REQ_S_S_SLICE_INDEX_D_SLICE_44E1CF32,
                           originalReq.getVersion(),
                           originalReq.getType(),
                           sliceIndex,
@@ -269,7 +270,7 @@ public abstract class PipeTransferTrackableHandler
     PipeLogger.log(
         LOGGER::warn,
         exception,
-        "Failed to transfer slice. Origin req: %s-%s. Retry the whole transfer.",
+        DataNodePipeMessages.FAILED_TO_TRANSFER_SLICE_RETRY_WHOLE_TRANSFER,
         originalReq.getVersion(),
         originalReq.getType());
 

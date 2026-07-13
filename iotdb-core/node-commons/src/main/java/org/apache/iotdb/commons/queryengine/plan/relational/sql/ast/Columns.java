@@ -39,7 +39,7 @@ public final class Columns extends Expression {
   private final String pattern;
 
   public Columns(@Nonnull NodeLocation location, String pattern) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.pattern = pattern;
   }
 

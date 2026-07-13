@@ -96,7 +96,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
-            "Modifications size is {} for file Path: {} ",
+            StorageEngineMessages.STORAGE_LOG_MODIFICATIONS_SIZE_IS_FOR_FILE_PATH_EED7FD92,
             pathModifications.size(),
             resource.getTsFilePath());
         pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));

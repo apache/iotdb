@@ -49,8 +49,8 @@
 示例：
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
+unzip iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 解压后的 SDK 主要包含：

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import static java.util.Objects.requireNonNull;
 
 public class MatchResult {
@@ -31,8 +33,9 @@ public class MatchResult {
 
   public MatchResult(boolean matched, ArrayView labels, ArrayView exclusions) {
     this.matched = matched;
-    this.labels = requireNonNull(labels, "labels is null");
-    this.exclusions = requireNonNull(exclusions, "exclusions is null");
+    this.labels = requireNonNull(labels, CalcMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
+    this.exclusions =
+        requireNonNull(exclusions, CalcMessages.EXCEPTION_EXCLUSIONS_IS_NULL_336ED5E7);
   }
 
   public boolean isMatched() {

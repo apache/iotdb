@@ -110,7 +110,10 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+            loadTsFileStatement,
+            e);
         return Optional.of(
             LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
                 loadTsFileStatement, e));
@@ -131,7 +134,9 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        StorageEngineMessages
+            .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

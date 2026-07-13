@@ -117,5 +117,40 @@ public final class LibraryUdfMessages {
   public static final String ILLEGAL_INTERPOLATION_ALGORITHM =
       "Error: Illegal Interpolation Algorithm.";
 
+  // Util
+  public static final String EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_MS_PLEASE_CHECK_YOUR_INPUT_92667537 =
+      "The provided time precision is higher than the system's time precision (ms). Please check your input.";
+  public static final String EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_US_PLEASE_CHECK_YOUR_INPUT_07596E70 =
+      "The provided time precision is higher than the system's time precision (us). Please check your input.";
+
+  // DWTUtil
+  public static final String EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF =
+      "The data vector size is less than wavelet coefficient size.";
+
+  // UDTFCluster
+  public static final String EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_322C35E3 =
+      "Time series length must be at least l; got ";
+  public static final String EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_192388D0 =
+      "Not enough non-overlapping windows: got ";
+  public static final String EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_ARG_POINTS_L_ARG_8C796580 =
+      "Time series length must be at least l; got %d points, l=%d.";
+  public static final String EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_ARG_WINDOWS_NEED_AT_LEAST_K_ARG_9E42BA1F =
+      "Not enough non-overlapping windows: got %d windows, need at least k=%d.";
+
+  // UDAFPatternMatch
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_MUST_BE_LONG_LONG_B2DEE922 =
+      "Illegal parameter, timePattern must be long,long...";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_MUST_BE_DOUBLE_DOUBLE_BAD1419C =
+      "Illegal parameter, valuePattern must be double,double...";
+
+  // OnePassBucketizer
+  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB = "Can't produce ";
+  public static final String EXCEPTION_CAN_T_PRODUCE_ARG_BUCKETS_FROM_AN_INPUT_SERIES_OF_ARG_ELEMENTS_D17D0135 =
+      "Can't produce %d buckets from an input series of %d elements";
+
+  // UDFEnvelopeAnalysis
+  public static final String EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 =
+      "Fail to get data type in row ";
+
   private LibraryUdfMessages() {}
 }
