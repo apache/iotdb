@@ -558,7 +558,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         return null;
       }
       TsTable table = new TsTable(tableScanNode.getQualifiedObjectName().getObjectName());
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+      for (Map.Entry<Symbol, ColumnSchema> entry :
+          tableScanNode.getExternalTsFileQueryResource().getTableColumnSchema().entrySet()) {
         ColumnSchema columnSchema = entry.getValue();
         if (TAG.equals(columnSchema.getColumnCategory())) {
           table.addColumnSchema(
