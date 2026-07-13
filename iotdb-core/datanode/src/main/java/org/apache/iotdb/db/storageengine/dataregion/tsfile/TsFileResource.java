@@ -281,7 +281,7 @@ public class TsFileResource implements Cloneable {
       return timeIndex;
     }
 
-    return buildDeviceTimeIndex();
+    return deserializeTimeIndexFromResourceFile();
   }
 
   /** deserialize from disk */
@@ -506,11 +506,8 @@ public class TsFileResource implements Cloneable {
       if (!resourceFileExists()) {
         throw new IOException("resource file not found");
       }
-      try (InputStream inputStream =
-          FSFactoryProducer.getFSFactory()
-              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-        ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      try {
+        ITimeIndex timeIndexFromResourceFile = deserializeTimeIndexFromResourceFile();
         if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
@@ -521,6 +518,14 @@ public class TsFileResource implements Cloneable {
       }
     } finally {
       readUnlock();
+    }
+  }
+
+  private ITimeIndex deserializeTimeIndexFromResourceFile() throws IOException {
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      return ITimeIndex.createTimeIndex(inputStream);
     }
   }
 
