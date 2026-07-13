@@ -23,7 +23,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -69,8 +68,8 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], i, xDataType);
-        double y = getDoubleValue(arguments[1], i, yDataType);
+        double x = getDoubleValue(arguments[0], i);
+        double y = getDoubleValue(arguments[1], i);
         update(x, y);
       }
     } else {
@@ -80,29 +79,15 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double x = getDoubleValue(arguments[0], position, xDataType);
-        double y = getDoubleValue(arguments[1], position, yDataType);
+        double x = getDoubleValue(arguments[0], position);
+        double y = getDoubleValue(arguments[1], position);
         update(x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Correlation Aggregation: %s", dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {
@@ -125,8 +110,8 @@ public class TableCorrelationAccumulator implements TableAccumulator {
       return;
     }
 
-    double otherX = getDoubleValue(arguments[0], 0, xDataType);
-    double otherY = getDoubleValue(arguments[1], 0, yDataType);
+    double otherX = getDoubleValue(arguments[0], 0);
+    double otherY = getDoubleValue(arguments[1], 0);
 
     if (count == 1) {
       reset();
