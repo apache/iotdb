@@ -818,4 +818,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setEnableTopologyProbing(enableTopologyProbing);
     return this;
   }
+
+  @Override
+  public CommonConfig setTierTTLInMs(String tierTTLInMs) {
+    dnConfig.setTierTTLInMs(tierTTLInMs);
+    cnConfig.setTierTTLInMs(tierTTLInMs);
+    return this;
+  }
 }

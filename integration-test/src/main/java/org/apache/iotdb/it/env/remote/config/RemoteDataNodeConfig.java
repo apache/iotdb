@@ -125,4 +125,39 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setObjectStorageType(String objectStorageType) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageEndpoint(String objectStorageEndpoint) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageRegion(String objectStorageRegion) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageBucket(String objectStorageBucket) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageAccessKey(String objectStorageAccessKey) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageAccessSecret(String objectStorageAccessSecret) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setEnablePathStyleAccess(boolean enablePathStyleAccess) {
+    return this;
+  }
 }

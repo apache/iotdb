@@ -248,4 +248,6 @@ public interface CommonConfig {
   CommonConfig setMaxRowsInCteBuffer(int maxRows);
 
   CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing);
+
+  CommonConfig setTierTTLInMs(String tierTTLInMs);
 }

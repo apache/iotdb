@@ -573,4 +573,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
     return this;
   }
+
+  @Override
+  public CommonConfig setTierTTLInMs(String tierTTLInMs) {
+    return this;
+  }
 }

@@ -65,4 +65,18 @@ public interface DataNodeConfig {
   DataNodeConfig setDnDataDirs(String dnDataDirs);
 
   DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
+
+  DataNodeConfig setObjectStorageType(String objectStorageType);
+
+  DataNodeConfig setObjectStorageEndpoint(String objectStorageEndpoint);
+
+  DataNodeConfig setObjectStorageRegion(String objectStorageRegion);
+
+  DataNodeConfig setObjectStorageBucket(String objectStorageBucket);
+
+  DataNodeConfig setObjectStorageAccessKey(String objectStorageAccessKey);
+
+  DataNodeConfig setObjectStorageAccessSecret(String objectStorageAccessSecret);
+
+  DataNodeConfig setEnablePathStyleAccess(boolean enablePathStyleAccess);
 }

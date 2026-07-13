@@ -180,4 +180,46 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("dn_multi_dir_strategy", multiDirStrategy);
     return this;
   }
+
+  @Override
+  public DataNodeConfig setObjectStorageType(String objectStorageType) {
+    setProperty("object_storage_type", objectStorageType);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageEndpoint(String objectStorageEndpoint) {
+    setProperty("object_storage_endpoint", objectStorageEndpoint);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageRegion(String objectStorageRegion) {
+    setProperty("object_storage_region", objectStorageRegion);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageBucket(String objectStorageBucket) {
+    setProperty("object_storage_bucket", objectStorageBucket);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageAccessKey(String objectStorageAccessKey) {
+    setProperty("object_storage_access_key", objectStorageAccessKey);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setObjectStorageAccessSecret(String objectStorageAccessSecret) {
+    setProperty("object_storage_access_secret", objectStorageAccessSecret);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setEnablePathStyleAccess(boolean enablePathStyleAccess) {
+    setProperty("enable_path_style_access", String.valueOf(enablePathStyleAccess));
+    return this;
+  }
 }

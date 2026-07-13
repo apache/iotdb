@@ -39,6 +39,7 @@
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.dataRegionPerDataNode>0</integrationTest.dataRegionPerDataNode>
         <integrationTest.testEnv/>
+        <testcontainers.version>1.21.3</testcontainers.version>
         <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
         <!-- -DClusterConfigurations values configured here -->
         <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
@@ -197,6 +198,17 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
