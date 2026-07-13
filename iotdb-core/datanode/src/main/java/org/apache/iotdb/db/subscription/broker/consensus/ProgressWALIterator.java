@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
@@ -461,7 +462,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return metadataSearchIndex;
     }
     buffer.position(SEARCH_INDEX_OFFSET);
-    final long bodySearchIndex = buffer.getLong();
+    final long bodySearchIndex = SearchNode.extractSearchIndex(buffer.getLong());
     return bodySearchIndex >= 0 ? bodySearchIndex : metadataSearchIndex;
   }
 
