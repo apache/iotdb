@@ -31,11 +31,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class InsertRows extends WrappedInsertStatement {
@@ -100,10 +104,26 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
+    final Map<String, Map<String, CoalescedDeviceSchemaValidation>> validationMap =
+        new LinkedHashMap<>();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
-      metadata.validateDeviceSchema(createTableSchemaValidation(insertRowStatement), context);
+      final ITableDeviceSchemaValidation rowValidation =
+          createTableSchemaValidation(insertRowStatement);
+      validationMap
+          .computeIfAbsent(rowValidation.getDatabase(), key -> new LinkedHashMap<>())
+          .computeIfAbsent(
+              rowValidation.getTableName(),
+              tableName ->
+                  new CoalescedDeviceSchemaValidation(rowValidation.getDatabase(), tableName))
+          .add(
+              rowValidation.getDeviceIdList().get(0),
+              rowValidation.getAttributeColumnNameList(),
+              rowValidation.getAttributeValueList().get(0));
     }
+    validationMap.values().stream()
+        .flatMap(tableValidationMap -> tableValidationMap.values().stream())
+        .forEach(validation -> metadata.validateDeviceSchema(validation, context));
   }
 
   protected ITableDeviceSchemaValidation createTableSchemaValidation(
@@ -156,5 +176,98 @@ public class InsertRows extends WrappedInsertStatement {
         return Collections.singletonList(attributeValueList.toArray());
       }
     };
+  }
+
+  private static class CoalescedDeviceSchemaValidation implements ITableDeviceSchemaValidation {
+
+    private final String database;
+    private final String tableName;
+    private final Map<DeviceIdKey, Map<Integer, Object>> deviceAttributeValueMap =
+        new LinkedHashMap<>();
+    private final List<String> attributeColumnNameList = new ArrayList<>();
+    private final Map<String, Integer> attributeColumnIndexMap = new LinkedHashMap<>();
+
+    private CoalescedDeviceSchemaValidation(final String database, final String tableName) {
+      this.database = database;
+      this.tableName = tableName;
+    }
+
+    private void add(
+        final Object[] deviceId,
+        final List<String> attributeColumnNames,
+        final Object[] attributeValues) {
+      final Map<Integer, Object> attributeValueMap =
+          deviceAttributeValueMap.computeIfAbsent(
+              new DeviceIdKey(deviceId), key -> new HashMap<>());
+      for (int i = 0; i < attributeColumnNames.size(); i++) {
+        final int attributeColumnIndex =
+            attributeColumnIndexMap.computeIfAbsent(
+                attributeColumnNames.get(i),
+                attributeColumnName -> {
+                  attributeColumnNameList.add(attributeColumnName);
+                  return attributeColumnNameList.size() - 1;
+                });
+        if (i < attributeValues.length
+            && attributeValues[i] != null
+            && attributeValues[i] != Constants.NONE) {
+          attributeValueMap.put(attributeColumnIndex, attributeValues[i]);
+        }
+      }
+    }
+
+    @Override
+    public String getDatabase() {
+      return database;
+    }
+
+    @Override
+    public String getTableName() {
+      return tableName;
+    }
+
+    @Override
+    public List<Object[]> getDeviceIdList() {
+      final List<Object[]> deviceIdList = new ArrayList<>(deviceAttributeValueMap.size());
+      deviceAttributeValueMap.keySet().forEach(key -> deviceIdList.add(key.deviceId));
+      return deviceIdList;
+    }
+
+    @Override
+    public List<String> getAttributeColumnNameList() {
+      return attributeColumnNameList;
+    }
+
+    @Override
+    public List<Object[]> getAttributeValueList() {
+      final List<Object[]> attributeValueList = new ArrayList<>(deviceAttributeValueMap.size());
+      for (final Map<Integer, Object> attributeValueMap : deviceAttributeValueMap.values()) {
+        final Object[] attributeValues = new Object[attributeColumnNameList.size()];
+        Arrays.fill(attributeValues, Constants.NONE);
+        attributeValueMap.forEach((index, value) -> attributeValues[index] = value);
+        attributeValueList.add(attributeValues);
+      }
+      return attributeValueList;
+    }
+  }
+
+  private static class DeviceIdKey {
+
+    private final Object[] deviceId;
+
+    private DeviceIdKey(final Object[] deviceId) {
+      this.deviceId = (Object[]) deviceId.clone();
+    }
+
+    @Override
+    public boolean equals(final Object object) {
+      return this == object
+          || object instanceof DeviceIdKey
+              && Arrays.equals(deviceId, ((DeviceIdKey) object).deviceId);
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(deviceId);
+    }
   }
 }

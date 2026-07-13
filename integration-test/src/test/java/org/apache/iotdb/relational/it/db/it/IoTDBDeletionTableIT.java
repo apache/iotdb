@@ -653,6 +653,24 @@ public class IoTDBDeletionTableIT {
               + "(3, 'blue', 'large', 13),"
               + "(4, 'red', 'small', 14)");
 
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from delete_by_attr_no_tag"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from delete_by_attr_no_tag "
+                  + "where attr1 = 'red' AND attr2 = 'small'"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
+      statement.execute(
+          "INSERT INTO delete_by_attr_no_tag(time, attr1, attr2, s1) VALUES "
+              + "(2, 'blue', 'large', 12),"
+              + "(4, 'red', 'small', 14)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from delete_by_attr_no_tag"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
       statement.execute(
           "DELETE FROM delete_by_attr_no_tag "
               + "WHERE time >= 2 AND time <= 4 AND attr1 = 'red' AND attr2 = 'small'");
