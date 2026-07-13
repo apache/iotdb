@@ -57,6 +57,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final boolean useSSL;
   private final String trustStorePath;
   private final String trustStorePwd;
+  private final String keyStorePath;
+  private final String keyStorePwd;
 
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
@@ -71,6 +73,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
+      String keyStorePath,
+      String keyStorePwd,
       /* The following parameters are used locally. */
       boolean useLeaderCache,
       String loadBalanceStrategy,
@@ -96,6 +100,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
     this.trustStorePwd = trustStorePwd;
+    this.keyStorePath = keyStorePath;
+    this.keyStorePwd = keyStorePwd;
 
     for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
@@ -205,7 +211,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               endPoint.getPort(),
               useSSL,
               trustStorePath,
-              trustStorePwd));
+              trustStorePwd,
+              keyStorePath,
+              keyStorePwd));
       return true;
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());

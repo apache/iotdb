@@ -83,6 +83,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
@@ -92,6 +97,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
@@ -112,6 +119,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private boolean useSSL;
   private String trustStore;
   private String trustStorePwd;
+  private String keyStore;
+  private String keyStorePwd;
 
   private String user;
   private String password;
@@ -149,13 +158,88 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s is specified to true, %s and %s must be specified",
+                DataNodePipeMessages.SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED,
+                CONNECTOR_IOTDB_SSL_ENABLE_KEY,
                 SINK_IOTDB_SSL_ENABLE_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY)),
+            parameters.getBooleanOrDefault(
+                Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
+            hasCompleteAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY))
+        .validate(
+            args -> (boolean) args[0] == (boolean) args[1],
+            String.format(
+                DataNodePipeMessages.SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY)),
+            true,
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+  }
+
+  private static boolean hasCompleteAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasExactAttributePair(parameters, connectorLeftKey, connectorRightKey)
+        || hasExactAttributePair(parameters, sinkLeftKey, sinkRightKey)
+        || hasExactAttributePair(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasNoHalfAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasBothOrNoneExactAttributes(parameters, connectorLeftKey, connectorRightKey)
+        && hasBothOrNoneExactAttributes(parameters, sinkLeftKey, sinkRightKey)
+        && hasBothOrNoneExactAttributes(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasExactAttributePair(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) && hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasBothOrNoneExactAttributes(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) == hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasExactAttribute(final PipeParameters parameters, final String key) {
+    return parameters.getAttribute().containsKey(key);
   }
 
   private Set<TEndPoint> parseNodeUrls(final PipeParameters parameters) {
@@ -208,9 +292,21 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
 
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
 
-    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    useSSL =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false);
+    trustStore =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    trustStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    keyStore =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY);
+    keyStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance()
@@ -235,7 +331,9 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               port,
               useSSL,
               trustStore,
-              trustStorePwd);
+              trustStorePwd,
+              keyStore,
+              keyStorePwd);
       openClientSession();
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
@@ -254,7 +352,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
           String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
 
-    sessionPool =
+    final SessionPool.Builder builder =
         new SessionPool.Builder()
             .host(ipAddress)
             .port(port)
@@ -263,8 +361,11 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
             .maxSize(1)
             .useSSL(useSSL)
             .trustStore(trustStore)
-            .trustStorePwd(trustStorePwd)
-            .build();
+            .trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    sessionPool = builder.build();
   }
 
   private void openClientSession() throws TException {
