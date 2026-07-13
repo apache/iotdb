@@ -945,6 +945,12 @@ public final class DataNodePipeMessages {
       "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "When %s or %s is true, specify a complete trust-store pair under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store path and password must be specified together under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
   public static final String SUCCESSFULLY_ADDED_ITEM = "Successfully added item {}.";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
       "Successfully converted progID {} to CLSID: {{}}";

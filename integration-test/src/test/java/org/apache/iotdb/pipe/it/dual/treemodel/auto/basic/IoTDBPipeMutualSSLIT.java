@@ -137,7 +137,9 @@ public class IoTDBPipeMutualSSLIT extends AbstractPipeDualTreeModelAutoIT {
                       + "&"
                       + Config.KEY_STORE_PWD
                       + "="
-                      + STORE_PASSWORD);
+                      + STORE_PASSWORD,
+                  SessionConfig.DEFAULT_USER,
+                  SessionConfig.DEFAULT_PASSWORD);
           final Statement statement = connection.createStatement()) {
         Awaitility.await()
             .pollInSameThread()

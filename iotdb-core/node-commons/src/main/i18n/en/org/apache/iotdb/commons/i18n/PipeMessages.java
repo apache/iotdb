@@ -484,6 +484,12 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "When ssl transport is enabled, specify a complete trust-store pair under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store path and password must be specified together under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync client manager has been closed";
   public static final String REDIRECT_FILE_POSITION = "Redirect file position to {}.";
