@@ -1766,6 +1766,9 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_ONLY_SUPPORT_CONVERT_PIPEINSERTNODETABLETINSERTIONEVENT_B888B8AA =
       "SubscriptionPipeTabletEventBatch {} 仅支持将 PipeInsertNodeTabletInsertionEvent 或 "
           + "PipeRawTabletInsertionEvent 转换为 tablet。忽略 {}。";
+  public static final String
+      PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_POSTPONE_EMITTING_SUBSCRIPTION_TABLET_BATCH_FOR_TOPIC_ARG_BECAUSE_TABLE_SCHEMA_ARG_ARG_IS_NOT_AVAILABLE_LOCALLY_996C618D =
+          "推迟发送主题 {} 的订阅 tablet 批次，因为本地尚未提供表结构 {}.{}";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_UNEXPECTED_TABLET_INSERTION_8FB1B507 =
       "SubscriptionPipeTabletEventBatch：非预期 tablet insertion event {}，跳过该事件。";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_FAILED_TO_INCREASE_THE_595722D8 =

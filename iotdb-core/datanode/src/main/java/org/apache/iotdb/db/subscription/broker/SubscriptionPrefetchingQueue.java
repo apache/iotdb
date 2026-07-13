@@ -149,6 +149,10 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
+  public String getTopicName() {
+    return topicName;
+  }
+
   protected void cleanUpInternal() {
     // clean up events in batches
     batches.cleanUp();
@@ -622,7 +626,8 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event instanceof TsFileInsertionEvent) {
-      if (PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+      if (canPassThroughTsFile(pipeTsFileInsertionEvent)) {
         onEvent((TsFileInsertionEvent) event);
         return;
       }
@@ -633,7 +638,7 @@ public abstract class SubscriptionPrefetchingQueue {
             this,
             event);
       } else {
-        constructToTabletIterator((PipeTsFileInsertionEvent) event);
+        constructToTabletIterator(pipeTsFileInsertionEvent);
         return;
       }
     }
@@ -665,6 +670,12 @@ public abstract class SubscriptionPrefetchingQueue {
       LOGGER.warn(DataNodeMiscMessages.EXCEPTION_CONSTRUCT_TABLET_ITERATOR, this, e, e);
       currentTsFileInsertionEvent = event;
     }
+  }
+
+  private boolean canPassThroughTsFile(final PipeTsFileInsertionEvent event) {
+    return PipeEventCollector.canSkipParsing4TsFileEvent(event)
+        && (!event.isTableModelEvent()
+            || SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isMatchAll());
   }
 
   private RetryableState onRetryableTabletInsertionEvent(

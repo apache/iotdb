@@ -81,6 +81,44 @@ public final class DataNodeMiscMessages {
   public static final String FAILED_TO_PROCESS_TSFILE =
       "Failed to process tsfile {}, {}";
 
+  public static final String INVALID_COLUMN_FILTER_FMT = "Invalid column-filter: %s";
+  public static final String COLUMN_FILTER_SHOULD_NOT_BE_EMPTY =
+      "column-filter should not be empty";
+  public static final String EXPECTED_COLUMN_PREDICATE_OPERATOR =
+      "expected column predicate operator";
+  public static final String EXPECTED_STRING_LITERAL = "expected string literal";
+  public static final String UNSUPPORTED_COMPARISON_OPERATOR_FMT =
+      "unsupported comparison operator '%s'";
+  public static final String UNEXPECTED_CHARACTER_FMT = "unexpected character '%s'";
+  public static final String UNSUPPORTED_COLUMN_FILTER_PREDICATE =
+      "unsupported column-filter predicate";
+  public static final String UNSUPPORTED_EXPRESSION_FMT = "unsupported expression: %s";
+  public static final String ONLY_COLUMN_FILTER_COMPARISONS_SUPPORTED =
+      "only =, !=, and <> comparisons are supported in column-filter";
+  public static final String IN_PREDICATE_MUST_USE_STRING_LITERAL_LIST =
+      "IN predicate must use a string literal list";
+  public static final String ONLY_REGEXP_SUPPORTED_AS_REGEXP_LIKE =
+      "only REGEXP is supported as regexp_like(field, pattern)";
+  public static final String ILLEGAL_REGEXP_PATTERN_FMT =
+      "illegal REGEXP pattern: %s";
+  public static final String LEFT_OPERAND_MUST_BE_COLUMN_METADATA_FIELD =
+      "left operand must be one of column metadata fields";
+  public static final String UNSUPPORTED_COLUMN_METADATA_FIELD_FMT =
+      "unsupported column metadata field: %s";
+  public static final String MUST_BE_STRING_LITERAL_FMT = "%s must be a string literal";
+  public static final String LIKE_ESCAPE_MUST_BE_SINGLE_CHARACTER =
+      "LIKE escape must be a single character";
+  public static final String LIKE_PATTERN_ENDS_WITH_ESCAPE_CHARACTER =
+      "LIKE pattern ends with escape character";
+  public static final String UNSUPPORTED_TABLE_COLUMN_CATEGORY_FMT =
+      "Unsupported table column category: %s";
+  public static final String COLUMN_FILTER_COMPARISON_RIGHT_OPERAND =
+      "comparison right operand";
+  public static final String COLUMN_FILTER_IN_ELEMENT = "IN element";
+  public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE pattern";
+  public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE escape";
+  public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP pattern";
+
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
   private DataNodeMiscMessages() {}
@@ -765,6 +803,16 @@ public final class DataNodeMiscMessages {
       "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue";
   public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
       "ConsensusPrefetchingQueue %s: unexpected in-flight response for consumer %s, commit context %s, offset %s";
+  public static final String SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE =
+      "Subscription: postpone refreshing column-filter matcher for topic [{}] because its table schema is not available locally";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED =
+      "Subscription: failed to refresh column-filter matcher for topic [{}], use empty matcher to fail closed";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS =
+      "Subscription: refreshed column-filter matcher for topic [{}]";
+  public static final String SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED =
+      "Subscription: failed to lazily refresh column-filter matcher for topic [{}]";
+  public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
+      "Subscription: dropped column-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "Unsupported consensus subscription progress file version %s";
 

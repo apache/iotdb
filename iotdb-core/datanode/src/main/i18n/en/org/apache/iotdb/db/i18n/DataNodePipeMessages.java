@@ -1899,6 +1899,9 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_ONLY_SUPPORT_CONVERT_PIPEINSERTNODETABLETINSERTIONEVENT_B888B8AA =
       "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent "
           + "or PipeRawTabletInsertionEvent to tablet. Ignore {}.";
+  public static final String
+      PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_POSTPONE_EMITTING_SUBSCRIPTION_TABLET_BATCH_FOR_TOPIC_ARG_BECAUSE_TABLE_SCHEMA_ARG_ARG_IS_NOT_AVAILABLE_LOCALLY_996C618D =
+          "Postpone emitting subscription tablet batch for topic {} because table schema {}.{} is not available locally";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_UNEXPECTED_TABLET_INSERTION_8FB1B507 =
       "SubscriptionPipeTabletEventBatch: Unexpected tablet insertion event {}, skipping it.";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_FAILED_TO_INCREASE_THE_595722D8 =

@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -60,30 +61,44 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private final PipeTsFileBuilder treeModeTsFileBuilder;
   private final PipeTsFileBuilder tableModeTsFileBuilder;
+  private final BiFunction<String, Tablet, Tablet> tableModelTabletPruner;
 
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap = new HashMap<>();
 
   public PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs, requestMaxBatchSizeInBytes, null);
-
-    final AtomicLong tsFileIdGenerator = new AtomicLong(0);
-    treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
-    tableModeTsFileBuilder = new PipeTableModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
+    this(maxDelayInMs, requestMaxBatchSizeInBytes, null, null);
   }
 
   public PipeTabletEventTsFileBatch(
       final int maxDelayInMs,
       final long requestMaxBatchSizeInBytes,
       final TriLongConsumer recordMetric) {
+    this(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric, null);
+  }
+
+  public PipeTabletEventTsFileBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final BiFunction<String, Tablet, Tablet> tableModelTabletPruner) {
+    this(maxDelayInMs, requestMaxBatchSizeInBytes, null, tableModelTabletPruner);
+  }
+
+  public PipeTabletEventTsFileBatch(
+      final int maxDelayInMs,
+      final long requestMaxBatchSizeInBytes,
+      final TriLongConsumer recordMetric,
+      final BiFunction<String, Tablet, Tablet> tableModelTabletPruner) {
     super(maxDelayInMs, requestMaxBatchSizeInBytes, recordMetric);
 
     final AtomicLong tsFileIdGenerator = new AtomicLong(0);
     treeModeTsFileBuilder = new PipeTreeModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
     tableModeTsFileBuilder = new PipeTableModelTsFileBuilderV2(currentBatchId, tsFileIdGenerator);
+    this.tableModelTabletPruner = tableModelTabletPruner;
   }
 
   @Override
   protected boolean constructBatch(final TabletInsertionEvent event) {
+    boolean hasBufferedTablet = false;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
@@ -97,14 +112,21 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         }
         if (isTableModel) {
           // table Model
+          final Tablet prunedTablet =
+              pruneTableModelTablet(
+                  tablet, insertNodeTabletInsertionEvent.getTableModelDatabaseName());
+          if (isTabletEmpty(prunedTablet)) {
+            continue;
+          }
           bufferTableModelTablet(
               insertNodeTabletInsertionEvent.getPipeName(),
               insertNodeTabletInsertionEvent.getCreationTime(),
-              tablet,
+              prunedTablet,
               insertNodeTabletInsertionEvent.getTableModelDatabaseName());
           linkTableModelObjectPaths(
               (PipeInsertionEvent) event,
               insertNodeTabletInsertionEvent.getTableModelDatabaseName());
+          hasBufferedTablet = true;
         } else {
           // tree Model
           bufferTreeModelTablet(
@@ -113,6 +135,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               tablet,
               insertNodeTabletInsertionEvent.isAligned(i));
           linkTreeModelObjectPaths((PipeInsertionEvent) event);
+          hasBufferedTablet = true;
         }
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
@@ -120,18 +143,24 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           (PipeRawTabletInsertionEvent) event;
       final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
       if (isTabletEmpty(tablet)) {
-        return true;
+        return false;
       }
       increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletSizeInBytes(tablet));
       if (rawTabletInsertionEvent.isTableModelEvent()) {
         // table Model
+        final Tablet prunedTablet =
+            pruneTableModelTablet(tablet, rawTabletInsertionEvent.getTableModelDatabaseName());
+        if (isTabletEmpty(prunedTablet)) {
+          return false;
+        }
         bufferTableModelTablet(
             rawTabletInsertionEvent.getPipeName(),
             rawTabletInsertionEvent.getCreationTime(),
-            tablet,
+            prunedTablet,
             rawTabletInsertionEvent.getTableModelDatabaseName());
         linkTableModelObjectPaths(
             (PipeInsertionEvent) event, rawTabletInsertionEvent.getTableModelDatabaseName());
+        hasBufferedTablet = true;
       } else {
         // tree Model
         bufferTreeModelTablet(
@@ -140,6 +169,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             tablet,
             rawTabletInsertionEvent.isAligned());
         linkTreeModelObjectPaths((PipeInsertionEvent) event);
+        hasBufferedTablet = true;
       }
     } else {
       LOGGER.warn(
@@ -148,7 +178,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event,
           event.getClass());
     }
-    return true;
+    return hasBufferedTablet;
+  }
+
+  private Tablet pruneTableModelTablet(final Tablet tablet, final String databaseName) {
+    return Objects.nonNull(tableModelTabletPruner)
+        ? tableModelTabletPruner.apply(databaseName, tablet)
+        : tablet;
   }
 
   private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {

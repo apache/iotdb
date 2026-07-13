@@ -36,10 +36,10 @@ import java.util.Map;
 public class SubscriptionInfoTopicValidationTest {
 
   @Test
-  public void testValidateConsensusTableColumnPatternOnCreate() throws Exception {
+  public void testValidateColumnFilterOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newConsensusTableTopicAttributes();
-    attributes.put(TopicConstant.COLUMN_KEY, "(id1|m1)");
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name IN (\"id1\", \"m1\")");
 
     Assert.assertTrue(
         subscriptionInfo.validateBeforeCreatingTopic(
@@ -47,22 +47,63 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectColumnPatternOnTreeTopic() {
+  public void testRejectColumnFilterOnTreeTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = new HashMap<>();
-    attributes.put(TopicConstant.COLUMN_KEY, "id1");
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
   }
 
   @Test
-  public void testRejectColumnPatternOnTsFileTopic() {
+  public void testColumnFilterKeyIsCaseInsensitiveOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
-    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
-    attributes.put(TopicConstant.COLUMN_KEY, "id1");
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put("Column-Filter", "column_name = \"id1\"");
 
-    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectDuplicateColumnFilterKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+    attributes.put("Column-Filter", "column_name = \"m1\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate column-filter");
+  }
+
+  @Test
+  public void testRejectMixedCaseColumnFilterOnTreeTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("Column-Filter", "column_name = \"id1\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testRejectDuplicateTopicConfigKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put("Mode", TopicConstant.MODE_SNAPSHOT_VALUE);
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate mode");
+  }
+
+  @Test
+  public void testAcceptColumnFilterOnLiveTsFileTableTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
   }
 
   @Test
@@ -75,32 +116,27 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectIllegalColumnRegex() {
+  public void testRejectEmptyColumnFilter() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newConsensusTableTopicAttributes();
-    attributes.put(TopicConstant.COLUMN_KEY, "[");
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, " ");
 
-    assertCreateRejected(subscriptionInfo, attributes, "illegal column");
+    assertCreateRejected(subscriptionInfo, attributes, "column-filter should not be empty");
   }
 
   @Test
-  public void testRejectAlteringColumnPattern() throws Exception {
+  public void testAcceptAlteringColumnFilter() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> originalAttributes = newConsensusTableTopicAttributes();
-    originalAttributes.put(TopicConstant.COLUMN_KEY, "id1");
+    originalAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
     subscriptionInfo.createTopic(
         new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
 
     final Map<String, String> updatedAttributes = newConsensusTableTopicAttributes();
-    updatedAttributes.put(TopicConstant.COLUMN_KEY, "m1");
+    updatedAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"m1\"");
 
-    try {
-      subscriptionInfo.validateBeforeAlteringTopic(
-          new TopicMeta("table_topic", 2L, updatedAttributes));
-      Assert.fail("Expected altering the column pattern to be rejected");
-    } catch (final SubscriptionException e) {
-      Assert.assertTrue(e.getMessage().contains("changing column is not supported"));
-    }
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, updatedAttributes));
   }
 
   @Test
@@ -173,12 +209,14 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectConsensusOnlyColumnOnLiveTopic() {
+  public void testAcceptColumnFilterOnLiveTableTopic() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newLiveTableTopicAttributes();
-    attributes.put(TopicConstant.COLUMN_KEY, "id1");
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
 
-    assertCreateRejected(subscriptionInfo, attributes, "only supported for consensus table topics");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
   }
 
   @Test
