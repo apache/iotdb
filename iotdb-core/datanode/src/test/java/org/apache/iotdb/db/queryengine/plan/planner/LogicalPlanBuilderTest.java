@@ -22,15 +22,22 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LogicalPlanBuilderTest {
 
@@ -50,6 +57,46 @@ public class LogicalPlanBuilderTest {
     assertEquals(
         Arrays.asList(originalSortItemCount, originalSortItemCount),
         Arrays.asList(sortItemCountAfterFirstPlan, queryStatement.getSortItemList().size()));
+  }
+
+  @Test
+  public void testPlanOrderByUsesDeviceViewMergeKeysWithoutMutatingStatement() {
+    QueryStatement queryStatement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "select s1 from root.sg.* order by s1 desc align by device",
+                ZonedDateTime.now().getOffset());
+    List<SortItem> originalSortItems = new ArrayList<>(queryStatement.getSortItemList());
+    String originalOrderByClause = queryStatement.getOrderByComponent().toSQLString();
+    List<SortItem> expectedSortItems = new ArrayList<>(originalSortItems);
+    expectedSortItems.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
+    expectedSortItems.add(new SortItem(OrderByKey.TIME, Ordering.ASC));
+
+    Analysis analysis = new Analysis();
+    analysis.setOrderByExpressions(Collections.emptySet());
+    analysis.setSelectExpressions(Collections.emptySet());
+    LogicalPlanBuilder builder =
+        new LogicalPlanBuilder(analysis, new MPPQueryContext(new QueryId("two_stage_plan")))
+            .planDeviceView(
+                Collections.emptyMap(),
+                Collections.emptySet(),
+                Collections.emptyMap(),
+                Collections.emptySet(),
+                queryStatement,
+                analysis)
+            .planOrderBy(queryStatement, analysis);
+
+    assertTrue(builder.getRoot() instanceof SortNode);
+    assertTrue(
+        ((SortNode) builder.getRoot())
+            .getOrderByParameter()
+            .getSortItemList()
+            .get(0)
+            .isExpression());
+    assertEquals(
+        expectedSortItems, ((SortNode) builder.getRoot()).getOrderByParameter().getSortItemList());
+    assertEquals(originalSortItems, queryStatement.getSortItemList());
+    assertEquals(originalOrderByClause, queryStatement.getOrderByComponent().toSQLString());
   }
 
   private static void planDeviceView(QueryStatement queryStatement, String queryId) {
