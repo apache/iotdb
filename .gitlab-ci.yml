@@ -281,6 +281,8 @@ tlcp-integration-test:
 
 ainode-test-1c1d1a:
   stage: test
+  # AINode jobs share the GPU runner host and its Docker storage.
+  resource_group: ainode-ci
   image: timechodb:AICluster
   tags:
     - gpu
@@ -306,6 +308,8 @@ ainode-test-1c1d1a:
 # stubs (iotdb/thrift/*) these tests import.
 ainode-ut:
   stage: test
+  # Keep this resource group aligned with every other AINode job.
+  resource_group: ainode-ci
   image: timechodb:AICluster
   tags:
     - gpu

@@ -76,6 +76,7 @@ libraries_with_dynamic_imports = [
     'sklearn',      # Has many submodules that may be dynamically imported
     'transformers', # Has dynamic model loading
     'torch',        # Has many submodules, especially _dynamo.polyfills
+    'thrift',       # fastbinary dynamically imports protocol helpers such as TBase
 ]
 
 # Collect all submodules for these libraries to ensure comprehensive coverage
@@ -190,7 +191,6 @@ external_dependencies = [
     'einops',
     'dynaconf',
     'tzlocal',
-    'thrift',
     'psutil',
     'requests',
 ]
