@@ -43,7 +43,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -282,7 +281,7 @@ public class TsFileResource implements Cloneable {
       return timeIndex;
     }
 
-    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
+    return deserializeTimeIndexFromResourceFile();
   }
 
   /** deserialize from disk */
@@ -507,11 +506,8 @@ public class TsFileResource implements Cloneable {
       if (!resourceFileExists()) {
         throw new IOException("resource file not found");
       }
-      try (InputStream inputStream =
-          FSFactoryProducer.getFSFactory()
-              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-        ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      try {
+        ITimeIndex timeIndexFromResourceFile = deserializeTimeIndexFromResourceFile();
         if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
@@ -522,6 +518,14 @@ public class TsFileResource implements Cloneable {
       }
     } finally {
       readUnlock();
+    }
+  }
+
+  private ITimeIndex deserializeTimeIndexFromResourceFile() throws IOException {
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      return ITimeIndex.createTimeIndex(inputStream);
     }
   }
 
