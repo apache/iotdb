@@ -905,6 +905,25 @@ public abstract class TableOperatorGenerator<
         sortItemIndexList,
         sortItemDataTypeList,
         context.getTableTypeProvider());
+    if (topKRuntimeFilter != null) {
+      checkArgument(
+          sortItemsCount == 1,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      TSDataType sortType = sortItemDataTypeList.get(0);
+      checkArgument(
+          sortType == TSDataType.INT64 || sortType == TSDataType.TIMESTAMP,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      return new TableTopKOperator(
+          operatorContext,
+          children,
+          dataTypes,
+          getComparatorForTable(
+              node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+          (int) node.getCount(),
+          node.isChildrenDataInOrder(),
+          topKRuntimeFilter,
+          sortItemIndexList.get(0));
+    }
     return new TableTopKOperator(
         operatorContext,
         children,
@@ -912,8 +931,7 @@ public abstract class TableOperatorGenerator<
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
         (int) node.getCount(),
-        node.isChildrenDataInOrder(),
-        topKRuntimeFilter);
+        node.isChildrenDataInOrder());
   }
 
   protected TopKRuntimeFilter registerRuntimeFilter(C context, TopKNode node) {

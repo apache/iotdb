@@ -31,19 +31,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
  * <p>Marks the {@code TopK + DeviceTableScan} structure for TopK runtime filter.
  *
  * <p>The topmost TopK establishes the <b>root TopK id</b>. In the single-region case ({@code Output
- * -> TopK -> Scan}), a static {@link #FAKE_ROOT_TOPK_ID} is used because there is no root TopK
- * above Exchange. A per-region TopK that sits directly on top of {@link DeviceTableScanNode}(s)
- * becomes the runtime filter producer, and both that TopK and its scan children are tagged with the
- * <b>root</b> TopK id (not the region TopK's own id). Because {@code DataNodeQueryContext} is
- * shared by all fragment instances of the same query on one DataNode, using the root id lets
- * multiple regions on the same DataNode share a single filter.
+ * -> TopK -> Scan}), the producer TopK uses its own plan node id as the root id. A per-region TopK
+ * that sits directly on top of {@link DeviceTableScanNode}(s) becomes the runtime filter producer,
+ * and both that TopK and its scan children are tagged with the <b>root</b> TopK id (not the region
+ * TopK's own id when a coordinator TopK exists above Exchange). Because {@code
+ * DataNodeQueryContext} is shared by all fragment instances of the same query on one DataNode,
+ * using the root id lets multiple regions on the same DataNode share a single filter.
  */
 public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
-
-  /**
-   * Shared root id for single-region plans ({@code Output -> TopK -> Scan}) without a root TopK.
-   */
-  public static final String FAKE_ROOT_TOPK_ID = "fake-topk-runtime-filter-root";
 
   @Override
   public PlanNode optimize(PlanNode plan, Context context) {
@@ -70,7 +65,7 @@ public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
       TopKNode topKNode = (TopKNode) node.clone();
 
       boolean orderByTimeOnly = TopKRuntimeFilterUtils.isOrderByTimeOnly(node.getOrderingScheme());
-      String effectiveRootTopKId = resolveEffectiveRootTopKId(node, rootTopKId, orderByTimeOnly);
+      String effectiveRootTopKId = resolveEffectiveRootTopKId(node, rootTopKId);
 
       // A TopK qualifies as a runtime filter producer only when it orders by time and directly
       // parents raw DeviceTableScan(s). Detect qualification and tag both the producer TopK and its
@@ -92,26 +87,12 @@ public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
       return topKNode;
     }
 
-    private static String resolveEffectiveRootTopKId(
-        TopKNode node, String rootTopKId, boolean orderByTimeOnly) {
+    private static String resolveEffectiveRootTopKId(TopKNode node, String rootTopKId) {
       if (rootTopKId != null) {
         return rootTopKId;
       }
-      if (orderByTimeOnly && hasDirectRawDeviceTableScanChild(node)) {
-        // Single region: Output -> TopK -> Scan (no Exchange/root TopK above).
-        return FAKE_ROOT_TOPK_ID;
-      }
-      // Multi-region coordinator TopK: establish the root id for nested region TopKs.
+      // Single-region producer or multi-region coordinator TopK: use this TopK's plan node id.
       return node.getPlanNodeId().getId();
-    }
-
-    private static boolean hasDirectRawDeviceTableScanChild(TopKNode node) {
-      for (PlanNode child : node.getChildren()) {
-        if (child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode)) {
-          return true;
-        }
-      }
-      return false;
     }
   }
 }

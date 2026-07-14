@@ -254,7 +254,12 @@ public abstract class TopKOperator implements ProcessOperator {
       return;
     }
     MergeSortKey peek = mergeSortHeap.peek();
-    topKRuntimeFilter.updateThreshold(peek.tsBlock.getTimeByIndex(peek.rowIndex));
+    topKRuntimeFilter.updateThreshold(extractThresholdTime(peek));
+  }
+
+  /** Table model overrides to read the time field. */
+  protected long extractThresholdTime(MergeSortKey peek) {
+    return peek.tsBlock.getTimeByIndex(peek.rowIndex);
   }
 
   @Override

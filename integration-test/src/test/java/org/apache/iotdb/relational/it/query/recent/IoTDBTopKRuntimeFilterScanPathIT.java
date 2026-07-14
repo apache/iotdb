@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -53,6 +54,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 public class IoTDBTopKRuntimeFilterScanPathIT {
 
   private static final String TREE_VIEW_DATABASE = "db_topk_rf_view";
+  private static final String TABLE_DATABASE = "db_topk_rf_table";
   private static final String READ_TSFILE_DATABASE = "db_topk_rf_read_tsfile";
 
   private static File tmpDir;
@@ -63,6 +65,7 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     tmpDir = new File(Files.createTempDirectory("topk-rf-scan-path").toUri());
     insertTreeModelData();
     createTreeView();
+    createTableModelDatabase();
     createReadTsFileDatabase();
   }
 
@@ -100,6 +103,59 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
         expectedHeader,
         retArray,
         TREE_VIEW_DATABASE);
+  }
+
+  @Test
+  public void orderByTimeLimitOnTable() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d3,333,", "1970-01-01T00:00:00.003Z,d2,222,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM table1 ORDER BY time DESC LIMIT 2",
+        expectedHeader,
+        retArray,
+        TABLE_DATABASE);
+  }
+
+  @Test
+  public void unionAllSiblingTopKOrderByTimeLimit() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d1,111,", "1970-01-01T00:00:00.003Z,d3,333,",
+        };
+    tableResultSetEqualTest(
+        "(SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd1' ORDER BY time DESC LIMIT 1)"
+            + " UNION ALL"
+            + " (SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd3' ORDER BY time DESC LIMIT 1)",
+        expectedHeader,
+        retArray,
+        TABLE_DATABASE);
+  }
+
+  @Test
+  public void orderByTimeAscLimitOnReadTsFile() throws Exception {
+    File tsFile = new File(tmpDir, "topk-rf-asc.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(tsFile)) {
+      generateTableWithDistinctDeviceTimes(
+          writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1", "s2"), 1, 3);
+    }
+
+    String[] expectedHeader = new String[] {"time", "tag1", "tag2", "s1", "s2"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,tag1_1,tag2_1,1,1,",
+          "1970-01-01T00:00:00.002Z,tag1_2,tag2_2,2,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT time, tag1, tag2, s1, s2 FROM read_tsfile(PATHS => '"
+            + toSqlPath(tsFile)
+            + "', TABLE_NAME => 'table1') ORDER BY time ASC LIMIT 2",
+        expectedHeader,
+        retArray,
+        READ_TSFILE_DATABASE);
   }
 
   @Test
@@ -152,6 +208,18 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
       statement.execute(
           "CREATE VIEW table1(device_id STRING TAG, s1 INT32 FIELD) AS root.db_topk_rf.**");
     }
+  }
+
+  private static void createTableModelDatabase() throws Exception {
+    prepareTableData(
+        new String[] {
+          "CREATE DATABASE " + TABLE_DATABASE,
+          "USE " + TABLE_DATABASE,
+          "CREATE TABLE table1(device_id STRING TAG, s1 INT32 FIELD)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd1', 1), (2, 'd1', 11), (3, 'd1', 111)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd2', 2), (2, 'd2', 22), (3, 'd2', 222)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd3', 3), (2, 'd3', 33), (3, 'd3', 333)",
+        });
   }
 
   private static void createReadTsFileDatabase() throws Exception {
