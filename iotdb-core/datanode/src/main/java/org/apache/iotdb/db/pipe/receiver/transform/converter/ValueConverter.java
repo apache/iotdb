@@ -19,14 +19,10 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.converter;
 
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
-import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -34,6 +30,15 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+
+import static org.apache.iotdb.db.utils.TypeServices.DEFAULT_DATE;
+import static org.apache.iotdb.db.utils.TypeServices.parseBlob;
+import static org.apache.iotdb.db.utils.TypeServices.parseDate;
+import static org.apache.iotdb.db.utils.TypeServices.parseDouble;
+import static org.apache.iotdb.db.utils.TypeServices.parseFloat;
+import static org.apache.iotdb.db.utils.TypeServices.parseString;
+import static org.apache.iotdb.db.utils.TypeServices.parseText;
+import static org.apache.iotdb.db.utils.TypeServices.parseTimestamp;
 
 public class ValueConverter {
 
@@ -307,8 +312,6 @@ public class ValueConverter {
   private static final Binary BINARY_FALSE = parseString(Boolean.FALSE.toString());
   private static final int TRUE_DATE = DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 2));
   private static final int FALSE_DATE =
-      DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
-  private static final int DEFAULT_DATE =
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
 
   public static int convertBooleanToInt32(final boolean value) {
@@ -730,125 +733,9 @@ public class ValueConverter {
     if (value == null) {
       return null;
     }
-    switch (dataType) {
-      case BOOLEAN:
-        return Boolean.parseBoolean(value);
-      case INT32:
-        return parseInteger(value);
-      case INT64:
-        return parseLong(value);
-      case FLOAT:
-        return parseFloat(value);
-      case DOUBLE:
-        return parseDouble(value);
-      case TEXT:
-        return parseText(value);
-      case TIMESTAMP:
-        return parseTimestamp(value);
-      case DATE:
-        return parseDate(value);
-      case BLOB:
-        return parseBlob(value);
-      case STRING:
-        return parseString(value);
-      default:
-        throw new UnsupportedOperationException(
-            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + dataType);
-    }
-  }
-
-  private static Binary parseBlob(final String value) {
-    return new Binary(value, TSFileConfig.STRING_CHARSET);
-  }
-
-  private static int parseInteger(final String value) {
-    try {
-      return Integer.parseInt(value);
-    } catch (Exception e) {
-      return 0;
-    }
-  }
-
-  private static long parseLong(final String value) {
-    try {
-      return Long.parseLong(value);
-    } catch (Exception e) {
-      return 0L;
-    }
-  }
-
-  private static float parseFloat(final String value) {
-    try {
-      return Float.parseFloat(value);
-    } catch (Exception e) {
-      return 0.0f;
-    }
-  }
-
-  private static double parseDouble(final String value) {
-    try {
-      return Double.parseDouble(value);
-    } catch (Exception e) {
-      return 0.0d;
-    }
-  }
-
-  private static long parseTimestamp(final String value) {
-    if (value == null || value.isEmpty()) {
-      return 0L;
-    }
-    try {
-      return TypeInferenceUtils.isNumber(value)
-          ? Long.parseLong(value)
-          : DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
-              StringUtils.trim(value), ZoneOffset.UTC);
-    } catch (final Exception e) {
-      return 0L;
-    }
-  }
-
-  private static int parseDate(final String value) {
-    if (value == null) {
-      return DEFAULT_DATE;
-    }
-    final String trimmedValue = StringUtils.trim(value);
-    if (trimmedValue.isEmpty()) {
-      return DEFAULT_DATE;
-    }
-    if (TypeInferenceUtils.isNumber(trimmedValue)) {
-      try {
-        int date = Integer.parseInt(trimmedValue);
-        DateUtils.parseIntToLocalDate(date);
-        return date;
-      } catch (final Exception e) {
-        return DEFAULT_DATE;
-      }
-    }
-    try {
-      return DateTimeUtils.parseDateExpressionToInt(trimmedValue);
-    } catch (final Exception e) {
-      return parseDateTimeToDate(trimmedValue);
-    }
-  }
-
-  private static int parseDateTimeToDate(final String value) {
-    try {
-      return DateUtils.parseDateExpressionToInt(
-          Instant.ofEpochMilli(
-                  DateTimeUtils.convertDatetimeStrToLong(value, ZoneOffset.UTC, 0, "ms"))
-              .atZone(ZoneOffset.UTC)
-              .toLocalDate());
-    } catch (final Exception e) {
-      return DEFAULT_DATE;
-    }
-  }
-
-  private static Binary parseString(final String value) {
-    return new Binary(value, TSFileConfig.STRING_CHARSET);
-  }
-
-  private static Binary parseText(final String value) {
-    return new Binary(value, TSFileConfig.STRING_CHARSET);
+    return TypeServices.VALUE_PARSER_NO_EXCEPTION_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(value);
   }
 
   private ValueConverter() {
