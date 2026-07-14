@@ -166,6 +166,7 @@ components:
         rowLimit:
           type: integer
           format: int32
+          description: Maximum rows to return. The effective limit is capped by rest_query_default_row_size_limit.
 
     InsertTabletRequest:
       title: InsertTabletRequest

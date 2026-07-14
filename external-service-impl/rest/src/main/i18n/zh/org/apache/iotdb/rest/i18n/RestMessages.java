@@ -34,6 +34,9 @@ public final class RestMessages {
   public static final String SQL_SHOULD_NOT_BE_NULL = "sql 不能为空";
   public static final String ROW_LIMIT_SHOULD_BE_POSITIVE = "row_limit 应为正数";
   public static final String ROW_LIMIT_CAMEL_SHOULD_BE_POSITIVE = "rowLimit 应为正数";
+  public static final String
+      MESSAGE_DATASET_ROW_SIZE_EXCEEDED_THE_GIVEN_MAX_ROW_SIZE_ARG_7A3F6452 =
+          "数据集行数超过给定的最大行数（%d）";
   public static final String PREFIX_PATHS_NOT_NULL = "prefix_paths 不能为空";
   public static final String TIMESTAMPS_NOT_NULL = "timestamps 不能为空";
   public static final String IS_ALIGNED_NOT_NULL = "is_aligned 不能为空";

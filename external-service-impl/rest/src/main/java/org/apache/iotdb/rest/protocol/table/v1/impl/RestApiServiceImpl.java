@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.table.v1.NotFoundException;
 import org.apache.iotdb.rest.protocol.table.v1.RestApiService;
 import org.apache.iotdb.rest.protocol.table.v1.handler.ExceptionHandler;
@@ -63,11 +64,12 @@ public class RestApiServiceImpl extends RestApiService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Integer defaultQueryRowLimit;
+  private final int defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
     defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
   }
 
   public Response executeQueryInternal(
@@ -103,7 +105,8 @@ public class RestApiServiceImpl extends RestApiService {
             QueryDataSetHandler.fillQueryDataSet(
                 queryExecution,
                 statement,
-                sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+                QueryRowLimitUtils.resolveActualRowSizeLimit(
+                    sql.getRowLimit(), defaultQueryRowLimit));
         if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
           return responseGenerateHelper(result);
         }
