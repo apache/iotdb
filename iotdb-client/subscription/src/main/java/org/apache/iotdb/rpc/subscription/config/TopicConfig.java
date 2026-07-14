@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -186,6 +187,23 @@ public class TopicConfig extends PipeParameters {
     return attributes;
   }
 
+  public Map<String, String> getAttributesWithSourceColumnFilter() {
+    return Collections.singletonMap(TopicConstant.COLUMN_FILTER_KEY, getColumnFilter());
+  }
+
+  public String getColumnFilter() {
+    return getStringIgnoreCase(
+        TopicConstant.COLUMN_FILTER_KEY, TopicConstant.COLUMN_FILTER_DEFAULT_VALUE);
+  }
+
+  public boolean hasColumnFilter() {
+    return containsKeyIgnoreCase(TopicConstant.COLUMN_FILTER_KEY);
+  }
+
+  public boolean isColumnFilterTrivial() {
+    return TopicConstant.COLUMN_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getColumnFilter().trim());
+  }
+
   public Map<String, String> getAttributesWithSourceTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
@@ -292,5 +310,18 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  private boolean containsKeyIgnoreCase(final String expectedKey) {
+    return attributes.keySet().stream().anyMatch(key -> expectedKey.equalsIgnoreCase(key));
+  }
+
+  private String getStringIgnoreCase(final String expectedKey, final String defaultValue) {
+    return attributes.entrySet().stream()
+        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(defaultValue);
   }
 }

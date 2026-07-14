@@ -887,11 +887,15 @@ public final class DataNodePipeMessages {
   public static final String RECEIVED_A_BIND_MESSAGE_FROM = "从 {}:{} 收到 bind 消息";
   public static final String REDIRECT_FILE_POSITION_TO = "重定向 file position 到 {}。";
   public static final String REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE =
-      "正在传输的 tsFile {} 中重定向到 position {}。";
+      "重定向到 position {}，正在传输的 TsFile 为 {}。";
   public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
       "网络接收 TsFile %s 失败，状态：%s";
   public static final String SECURITY_DIR = "security 目录：{}";
   public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store 路径和密码必须在同一别名下同时指定：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SUCCESSFULLY_ADDED_ITEM = "成功添加 item {}。";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
       "成功将 progID {} 转换为 CLSID: {{}}";
@@ -1298,8 +1302,6 @@ public final class DataNodePipeMessages {
   public static final String INTERRUPTED_WHILE_WAITING_FOR_THE_LOCK = "等待锁时被中断。";
   public static final String IS_RELEASED_AFTER_THREAD_INTERRUPTION =
       "{} 在线程中断后已被释放。";
-  public static final String PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_BYTES =
-      "PipePeriodicalLogReducer 已分配 {} 字节。";
   public static final String PIPETSFILERESOURCE_CACHED_DEVICEISALIGNEDMAP_FOR_TSFILE =
       "PipeTsFileResource：已为 tsfile {} 缓存 deviceIsAlignedMap。";
   public static final String PIPETSFILERESOURCE_CACHED_OBJECTS_FOR_TSFILE =
@@ -1736,6 +1738,9 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_ONLY_SUPPORT_CONVERT_PIPEINSERTNODETABLETINSERTIONEVENT_B888B8AA =
       "SubscriptionPipeTabletEventBatch {} 仅支持将 PipeInsertNodeTabletInsertionEvent 或 "
           + "PipeRawTabletInsertionEvent 转换为 tablet。忽略 {}。";
+  public static final String
+      PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_POSTPONE_EMITTING_SUBSCRIPTION_TABLET_BATCH_FOR_TOPIC_ARG_BECAUSE_TABLE_SCHEMA_ARG_ARG_IS_NOT_AVAILABLE_LOCALLY_996C618D =
+          "推迟发送主题 {} 的订阅 tablet 批次，因为本地尚未提供表结构 {}.{}";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_UNEXPECTED_TABLET_INSERTION_8FB1B507 =
       "SubscriptionPipeTabletEventBatch：非预期 tablet insertion event {}，跳过该事件。";
   public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_FAILED_TO_INCREASE_THE_595722D8 =

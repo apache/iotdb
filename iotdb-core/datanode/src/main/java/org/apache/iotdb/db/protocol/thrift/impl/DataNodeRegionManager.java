@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
@@ -127,7 +128,12 @@ public class DataNodeRegionManager {
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       tsStatus.setMessage(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_ILLEGAL_PATH_MSG);
     } catch (final MetadataException e2) {
-      LOGGER.error(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED, storageGroup, e2.getMessage());
+      if (LoggerPeriodicalLogReducer.shouldLog(
+          DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT,
+          e2.getClass().getName() + String.valueOf(e2.getMessage()))) {
+        LOGGER.error(
+            DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED, storageGroup, e2.getMessage());
+      }
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT, e2.getMessage()));

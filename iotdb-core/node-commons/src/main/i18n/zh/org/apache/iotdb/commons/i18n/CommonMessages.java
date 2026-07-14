@@ -68,6 +68,10 @@ public final class CommonMessages {
   // --- subscription ---
   public static final String CONFIG_PRINT = "{}：{}";
 
+  // --- log ---
+  public static final String LOG_LOGGERPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_C8373CF5 =
+      "LoggerPeriodicalLogReducer 已分配 {} 字节。";
+
   // --- partition ---
   public static final String DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED =
       "Database %s 不存在，且由于 enable_auto_create_schema 为 FALSE，无法自动创建。";

@@ -234,6 +234,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -749,6 +750,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    rejectColumnFilterForTreeTopic(createTopicStatement.getTopicAttributes());
 
     return new CreateTopicTask(createTopicStatement);
   }
@@ -759,8 +761,20 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    rejectColumnFilterForTreeTopic(alterTopicStatement.getTopicAttributes());
 
     return new AlterTopicTask(alterTopicStatement);
+  }
+
+  private static void rejectColumnFilterForTreeTopic(final Map<String, String> topicAttributes) {
+    for (final String key : topicAttributes.keySet()) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create or alter topic, %s is only supported for table topics",
+                TopicConstant.COLUMN_FILTER_KEY));
+      }
+    }
   }
 
   @Override
