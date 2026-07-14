@@ -1111,6 +1111,8 @@ public final class ProcedureMessages {
       "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在。";
   public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
       "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在：{}";
+  public static final String SOURCE_TABLE_DO_NOT_EXIST_AND_ALTER_IS_NOT_ALLOWED = "源表 %s.%s 不存在，对应的可写视图不允许修改，请手动删除原表";
+  public static final String SOURCE_TABLE_IS_IN_PRE_DELETE_AND_ALTER_IS_NOT_ALLOWED = "源表 %s.%s 处于删除中间态，对应的可写视图不允许修改，请手动删除原表";
   public static final String
       LOG_SKIP_SCHEMA_CASCADE_FOR_DROPPING_WRITABLE_VIEW_ARG_ARG_BECAUSE_ITS_COLUMNS_DO_NOT_COVER_ALL_COLUMNS_IN_SOURCE_TABLE_ARG_ARG_1067BF72 =
           "跳过删除可写视图 {}.{} 时的 schema 级联，因为该视图的列未覆盖源表 {}.{} 的全部列。";

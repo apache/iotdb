@@ -1415,6 +1415,42 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testWritableViewAlterExceptionAfterDropSourceTable() throws Exception {
+    final String database = "writable_view_alter_exception_source_ddl_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+
+        statement.execute(
+            "create table source_no_cascade(device_id string tag, pressure int32 field)");
+        statement.execute(
+            "create writable view view_no_cascade as select device_id as dev, "
+                + "pressure from source_no_cascade with (schema_cascade=false)");
+
+        statement.execute("drop table source_no_cascade");
+
+        statement.execute("alter view view_no_cascade add column humidity double field");
+        statement.execute("alter view view_no_cascade drop column pressure");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("describe view_no_cascade details"),
+            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+            new HashSet<>(
+                Arrays.asList(
+                    "time,TIMESTAMP,TIME,USING,null,time,",
+                    "dev,STRING,TAG,USING,null,device_id,",
+                    "humidity,DOUBLE,FIELD,USING,null,humidity,")));
+
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testRenameWritableViewWithCascadeSkipsSourceTableRename() throws Exception {
     final String database = "writable_view_rename_cascade_db";
     try (final Connection connection =
@@ -1453,70 +1489,36 @@ public class IoTDBWritableViewIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      try {
-        statement.execute("create database " + database);
-        statement.execute("use " + database);
-        statement.execute(
-            "create table source_cascade(device_id string tag, temperature int32 field)");
-        statement.execute(
-            "create writable view view_cascade as select device_id as dev, "
-                + "temperature as temp from source_cascade with (schema_cascade=true)");
-        statement.execute(
-            "create table source_no_cascade(device_id string tag, pressure int32 field)");
-        statement.execute(
-            "create writable view view_no_cascade as select device_id as dev, "
-                + "pressure from source_no_cascade with (schema_cascade=false)");
-        statement.execute(
-            "create table source_missing_column("
-                + "device_id string tag, "
-                + "temperature int32 field, "
-                + "status string attribute)");
-        statement.execute(
-            "create writable view view_missing_column as select "
-                + "device_id as dev, "
-                + "temperature as temp, "
-                + "status "
-                + "from source_missing_column with (schema_cascade=true)");
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "create table source_cascade(device_id string tag, temperature int32 field)");
+      statement.execute(
+          "create writable view view_cascade as select device_id as dev, "
+              + "temperature as temp from source_cascade with (schema_cascade=true)");
+      statement.execute("drop table source_cascade");
 
-        statement.execute("drop table source_cascade");
-        statement.execute("drop table source_no_cascade");
-        statement.execute("alter table source_missing_column drop column temperature");
+      assertMissingSource("alter view view_cascade add column status string attribute", statement);
+      assertMissingSource("alter view view_cascade drop column temp", statement);
+      assertMissingSource(
+          "alter view view_cascade alter column temp set data type int64", statement);
+    }
+  }
 
-        statement.execute("alter view view_cascade add column status string attribute");
-        statement.execute("alter view view_cascade drop column temp");
-        statement.execute("alter view view_no_cascade add column humidity double field");
-        statement.execute("alter view view_no_cascade drop column pressure");
-        statement.execute("alter view view_missing_column drop column temp");
-
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("describe view_cascade details"),
-            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
-            new HashSet<>(
-                Arrays.asList(
-                    "time,TIMESTAMP,TIME,USING,null,time,",
-                    "dev,STRING,TAG,USING,null,device_id,",
-                    "status,STRING,ATTRIBUTE,USING,null,status,")));
-
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("describe view_no_cascade details"),
-            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
-            new HashSet<>(
-                Arrays.asList(
-                    "time,TIMESTAMP,TIME,USING,null,time,",
-                    "dev,STRING,TAG,USING,null,device_id,",
-                    "humidity,DOUBLE,FIELD,USING,null,humidity,")));
-
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("describe view_missing_column details"),
-            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
-            new HashSet<>(
-                Arrays.asList(
-                    "time,TIMESTAMP,TIME,USING,null,time,",
-                    "dev,STRING,TAG,USING,null,device_id,",
-                    "status,STRING,ATTRIBUTE,USING,null,status,")));
-      } finally {
-        dropDatabaseQuietly(statement, database);
-      }
+  private void assertMissingSource(String sql, Statement statement) {
+    String errorMsg =
+        "alter the writable view is not allowed, please drop the writable view manually";
+    try {
+      statement.execute(sql);
+      fail(errorMsg);
+    } catch (SQLException exception) {
+      boolean contains =
+          exception
+              .getMessage()
+              .contains(
+                  "the source table writable_view_missing_source_ddl_db.source_cascade do not exist, "
+                      + "alter the writable view is not allowed, please drop the writable view manually");
+      Assert.assertTrue(errorMsg, contains);
     }
   }
 

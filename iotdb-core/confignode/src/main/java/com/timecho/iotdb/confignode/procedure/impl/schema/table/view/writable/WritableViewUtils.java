@@ -113,7 +113,15 @@ public class WritableViewUtils {
               .getConfigManager()
               .getClusterSchemaManager()
               .getTableAndStatusIfExists(sourceDatabase, sourceTableName);
-      if (!tablePair.isPresent()) {
+      // if the source table do not exist, only dropping the writable view is allowed
+      if (tablePair.isEmpty()) {
+        if (!(procedure instanceof DropWritableViewProcedure)) {
+          throw new MetadataException(
+              String.format(
+                  ProcedureMessages.SOURCE_TABLE_DO_NOT_EXIST_AND_ALTER_IS_NOT_ALLOWED,
+                  sourceDatabase,
+                  sourceTableName));
+        }
         LOGGER.warn(
             ProcedureMessages.SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE,
             procedure.getDatabase(),
@@ -123,7 +131,7 @@ public class WritableViewUtils {
         return null;
       }
       if (shouldSkipSourceCascadeForDrop(
-          procedure, writableView, sourceDatabase, sourceTableName, tablePair.get().left)) {
+          procedure, writableView, sourceDatabase, sourceTableName, tablePair.get())) {
         return null;
       }
       return new Pair<>(sourceDatabase, tablePair.get().left);
@@ -143,14 +151,30 @@ public class WritableViewUtils {
     return null;
   }
 
+  // 1. alter the table is not allowed when the source table is in the status of pre-delete, but
+  // drop the writable view is allowed
+  // 2. drop writable view could lead to the deletion of the source table when the all columns
+  // corresponding respectively
   private static boolean shouldSkipSourceCascadeForDrop(
       final AbstractAlterOrDropTableProcedure<?> procedure,
       final WritableView writableView,
       final String sourceDatabase,
       final String sourceTableName,
-      final TsTable sourceTable) {
-    if (!(procedure instanceof DropWritableViewProcedure)
-        || canMapAllSourceColumns(writableView, sourceTable)) {
+      final Pair<TsTable, TableNodeStatus> sourceTable)
+      throws MetadataException {
+
+    if (!(procedure instanceof DropWritableViewProcedure)) {
+      if (sourceTable.right == TableNodeStatus.PRE_DELETE) {
+        throw new MetadataException(
+            String.format(
+                ProcedureMessages.SOURCE_TABLE_IS_IN_PRE_DELETE_AND_ALTER_IS_NOT_ALLOWED,
+                sourceDatabase,
+                sourceTableName));
+      }
+      return false;
+    }
+
+    if (canMapAllSourceColumns(writableView, sourceTable.left)) {
       return false;
     }
     LOGGER.warn(

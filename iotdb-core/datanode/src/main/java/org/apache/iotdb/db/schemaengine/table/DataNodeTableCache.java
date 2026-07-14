@@ -396,11 +396,15 @@ public class DataNodeTableCache implements ITableCache {
             tableName2);
         return true;
       }
-      if (Objects.isNull(table1) || Objects.isNull(table2)) {
+
+      // original table could be deleted at first,
+      // so the table2 could be null, and table1 still exists
+      if (Objects.isNull(table1)) {
         return false;
       }
 
-      if (table1 instanceof PreDeleteTsTable || table2 instanceof PreDeleteTsTable) {
+      // if delete the writable view, then the original table has to be deleted
+      if (table1 instanceof PreDeleteTsTable) {
         commitDeleteTable(unqualifiedDatabase1, tableName1);
         commitDeleteTable(unqualifiedDatabase2, tableName2);
         return true;
