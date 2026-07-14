@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -649,6 +650,218 @@ public class AnalyzeTest {
   }
 
   @Test
+  public void testTimeFilterPreservedWhenQueryAnalysisIsRetried() throws Exception {
+    // In the reported incident, the first dispatch failed because the coordinator's internal
+    // client pool for the leader DataNode endpoint had reached its 1000-client limit.
+    // QueryExecution handles that transient failure by analyzing the same Statement object again.
+    // Repeating analysis directly makes the regression deterministic and independent of the
+    // resource exhaustion and dispatch timing.
+    String[] sqls =
+        new String[] {
+          "select s1 from root.sg.d1 where time > 1",
+          "select s1 from root.sg.d1 where time > 1 and time < 3",
+          "select s1 from root.sg.d1 where time > 1 and time < 3 and s1 > 1"
+        };
+    boolean[] expectedHasValueFilter = new boolean[] {false, false, true};
+
+    for (int i = 0; i < sqls.length; i++) {
+      String sql = sqls[i];
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+      MPPQueryContext context =
+          new MPPQueryContext(
+              "",
+              new QueryId("test_query_retry"),
+              new SessionInfo(0, "test", ZoneId.systemDefault()),
+              new TEndPoint(),
+              new TEndPoint());
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+
+      Analysis initialAnalysis = analyzer.analyze(statement);
+
+      Assert.assertNotNull(sql, initialAnalysis.getGlobalTimePredicate());
+      assertEquals(sql, expectedHasValueFilter[i], initialAnalysis.hasValueFilter());
+
+      // A second retry verifies that the same untouched snapshot can be restored repeatedly.
+      for (int retry = 0; retry < 2; retry++) {
+        context.prepareForRetry();
+        Analysis retriedAnalysis = analyzer.analyze(statement);
+
+        assertEquals(
+            sql,
+            initialAnalysis.getGlobalTimePredicate(),
+            retriedAnalysis.getGlobalTimePredicate());
+        assertEquals(
+            sql, initialAnalysis.getWhereExpression(), retriedAnalysis.getWhereExpression());
+        assertEquals(sql, expectedHasValueFilter[i], retriedAnalysis.hasValueFilter());
+      }
+    }
+  }
+
+  @Test
+  public void testCountTimeWithMultipleFromPathsPreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select count_time(*) from root.sg.d1, root.sg.d2");
+
+    assertEquals(analyses.left.getRespDatasetHeader(), analyses.right.getRespDatasetHeader());
+    assertEquals(analyses.left.getSelectExpressions(), analyses.right.getSelectExpressions());
+    assertEquals(
+        analyses.left.getAggregationExpressions(), analyses.right.getAggregationExpressions());
+  }
+
+  @Test
+  public void testFailedSemanticCheckRestoresCountTimeFlag() {
+    QueryStatement statement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "select count_time(*) from root.sg.d1 having count_time(*) > 0",
+                ZonedDateTime.now().getOffset());
+    MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("test_count_time_semantic_failure"),
+            new SessionInfo(0, "test", ZoneId.systemDefault()),
+            new TEndPoint(),
+            new TEndPoint());
+
+    Assert.assertFalse(statement.isCountTimeAggregation());
+    try {
+      new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl())
+          .analyze(statement);
+      fail("count_time with HAVING should fail semantic validation");
+    } catch (SemanticException expected) {
+      Assert.assertFalse(statement.isCountTimeAggregation());
+    }
+  }
+
+  @Test
+  public void testGroupByLevelHavingPreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select count(s1) from root.sg.d1 group by level = 1 having count(s1) > 0");
+
+    assertEquals(analyses.left.getRespDatasetHeader(), analyses.right.getRespDatasetHeader());
+    assertEquals(analyses.left.getHavingExpression(), analyses.right.getHavingExpression());
+    assertEquals(
+        analyses.left.getCrossGroupByExpressions(), analyses.right.getCrossGroupByExpressions());
+  }
+
+  @Test
+  public void testLimitOffsetPushDownPreservedWhenQueryAnalysisIsRetried()
+      throws IllegalPathException {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice(
+            "select count(s1) from root.sg.* group by ([0, 100), 10ms) "
+                + "limit 10 offset 10 align by device");
+
+    assertEquals(
+        Collections.singletonList(new PartialPath("root.sg.d2")), analyses.left.getDeviceList());
+    assertEquals(analyses.left.getDeviceList(), analyses.right.getDeviceList());
+    assertEquals(analyses.left.getGroupByTimeParameter(), analyses.right.getGroupByTimeParameter());
+  }
+
+  @Test
+  public void testSelectIntoDeviceOrderPreservedWhenQueryAnalysisIsRetried()
+      throws IllegalPathException {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice(
+            "select s1 into root.copy.t1(x), root.copy.t2(x) from root.sg.* "
+                + "order by device desc align by device");
+
+    Map<String, List<Pair<String, PartialPath>>> expectedMapping = new HashMap<>();
+    expectedMapping.put(
+        "root.sg.d2",
+        Collections.singletonList(new Pair<>("s1", new PartialPath("root.copy.t1.x"))));
+    expectedMapping.put(
+        "root.sg.d1",
+        Collections.singletonList(new Pair<>("s1", new PartialPath("root.copy.t2.x"))));
+    assertEquals(
+        expectedMapping,
+        analyses.left.getDeviceViewIntoPathDescriptor().getDeviceToSourceTargetPathPairListMap());
+    assertEquals(
+        analyses.left.getDeviceViewIntoPathDescriptor().getDeviceToSourceTargetPathPairListMap(),
+        analyses.right.getDeviceViewIntoPathDescriptor().getDeviceToSourceTargetPathPairListMap());
+  }
+
+  @Test
+  public void testNormalizedOrderByExpressionPreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select s1 from root.sg.* order by Sin(s1) align by device");
+
+    assertEquals(analyses.left.getOrderByExpressions(), analyses.right.getOrderByExpressions());
+    assertEquals(
+        analyses.left.getDeviceToOrderByExpressions(),
+        analyses.right.getDeviceToOrderByExpressions());
+    assertEquals(analyses.left.getDeviceToSortItems(), analyses.right.getDeviceToSortItems());
+  }
+
+  @Test
+  public void testNormalizedOrderByExpressionPreservedForNonAlignQueryRetry() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select s1 from root.sg.d1 order by Sin(s1)");
+
+    assertEquals(analyses.left.getOrderByExpressions(), analyses.right.getOrderByExpressions());
+    assertEquals(analyses.left.getMergeOrderParameter(), analyses.right.getMergeOrderParameter());
+  }
+
+  @Test
+  public void testGroupByControlExpressionPreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select count(s1) from root.sg.d1 group by variation(s1)");
+
+    assertEquals(analyses.left.getGroupByExpression(), analyses.right.getGroupByExpression());
+    assertEquals(
+        analyses.left.getAggregationExpressions(), analyses.right.getAggregationExpressions());
+  }
+
+  @Test
+  public void testMixedOrPredicatePreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice(
+            "select s1 from root.sg.d1 where "
+                + "(time > 1 and s1 > 1) or (time > 10 and s1 < 10)");
+
+    Assert.assertNotNull(analyses.left.getGlobalTimePredicate());
+    Assert.assertTrue(analyses.left.hasValueFilter());
+    assertEquals(analyses.left.getGlobalTimePredicate(), analyses.right.getGlobalTimePredicate());
+    assertEquals(analyses.left.getWhereExpression(), analyses.right.getWhereExpression());
+  }
+
+  @Test
+  public void testMixedNotPredicatePreservedWhenQueryAnalysisIsRetried() {
+    Pair<Analysis, Analysis> analyses =
+        analyzeSQLTwice("select s1 from root.sg.d1 where not(time > 1 and s1 > 1)");
+
+    Assert.assertNull(analyses.left.getGlobalTimePredicate());
+    Assert.assertTrue(analyses.left.hasValueFilter());
+    assertEquals(analyses.left.getWhereExpression(), analyses.right.getWhereExpression());
+  }
+
+  @Test
+  public void testShowTimeSeriesTimeFilterPreservedWhenAnalysisIsRetried() {
+    assertMetadataTimeFilterPreservedWhenAnalysisIsRetried(
+        "show timeseries root.sg.** where time > 1 and time < 3");
+  }
+
+  @Test
+  public void testShowDevicesTimeFilterPreservedWhenAnalysisIsRetried() {
+    assertMetadataTimeFilterPreservedWhenAnalysisIsRetried(
+        "show devices root.sg.** where time > 1 and time < 3");
+  }
+
+  @Test
+  public void testCountTimeSeriesTimeFilterPreservedWhenAnalysisIsRetried() {
+    assertMetadataTimeFilterPreservedWhenAnalysisIsRetried(
+        "count timeseries root.sg.** where time > 1 and time < 3");
+  }
+
+  @Test
+  public void testCountDevicesTimeFilterPreservedWhenAnalysisIsRetried() {
+    assertMetadataTimeFilterPreservedWhenAnalysisIsRetried(
+        "count devices root.sg.** where time > 1 and time < 3");
+  }
+
+  @Test
   public void testDataPartitionAnalyze() {
     Analysis analysis = analyzeSQL("insert into root.sg.d1(timestamp,s) values(1,10),(86401,11)");
     Assert.assertEquals(
@@ -1068,6 +1281,31 @@ public class AnalyzeTest {
     }
     fail();
     return null;
+  }
+
+  private Pair<Analysis, Analysis> analyzeSQLTwice(String sql) {
+    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("test_query_retry"),
+            new SessionInfo(0, "test", ZoneId.systemDefault()),
+            new TEndPoint(),
+            new TEndPoint());
+    Analyzer analyzer =
+        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+
+    Analysis initialAnalysis = analyzer.analyze(statement);
+    context.prepareForRetry();
+    Analysis retriedAnalysis = analyzer.analyze(statement);
+    return new Pair<>(initialAnalysis, retriedAnalysis);
+  }
+
+  private void assertMetadataTimeFilterPreservedWhenAnalysisIsRetried(String sql) {
+    Pair<Analysis, Analysis> analyses = analyzeSQLTwice(sql);
+
+    Assert.assertNotNull(analyses.left.getGlobalTimePredicate());
+    assertEquals(analyses.left.getGlobalTimePredicate(), analyses.right.getGlobalTimePredicate());
   }
 
   private void alignByTimeAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {

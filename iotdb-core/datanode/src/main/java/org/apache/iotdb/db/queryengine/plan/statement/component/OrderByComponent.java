@@ -49,6 +49,36 @@ public class OrderByComponent extends StatementNode {
     this.sortItemExpressionList = new ArrayList<>();
   }
 
+  /**
+   * Creates a structurally independent component for analysis-time copy-on-write updates.
+   *
+   * <p>Expression nodes are shared because analysis replaces them instead of mutating them. Lists
+   * and SortItems are copied because both are changed in place while resolving ORDER BY
+   * expressions.
+   */
+  public static OrderByComponent copyOf(OrderByComponent source) {
+    OrderByComponent result = new OrderByComponent();
+    int expressionIndex = 0;
+    for (SortItem sortItem : source.sortItemList) {
+      if (sortItem.isExpression()) {
+        SortItem copiedSortItem =
+            new SortItem(
+                sortItem.getExpression(), sortItem.getOrdering(), sortItem.getNullOrdering());
+        result.sortItemList.add(copiedSortItem);
+        // SortItem intentionally keeps the parser-facing expression for SQL rendering, while the
+        // parallel expression list contains the lower-case normalized AST consumed by analysis.
+        // They are not interchangeable, so preserve both references independently in the COW
+        // component.
+        result.sortItemExpressionList.add(source.sortItemExpressionList.get(expressionIndex++));
+      } else {
+        result.addSortItem(
+            new SortItem(
+                sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering()));
+      }
+    }
+    return result;
+  }
+
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
     switch (sortItem.getSortKey()) {

@@ -45,6 +45,11 @@ public abstract class GroupByComponent extends StatementNode {
         ExpressionAnalyzer.toLowerCaseExpression(controlColumnExpression);
   }
 
+  /** Sets an expression that has already been normalized by the analyzer. */
+  public void setControlColumnExpressionForAnalyze(Expression controlColumnExpression) {
+    this.controlColumnExpression = controlColumnExpression;
+  }
+
   public Expression getControlColumnExpression() {
     return controlColumnExpression;
   }

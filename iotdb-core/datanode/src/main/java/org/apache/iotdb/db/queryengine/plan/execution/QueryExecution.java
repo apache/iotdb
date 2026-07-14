@@ -128,7 +128,13 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
     context.setNeedSetHighestPriority(analysis.needSetHighestPriority());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -166,6 +172,15 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void start() {
+    try {
+      startInternal();
+    } catch (RuntimeException | Error e) {
+      finishAnalysisAttemptForCurrentState();
+      throw e;
+    }
+  }
+
+  private void startInternal() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE);
@@ -175,6 +190,7 @@ public class QueryExecution implements IQueryExecution {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
       }
+      finishAnalysisAttemptForCurrentState();
       return;
     }
 
@@ -191,6 +207,7 @@ public class QueryExecution implements IQueryExecution {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
       }
+      finishAnalysisAttemptForCurrentState();
       return;
     }
 
@@ -216,6 +233,7 @@ public class QueryExecution implements IQueryExecution {
     if (!context.isQuery() && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
+    finishAnalysisAttemptForCurrentState();
   }
 
   private void checkTimeOutForQuery() {
@@ -229,12 +247,19 @@ public class QueryExecution implements IQueryExecution {
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
       LOGGER.warn(DataNodeQueryMessages.REACHMAXRETRYCOUNT);
+      // Keep the same ownership order as an ordinary retry: plans and scheduler stop using the
+      // analysis working state before the journal restores parser-owned objects.
+      this.stopAndCleanup(stateMachine.getFailureException());
+      planner.rollbackAnalysisAttempt();
       stateMachine.transitionToFailed();
       return getStatus();
     }
     LOGGER.warn(DataNodeQueryMessages.ERROR_WHEN_EXECUTING_QUERY, stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
+    // The generated plans no longer read the statement after cleanup. Restore the parser-owned
+    // state before the next analysis attempt so retry observes the same SQL as the first attempt.
+    planner.rollbackAnalysisAttempt();
     LOGGER.info(DataNodeQueryMessages.WAITBEFORERETRY_WAIT_MS, RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
@@ -253,10 +278,28 @@ public class QueryExecution implements IQueryExecution {
     this.stopped.compareAndSet(true, false);
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
     // re-start the QueryExecution
     this.start();
     return getStatus();
+  }
+
+  private void finishAnalysisAttemptForCurrentState() {
+    QueryState state = stateMachine.getState();
+    if (state == QueryState.PENDING_RETRY) {
+      return;
+    }
+    if (state == QueryState.RUNNING || state == QueryState.FINISHED) {
+      planner.commitAnalysisAttempt();
+    } else {
+      planner.rollbackAnalysisAttempt();
+    }
   }
 
   private boolean skipExecute() {
