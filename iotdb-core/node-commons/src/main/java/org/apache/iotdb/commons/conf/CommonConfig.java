@@ -319,8 +319,8 @@ public class CommonConfig {
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   private boolean pipeReceiverLoadConversionEnabled = false;
-  private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
-  private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
+  private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
+  private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
 
   private volatile double pipeMetaReportMaxLogNumPerRound = 0.1;
   private volatile int pipeMetaReportMaxLogIntervalRounds = 360;
@@ -1690,29 +1690,46 @@ public class CommonConfig {
     logger.info("pipeReceiverConversionEnabled is set to {}.", pipeReceiverLoadConversionEnabled);
   }
 
+  public long getLoggerPeriodicalLogMinIntervalSeconds() {
+    return loggerPeriodicalLogMinIntervalSeconds;
+  }
+
+  public void setLoggerPeriodicalLogMinIntervalSeconds(long loggerPeriodicalLogMinIntervalSeconds) {
+    if (this.loggerPeriodicalLogMinIntervalSeconds == loggerPeriodicalLogMinIntervalSeconds) {
+      return;
+    }
+    this.loggerPeriodicalLogMinIntervalSeconds = loggerPeriodicalLogMinIntervalSeconds;
+    logger.info(
+        "loggerPeriodicalLogMinIntervalSeconds is set to {}.",
+        loggerPeriodicalLogMinIntervalSeconds);
+  }
+
   public long getPipePeriodicalLogMinIntervalSeconds() {
-    return pipePeriodicalLogMinIntervalSeconds;
+    return getLoggerPeriodicalLogMinIntervalSeconds();
   }
 
   public void setPipePeriodicalLogMinIntervalSeconds(long pipePeriodicalLogMinIntervalSeconds) {
-    if (this.pipePeriodicalLogMinIntervalSeconds == pipePeriodicalLogMinIntervalSeconds) {
+    setLoggerPeriodicalLogMinIntervalSeconds(pipePeriodicalLogMinIntervalSeconds);
+  }
+
+  public long getLoggerCacheMaxSizeInBytes() {
+    return loggerCacheMaxSizeInBytes;
+  }
+
+  public void setLoggerCacheMaxSizeInBytes(long loggerCacheMaxSizeInBytes) {
+    if (this.loggerCacheMaxSizeInBytes == loggerCacheMaxSizeInBytes) {
       return;
     }
-    this.pipePeriodicalLogMinIntervalSeconds = pipePeriodicalLogMinIntervalSeconds;
-    logger.info(
-        "pipePeriodicalLogMinIntervalSeconds is set to {}.", pipePeriodicalLogMinIntervalSeconds);
+    this.loggerCacheMaxSizeInBytes = loggerCacheMaxSizeInBytes;
+    logger.info("loggerCacheMaxSizeInBytes is set to {}.", loggerCacheMaxSizeInBytes);
   }
 
   public long getPipeLoggerCacheMaxSizeInBytes() {
-    return pipeLoggerCacheMaxSizeInBytes;
+    return getLoggerCacheMaxSizeInBytes();
   }
 
   public void setPipeLoggerCacheMaxSizeInBytes(long pipeLoggerCacheMaxSizeInBytes) {
-    if (this.pipeLoggerCacheMaxSizeInBytes == pipeLoggerCacheMaxSizeInBytes) {
-      return;
-    }
-    this.pipeLoggerCacheMaxSizeInBytes = pipeLoggerCacheMaxSizeInBytes;
-    logger.info("pipeLoggerCacheMaxSizeInBytes is set to {}.", pipeLoggerCacheMaxSizeInBytes);
+    setLoggerCacheMaxSizeInBytes(pipeLoggerCacheMaxSizeInBytes);
   }
 
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {

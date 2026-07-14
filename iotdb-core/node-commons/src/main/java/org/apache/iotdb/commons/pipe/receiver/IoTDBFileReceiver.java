@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -179,17 +180,26 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     try {
       receiverFileBaseDir = getReceiverFileBaseDir();
       if (Objects.isNull(receiverFileBaseDir)) {
-        PipeLogger.log(
-            LOGGER::warn,
-            "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.",
-            receiverId.get());
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.")) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.",
+              receiverId.get());
+        }
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
     } catch (Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to create pipe receiver file folder because all disks of folders are full.",
-          receiverId.get(),
-          e);
+      if (LoggerPeriodicalLogReducer.shouldLog(
+          "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full."
+              + e.getClass().getName()
+              + e.getMessage())) {
+        PipeLogger.log(
+            LOGGER::warn,
+            e,
+            "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full.",
+            receiverId.get());
+      }
       return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
     }
 
