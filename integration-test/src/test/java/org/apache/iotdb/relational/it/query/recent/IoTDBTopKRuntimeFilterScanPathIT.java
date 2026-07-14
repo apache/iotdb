@@ -82,7 +82,7 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.003Z,d3,333,", "1970-01-01T00:00:00.003Z,d2,222,",
+          "1970-01-01T00:00:00.032Z,d3,333,", "1970-01-01T00:00:00.031Z,d2,222,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 ORDER BY time DESC LIMIT 2",
@@ -96,7 +96,7 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,d1,1,", "1970-01-01T00:00:00.001Z,d2,2,",
+          "1970-01-01T00:00:00.010Z,d1,1,", "1970-01-01T00:00:00.011Z,d2,2,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 ORDER BY time ASC LIMIT 2",
@@ -106,11 +106,11 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
   }
 
   @Test
-  public void orderByTimeLimitOnTable() {
+  public void orderByTimeDescLimitOnTable() {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.003Z,d3,333,", "1970-01-01T00:00:00.003Z,d2,222,",
+          "1970-01-01T00:00:00.032Z,d3,333,", "1970-01-01T00:00:00.031Z,d2,222,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM table1 ORDER BY time DESC LIMIT 2",
@@ -120,11 +120,22 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
   }
 
   @Test
+  public void orderByTimeAscLimitOnTable() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.010Z,d1,1,", "1970-01-01T00:00:00.011Z,d2,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM table1 ORDER BY time ASC LIMIT 2", expectedHeader, retArray, TABLE_DATABASE);
+  }
+
+  @Test
   public void unionAllSiblingTopKOrderByTimeLimit() {
     String[] expectedHeader = new String[] {"time", "device_id", "s1"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.003Z,d1,111,", "1970-01-01T00:00:00.003Z,d3,333,",
+          "1970-01-01T00:00:00.030Z,d1,111,", "1970-01-01T00:00:00.032Z,d3,333,",
         };
     tableResultSetEqualTest(
         "(SELECT time, device_id, s1 FROM table1 WHERE device_id = 'd1' ORDER BY time DESC LIMIT 1)"
@@ -192,11 +203,11 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
       statement.execute(
           "CREATE TIMESERIES root.db_topk_rf.d3.s1 WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute(
-          "INSERT INTO root.db_topk_rf.d1(timestamp,s1) VALUES(1, 1), (2, 11), (3, 111)");
+          "INSERT INTO root.db_topk_rf.d1(timestamp,s1) VALUES(10, 1), (20, 11), (30, 111)");
       statement.execute(
-          "INSERT INTO root.db_topk_rf.d2(timestamp,s1) VALUES(1, 2), (2, 22), (3, 222)");
+          "INSERT INTO root.db_topk_rf.d2(timestamp,s1) VALUES(11, 2), (21, 22), (31, 222)");
       statement.execute(
-          "INSERT INTO root.db_topk_rf.d3(timestamp,s1) VALUES(1, 3), (2, 33), (3, 333)");
+          "INSERT INTO root.db_topk_rf.d3(timestamp,s1) VALUES(12, 3), (22, 33), (32, 333)");
     }
   }
 
@@ -216,9 +227,9 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
           "CREATE DATABASE " + TABLE_DATABASE,
           "USE " + TABLE_DATABASE,
           "CREATE TABLE table1(device_id STRING TAG, s1 INT32 FIELD)",
-          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd1', 1), (2, 'd1', 11), (3, 'd1', 111)",
-          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd2', 2), (2, 'd2', 22), (3, 'd2', 222)",
-          "INSERT INTO table1(time, device_id, s1) VALUES (1, 'd3', 3), (2, 'd3', 33), (3, 'd3', 333)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (10, 'd1', 1), (20, 'd1', 11), (30, 'd1', 111)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (11, 'd2', 2), (21, 'd2', 22), (31, 'd2', 222)",
+          "INSERT INTO table1(time, device_id, s1) VALUES (12, 'd3', 3), (22, 'd3', 33), (32, 'd3', 333)",
         });
   }
 
