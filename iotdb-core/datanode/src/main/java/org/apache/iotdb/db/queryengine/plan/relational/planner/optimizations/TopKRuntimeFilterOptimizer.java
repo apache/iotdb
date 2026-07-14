@@ -23,13 +23,19 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning (after exchange nodes are inserted).
  *
- * <p>Marks TopK and table scan nodes for TopK runtime filter, similar to Doris {@code TOPN OPT} /
- * {@code TOPN OPT: N} plan annotations.
+ * <p>Marks the {@code TopK + DeviceTableScan} structure for TopK runtime filter.
+ *
+ * <p>The topmost TopK establishes the <b>root TopK id</b>. A per-region TopK that sits directly on
+ * top of {@link DeviceTableScanNode}(s) becomes the runtime filter producer, and both that TopK and
+ * its scan children are tagged with the <b>root</b> TopK id (not the region TopK's own id). Because
+ * {@code DataNodeQueryContext} is shared by all fragment instances of the same query on one
+ * DataNode, using the root id lets multiple regions on the same DataNode share a single filter.
  */
 public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
 
@@ -41,55 +47,44 @@ public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
     return plan.accept(new Rewriter(), null);
   }
 
-  private static class Rewriter implements PlanVisitor<PlanNode, Void> {
+  /** Context carries the root TopK id, or {@code null} until the first (topmost) TopK is seen. */
+  private static class Rewriter implements PlanVisitor<PlanNode, PlanNodeId> {
 
     @Override
-    public PlanNode visitPlan(PlanNode node, Void context) {
+    public PlanNode visitPlan(PlanNode node, PlanNodeId rootTopKId) {
       PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
-        newNode.addChild(child.accept(this, context));
+        newNode.addChild(child.accept(this, rootTopKId));
       }
       return newNode;
     }
 
     @Override
-    public PlanNode visitTopK(TopKNode node, Void context) {
+    public PlanNode visitTopK(TopKNode node, PlanNodeId rootTopKId) {
       TopKNode topKNode = (TopKNode) node.clone();
-      for (PlanNode child : node.getChildren()) {
-        topKNode.addChild(child.accept(this, context));
-      }
 
-      if (TopKRuntimeFilterUtils.isOrderByTimeOnly(topKNode.getOrderingScheme())
-          && TopKRuntimeFilterUtils.qualifiesForRuntimeFilter(topKNode)) {
-        topKNode.setUseTopKRuntimeFilter(true);
-        topKNode.setTopKRuntimeFilterAscending(
-            topKNode
-                .getOrderingScheme()
-                .getOrdering(topKNode.getOrderingScheme().getOrderBy().get(0))
-                .isAscending());
-        markScansInSubtree(topKNode, topKNode.getPlanNodeId());
+      // The topmost TopK establishes the root id; nested (per-region) TopK nodes inherit it.
+      PlanNodeId effectiveRootTopKId = rootTopKId == null ? node.getPlanNodeId() : rootTopKId;
+
+      // A TopK qualifies as a runtime filter producer only when it orders by time and directly
+      // parents raw DeviceTableScan(s). Detect qualification and tag both the producer TopK and its
+      // scan children (with the root id) in a single pass over the children.
+      boolean orderByTimeOnly = TopKRuntimeFilterUtils.isOrderByTimeOnly(node.getOrderingScheme());
+      for (PlanNode child : node.getChildren()) {
+        boolean isRawDeviceTableScan =
+            child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode);
+        if (orderByTimeOnly && isRawDeviceTableScan) {
+          if (topKNode.getTopKRuntimeFilterSourceId() == null) {
+            topKNode.setTopKRuntimeFilterSourceId(effectiveRootTopKId);
+          }
+          DeviceTableScanNode scanNode = (DeviceTableScanNode) child.clone();
+          scanNode.setTopKRuntimeFilterSourceId(effectiveRootTopKId.getId());
+          topKNode.addChild(scanNode);
+        } else {
+          topKNode.addChild(child.accept(this, effectiveRootTopKId));
+        }
       }
       return topKNode;
-    }
-
-    private void markScansInSubtree(PlanNode root, PlanNodeId sourceId) {
-      root.accept(
-          new PlanVisitor<Void, Void>() {
-            @Override
-            public Void visitPlan(PlanNode node, Void unused) {
-              for (PlanNode child : node.getChildren()) {
-                child.accept(this, null);
-              }
-              return null;
-            }
-
-            @Override
-            public Void visitDeviceTableScan(DeviceTableScanNode scanNode, Void unused) {
-              scanNode.setTopKRuntimeFilterSourceId(sourceId);
-              return null;
-            }
-          },
-          null);
     }
   }
 }

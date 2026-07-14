@@ -80,7 +80,7 @@ public class DeviceTableScanNode extends TableScanNode {
   protected transient boolean containsNonAlignedDevice;
 
   // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
-  @Nullable protected PlanNodeId topKRuntimeFilterSourceId;
+  @Nullable protected String topKRuntimeFilterSourceId;
 
   protected DeviceTableScanNode() {}
 
@@ -177,12 +177,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
 
-    if (node.topKRuntimeFilterSourceId != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      node.topKRuntimeFilterSourceId.serialize(byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, byteBuffer);
   }
 
   protected static void serializeMemberVariables(
@@ -212,12 +207,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
 
-    if (node.topKRuntimeFilterSourceId != null) {
-      ReadWriteIOUtils.write(true, stream);
-      node.topKRuntimeFilterSourceId.serialize(stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, stream);
   }
 
   protected static void deserializeMemberVariables(
@@ -248,9 +238,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      node.topKRuntimeFilterSourceId = PlanNodeId.deserialize(byteBuffer);
-    }
+    node.topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
@@ -331,11 +319,12 @@ public class DeviceTableScanNode extends TableScanNode {
     this.containsNonAlignedDevice = true;
   }
 
-  public Optional<PlanNodeId> getTopKRuntimeFilterSourceId() {
-    return Optional.ofNullable(topKRuntimeFilterSourceId);
+  @Nullable
+  public String getTopKRuntimeFilterSourceId() {
+    return topKRuntimeFilterSourceId;
   }
 
-  public void setTopKRuntimeFilterSourceId(PlanNodeId topKRuntimeFilterSourceId) {
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
     this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 

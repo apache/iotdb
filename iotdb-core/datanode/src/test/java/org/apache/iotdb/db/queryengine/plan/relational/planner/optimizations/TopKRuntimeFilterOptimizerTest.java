@@ -19,55 +19,129 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer.Context;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.Optional;
 
 public class TopKRuntimeFilterOptimizerTest {
 
+  /** Single region: the sole TopK sits directly over the scan and uses its own id as root. */
   @Test
-  public void marksTopKAndScanWhenQualified() {
+  public void marksTopKAndScanWithOwnRootIdInSingleRegion() {
     PlanNodeId topKId = new PlanNodeId("topk");
-    PlanNodeId scanId = new PlanNodeId("scan");
     TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
-    DeviceTableScanNode scanNode = createScan(scanId);
-    topKNode.addChild(new LimitNode(new PlanNodeId("limit"), scanNode, 10, Optional.empty()));
+    topKNode.addChild(createScan(new PlanNodeId("scan")));
 
-    TopKNode optimized = (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, null);
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertTrue(optimized.isUseTopKRuntimeFilter());
+    Assert.assertNotNull(optimized.getTopKRuntimeFilterSourceId());
     Assert.assertTrue(optimized.isTopKRuntimeFilterAscending());
-    DeviceTableScanNode optimizedScan =
-        (DeviceTableScanNode) optimized.getChildren().get(0).getChildren().get(0);
-    Assert.assertEquals(topKId, optimizedScan.getTopKRuntimeFilterSourceId().orElse(null));
+    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimized.getChildren().get(0);
+    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
-  public void skipsTopKWithExchangeChild() {
+  public void marksDescendingWhenOrderByTimeDesc() {
     PlanNodeId topKId = new PlanNodeId("topk");
     TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
-    topKNode.addChild(new ExchangeNode(new PlanNodeId("exchange"), null, null, null, null));
+    topKNode.addChild(createScan(new PlanNodeId("scan")));
 
-    TopKNode optimized = (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, null);
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertFalse(optimized.isUseTopKRuntimeFilter());
+    Assert.assertNotNull(optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertFalse(optimized.isTopKRuntimeFilterAscending());
+  }
+
+  /**
+   * Multi region: the coordinator TopK establishes the root id but is not a producer; each region
+   * TopK directly above a scan becomes the producer and both it and its scan carry the root id.
+   */
+  @Test
+  public void regionTopKAndScanShareRootTopKId() {
+    PlanNodeId rootTopKId = new PlanNodeId("root-topk");
+    PlanNodeId regionTopKId = new PlanNodeId("region-topk");
+    TopKNode rootTopK = createTopK(rootTopKId, SortOrder.DESC_NULLS_LAST);
+    ExchangeNode exchange = new ExchangeNode(new PlanNodeId("exchange"));
+    TopKNode regionTopK = createTopK(regionTopKId, SortOrder.DESC_NULLS_LAST);
+    regionTopK.addChild(createScan(new PlanNodeId("scan")));
+    exchange.addChild(regionTopK);
+    rootTopK.addChild(exchange);
+
+    TopKNode optimizedRoot =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(rootTopK, queryContext());
+
+    // Coordinator TopK is not a producer (its child is an Exchange, not a scan).
+    Assert.assertNull(optimizedRoot.getTopKRuntimeFilterSourceId());
+
+    TopKNode optimizedRegion = (TopKNode) optimizedRoot.getChildren().get(0).getChildren().get(0);
+    Assert.assertNotNull(optimizedRegion.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(rootTopKId, optimizedRegion.getTopKRuntimeFilterSourceId());
+
+    DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimizedRegion.getChildren().get(0);
+    Assert.assertEquals(rootTopKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+  }
+
+  /** Scan not a direct child of the TopK (a Limit in between): the structure is not marked. */
+  @Test
+  public void skipsWhenScanNotDirectChild() {
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
+    DeviceTableScanNode scanNode = createScan(new PlanNodeId("scan"));
+    topKNode.addChild(new LimitNode(new PlanNodeId("limit"), scanNode, 10, Optional.empty()));
+
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
+
+    Assert.assertNull(optimized.getTopKRuntimeFilterSourceId());
+    PlanNode limit = optimized.getChildren().get(0);
+    DeviceTableScanNode optimizedScan = (DeviceTableScanNode) limit.getChildren().get(0);
+    Assert.assertNull(optimizedScan.getTopKRuntimeFilterSourceId());
+  }
+
+  @Test
+  public void skipsTopKWithoutScan() {
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
+    topKNode.addChild(new ExchangeNode(new PlanNodeId("exchange")));
+
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
+
+    Assert.assertNull(optimized.getTopKRuntimeFilterSourceId());
+  }
+
+  private static Context queryContext() {
+    Analysis analysis = Mockito.mock(Analysis.class);
+    Mockito.when(analysis.isQuery()).thenReturn(true);
+    Context context = Mockito.mock(Context.class);
+    Mockito.when(context.getAnalysis()).thenReturn(analysis);
+    return context;
   }
 
   private TopKNode createTopK(PlanNodeId id, SortOrder sortOrder) {
     Symbol timeSymbol = new Symbol("time");
     OrderingScheme orderingScheme =
-        new OrderingScheme(Collections.singletonList(timeSymbol), sortOrder);
+        new OrderingScheme(ImmutableList.of(timeSymbol), ImmutableMap.of(timeSymbol, sortOrder));
     return new TopKNode(id, orderingScheme, 10, Collections.singletonList(timeSymbol), false);
   }
 

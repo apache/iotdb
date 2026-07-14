@@ -1438,6 +1438,14 @@ recovery_log_interval_in_ms=5000
 # Datatype: boolean
 enable_tsfile_validation=false
 
+# Whether to enable the TopK runtime filter optimization for table-model
+# "ORDER BY time LIMIT k" queries. When enabled, the TopK operator feeds the current
+# heap-top time back to table scans so scans can skip files/rows that cannot enter the
+# final result. Set to false to fall back to the original execution path without restart.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_topk_runtime_filter=true
+
 # Default tier TTL. When the survival time of the data exceeds the threshold, it will be migrated to the next tier.
 # Negative value means the tier TTL is unlimited.
 # effectiveMode: restart

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -180,8 +181,9 @@ public class TableDistributedPlanner {
     PlanNode planWithExchange =
         new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
 
-    // Mark TopK runtime filter producer/consumer after exchange insertion.
-    if (analysis.isQuery()) {
+    // Mark TopK runtime filter after exchange insertion.
+    if (analysis.isQuery()
+        && IoTDBDescriptor.getInstance().getConfig().isEnableTopKRuntimeFilter()) {
       planWithExchange =
           new TopKRuntimeFilterOptimizer()
               .optimize(

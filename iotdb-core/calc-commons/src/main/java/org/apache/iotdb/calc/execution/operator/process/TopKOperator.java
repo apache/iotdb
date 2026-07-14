@@ -249,6 +249,14 @@ public abstract class TopKOperator implements ProcessOperator {
     return null;
   }
 
+  private void updateTopKRuntimeFilter() {
+    if (topKRuntimeFilter == null || mergeSortHeap.getHeapSize() < topValue) {
+      return;
+    }
+    MergeSortKey peek = mergeSortHeap.peek();
+    topKRuntimeFilter.updateThreshold(peek.tsBlock.getTimeByIndex(peek.rowIndex));
+  }
+
   @Override
   public void close() throws Exception {
     for (int i = childIndex; i < childrenOperators.size(); i++) {
@@ -447,15 +455,5 @@ public abstract class TopKOperator implements ProcessOperator {
   private void closeOperator(int i) throws Exception {
     getOperator(i).close();
     childrenOperators.set(i, null);
-  }
-
-  private void updateTopKRuntimeFilter() {
-    if (topKRuntimeFilter == null || mergeSortHeap.getHeapSize() < topValue) {
-      return;
-    }
-    MergeSortKey peek = mergeSortHeap.peek();
-    if (peek != null) {
-      topKRuntimeFilter.updateThreshold(peek.tsBlock.getTimeByIndex(peek.rowIndex));
-    }
   }
 }

@@ -207,6 +207,9 @@ public class SeriesScanUtil implements Accountable {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
+    if (scanOptions.getTopKRuntimeFilter() != null) {
+      dataSource.initRuntimeFilterTracking();
+    }
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
@@ -353,11 +356,13 @@ public class SeriesScanUtil implements Accountable {
     return filter.mayQualifyRange(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  private void skipByTopKRuntimeFilter(
+  private boolean skipByTopKRuntimeFilter(
       Statistics<? extends Serializable> statistics, Runnable skip) {
     if (!mayQualifyRuntimeFilterRange(statistics)) {
       skip.run();
+      return true;
     }
+    return false;
   }
 
   @SuppressWarnings("squid:S3740")
@@ -440,8 +445,7 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
-    skipByTopKRuntimeFilter(firstChunkMetadata.getStatistics(), this::skipCurrentChunk);
-    if (firstChunkMetadata == null) {
+    if (skipByTopKRuntimeFilter(firstChunkMetadata.getStatistics(), this::skipCurrentChunk)) {
       return;
     }
 
@@ -1461,8 +1465,7 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
-    skipByTopKRuntimeFilter(firstPageReader.getStatistics(), this::skipCurrentPage);
-    if (firstPageReader == null) {
+    if (skipByTopKRuntimeFilter(firstPageReader.getStatistics(), this::skipCurrentPage)) {
       return;
     }
 
@@ -1952,8 +1955,7 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
-    skipByTopKRuntimeFilter(firstTimeSeriesMetadata.getStatistics(), this::skipCurrentFile);
-    if (firstTimeSeriesMetadata == null) {
+    if (skipByTopKRuntimeFilter(firstTimeSeriesMetadata.getStatistics(), this::skipCurrentFile)) {
       return;
     }
 
@@ -2467,8 +2469,7 @@ public class SeriesScanUtil implements Accountable {
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           if (filter == null
-              || dataSource.isSeqSatisfiedByRuntimeFilter(
-                  deviceID, curSeqFileIndex, filter, false)) {
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
             break;
           }
           dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
@@ -2493,7 +2494,7 @@ public class SeriesScanUtil implements Accountable {
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           if (filter == null
-              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter, false)) {
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
             break;
           }
           dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
@@ -2623,8 +2624,7 @@ public class SeriesScanUtil implements Accountable {
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           if (filter == null
-              || dataSource.isSeqSatisfiedByRuntimeFilter(
-                  deviceID, curSeqFileIndex, filter, false)) {
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
             break;
           }
           dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
@@ -2649,7 +2649,7 @@ public class SeriesScanUtil implements Accountable {
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           if (filter == null
-              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter, false)) {
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
             break;
           }
           dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);

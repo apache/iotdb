@@ -112,8 +112,6 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
-    TopKRuntimeFilterBinder.bind(plan, dataNodeQueryContext);
-
     Operator root = generateOperator(instanceContext, context, plan);
 
     PipelineMemoryEstimator memoryEstimator =

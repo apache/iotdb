@@ -19,15 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class TopKRuntimeFilterUtils {
 
@@ -39,36 +32,5 @@ public final class TopKRuntimeFilterUtils {
     }
     Symbol orderBy = orderingScheme.getOrderBy().get(0);
     return "time".equalsIgnoreCase(orderBy.getName());
-  }
-
-  public static boolean qualifiesForRuntimeFilter(TopKNode topKNode) {
-    AtomicBoolean hasTableScan = new AtomicBoolean(false);
-    AtomicBoolean hasExchange = new AtomicBoolean(false);
-    PlanVisitor<Void, Void> subtreeDetector =
-        new PlanVisitor<Void, Void>() {
-          @Override
-          public Void visitPlan(PlanNode node, Void unused) {
-            for (PlanNode child : node.getChildren()) {
-              child.accept(this, null);
-            }
-            return null;
-          }
-
-          @Override
-          public Void visitDeviceTableScan(DeviceTableScanNode scanNode, Void unused) {
-            hasTableScan.set(true);
-            return null;
-          }
-
-          @Override
-          public Void visitTableExchange(ExchangeNode exchangeNode, Void unused) {
-            hasExchange.set(true);
-            return null;
-          }
-        };
-    for (PlanNode child : topKNode.getChildren()) {
-      child.accept(subtreeDetector, null);
-    }
-    return hasTableScan.get() && !hasExchange.get();
   }
 }

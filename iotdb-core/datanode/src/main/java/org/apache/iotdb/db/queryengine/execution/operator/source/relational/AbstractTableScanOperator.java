@@ -250,8 +250,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    if (currentDeviceIndex < deviceCount) {
-      setupCurrentDeviceScan();
+    if (seriesScanOptions.getTopKRuntimeFilter() != null) {
+      queryDataSource.initRuntimeFilterTracking();
+    }
+    if (this.seriesScanUtil != null) {
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
@@ -266,21 +269,20 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
-      setupCurrentDeviceScan();
+      // construct AlignedSeriesScanUtil for next device
+      constructAlignedSeriesScanUtil();
+
+      // reset QueryDataSource
+      queryDataSource.reset();
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+      this.operatorContext.recordSpecifiedInfo(
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 
   /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
   private boolean shouldStopScanByRuntimeFilter() {
     return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
-  }
-
-  private void setupCurrentDeviceScan() {
-    constructAlignedSeriesScanUtil();
-    queryDataSource.reset();
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
-    this.operatorContext.recordSpecifiedInfo(
-        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   protected void constructAlignedSeriesScanUtil() {

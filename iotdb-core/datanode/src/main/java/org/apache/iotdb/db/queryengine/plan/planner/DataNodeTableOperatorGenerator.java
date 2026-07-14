@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
@@ -188,7 +187,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
@@ -232,11 +230,14 @@ public class DataNodeTableOperatorGenerator
    */
   private TopKRuntimeFilter registerTopKRuntimeFilterForTopK(
       TopKNode node, LocalExecutionPlanContext context) {
-    if (node == null || !node.isUseTopKRuntimeFilter() || context.dataNodeQueryContext == null) {
+    if (node == null
+        || node.getTopKRuntimeFilterSourceId() == null
+        || context.dataNodeQueryContext == null) {
       return null;
     }
     return context.dataNodeQueryContext.registerTopKRuntimeFilter(
-        node.getPlanNodeId().getId(), new TopKRuntimeFilter(node.isTopKRuntimeFilterAscending()));
+        node.getTopKRuntimeFilterSourceId().getId(),
+        new TopKRuntimeFilter(node.isTopKRuntimeFilterAscending()));
   }
 
   /**
@@ -247,15 +248,15 @@ public class DataNodeTableOperatorGenerator
       DeviceTableScanNode scanNode, LocalExecutionPlanContext context) {
     if (scanNode == null
         || context.dataNodeQueryContext == null
-        || !scanNode.getTopKRuntimeFilterSourceId().isPresent()) {
+        || scanNode.getTopKRuntimeFilterSourceId() == null) {
       return null;
     }
     return context.dataNodeQueryContext.getTopKRuntimeFilter(
-        scanNode.getTopKRuntimeFilterSourceId().get().getId());
+        scanNode.getTopKRuntimeFilterSourceId());
   }
 
   @Override
-  protected TopKRuntimeFilter getTopKRuntimeFilter(
+  protected TopKRuntimeFilter registerRuntimeFilter(
       LocalExecutionPlanContext context, TopKNode node) {
     return registerTopKRuntimeFilterForTopK(node, context);
   }
@@ -272,38 +273,6 @@ public class DataNodeTableOperatorGenerator
     if (filter != null) {
       builder.withTopKRuntimeFilter(filter);
     }
-  }
-
-  @Override
-  public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {
-    TopKRuntimeFilter filter = registerTopKRuntimeFilterForTopK(node, context);
-
-    CommonOperatorContext operatorContext =
-        addOperatorContext(context, node.getPlanNodeId(), TableTopKOperator.class.getSimpleName());
-    List<Operator> children = new ArrayList<>(node.getChildren().size());
-    for (PlanNode child : node.getChildren()) {
-      children.add(this.process(child, context));
-    }
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
-    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
-
-    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
-    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
-    genSortInformation(
-        node.getOutputSymbols(),
-        node.getOrderingScheme(),
-        sortItemIndexList,
-        sortItemDataTypeList,
-        context.getTableTypeProvider());
-    return new TableTopKOperator(
-        operatorContext,
-        children,
-        dataTypes,
-        getComparatorForTable(
-            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
-        (int) node.getCount(),
-        node.isChildrenDataInOrder(),
-        filter);
   }
 
   @Override

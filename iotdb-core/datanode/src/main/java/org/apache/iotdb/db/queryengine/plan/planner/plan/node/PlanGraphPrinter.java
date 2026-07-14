@@ -698,9 +698,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       boxValue.add(
           String.format(
               "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
-      deviceTableScanNode
-          .getTopKRuntimeFilterSourceId()
-          .ifPresent(sourceId -> boxValue.add(String.format("TOPN OPT: %s", sourceId.getId())));
+      String topKRuntimeFilterSourceId = deviceTableScanNode.getTopKRuntimeFilterSourceId();
+      if (topKRuntimeFilterSourceId != null) {
+        boxValue.add(String.format("TOPN OPT: %s", topKRuntimeFilterSourceId));
+      }
     }
 
     boxValue.add(
@@ -1052,7 +1053,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     boxValue.add(String.format("Count: %s", node.getCount()));
-    if (node.isUseTopKRuntimeFilter()) {
+    if (node.getTopKRuntimeFilterSourceId() != null) {
       boxValue.add("TOPN OPT");
     }
     return render(node, boxValue, context);
