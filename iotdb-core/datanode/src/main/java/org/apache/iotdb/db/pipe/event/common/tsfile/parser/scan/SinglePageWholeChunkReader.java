@@ -275,24 +275,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-      case DATE:
-      case FLOAT:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-      case DOUBLE:
-        return Long.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateValueSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
