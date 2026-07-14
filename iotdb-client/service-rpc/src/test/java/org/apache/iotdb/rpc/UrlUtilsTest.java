@@ -68,6 +68,21 @@ public class UrlUtilsTest {
     UrlUtils.parseTEndPointIpv4AndIpv6Url("[D80::ABAA:0:22227");
   }
 
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutPortSeparator() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("localhost");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutHost() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url(":22227");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutPort() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("localhost:");
+  }
+
   @Test
   public void testParseIPV4URL() {
     String hostAndPoint = "192.0.0.1:22227";

@@ -57,13 +57,12 @@ public class UrlUtils {
     if (endPointUrl.contains(IPV6_BEGIN_MARK) || endPointUrl.contains(IPV6_END_MARK)) {
       throw new NumberFormatException();
     }
-    if (endPointUrl.contains(PORT_SEPARATOR)) {
-      int point_position = endPointUrl.lastIndexOf(PORT_SEPARATOR);
-      String port = endPointUrl.substring(endPointUrl.lastIndexOf(PORT_SEPARATOR) + 1);
-      String ip = endPointUrl.substring(0, point_position);
-      endPoint.setIp(ip);
-      endPoint.setPort(Integer.parseInt(port));
+    int separatorIndex = endPointUrl.lastIndexOf(PORT_SEPARATOR);
+    if (separatorIndex <= 0 || separatorIndex == endPointUrl.length() - 1) {
+      throw new NumberFormatException();
     }
+    endPoint.setIp(endPointUrl.substring(0, separatorIndex));
+    endPoint.setPort(Integer.parseInt(endPointUrl.substring(separatorIndex + 1)));
     return endPoint;
   }
 
