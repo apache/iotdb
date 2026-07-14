@@ -226,7 +226,6 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     if (currentDeviceIndex >= deviceCount) {
       return true;
     }
-    // QueryDataSource 中 seq/unseq 均无 RF 候选文件时，立即结束（hasNext → false）
     return shouldStopScanByRuntimeFilter();
   }
 
@@ -281,7 +280,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
-  private boolean shouldStopScanByRuntimeFilter() {
+  protected boolean shouldStopScanByRuntimeFilter() {
     return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
   }
 

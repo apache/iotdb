@@ -99,6 +99,10 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
   @Override
   protected void moveToNextDevice() {
+    if (shouldStopScanByRuntimeFilter()) {
+      currentDeviceIndex = deviceCount;
+      return;
+    }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       constructAlignedSeriesScanUtil();

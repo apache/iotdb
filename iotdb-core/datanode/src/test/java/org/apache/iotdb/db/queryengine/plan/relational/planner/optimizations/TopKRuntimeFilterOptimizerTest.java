@@ -27,9 +27,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer.Context;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -130,6 +134,35 @@ public class TopKRuntimeFilterOptimizerTest {
     Assert.assertNull(optimized.getTopKRuntimeFilterSourceId());
   }
 
+  @Test
+  public void marksTreeAlignedDeviceViewScanWhenDirectChild() {
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
+    topKNode.addChild(createTreeAlignedScan(new PlanNodeId("tree-scan")));
+
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
+
+    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    TreeAlignedDeviceViewScanNode optimizedScan =
+        (TreeAlignedDeviceViewScanNode) optimized.getChildren().get(0);
+    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+  }
+
+  @Test
+  public void marksExternalTsFileScanWhenDirectChild() {
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
+    topKNode.addChild(createExternalTsFileScan(new PlanNodeId("external-scan")));
+
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
+
+    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    ExternalTsFileScanNode optimizedScan = (ExternalTsFileScanNode) optimized.getChildren().get(0);
+    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+  }
+
   private static Context queryContext() {
     Analysis analysis = Mockito.mock(Analysis.class);
     Mockito.when(analysis.isQuery()).thenReturn(true);
@@ -148,5 +181,45 @@ public class TopKRuntimeFilterOptimizerTest {
   private DeviceTableScanNode createScan(PlanNodeId id) {
     return new DeviceTableScanNode(
         id, null, Collections.emptyList(), Collections.emptyMap(), Collections.emptyMap());
+  }
+
+  private TreeAlignedDeviceViewScanNode createTreeAlignedScan(PlanNodeId id) {
+    return new TreeAlignedDeviceViewScanNode(
+        id,
+        null,
+        Collections.emptyList(),
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        Collections.emptyMap(),
+        Ordering.ASC,
+        null,
+        null,
+        10,
+        0,
+        true,
+        false,
+        "root.test",
+        Collections.emptyMap());
+  }
+
+  private ExternalTsFileScanNode createExternalTsFileScan(PlanNodeId id) {
+    ExternalTsFileQueryResource resource = Mockito.mock(ExternalTsFileQueryResource.class);
+    Mockito.when(resource.getSharedDeviceEntries()).thenReturn(Collections.emptyList());
+    return new ExternalTsFileScanNode(
+        id,
+        null,
+        Collections.emptyList(),
+        Collections.emptyMap(),
+        null,
+        10,
+        0,
+        null,
+        Ordering.ASC,
+        true,
+        Collections.emptyMap(),
+        resource,
+        Collections.emptyList(),
+        0,
+        null);
   }
 }

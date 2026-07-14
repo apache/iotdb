@@ -230,9 +230,7 @@ public class DataNodeTableOperatorGenerator
    */
   private TopKRuntimeFilter registerTopKRuntimeFilterForTopK(
       TopKNode node, LocalExecutionPlanContext context) {
-    if (node == null
-        || node.getTopKRuntimeFilterSourceId() == null
-        || context.dataNodeQueryContext == null) {
+    if (node.getTopKRuntimeFilterSourceId() == null) {
       return null;
     }
     return context.dataNodeQueryContext.registerTopKRuntimeFilter(
@@ -246,9 +244,7 @@ public class DataNodeTableOperatorGenerator
    */
   private TopKRuntimeFilter resolveTopKRuntimeFilterForDeviceScan(
       DeviceTableScanNode scanNode, LocalExecutionPlanContext context) {
-    if (scanNode == null
-        || context.dataNodeQueryContext == null
-        || scanNode.getTopKRuntimeFilterSourceId() == null) {
+    if (scanNode.getTopKRuntimeFilterSourceId() == null) {
       return null;
     }
     return context.dataNodeQueryContext.getTopKRuntimeFilter(
@@ -1027,13 +1023,15 @@ public class DataNodeTableOperatorGenerator
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
             context,
             TreeAlignedDeviceViewScanOperator.class.getSimpleName(),
             node.getMeasurementColumnNameMap(),
-            tsTable.getCachedTableTTL());
+            tsTable.getCachedTableTTL(),
+            topKRuntimeFilter);
 
     TreeAlignedDeviceViewScanOperator treeAlignedDeviceViewScanOperator =
         new TreeAlignedDeviceViewScanOperator(parameter, idColumnValueExtractor);
@@ -1207,12 +1205,6 @@ public class DataNodeTableOperatorGenerator
   // used for TableScanOperator
   private AbstractTableScanOperator.AbstractTableScanOperatorParameter
       constructAbstractTableScanOperatorParameter(
-          DeviceTableScanNode node, LocalExecutionPlanContext context) {
-    return constructAbstractTableScanOperatorParameter(node, context, null);
-  }
-
-  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
-      constructAbstractTableScanOperatorParameter(
           DeviceTableScanNode node,
           LocalExecutionPlanContext context,
           TopKRuntimeFilter topKRuntimeFilter) {
@@ -1271,13 +1263,15 @@ public class DataNodeTableOperatorGenerator
       return new EmptyDataOperator(operatorContext);
     }
 
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
             context,
             ExternalTsFileTableScanOperator.class.getSimpleName(),
             Collections.emptyMap(),
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            topKRuntimeFilter);
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
         new ExternalTsFileTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
