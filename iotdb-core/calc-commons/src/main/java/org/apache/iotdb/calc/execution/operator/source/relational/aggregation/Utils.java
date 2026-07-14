@@ -20,10 +20,10 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static org.apache.tsfile.enums.TSDataType.BLOB;
 import static org.apache.tsfile.enums.TSDataType.STRING;
@@ -36,40 +36,7 @@ public class Utils {
 
   public static void serializeValue(
       TSDataType dataType, TsPrimitiveType value, byte[] valueBytes, int offset) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        BytesUtils.intToBytes(value.getInt(), valueBytes, offset);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        BytesUtils.longToBytes(value.getLong(), valueBytes, offset);
-        break;
-      case FLOAT:
-        BytesUtils.floatToBytes(value.getFloat(), valueBytes, offset);
-        break;
-      case DOUBLE:
-        BytesUtils.doubleToBytes(value.getDouble(), valueBytes, offset);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        BytesUtils.intToBytes(value.getBinary().getValues().length, valueBytes, offset);
-        offset += 4;
-        System.arraycopy(
-            value.getBinary().getValues(),
-            0,
-            valueBytes,
-            offset,
-            value.getBinary().getValues().length);
-        break;
-      case BOOLEAN:
-        BytesUtils.boolToBytes(value.getBoolean(), valueBytes, offset);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, dataType));
-    }
+    Type.fromTsDataType(dataType).toBytes(value, valueBytes, offset);
   }
 
   public static void serializeBinaryValue(Binary binary, byte[] valueBytes, int offset) {
@@ -109,26 +76,7 @@ public class Utils {
   }
 
   public static int calcTypeSize(TSDataType dataType, TsPrimitiveType value) {
-    switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-      case DATE:
-      case FLOAT:
-        return 4;
-      case INT64:
-      case TIMESTAMP:
-      case DOUBLE:
-        return 8;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return 4 + value.getBinary().getValues().length;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type : %s", dataType));
-    }
+    return Type.fromTsDataType(dataType).calcTypeSize(dataType, value);
   }
 
   public static boolean isBinaryType(TSDataType dataType) {
