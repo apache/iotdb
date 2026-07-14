@@ -33,10 +33,15 @@ import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.service.IntTypeService;
 import org.apache.tsfile.read.common.type.service.TypeService;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+
+import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
+import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 
 public class TypeServices {
 
@@ -86,6 +91,21 @@ public class TypeServices {
             case TEXT, STRING, BLOB, OBJECT -> 16;
             default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
           };
+
+  public static final TypeService<IntUnaryOperator>
+      MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE -> ignored -> ReadWriteIOUtils.INT_LEN;
+                case INT64, TIMESTAMP -> ignored -> ReadWriteIOUtils.LONG_LEN;
+                case FLOAT -> ignored -> ReadWriteIOUtils.FLOAT_LEN;
+                case DOUBLE -> ignored -> ReadWriteIOUtils.DOUBLE_LEN;
+                case BOOLEAN -> ignored -> ReadWriteIOUtils.BOOLEAN_LEN;
+                case TEXT, BLOB, STRING, OBJECT ->
+                    byteArrayLength ->
+                        MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
+                default -> throw new UnSupportedDataTypeException(type.toString());
+              };
 
   public static final TypeService<DefaultValueWriter> DEFAULT_VALUE_WRITER_SERVICE =
       type ->
@@ -202,6 +222,7 @@ public class TypeServices {
   static {
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
+    MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_INITIALIZER_SERVICE.check();

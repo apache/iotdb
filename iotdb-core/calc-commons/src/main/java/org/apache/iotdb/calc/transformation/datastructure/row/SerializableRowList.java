@@ -22,11 +22,13 @@ package org.apache.iotdb.calc.transformation.datastructure.row;
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.datastructure.SerializableList;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -36,8 +38,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
-import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SerializableRowList implements SerializableList {
@@ -87,34 +87,10 @@ public class SerializableRowList implements SerializableList {
       throws QueryProcessException {
     int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     for (TSDataType dataType : dataTypes) { // fields
-      switch (dataType) {
-        case INT32:
-        case DATE:
-          rowLength += ReadWriteIOUtils.INT_LEN;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          rowLength += ReadWriteIOUtils.LONG_LEN;
-          break;
-        case FLOAT:
-          rowLength += ReadWriteIOUtils.FLOAT_LEN;
-          break;
-        case DOUBLE:
-          rowLength += ReadWriteIOUtils.DOUBLE_LEN;
-          break;
-        case BOOLEAN:
-          rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          rowLength +=
-              MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataType.toString());
-      }
+      rowLength +=
+          TypeServices.MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .applyAsInt(byteArrayLengthForMemoryControl);
     }
     rowLength += ReadWriteIOUtils.BIT_LEN; // null field
 
