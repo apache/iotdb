@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
@@ -71,7 +70,7 @@ public class ParallelizeGroupingTest {
             "metrics",
             Collections.emptyList(),
             assignments,
-            ReadTsFileTableFunction.DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES);
+            1024 * 1024);
     try {
       ExternalTsFileScanNode scanNode =
           new ExternalTsFileScanNode(
