@@ -52,6 +52,11 @@ public class RenameWritableViewProcedure extends RenameTableProcedure {
   }
 
   @Override
+  protected Boolean getSourceResolutionOverride() {
+    return false;
+  }
+
+  @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe

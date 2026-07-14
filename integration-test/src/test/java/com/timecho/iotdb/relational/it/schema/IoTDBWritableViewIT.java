@@ -686,6 +686,55 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testWritableViewRenameRemovesOldNameFromDataNodeCache() throws Exception {
+    final String database = "writable_view_rename_cache_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table source_table("
+                + "device_id string tag, "
+                + "temperature int32 field"
+                + ") with (ttl=8640000)");
+        statement.execute(
+            "create writable view writable_view as select "
+                + "device_id as dev, "
+                + "temperature as temp "
+                + "from source_table with (ttl=8640000, schema_cascade=false)");
+
+        statement.execute("alter view writable_view rename to writable_view_renamed");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("show tables details"),
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            new HashSet<>(
+                Arrays.asList(
+                    "source_table,8640000,USING,null,BASE TABLE,null,",
+                    "writable_view_renamed,8640000,USING,null,WRITABLE VIEW,source_table,")));
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select * from writable_view_renamed"),
+            "time,dev,temp,",
+            Collections.emptySet());
+
+        try {
+          statement.execute("select * from writable_view");
+          fail("select on old writable view name should fail after rename");
+        } catch (final IoTDBSQLException e) {
+          assertEquals(TSStatusCode.TABLE_NOT_EXISTS.getStatusCode(), e.getErrorCode());
+          assertTrue(
+              e.getMessage(),
+              e.getMessage().contains("Table '" + database + ".writable_view' does not exist"));
+        }
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testWritableViewWriteAndQuery() throws Exception {
     final String database = "writable_view_write_db";
     try (final Connection connection =
