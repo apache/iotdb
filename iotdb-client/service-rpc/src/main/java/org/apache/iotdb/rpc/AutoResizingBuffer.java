@@ -40,11 +40,18 @@ class AutoResizingBuffer implements AutoCloseable {
   private long lastShrinkTime;
   private int accountedCapacity;
   private boolean closed;
+  private AutoResizingBufferMemoryManager.MemoryAccount memoryAccount;
 
   public AutoResizingBuffer(int initialCapacity) throws IOException {
-    AutoResizingBufferMemoryManager.allocate(initialCapacity);
-    this.array = new byte[initialCapacity];
     this.initialCapacity = initialCapacity;
+    this.memoryAccount = AutoResizingBufferMemoryManager.createMemoryAccount();
+    memoryAccount.allocate(initialCapacity);
+    try {
+      this.array = new byte[initialCapacity];
+    } catch (RuntimeException | Error e) {
+      memoryAccount.release(initialCapacity);
+      throw e;
+    }
     this.accountedCapacity = initialCapacity;
   }
 
@@ -76,7 +83,7 @@ class AutoResizingBuffer implements AutoCloseable {
   @Override
   public void close() {
     if (!closed) {
-      AutoResizingBufferMemoryManager.release(accountedCapacity);
+      memoryAccount.release(accountedCapacity);
       accountedCapacity = 0;
       closed = true;
     }
@@ -86,25 +93,28 @@ class AutoResizingBuffer implements AutoCloseable {
     final int currentCapacity = array.length;
     if (newCapacity > currentCapacity) {
       final int delta = newCapacity - currentCapacity;
-      AutoResizingBufferMemoryManager.allocate(delta);
+      memoryAccount.allocate(delta);
       try {
         array = Arrays.copyOf(array, newCapacity);
         accountedCapacity += delta;
       } catch (RuntimeException | Error e) {
-        AutoResizingBufferMemoryManager.release(delta);
+        memoryAccount.release(delta);
         throw e;
       }
     } else if (newCapacity < currentCapacity) {
       array = Arrays.copyOf(array, newCapacity);
       final int delta = currentCapacity - newCapacity;
-      AutoResizingBufferMemoryManager.release(delta);
+      memoryAccount.release(delta);
       accountedCapacity -= delta;
     }
   }
 
   private void reserveCurrentCapacityIfReleased() throws IOException {
     if (closed) {
-      AutoResizingBufferMemoryManager.allocate(array.length);
+      AutoResizingBufferMemoryManager.MemoryAccount newMemoryAccount =
+          AutoResizingBufferMemoryManager.createMemoryAccount();
+      newMemoryAccount.allocate(array.length);
+      memoryAccount = newMemoryAccount;
       accountedCapacity = array.length;
       closed = false;
     }
