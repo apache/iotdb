@@ -81,7 +81,12 @@ public final class AutoResizingBufferMemoryManager {
         memoryAllocateRetryIntervalInMs;
   }
 
-  static void allocate(long sizeInBytes) throws IOException {
+  static MemoryAccount createMemoryAccount() {
+    return new MemoryAccount(memoryControl);
+  }
+
+  private static void allocate(AutoResizingBufferMemoryControl memoryControl, long sizeInBytes)
+      throws IOException {
     if (sizeInBytes <= 0) {
       return;
     }
@@ -111,7 +116,7 @@ public final class AutoResizingBufferMemoryManager {
             MEMORY_ALLOCATE_MAX_RETRIES));
   }
 
-  static void release(long sizeInBytes) {
+  private static void release(AutoResizingBufferMemoryControl memoryControl, long sizeInBytes) {
     if (sizeInBytes <= 0) {
       return;
     }
@@ -136,5 +141,21 @@ public final class AutoResizingBufferMemoryManager {
 
   public static long getMemoryAvailableSizeInBytes() {
     return Math.max(0, memoryTotalSizeInBytes - getMemoryUsedSizeInBytes());
+  }
+
+  static final class MemoryAccount {
+    private final AutoResizingBufferMemoryControl memoryControl;
+
+    private MemoryAccount(AutoResizingBufferMemoryControl memoryControl) {
+      this.memoryControl = memoryControl;
+    }
+
+    void allocate(long sizeInBytes) throws IOException {
+      AutoResizingBufferMemoryManager.allocate(memoryControl, sizeInBytes);
+    }
+
+    void release(long sizeInBytes) {
+      AutoResizingBufferMemoryManager.release(memoryControl, sizeInBytes);
+    }
   }
 }
