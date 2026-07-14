@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -34,6 +35,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -75,63 +77,108 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     this.xDataType = xDataType;
     this.yDataType = yDataType;
 
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues = new IntBigArray();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues = new LongBigArray();
-        break;
-      case FLOAT:
-        xFloatValues = new FloatBigArray();
-        break;
-      case DOUBLE:
-        xDoubleValues = new DoubleBigArray();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        xBinaryValues = new BinaryBigArray();
-        break;
-      case BOOLEAN:
-        xBooleanValues = new BooleanBigArray();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
-    }
+    TypeServices.INTERMEDIATE_VALUE_INITIALIZER_SERVICE
+        .call(Type.fromTsDataType(xDataType))
+        .initialize(this, true);
+    TypeServices.INTERMEDIATE_VALUE_INITIALIZER_SERVICE
+        .call(Type.fromTsDataType(yDataType))
+        .initialize(this, false);
+  }
 
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        yIntValues = new IntBigArray();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        yLongValues = new LongBigArray();
-        break;
-      case FLOAT:
-        yFloatValues = new FloatBigArray();
-        break;
-      case DOUBLE:
-        yDoubleValues = new DoubleBigArray();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        yBinaryValues = new BinaryBigArray();
-        break;
-      case BOOLEAN:
-        yBooleanValues = new BooleanBigArray();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", yDataType));
-    }
+  public LongBigArray getXLongValues() {
+    return xLongValues;
+  }
+
+  public void setXLongValues(LongBigArray xLongValues) {
+    this.xLongValues = xLongValues;
+  }
+
+  public IntBigArray getXIntValues() {
+    return xIntValues;
+  }
+
+  public void setXIntValues(IntBigArray xIntValues) {
+    this.xIntValues = xIntValues;
+  }
+
+  public FloatBigArray getXFloatValues() {
+    return xFloatValues;
+  }
+
+  public void setXFloatValues(FloatBigArray xFloatValues) {
+    this.xFloatValues = xFloatValues;
+  }
+
+  public DoubleBigArray getXDoubleValues() {
+    return xDoubleValues;
+  }
+
+  public void setXDoubleValues(DoubleBigArray xDoubleValues) {
+    this.xDoubleValues = xDoubleValues;
+  }
+
+  public BinaryBigArray getXBinaryValues() {
+    return xBinaryValues;
+  }
+
+  public void setXBinaryValues(BinaryBigArray xBinaryValues) {
+    this.xBinaryValues = xBinaryValues;
+  }
+
+  public BooleanBigArray getXBooleanValues() {
+    return xBooleanValues;
+  }
+
+  public void setXBooleanValues(BooleanBigArray xBooleanValues) {
+    this.xBooleanValues = xBooleanValues;
+  }
+
+  public LongBigArray getYLongValues() {
+    return yLongValues;
+  }
+
+  public void setYLongValues(LongBigArray yLongValues) {
+    this.yLongValues = yLongValues;
+  }
+
+  public IntBigArray getYIntValues() {
+    return yIntValues;
+  }
+
+  public void setYIntValues(IntBigArray yIntValues) {
+    this.yIntValues = yIntValues;
+  }
+
+  public FloatBigArray getYFloatValues() {
+    return yFloatValues;
+  }
+
+  public void setYFloatValues(FloatBigArray yFloatValues) {
+    this.yFloatValues = yFloatValues;
+  }
+
+  public DoubleBigArray getYDoubleValues() {
+    return yDoubleValues;
+  }
+
+  public void setYDoubleValues(DoubleBigArray yDoubleValues) {
+    this.yDoubleValues = yDoubleValues;
+  }
+
+  public BinaryBigArray getYBinaryValues() {
+    return yBinaryValues;
+  }
+
+  public void setYBinaryValues(BinaryBigArray yBinaryValues) {
+    this.yBinaryValues = yBinaryValues;
+  }
+
+  public BooleanBigArray getYBooleanValues() {
+    return yBooleanValues;
+  }
+
+  public void setYBooleanValues(BooleanBigArray yBooleanValues) {
+    this.yBooleanValues = yBooleanValues;
   }
 
   @Override
@@ -665,35 +712,9 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
 
   private void writeIntermediate(
       int groupId, boolean isX, TSDataType dataType, byte[] bytes, int offset) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        (isX ? xIntValues : yIntValues).toBytes(groupId, bytes, offset);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        (isX ? xLongValues : yLongValues).toBytes(groupId, bytes, offset);
-        break;
-      case FLOAT:
-        (isX ? xFloatValues : yFloatValues).toBytes(groupId, bytes, offset);
-        break;
-      case DOUBLE:
-        (isX ? xDoubleValues : yDoubleValues).toBytes(groupId, bytes, offset);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        (isX ? xBinaryValues : yBinaryValues).toBytes(groupId, bytes, offset);
-        break;
-      case BOOLEAN:
-        (isX ? xBooleanValues : yBooleanValues).toBytes(groupId, bytes, offset);
-        break;
-
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", dataType));
-    }
+    TypeServices.INTERMEDIATE_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(this, isX, groupId, bytes, offset);
   }
 
   private int calculateValueLength(int groupId, TSDataType dataType, boolean isX) {

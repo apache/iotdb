@@ -20,21 +20,17 @@
 package org.apache.iotdb.calc.utils;
 
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMaxMinByBaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.read.common.type.BinaryType;
-import org.apache.tsfile.read.common.type.BlobType;
-import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.DateType;
-import org.apache.tsfile.read.common.type.DoubleType;
-import org.apache.tsfile.read.common.type.FloatType;
-import org.apache.tsfile.read.common.type.IntType;
-import org.apache.tsfile.read.common.type.LongType;
-import org.apache.tsfile.read.common.type.ObjectType;
-import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.service.IntTypeService;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -44,98 +40,171 @@ import java.util.function.IntFunction;
 
 public class TypeServices {
 
-  public static final TypeService<IntFunction<Comparator<SortKey>>> COMPARATOR_SERVICE =
-      type -> {
-        if (type.getClass().equals(IntType.class) || type.getClass().equals(DateType.class)) {
-          return index ->
-              Comparator.comparingInt(
-                  sortKey -> type.getInt(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else if (type.getClass().equals(LongType.class)
-            || type.getClass().equals(TimestampType.class)) {
-          return index ->
-              Comparator.comparingLong(
-                  sortKey -> type.getLong(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else if (type.getClass().equals(FloatType.class)) {
-          return index ->
-              Comparator.comparingDouble(
-                  sortKey -> type.getFloat(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else if (type.getClass().equals(DoubleType.class)) {
-          return index ->
-              Comparator.comparingDouble(
-                  sortKey -> type.getDouble(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else if (type.getClass().equals(BinaryType.class)
-            || type.getClass().equals(BlobType.class)
-            || type.getClass().equals(ObjectType.class)
-            || type.getClass().equals(StringType.class)) {
-          return index ->
-              Comparator.comparing(
-                  sortKey -> type.getBinary(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else if (type.getClass().equals(BooleanType.class)) {
-          return index ->
-              Comparator.comparing(
-                  sortKey -> type.getBoolean(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-        } else {
-          throw new IllegalArgumentException(
-              String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
-        }
-      };
+  public static final TypeService<IntFunction<Comparator<SortKey>>> MERGE_SORT_COMPARATOR_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                index ->
+                    Comparator.comparingInt(
+                        sortKey -> type.getInt(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            case INT64, TIMESTAMP ->
+                index ->
+                    Comparator.comparingLong(
+                        sortKey ->
+                            type.getLong(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            case FLOAT ->
+                index ->
+                    Comparator.comparingDouble(
+                        sortKey ->
+                            type.getFloat(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            case DOUBLE ->
+                index ->
+                    Comparator.comparingDouble(
+                        sortKey ->
+                            type.getDouble(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            case TEXT, STRING, BLOB, OBJECT ->
+                index ->
+                    Comparator.comparing(
+                        sortKey ->
+                            type.getBinary(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            case BOOLEAN ->
+                index ->
+                    Comparator.comparing(
+                        sortKey ->
+                            type.getBoolean(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            default ->
+                throw new IllegalArgumentException(
+                    String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
+          };
 
   public static final IntTypeService MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE =
-      type -> {
-        if (type.getClass().equals(BooleanType.class)) {
-          return 1;
-        } else if (type.getClass().equals(IntType.class)
-            || type.getClass().equals(FloatType.class)
-            || type.getClass().equals(DateType.class)) {
-          return 4;
-        } else if (type.getClass().equals(LongType.class)
-            || type.getClass().equals(DoubleType.class)
-            || type.getClass().equals(TimestampType.class)) {
-          return 8;
-        } else if (type.getClass().equals(BinaryType.class)
-            || type.getClass().equals(StringType.class)
-            || type.getClass().equals(BlobType.class)
-            || type.getClass().equals(ObjectType.class)) {
-          return 16;
-        } else {
-          throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
-        }
-      };
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> 1;
+            case INT32, FLOAT, DATE -> 4;
+            case INT64, DOUBLE, TIMESTAMP -> 8;
+            case TEXT, STRING, BLOB, OBJECT -> 16;
+            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+          };
 
   public static final TypeService<DefaultValueWriter> DEFAULT_VALUE_WRITER_SERVICE =
-      type -> {
-        if (type.getClass().equals(IntType.class) || type.getClass().equals(DateType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeInt(partition.getInt(channel, index));
-        } else if (type.getClass().equals(LongType.class)
-            || type.getClass().equals(TimestampType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeLong(partition.getLong(channel, index));
-        } else if (type.getClass().equals(FloatType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeFloat(partition.getFloat(channel, index));
-        } else if (type.getClass().equals(DoubleType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeDouble(partition.getDouble(channel, index));
-        } else if (type.getClass().equals(BooleanType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeBoolean(partition.getBoolean(channel, index));
-        } else if (type.getClass().equals(BinaryType.class)
-            || type.getClass().equals(StringType.class)
-            || type.getClass().equals(BlobType.class)
-            || type.getClass().equals(ObjectType.class)) {
-          return (partition, channel, index, builder) ->
-              builder.writeBinary(partition.getBinary(channel, index));
-        } else {
-          throw new UnSupportedDataTypeException(
-              "Unsupported default value's data type in Lag: " + type);
-        }
-      };
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (partition, channel, index, builder) ->
+                    builder.writeInt(partition.getInt(channel, index));
+            case INT64, TIMESTAMP ->
+                (partition, channel, index, builder) ->
+                    builder.writeLong(partition.getLong(channel, index));
+            case FLOAT ->
+                (partition, channel, index, builder) ->
+                    builder.writeFloat(partition.getFloat(channel, index));
+            case DOUBLE ->
+                (partition, channel, index, builder) ->
+                    builder.writeDouble(partition.getDouble(channel, index));
+            case BOOLEAN ->
+                (partition, channel, index, builder) ->
+                    builder.writeBoolean(partition.getBoolean(channel, index));
+            case TEXT, STRING, BLOB, OBJECT ->
+                (partition, channel, index, builder) ->
+                    builder.writeBinary(partition.getBinary(channel, index));
+            default ->
+                throw new UnSupportedDataTypeException(
+                    "Unsupported default value's data type in Lag: " + type);
+          };
+
+  public static final TypeService<IntermediateValueWriter> INTERMEDIATE_VALUE_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXIntValues() : accumulator.getYIntValues())
+                        .toBytes(index, bytes, offset);
+            case INT64, TIMESTAMP ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXLongValues() : accumulator.getYLongValues())
+                        .toBytes(index, bytes, offset);
+            case FLOAT ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXFloatValues() : accumulator.getYFloatValues())
+                        .toBytes(index, bytes, offset);
+            case DOUBLE ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXDoubleValues() : accumulator.getYDoubleValues())
+                        .toBytes(index, bytes, offset);
+            case TEXT, STRING, BLOB, OBJECT ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXBinaryValues() : accumulator.getYBinaryValues())
+                        .toBytes(index, bytes, offset);
+            case BOOLEAN ->
+                (accumulator, isX, index, bytes, offset) ->
+                    (isX ? accumulator.getXBooleanValues() : accumulator.getYBooleanValues())
+                        .toBytes(index, bytes, offset);
+            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+          };
+
+  public static final TypeService<IntermediateValueInitializer>
+      INTERMEDIATE_VALUE_INITIALIZER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXIntValues(new IntBigArray());
+                      } else {
+                        accumulator.setYIntValues(new IntBigArray());
+                      }
+                    };
+                case INT64, TIMESTAMP ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXLongValues(new LongBigArray());
+                      } else {
+                        accumulator.setYLongValues(new LongBigArray());
+                      }
+                    };
+                case FLOAT ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXFloatValues(new FloatBigArray());
+                      } else {
+                        accumulator.setYFloatValues(new FloatBigArray());
+                      }
+                    };
+                case DOUBLE ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXDoubleValues(new DoubleBigArray());
+                      } else {
+                        accumulator.setYDoubleValues(new DoubleBigArray());
+                      }
+                    };
+                case TEXT, STRING, BLOB, OBJECT ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXBinaryValues(new BinaryBigArray());
+                      } else {
+                        accumulator.setYBinaryValues(new BinaryBigArray());
+                      }
+                    };
+                case BOOLEAN ->
+                    (accumulator, isX) -> {
+                      if (isX) {
+                        accumulator.setXBooleanValues(new BooleanBigArray());
+                      } else {
+                        accumulator.setYBooleanValues(new BooleanBigArray());
+                      }
+                    };
+                default ->
+                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+              };
 
   static {
-    COMPARATOR_SERVICE.check();
+    MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
+    INTERMEDIATE_VALUE_WRITER_SERVICE.check();
+    INTERMEDIATE_VALUE_INITIALIZER_SERVICE.check();
   }
 
   private TypeServices() {
@@ -145,5 +214,20 @@ public class TypeServices {
   @FunctionalInterface
   public interface DefaultValueWriter {
     void write(Partition partition, int channel, int index, ColumnBuilder builder);
+  }
+
+  @FunctionalInterface
+  public interface IntermediateValueWriter {
+    void write(
+        GroupedMaxMinByBaseAccumulator accumulator,
+        boolean isX,
+        long index,
+        byte[] bytes,
+        int offset);
+  }
+
+  @FunctionalInterface
+  public interface IntermediateValueInitializer {
+    void initialize(GroupedMaxMinByBaseAccumulator accumulator, boolean isX);
   }
 }

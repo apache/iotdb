@@ -67,7 +67,7 @@ public class MergeSortComparator {
 
   public static Comparator<SortKey> getComparator(TSDataType dataType, int index, boolean asc) {
     Comparator<SortKey> comparator =
-        TypeServices.COMPARATOR_SERVICE.call(Type.fromTsDataType(dataType)).apply(index);
+        TypeServices.MERGE_SORT_COMPARATOR_SERVICE.call(Type.fromTsDataType(dataType)).apply(index);
     if (!asc) {
       comparator = comparator.reversed();
     }
