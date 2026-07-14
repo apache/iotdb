@@ -139,26 +139,26 @@ public class IoTDBIPv6ExternalServiceIT {
     mqtt.setReconnectDelay(1000);
     mqtt.setClientId("ipv6Client");
 
+    final byte[] payload =
+        ("{"
+                + "\"device\":\"root.ipv6_mqtt.d1\","
+                + "\"timestamp\":1,"
+                + "\"measurements\":[\"s1\"],"
+                + "\"values\":[200.0]"
+                + "}")
+            .getBytes(StandardCharsets.UTF_8);
     final BlockingConnection connection = mqtt.blockingConnection();
     try {
       connection.connect();
-      connection.publish(
-          "root.ipv6_mqtt.d1",
-          ("{"
-                  + "\"device\":\"root.ipv6_mqtt.d1\","
-                  + "\"timestamp\":1,"
-                  + "\"measurements\":[\"s1\"],"
-                  + "\"values\":[200.0]"
-                  + "}")
-              .getBytes(StandardCharsets.UTF_8),
-          QoS.AT_LEAST_ONCE,
-          false);
-
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         Awaitility.await()
             .atMost(30, TimeUnit.SECONDS)
             .pollInterval(1, TimeUnit.SECONDS)
-            .until(() -> mqttValueIsVisible(session));
+            .until(
+                () -> {
+                  connection.publish("root.ipv6_mqtt.d1", payload, QoS.AT_LEAST_ONCE, false);
+                  return mqttValueIsVisible(session);
+                });
       }
     } finally {
       if (connection.isConnected()) {
