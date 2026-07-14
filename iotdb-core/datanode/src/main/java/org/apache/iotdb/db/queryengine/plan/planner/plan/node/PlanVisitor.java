@@ -692,7 +692,7 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
   }
 
   default R visitExternalTsFileScan(ExternalTsFileScanNode node, C context) {
-    return visitTableScan(node, context);
+    return visitDeviceTableScan(node, context);
   }
 
   default R visitExternalTsFileAggregationScan(ExternalTsFileAggregationScanNode node, C context) {
