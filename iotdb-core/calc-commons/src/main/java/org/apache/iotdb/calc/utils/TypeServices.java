@@ -31,12 +31,14 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.service.IntTypeService;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Comparator;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 
@@ -105,6 +107,20 @@ public class TypeServices {
                     byteArrayLength ->
                         MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
                 default -> throw new UnSupportedDataTypeException(type.toString());
+              };
+
+  public static final TypeService<Function<DefaultEncodingProvider, TSEncoding>>
+      DEFAULT_ENCODING_BY_TYPE_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN -> DefaultEncodingProvider::getDefaultBooleanEncoding;
+                case INT32, DATE -> DefaultEncodingProvider::getDefaultInt32Encoding;
+                case INT64, TIMESTAMP -> DefaultEncodingProvider::getDefaultInt64Encoding;
+                case FLOAT -> DefaultEncodingProvider::getDefaultFloatEncoding;
+                case DOUBLE -> DefaultEncodingProvider::getDefaultDoubleEncoding;
+                case STRING, BLOB, OBJECT, TEXT -> DefaultEncodingProvider::getDefaultTextEncoding;
+                default ->
+                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
               };
 
   public static final TypeService<DefaultValueWriter> DEFAULT_VALUE_WRITER_SERVICE =
@@ -223,6 +239,7 @@ public class TypeServices {
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
+    DEFAULT_ENCODING_BY_TYPE_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_INITIALIZER_SERVICE.check();
@@ -230,6 +247,20 @@ public class TypeServices {
 
   private TypeServices() {
     // util class doesn't need constructor
+  }
+
+  public interface DefaultEncodingProvider {
+    TSEncoding getDefaultBooleanEncoding();
+
+    TSEncoding getDefaultInt32Encoding();
+
+    TSEncoding getDefaultInt64Encoding();
+
+    TSEncoding getDefaultFloatEncoding();
+
+    TSEncoding getDefaultDoubleEncoding();
+
+    TSEncoding getDefaultTextEncoding();
   }
 
   @FunctionalInterface

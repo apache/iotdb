@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -73,6 +74,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -2941,26 +2943,9 @@ public class IoTDBDescriptor {
 
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-      case DATE:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-      case TIMESTAMP:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        return conf.getDefaultTextEncoding();
-    }
+    return TypeServices.DEFAULT_ENCODING_BY_TYPE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(conf);
   }
 
   // These configurations are received from config node when registering
