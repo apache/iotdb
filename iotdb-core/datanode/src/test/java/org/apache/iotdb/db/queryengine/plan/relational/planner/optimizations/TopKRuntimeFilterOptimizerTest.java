@@ -63,8 +63,7 @@ public class TopKRuntimeFilterOptimizerTest {
         TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimized.getTopKRuntimeFilterSourceId());
     DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimized.getChildren().get(0);
     Assert.assertEquals(
-        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
-        optimizedScan.getTopKRuntimeFilterSourceId());
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
@@ -87,8 +86,7 @@ public class TopKRuntimeFilterOptimizerTest {
         TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedTopK.getTopKRuntimeFilterSourceId());
     DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimizedTopK.getChildren().get(0);
     Assert.assertEquals(
-        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
-        optimizedScan.getTopKRuntimeFilterSourceId());
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
@@ -127,7 +125,7 @@ public class TopKRuntimeFilterOptimizerTest {
 
     TopKNode optimizedRegion = (TopKNode) optimizedRoot.getChildren().get(0).getChildren().get(0);
     Assert.assertNotNull(optimizedRegion.getTopKRuntimeFilterSourceId());
-    Assert.assertEquals(rootTopKId, optimizedRegion.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(rootTopKId.getId(), optimizedRegion.getTopKRuntimeFilterSourceId());
 
     DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimizedRegion.getChildren().get(0);
     Assert.assertEquals(rootTopKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
@@ -176,8 +174,7 @@ public class TopKRuntimeFilterOptimizerTest {
     TreeAlignedDeviceViewScanNode optimizedScan =
         (TreeAlignedDeviceViewScanNode) optimized.getChildren().get(0);
     Assert.assertEquals(
-        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
-        optimizedScan.getTopKRuntimeFilterSourceId());
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
@@ -193,8 +190,7 @@ public class TopKRuntimeFilterOptimizerTest {
         TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimized.getTopKRuntimeFilterSourceId());
     ExternalTsFileScanNode optimizedScan = (ExternalTsFileScanNode) optimized.getChildren().get(0);
     Assert.assertEquals(
-        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
-        optimizedScan.getTopKRuntimeFilterSourceId());
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   private static Context queryContext() {

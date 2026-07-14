@@ -58,7 +58,7 @@ public class TopKNode extends MultiChildProcessNode {
   // non-null value also marks this TopK as a runtime filter producer (set during distributed
   // optimize). All per-region TopK producers and their scan consumers within the same query use
   // this id so that fragments of the same query on one DataNode share a single filter instance.
-  @Nullable private PlanNodeId topKRuntimeFilterSourceId;
+  @Nullable private String topKRuntimeFilterSourceId;
 
   public TopKNode(
       PlanNodeId id,
@@ -122,8 +122,7 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, byteBuffer);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, byteBuffer);
-    ReadWriteIOUtils.write(
-        topKRuntimeFilterSourceId == null ? null : topKRuntimeFilterSourceId.getId(), byteBuffer);
+    ReadWriteIOUtils.write(topKRuntimeFilterSourceId, byteBuffer);
   }
 
   @Override
@@ -136,8 +135,7 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, stream);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, stream);
-    ReadWriteIOUtils.write(
-        topKRuntimeFilterSourceId == null ? null : topKRuntimeFilterSourceId.getId(), stream);
+    ReadWriteIOUtils.write(topKRuntimeFilterSourceId, stream);
   }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
@@ -153,8 +151,7 @@ public class TopKNode extends MultiChildProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     TopKNode topKNode =
         new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
-    topKNode.topKRuntimeFilterSourceId =
-        topKRuntimeFilterSourceId == null ? null : new PlanNodeId(topKRuntimeFilterSourceId);
+    topKNode.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
     return topKNode;
   }
 
@@ -192,11 +189,11 @@ public class TopKNode extends MultiChildProcessNode {
 
   /** A non-null source id marks this TopK as a runtime filter producer. */
   @Nullable
-  public PlanNodeId getTopKRuntimeFilterSourceId() {
+  public String getTopKRuntimeFilterSourceId() {
     return topKRuntimeFilterSourceId;
   }
 
-  public void setTopKRuntimeFilterSourceId(@Nullable PlanNodeId topKRuntimeFilterSourceId) {
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
     this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 

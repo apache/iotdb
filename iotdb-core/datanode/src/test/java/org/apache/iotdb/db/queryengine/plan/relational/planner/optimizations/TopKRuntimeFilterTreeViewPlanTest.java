@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -72,7 +71,7 @@ public class TopKRuntimeFilterTreeViewPlanTest {
       RuntimeFilterMark mark = collectRuntimeFilterMark(planTester.getFragmentPlan(i));
       if (mark.producerTopKId != null) {
         foundProducer = true;
-        rootTopKId = mark.producerTopKId.getId();
+        rootTopKId = mark.producerTopKId;
       }
       if (mark.scanSourceId != null) {
         foundConsumer = true;
@@ -114,7 +113,7 @@ public class TopKRuntimeFilterTreeViewPlanTest {
   }
 
   private static final class RuntimeFilterMark {
-    private PlanNodeId producerTopKId;
+    private String producerTopKId;
     private String scanSourceId;
   }
 }

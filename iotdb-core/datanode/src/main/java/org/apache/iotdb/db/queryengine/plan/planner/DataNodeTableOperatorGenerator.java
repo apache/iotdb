@@ -234,7 +234,7 @@ public class DataNodeTableOperatorGenerator
       return null;
     }
     return context.dataNodeQueryContext.registerTopKRuntimeFilter(
-        node.getTopKRuntimeFilterSourceId().getId(),
+        node.getTopKRuntimeFilterSourceId(),
         new TopKRuntimeFilter(node.isTopKRuntimeFilterAscending()));
   }
 
