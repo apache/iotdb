@@ -62,6 +62,7 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(2)
+        .setDefaultDataRegionGroupNumPerDatabase(1)
         .setAutoCreateSchemaEnabled(true)
         .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
@@ -82,13 +83,16 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
     final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
         ConsensusSubscriptionTableITSupport.newIdentifiers("cluster_owner_rebind");
     final String database = ids.getDatabase();
+    final String bootstrapTable = "bootstrap_table";
     final String table = "t1";
     final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
     SubscriptionTablePullConsumer ownerConsumer = null;
 
     try {
-      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
-      ConsensusSubscriptionTableITSupport.insertRows(database, table, 0L, 1, true, true, true);
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(
+          database, bootstrapTable, ConsensusSubscriptionTableITSupport.DEFAULT_TABLE_SCHEMA);
+      ConsensusSubscriptionTableITSupport.createTable(database, table, schema);
+      ConsensusSubscriptionTableITSupport.insertRows(database, bootstrapTable, 0L, 1, true);
       createOwnedConsensusTopic(ids.getTopic(), database, table, "column_name = \"s1\"");
 
       ownerConsumer = createOwnerConsumer(ids.consumer("owner1"), ids.consumerGroup("owner"), 1L);
