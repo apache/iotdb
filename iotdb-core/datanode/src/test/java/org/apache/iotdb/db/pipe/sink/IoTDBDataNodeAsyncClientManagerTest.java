@@ -240,6 +240,8 @@ public class IoTDBDataNodeAsyncClientManagerTest {
           false,
           null,
           null,
+          null,
+          null,
           true,
           "round-robin",
           new UserEntity(1L, "user", "cli-host"),
