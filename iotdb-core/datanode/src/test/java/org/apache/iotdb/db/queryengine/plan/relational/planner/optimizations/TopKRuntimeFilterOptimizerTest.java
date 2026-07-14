@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingSche
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
@@ -46,9 +47,9 @@ import java.util.Optional;
 
 public class TopKRuntimeFilterOptimizerTest {
 
-  /** Single region: the sole TopK sits directly over the scan and uses its own id as root. */
+  /** Single region: the sole TopK sits directly over the scan and uses the fake root id. */
   @Test
-  public void marksTopKAndScanWithOwnRootIdInSingleRegion() {
+  public void marksTopKAndScanWithFakeRootIdInSingleRegion() {
     PlanNodeId topKId = new PlanNodeId("topk");
     TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
     topKNode.addChild(createScan(new PlanNodeId("scan")));
@@ -58,9 +59,36 @@ public class TopKRuntimeFilterOptimizerTest {
 
     Assert.assertNotNull(optimized.getTopKRuntimeFilterSourceId());
     Assert.assertTrue(optimized.isTopKRuntimeFilterAscending());
-    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimized.getTopKRuntimeFilterSourceId());
     DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimized.getChildren().get(0);
-    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
+        optimizedScan.getTopKRuntimeFilterSourceId());
+  }
+
+  @Test
+  public void marksOutputTopKScanSingleRegionWithFakeRootId() {
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
+    topKNode.addChild(createScan(new PlanNodeId("scan")));
+    OutputNode outputNode =
+        new OutputNode(
+            new PlanNodeId("output"),
+            topKNode,
+            Collections.singletonList("time"),
+            topKNode.getOutputSymbols());
+
+    OutputNode optimized =
+        (OutputNode) new TopKRuntimeFilterOptimizer().optimize(outputNode, queryContext());
+
+    TopKNode optimizedTopK = (TopKNode) optimized.getChild();
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimizedTopK.getTopKRuntimeFilterSourceId());
+    DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimizedTopK.getChildren().get(0);
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
+        optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
@@ -143,10 +171,13 @@ public class TopKRuntimeFilterOptimizerTest {
     TopKNode optimized =
         (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimized.getTopKRuntimeFilterSourceId());
     TreeAlignedDeviceViewScanNode optimizedScan =
         (TreeAlignedDeviceViewScanNode) optimized.getChildren().get(0);
-    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
+        optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
@@ -158,9 +189,12 @@ public class TopKRuntimeFilterOptimizerTest {
     TopKNode optimized =
         (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertEquals(topKId, optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID, optimized.getTopKRuntimeFilterSourceId());
     ExternalTsFileScanNode optimizedScan = (ExternalTsFileScanNode) optimized.getChildren().get(0);
-    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        TopKRuntimeFilterOptimizer.FAKE_ROOT_TOPK_ID.getId(),
+        optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   private static Context queryContext() {
