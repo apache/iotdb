@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -322,7 +323,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return timeIndex;
     }
 
-    return buildDeviceTimeIndex();
+    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /** deserialize from disk */

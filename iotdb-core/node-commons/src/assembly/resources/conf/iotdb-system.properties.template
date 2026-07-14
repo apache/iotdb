@@ -607,7 +607,9 @@ rest_service_port=18080
 # Datatype: boolean
 enable_swagger=false
 
-# the default row limit to a REST query response when the rowSize parameter is not given in request
+# The maximum row limit for REST and Grafana query responses.
+# The request rowLimit/row_limit value cannot exceed this limit.
+# A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
 # effectiveMode: restart
 # Datatype: int
 rest_query_default_row_size_limit=10000

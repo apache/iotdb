@@ -187,7 +187,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
-      "PipePeriodicalLogMinIntervalSeconds: {}";
+      "LoggerPeriodicalLogMinIntervalSeconds: {}";
   public static final String CONFIG_PIPE_RETRY_LOCALLY_FOR_PARALLEL_OR_USER_CONFLICT =
       "PipeRetryLocallyForParallelOrUserConflict: {}";
   public static final String CONFIG_PIPE_META_REPORT_MAX_LOG_NUM_PER_ROUND =
@@ -199,7 +199,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PIN_MAX_LOG_INTERVAL_ROUNDS =
       "PipeTsFilePinMaxLogIntervalRounds: {}";
   public static final String CONFIG_PIPE_LOGGER_CACHE_MAX_SIZE_IN_BYTES =
-      "PipeLoggerCacheMaxSizeInBytes: {}";
+      "LoggerCacheMaxSizeInBytes: {}";
   public static final String CONFIG_PIPE_MEMORY_MANAGEMENT_ENABLED =
       "PipeMemoryManagementEnabled: {}";
   public static final String CONFIG_PIPE_MEMORY_ALLOCATE_MAX_RETRIES =
@@ -484,6 +484,12 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "When ssl transport is enabled, specify a complete trust-store pair under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store path and password must be specified together under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync client manager has been closed";
   public static final String REDIRECT_FILE_POSITION = "Redirect file position to {}.";
@@ -950,6 +956,5 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
-  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer is allocated to {} bytes.";
 
 }
