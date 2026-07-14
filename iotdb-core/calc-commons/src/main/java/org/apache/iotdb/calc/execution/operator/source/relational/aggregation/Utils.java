@@ -76,7 +76,7 @@ public class Utils {
   }
 
   public static int calcTypeSize(TSDataType dataType, TsPrimitiveType value) {
-    return Type.fromTsDataType(dataType).calcTypeSize(dataType, value);
+    return Type.fromTsDataType(dataType).calcTypeSize(value);
   }
 
   public static boolean isBinaryType(TSDataType dataType) {

@@ -718,31 +718,11 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   }
 
   private int calculateValueLength(int groupId, TSDataType dataType, boolean isX) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return Long.BYTES;
-      case FLOAT:
-        return Float.BYTES;
-      case DOUBLE:
-        return Double.BYTES;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return Integer.BYTES
-            + (isX
-                ? xBinaryValues.get(groupId).getValues().length
-                : yBinaryValues.get(groupId).getValues().length);
-      case BOOLEAN:
-        return 1;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", dataType));
-    }
+    Object value =
+        dataType.isBinary()
+            ? (isX ? xBinaryValues.get(groupId) : yBinaryValues.get(groupId))
+            : null;
+    return Type.fromTsDataType(dataType).calcTypeSize(value);
   }
 
   private void updateFromBytesIntermediateInput(int groupId, byte[] bytes) {
