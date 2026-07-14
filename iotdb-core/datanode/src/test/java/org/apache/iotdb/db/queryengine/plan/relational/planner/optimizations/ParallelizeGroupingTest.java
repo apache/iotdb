@@ -44,10 +44,10 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
