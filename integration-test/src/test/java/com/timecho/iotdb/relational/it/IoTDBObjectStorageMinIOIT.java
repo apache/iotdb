@@ -32,15 +32,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 
@@ -48,46 +46,39 @@ import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class})
 public class IoTDBObjectStorageMinIOIT {
 
+  private static final String MINIO_ENDPOINT = "http://11.101.17.170:9000";
   private static final String ACCESS_KEY = "minioadmin";
-  private static final String SECRET_KEY = "minioadmin";
-  private static final String BUCKET = "iotdb-data";
+  private static final String SECRET_KEY = "fce2e70eb69fab571024cf9a5526ebd700594e99fb3cc902";
+  private static final String BUCKET = "iotdb-minio-it-" + UUID.randomUUID();
   private static final String REGION = "us-east-1";
-  private static final String DOCKER_API_VERSION_PROPERTY = "api.version";
-  private static final String DEFAULT_DOCKER_API_VERSION = "1.44";
-  private static final int MINIO_PORT = 9000;
-
-  private static final GenericContainer<?> MINIO =
-      new GenericContainer<>(DockerImageName.parse("minio/minio:RELEASE.2025-04-22T22-12-26Z"))
-          .withEnv("MINIO_ROOT_USER", ACCESS_KEY)
-          .withEnv("MINIO_ROOT_PASSWORD", SECRET_KEY)
-          .withCommand("server", "/data")
-          .withExposedPorts(MINIO_PORT)
-          .waitingFor(Wait.forHttp("/minio/health/ready").forPort(MINIO_PORT));
 
   private static S3Client s3Client;
+  private static boolean bucketCreated;
   private static boolean environmentStarted;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    if (System.getProperty(DOCKER_API_VERSION_PROPERTY) == null) {
-      System.setProperty(DOCKER_API_VERSION_PROPERTY, DEFAULT_DOCKER_API_VERSION);
-    }
-    Assume.assumeTrue(DockerClientFactory.instance().isDockerAvailable());
-    MINIO.start();
     s3Client = createS3Client();
+    try {
+      s3Client.listBuckets();
+    } catch (RuntimeException e) {
+      Assume.assumeNoException("MinIO is unavailable at " + MINIO_ENDPOINT, e);
+    }
     s3Client.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build());
+    bucketCreated = true;
 
     DataNodeConfig dataNodeConfig = EnvFactory.getEnv().getConfig().getDataNodeConfig();
     dataNodeConfig
         .setDnDataDirs("data/datanode/data;OBJECT_STORAGE")
         .setObjectStorageType("AWS_S3")
-        .setObjectStorageEndpoint(getEndpoint())
+        .setObjectStorageEndpoint(MINIO_ENDPOINT)
         .setObjectStorageRegion(REGION)
         .setObjectStorageBucket(BUCKET)
         .setObjectStorageAccessKey(ACCESS_KEY)
@@ -106,9 +97,14 @@ public class IoTDBObjectStorageMinIOIT {
       }
     } finally {
       if (s3Client != null) {
-        s3Client.close();
+        try {
+          if (bucketCreated) {
+            deleteBucket();
+          }
+        } finally {
+          s3Client.close();
+        }
       }
-      MINIO.stop();
     }
   }
 
@@ -156,7 +152,7 @@ public class IoTDBObjectStorageMinIOIT {
 
   private static S3Client createS3Client() {
     return S3Client.builder()
-        .endpointOverride(URI.create(getEndpoint()))
+        .endpointOverride(URI.create(MINIO_ENDPOINT))
         .region(Region.of(REGION))
         .credentialsProvider(
             StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
@@ -164,7 +160,15 @@ public class IoTDBObjectStorageMinIOIT {
         .build();
   }
 
-  private static String getEndpoint() {
-    return "http://" + MINIO.getHost() + ':' + MINIO.getMappedPort(MINIO_PORT);
+  private static void deleteBucket() {
+    ListObjectsV2Response response =
+        s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(BUCKET).build());
+    response
+        .contents()
+        .forEach(
+            object ->
+                s3Client.deleteObject(
+                    DeleteObjectRequest.builder().bucket(BUCKET).key(object.key()).build()));
+    s3Client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
   }
 }
