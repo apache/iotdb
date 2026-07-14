@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -62,10 +63,43 @@ public class TsFileEpochManagerTest {
     Assert.assertArrayEquals(new String[] {"s5", "s5"}, event.getSchemaInfo().get(uniqueDevice));
   }
 
+  @Test
+  public void testSubsequenceAggregationPreservesEncounterOrder() {
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1");
+    final InsertRowsNode rows = mock(InsertRowsNode.class);
+    final List<InsertRowNode> insertRowNodes =
+        Arrays.asList(
+            mockRow(device, "s1", "s3", "s1", null),
+            mockRow(device, copyString("s1"), copyString("s3"), null),
+            mockRow(device, copyString("s1"), "s2", copyString("s3")));
+    when(rows.getInsertRowNodeList()).thenReturn(insertRowNodes);
+
+    final Map<IDeviceID, String[]> device2Measurements =
+        TsFileEpochManager.getDevice2MeasurementsMapFromInsertRowsNode(rows);
+
+    Assert.assertArrayEquals(
+        new String[] {"s1", "s3", null, "s2"}, device2Measurements.get(device));
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testNullMeasurementsAreRejected() {
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1");
+    final InsertRowsNode rows = mock(InsertRowsNode.class);
+    final List<InsertRowNode> insertRowNodes =
+        Arrays.asList(mockRow(device, "s1"), mockRow(device, (String[]) null));
+    when(rows.getInsertRowNodeList()).thenReturn(insertRowNodes);
+
+    TsFileEpochManager.getDevice2MeasurementsMapFromInsertRowsNode(rows);
+  }
+
   private static InsertRowNode mockRow(final IDeviceID device, final String... measurements) {
     final InsertRowNode row = mock(InsertRowNode.class);
     when(row.getDeviceID()).thenReturn(device);
     when(row.getMeasurements()).thenReturn(measurements);
     return row;
+  }
+
+  private static String copyString(final String value) {
+    return new String(value.toCharArray());
   }
 }

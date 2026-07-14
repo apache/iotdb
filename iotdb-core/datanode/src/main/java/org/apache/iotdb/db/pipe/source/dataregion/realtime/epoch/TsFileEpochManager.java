@@ -105,9 +105,7 @@ public class TsFileEpochManager {
       final Set<String> distinctMeasurements =
           device2DistinctMeasurements.computeIfAbsent(
               deviceID, key -> new LinkedHashSet<>(Arrays.asList(firstMeasurements)));
-      if (!Arrays.equals(firstMeasurements, measurements)) {
-        Collections.addAll(distinctMeasurements, measurements);
-      }
+      addDistinctMeasurements(firstMeasurements, measurements, distinctMeasurements);
     }
 
     device2DistinctMeasurements.forEach(
@@ -115,5 +113,32 @@ public class TsFileEpochManager {
             device2Measurements.put(
                 deviceID, measurements.toArray(new String[measurements.size()])));
     return device2Measurements;
+  }
+
+  private static void addDistinctMeasurements(
+      final String[] firstMeasurements,
+      final String[] measurements,
+      final Set<String> distinctMeasurements) {
+    if (measurements.length >= firstMeasurements.length) {
+      if (!Arrays.equals(firstMeasurements, measurements)) {
+        Collections.addAll(distinctMeasurements, measurements);
+      }
+      return;
+    }
+
+    // Skip the longest prefix that is already present as an ordered subsequence of the first row.
+    int firstMeasurementIndex = 0;
+    int measurementIndex = 0;
+    while (firstMeasurementIndex < firstMeasurements.length
+        && measurementIndex < measurements.length) {
+      if (Objects.equals(
+          firstMeasurements[firstMeasurementIndex], measurements[measurementIndex])) {
+        ++measurementIndex;
+      }
+      ++firstMeasurementIndex;
+    }
+    while (measurementIndex < measurements.length) {
+      distinctMeasurements.add(measurements[measurementIndex++]);
+    }
   }
 }
