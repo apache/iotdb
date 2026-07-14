@@ -106,7 +106,7 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
   public void orderByTimeLimitOnReadTsFile() throws Exception {
     File tsFile = new File(tmpDir, "topk-rf.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {
-      generateTable(
+      generateTableWithDistinctDeviceTimes(
           writer, "table1", Arrays.asList("tag1", "tag2"), Arrays.asList("s1", "s2"), 1, 3);
     }
 
@@ -114,7 +114,7 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     String[] retArray =
         new String[] {
           "1970-01-01T00:00:00.003Z,tag1_3,tag2_3,3,3,",
-          "1970-01-01T00:00:00.003Z,tag1_2,tag2_2,3,3,",
+          "1970-01-01T00:00:00.002Z,tag1_2,tag2_2,2,2,",
         };
     tableResultSetEqualTest(
         "SELECT time, tag1, tag2, s1, s2 FROM read_tsfile(PATHS => '"
@@ -158,6 +158,52 @@ public class IoTDBTopKRuntimeFilterScanPathIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + READ_TSFILE_DATABASE);
+    }
+  }
+
+  private static void generateTableWithDistinctDeviceTimes(
+      TsFileWriter writer,
+      String tableName,
+      List<String> tagColumns,
+      List<String> fieldColumns,
+      int deviceStart,
+      int deviceEnd)
+      throws IOException, WriteProcessException {
+    List<String> columnNames = new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    List<TSDataType> columnTypes = new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    List<ColumnCategory> columnCategories =
+        new ArrayList<>(tagColumns.size() + fieldColumns.size());
+    for (String tagColumn : tagColumns) {
+      columnNames.add(tagColumn);
+      columnTypes.add(TSDataType.STRING);
+      columnCategories.add(ColumnCategory.TAG);
+    }
+    for (String fieldColumn : fieldColumns) {
+      columnNames.add(fieldColumn);
+      columnTypes.add(TSDataType.INT32);
+      columnCategories.add(ColumnCategory.FIELD);
+    }
+
+    writer.registerTableSchema(
+        new TableSchema(tableName, columnNames, columnTypes, columnCategories));
+    Tablet tablet = new Tablet(tableName, columnNames, columnTypes, columnCategories);
+    for (int deviceIndex = deviceStart; deviceIndex <= deviceEnd; deviceIndex++) {
+      int time = deviceIndex;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
+      for (int i = 0; i < tagColumns.size(); i++) {
+        tablet.addValue(row, i, tagColumns.get(i) + "_" + deviceIndex);
+      }
+      for (int i = 0; i < fieldColumns.size(); i++) {
+        tablet.addValue(row, tagColumns.size() + i, time);
+      }
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        writer.writeTable(tablet);
+        tablet.reset();
+      }
+    }
+    if (tablet.getRowSize() != 0) {
+      writer.writeTable(tablet);
     }
   }
 

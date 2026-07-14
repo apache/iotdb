@@ -48,16 +48,17 @@ import java.util.Set;
 public class ExternalTsFileTableScanOperatorRuntimeFilterTest {
 
   @Test
-  public void moveToNextDeviceStopsWhenRuntimeFilterExhausted() throws Exception {
+  public void shouldStopScanByRuntimeFilterOnlyOnLastDevice() throws Exception {
     ExternalTsFileTableScanOperator operator =
         new TestExternalTsFileTableScanOperator(createParameter());
     QueryDataSource queryDataSource = Mockito.mock(QueryDataSource.class);
     Mockito.when(queryDataSource.hasValidResource()).thenReturn(false);
     setQueryDataSource(operator, queryDataSource);
 
-    operator.moveToNextDevice();
+    Assert.assertFalse(operator.shouldStopScanByRuntimeFilter());
 
-    Assert.assertEquals(2, operator.currentDeviceIndex);
+    operator.currentDeviceIndex = 1;
+    Assert.assertTrue(operator.shouldStopScanByRuntimeFilter());
   }
 
   private static AbstractTableScanOperatorParameter createParameter() {

@@ -98,11 +98,14 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
   }
 
   @Override
+  protected boolean shouldStopScanByRuntimeFilter() {
+    // Each device uses its own QueryDataSource, exhausting files for the current device must not
+    // stop scanning remaining devices in the same external TsFile task.
+    return false;
+  }
+
+  @Override
   protected void moveToNextDevice() {
-    if (shouldStopScanByRuntimeFilter()) {
-      currentDeviceIndex = deviceCount;
-      return;
-    }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       constructAlignedSeriesScanUtil();
