@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class UrlUtilsTest {
 
@@ -51,11 +53,89 @@ public class UrlUtilsTest {
     assertEquals(endPoint.getPort(), 22227);
   }
 
+  @Test(expected = NumberFormatException.class)
+  public void testParseBracketedIPV6URLWithoutPortSeparator() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("[D80::ABAA:0]22227");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseBracketedIPV6URLWithoutPort() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("[D80::ABAA:0]:");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseBracketedIPV6URLWithoutEndMark() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("[D80::ABAA:0:22227");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutPortSeparator() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("localhost");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutHost() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url(":22227");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testParseURLWithoutPort() {
+    UrlUtils.parseTEndPointIpv4AndIpv6Url("localhost:");
+  }
+
   @Test
   public void testParseIPV4URL() {
     String hostAndPoint = "192.0.0.1:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
     assertEquals(endPoint.getIp(), "192.0.0.1");
     assertEquals(endPoint.getPort(), 22227);
+  }
+
+  @Test
+  public void testConvertIPV4URL() {
+    assertEquals(
+        "192.0.0.1:22227",
+        UrlUtils.convertTEndPointIpv4AndIpv6Url(new TEndPoint("192.0.0.1", 22227)));
+  }
+
+  @Test
+  public void testConvertHostNameURL() {
+    assertEquals("localhost:22227", UrlUtils.formatTEndPointIpv4AndIpv6Url("localhost", 22227));
+  }
+
+  @Test
+  public void testConvertIPV6URL() {
+    assertEquals(
+        "[D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD]:22227",
+        UrlUtils.convertTEndPointIpv4AndIpv6Url(
+            new TEndPoint("D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD", 22227)));
+  }
+
+  @Test
+  public void testConvertIPV6AbbURL() {
+    assertEquals(
+        "[D80::ABAA:0]:22227",
+        UrlUtils.convertTEndPointIpv4AndIpv6Url(new TEndPoint("D80::ABAA:0", 22227)));
+  }
+
+  @Test
+  public void testConvertBracketedIPV6URL() {
+    assertEquals(
+        "[D80::ABAA:0]:22227", UrlUtils.formatTEndPointIpv4AndIpv6Url("[D80::ABAA:0]", 22227));
+  }
+
+  @Test
+  public void testWildcardAddress() {
+    assertTrue(UrlUtils.isWildcardAddress("0.0.0.0"));
+    assertTrue(UrlUtils.isWildcardAddress("::"));
+    assertTrue(UrlUtils.isWildcardAddress("[::]"));
+    assertTrue(UrlUtils.isWildcardAddress("0:0:0:0:0:0:0:0"));
+    assertTrue(UrlUtils.isWildcardAddress("0::0"));
+
+    assertFalse(UrlUtils.isWildcardAddress(null));
+    assertFalse(UrlUtils.isWildcardAddress("127.0.0.1"));
+    assertFalse(UrlUtils.isWildcardAddress("localhost"));
+    assertFalse(UrlUtils.isWildcardAddress("::1"));
+    assertFalse(UrlUtils.isWildcardAddress("[::1]"));
   }
 }

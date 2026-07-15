@@ -43,6 +43,7 @@ import org.apache.iotdb.itbase.runtime.NodeConnection;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -72,6 +73,10 @@ public class RemoteServerEnv implements BaseEnv {
   private final String password = System.getProperty("RemotePassword", "TimechoDB@2021");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private RemoteClusterConfig clusterConfig = new RemoteClusterConfig();
+
+  private String remoteEndpointUrl(String port) {
+    return UrlUtils.formatTEndPointIpv4AndIpv6Url(ip_addr, Integer.parseInt(port));
+  }
 
   @Override
   public void initClusterEnvironment() {
@@ -117,11 +122,11 @@ public class RemoteServerEnv implements BaseEnv {
     List<String> result = new ArrayList<>();
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics",
+            Config.IOTDB_HTTP_URL_PREFIX + remoteEndpointUrl(configNodeMetricPort) + "/metrics",
             authHeader));
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics",
+            Config.IOTDB_HTTP_URL_PREFIX + remoteEndpointUrl(dataNodeMetricPort) + "/metrics",
             authHeader));
     return result;
   }
@@ -134,7 +139,7 @@ public class RemoteServerEnv implements BaseEnv {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
           DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
+              Config.IOTDB_URL_PREFIX + remoteEndpointUrl(port),
               BaseEnv.constructProperties(username, password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
@@ -171,9 +176,7 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX
-                  + ip_addr
-                  + ":"
-                  + port
+                  + remoteEndpointUrl(port)
                   + "?"
                   + VERSION
                   + "="
@@ -301,7 +304,7 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
     return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .nodeUrls(Collections.singletonList(remoteEndpointUrl(port)))
         .build();
   }
 
@@ -309,7 +312,7 @@ public class RemoteServerEnv implements BaseEnv {
   public ITableSession getTableSessionConnectionWithDB(String database)
       throws IoTDBConnectionException {
     return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .nodeUrls(Collections.singletonList(remoteEndpointUrl(port)))
         .database(database)
         .build();
   }
@@ -333,7 +336,7 @@ public class RemoteServerEnv implements BaseEnv {
   public ITableSession getTableSessionConnection(String userName, String password)
       throws IoTDBConnectionException {
     return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .nodeUrls(Collections.singletonList(remoteEndpointUrl(port)))
         .username(userName)
         .password(password)
         .build();
@@ -357,7 +360,7 @@ public class RemoteServerEnv implements BaseEnv {
   public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
         new Session.Builder()
-            .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+            .nodeUrls(Collections.singletonList(remoteEndpointUrl(port)))
             .username(SessionConfig.DEFAULT_USER)
             .password(SessionConfig.DEFAULT_PASSWORD)
             .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)

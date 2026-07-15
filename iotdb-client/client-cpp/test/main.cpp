@@ -30,6 +30,9 @@ struct SessionListener : Catch::TestEventListenerBase {
   using TestEventListenerBase::TestEventListenerBase;
 
   void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+    if (testInfo.tagsAsString().find("[UrlUtils]") != std::string::npos) {
+      return;
+    }
     if (!session) {
       SessionBuilder builder;
       session = builder.host("127.0.0.1")

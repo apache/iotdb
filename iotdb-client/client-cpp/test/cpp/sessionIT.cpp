@@ -907,6 +907,21 @@ TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
   }
 }
 
+TEST_CASE("UrlUtils - isWildcardAddress", "[UrlUtils]") {
+  REQUIRE(UrlUtils::isWildcardAddress("0.0.0.0"));
+  REQUIRE(UrlUtils::isWildcardAddress("[0.0.0.0]"));
+  REQUIRE(UrlUtils::isWildcardAddress("::"));
+  REQUIRE(UrlUtils::isWildcardAddress("[::]"));
+  REQUIRE(UrlUtils::isWildcardAddress("0:0:0:0:0:0:0:0"));
+  REQUIRE(UrlUtils::isWildcardAddress("0::0"));
+
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress(""));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("127.0.0.1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("localhost"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("::1"));
+  REQUIRE_FALSE(UrlUtils::isWildcardAddress("[::1]"));
+}
+
 TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDeserialize]") {
   std::string data(18, '\0');
   data[3] = '\x10';

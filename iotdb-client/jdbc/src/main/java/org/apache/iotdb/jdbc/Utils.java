@@ -60,41 +60,58 @@ public class Utils {
     String suffixURL = null;
     if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
-      int i = subURL.lastIndexOf(COLON);
-      host = subURL.substring(0, i);
-      params.setHost(host);
-      i++;
-      // parse port
-      int port = 0;
-      for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
-        port = port * 10 + (subURL.charAt(i) - '0');
-      }
-      suffixURL = i < subURL.length() ? subURL.substring(i) : "";
-      // legal port
-      if (port >= 1 && port <= 65535) {
-        params.setPort(port);
-
-        // parse database
-        if (i < subURL.length() && subURL.charAt(i) == SLASH) {
-          int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
-          String database;
-          if (endIndex <= i + 1) {
-            if (i + 1 == subURL.length()) {
-              database = null;
-            } else {
-              database = subURL.substring(i + 1);
-            }
-            suffixURL = "";
-          } else {
-            database = subURL.substring(i + 1, endIndex);
-            suffixURL = subURL.substring(endIndex);
-          }
-          params.setDb(database);
+      int i = -1;
+      if (subURL.startsWith("[")) {
+        int endIndex = subURL.indexOf("]");
+        if (endIndex > 1
+            && endIndex + 1 < subURL.length()
+            && COLON.equals(subURL.substring(endIndex + 1, endIndex + 2))) {
+          host = subURL.substring(1, endIndex);
+          i = endIndex + 2;
         }
+      } else if (!subURL.contains("[") && !subURL.contains("]")) {
+        i = subURL.lastIndexOf(COLON);
+        if (i > 0) {
+          host = subURL.substring(0, i);
+          i++;
+        }
+      }
 
-        matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
-        if (matcher.matches() && parseUrlParam(subURL, info)) {
-          isUrlLegal = true;
+      if (i > 0) {
+        params.setHost(host);
+        // parse port
+        int port = 0;
+        int portStartIndex = i;
+        for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
+          port = port * 10 + (subURL.charAt(i) - '0');
+        }
+        suffixURL = i < subURL.length() ? subURL.substring(i) : "";
+        // legal port
+        if (i > portStartIndex && port >= 1 && port <= 65535) {
+          params.setPort(port);
+
+          // parse database
+          if (i < subURL.length() && subURL.charAt(i) == SLASH) {
+            int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
+            String database;
+            if (endIndex <= i + 1) {
+              if (i + 1 == subURL.length()) {
+                database = null;
+              } else {
+                database = subURL.substring(i + 1);
+              }
+              suffixURL = "";
+            } else {
+              database = subURL.substring(i + 1, endIndex);
+              suffixURL = subURL.substring(endIndex);
+            }
+            params.setDb(database);
+          }
+
+          matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
+          if (matcher.matches() && parseUrlParam(subURL, info)) {
+            isUrlLegal = true;
+          }
         }
       }
     }
