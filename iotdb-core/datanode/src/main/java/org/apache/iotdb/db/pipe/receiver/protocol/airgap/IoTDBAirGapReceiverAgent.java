@@ -50,13 +50,11 @@ public class IoTDBAirGapReceiverAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
   private static final int UDP_PACKET_MAX_SIZE_IN_BYTES = 65_507;
+  private static final int LISTENER_THREAD_COUNT = 2;
 
   private final ExecutorService listenExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
-          ThreadName.PIPE_RECEIVER_AIR_GAP_AGENT.getName());
-  private final ExecutorService udpListenExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
-          ThreadName.PIPE_RECEIVER_AIR_GAP_AGENT.getName() + "-UDP");
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          LISTENER_THREAD_COUNT, ThreadName.PIPE_RECEIVER_AIR_GAP_AGENT.getName());
   private final AtomicBoolean allowSubmitListen = new AtomicBoolean(false);
 
   private ServerSocket serverSocket;
@@ -142,7 +140,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
 
     allowSubmitListen.set(true);
     listenExecutor.submit(this::listen);
-    udpListenExecutor.submit(this::listenUdp);
+    listenExecutor.submit(this::listenUdp);
 
     LOGGER.info(DataNodePipeMessages.IOTDBAIRGAPRECEIVERAGENT_STARTED, serverSocket);
   }
@@ -175,7 +173,6 @@ public class IoTDBAirGapReceiverAgent implements IService {
         });
     udpClientSessions.clear();
     listenExecutor.shutdown();
-    udpListenExecutor.shutdown();
 
     LOGGER.info(DataNodePipeMessages.IOTDBAIRGAPRECEIVERAGENT_STOPPED, serverSocket);
   }
