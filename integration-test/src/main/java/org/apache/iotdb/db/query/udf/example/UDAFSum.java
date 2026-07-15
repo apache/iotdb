@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
@@ -29,12 +30,29 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
 public class UDAFSum implements UDAF {
+
+  private static final TypeService<ColumnValueGetter> COLUMN_VALUE_GETTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> Column::getInt;
+            case INT64 -> Column::getLong;
+            case FLOAT -> Column::getFloat;
+            case DOUBLE -> Column::getDouble;
+            default ->
+                (column, index) -> {
+                  throw new UnSupportedDataTypeException(
+                      String.format(
+                          "Unsupported data type in aggregation AVG : %s", type.getTypeEnum()));
+                };
+          };
+
   static class SumState implements State {
     double sum = 0;
 
@@ -63,7 +81,7 @@ public class UDAFSum implements UDAF {
     }
   }
 
-  private Type dataType;
+  private org.apache.tsfile.read.common.type.Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -74,7 +92,9 @@ public class UDAFSum implements UDAF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDAFConfigurations configurations) {
-    dataType = parameters.getDataType(0);
+    dataType =
+        org.apache.tsfile.read.common.type.Type.fromTsDataType(
+            UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
     configurations.setOutputDataType(Type.DOUBLE);
   }
 
@@ -86,29 +106,17 @@ public class UDAFSum implements UDAF {
   @Override
   public void addInput(State state, Column[] columns, BitMap bitMap) {
     SumState sumState = (SumState) state;
-
-    switch (dataType) {
-      case INT32:
-        addIntInput(sumState, columns, bitMap);
-        return;
-      case INT64:
-        addLongInput(sumState, columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(sumState, columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(sumState, columns, bitMap);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case BOOLEAN:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", dataType));
+    final Column column = columns[0];
+    final ColumnValueGetter valueGetter = COLUMN_VALUE_GETTER_SERVICE.call(dataType);
+    final int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
+        continue;
+      }
+      if (!column.isNull(i)) {
+        sumState.initResult = true;
+        sumState.sum += valueGetter.getValue(column, i);
+      }
     }
   }
 
@@ -140,55 +148,8 @@ public class UDAFSum implements UDAF {
     sumState.sum -= sumRhs.sum;
   }
 
-  private void addIntInput(SumState state, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        state.initResult = true;
-        state.sum += columns[0].getInt(i);
-      }
-    }
-  }
-
-  private void addLongInput(SumState state, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        state.initResult = true;
-        state.sum += columns[0].getLong(i);
-      }
-    }
-  }
-
-  private void addFloatInput(SumState state, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        state.initResult = true;
-        state.sum += columns[0].getFloat(i);
-      }
-    }
-  }
-
-  private void addDoubleInput(SumState state, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        state.initResult = true;
-        state.sum += columns[0].getDouble(i);
-      }
-    }
+  @FunctionalInterface
+  private interface ColumnValueGetter {
+    double getValue(Column column, int index);
   }
 }
