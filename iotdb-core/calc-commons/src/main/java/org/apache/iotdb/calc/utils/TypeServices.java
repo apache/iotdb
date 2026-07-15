@@ -34,7 +34,10 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.service.IntTypeService;
 import org.apache.tsfile.read.common.type.service.TypeService;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Comparator;
@@ -107,6 +110,26 @@ public class TypeServices {
                     byteArrayLength ->
                         MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
                 default -> throw new UnSupportedDataTypeException(type.toString());
+              };
+
+  public static final TypeService<Function<TsPrimitiveType, Object>>
+      PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> TsPrimitiveType::getValue;
+                case DATE -> primitiveType -> DateUtils.parseIntToLocalDate(primitiveType.getInt());
+                case TEXT, BLOB, STRING ->
+                    primitiveType -> {
+                      final Binary binary = primitiveType.getBinary();
+                      return binary == null || binary.getValues() == null
+                          ? Binary.EMPTY_VALUE
+                          : binary;
+                    };
+                default ->
+                    primitiveType -> {
+                      throw new UnSupportedDataTypeException(
+                          CalcMessages.UNSUPPORTED_DATA_TYPE + primitiveType.getDataType());
+                    };
               };
 
   public static final TypeService<Function<DefaultEncodingProvider, TSEncoding>>
@@ -239,6 +262,7 @@ public class TypeServices {
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
+    PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
     DEFAULT_ENCODING_BY_TYPE_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
