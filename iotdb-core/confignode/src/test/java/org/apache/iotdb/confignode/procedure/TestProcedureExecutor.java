@@ -31,8 +31,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestProcedureExecutor extends TestProcedureBase {
@@ -54,6 +57,66 @@ public class TestProcedureExecutor extends TestProcedureBase {
     TestProcEnv env = this.getEnv();
     AtomicInteger acc = env.getAcc();
     Assert.assertEquals(acc.get(), 1);
+  }
+
+  @Test
+  public void testProcedureFailedDuringSubmissionIsRolledBack() throws InterruptedException {
+    TestProcEnv localEnv = new TestProcEnv();
+    FailOnFirstUpdateProcedureStore localStore = new FailOnFirstUpdateProcedureStore();
+    ProcedureExecutor<TestProcEnv> localExecutor = new ProcedureExecutor<>(localEnv, localStore);
+    localEnv.setScheduler(localExecutor.getScheduler());
+    localStore.start();
+    localExecutor.init(1);
+
+    try {
+      FailedDuringSubmissionProcedure procedure = new FailedDuringSubmissionProcedure();
+      long procId = localExecutor.submitProcedure(procedure);
+
+      boolean rollbackStackPersisted = localStore.isRollbackStackPersisted();
+      localExecutor.startWorkers();
+      Assert.assertTrue(rollbackStackPersisted);
+      Assert.assertTrue(procedure.awaitRollback(10, TimeUnit.SECONDS));
+      ProcedureTestUtil.waitForProcedure(localExecutor, procId);
+      Assert.assertTrue(localExecutor.isFinished(procId));
+      Assert.assertEquals(ProcedureState.ROLLEDBACK, procedure.getState());
+      Assert.assertEquals(0, procedure.getExecutionCount());
+      Assert.assertEquals(1, procedure.getRollbackCount());
+    } finally {
+      localStore.stop();
+      localExecutor.stop();
+      localExecutor.join();
+      localStore.cleanup();
+    }
+  }
+
+  @Test
+  public void testFailedProcedureWithoutRollbackStackCanBeRecovered() throws InterruptedException {
+    FailedDuringSubmissionProcedure procedure = new FailedDuringSubmissionProcedure();
+    procedure.setProcId(0);
+    procedure.setProcRunnable();
+    procedure.setFailure(new ProcedureException("Failed to deserialize procedure"));
+
+    TestProcEnv localEnv = new TestProcEnv();
+    FailedProcedureStore localStore = new FailedProcedureStore(procedure);
+    ProcedureExecutor<TestProcEnv> localExecutor = new ProcedureExecutor<>(localEnv, localStore);
+    localEnv.setScheduler(localExecutor.getScheduler());
+    localStore.start();
+    localExecutor.init(1);
+    localExecutor.startWorkers();
+
+    try {
+      Assert.assertTrue(procedure.awaitRollback(10, TimeUnit.SECONDS));
+      ProcedureTestUtil.waitForProcedure(localExecutor, procedure.getProcId());
+      Assert.assertTrue(localExecutor.isFinished(procedure.getProcId()));
+      Assert.assertEquals(ProcedureState.ROLLEDBACK, procedure.getState());
+      Assert.assertEquals(0, procedure.getExecutionCount());
+      Assert.assertEquals(1, procedure.getRollbackCount());
+    } finally {
+      localStore.stop();
+      localExecutor.stop();
+      localExecutor.join();
+      localStore.cleanup();
+    }
   }
 
   @Test
@@ -221,6 +284,70 @@ public class TestProcedureExecutor extends TestProcedureBase {
 
     private int getExecutionCount() {
       return executionCount.get();
+    }
+  }
+
+  private static class FailOnFirstUpdateProcedureStore extends NoopProcedureStore {
+
+    private final AtomicBoolean firstUpdate = new AtomicBoolean(true);
+    private final AtomicBoolean rollbackStackPersisted = new AtomicBoolean(false);
+
+    @Override
+    public void update(Procedure procedure) {
+      if (firstUpdate.compareAndSet(true, false)) {
+        procedure.setFailure(new ProcedureException("Failed to deserialize procedure"));
+      } else if (procedure.isFailed() && procedure.wasExecuted()) {
+        rollbackStackPersisted.set(true);
+      }
+    }
+
+    private boolean isRollbackStackPersisted() {
+      return rollbackStackPersisted.get();
+    }
+  }
+
+  private static class FailedProcedureStore extends NoopProcedureStore {
+
+    private final Procedure procedure;
+
+    private FailedProcedureStore(Procedure procedure) {
+      this.procedure = procedure;
+    }
+
+    @Override
+    public List<Procedure> load() {
+      return Collections.singletonList(procedure);
+    }
+  }
+
+  private static class FailedDuringSubmissionProcedure extends Procedure<TestProcEnv> {
+
+    private final Semaphore rolledBack = new Semaphore(0);
+    private final AtomicInteger executionCount = new AtomicInteger();
+    private final AtomicInteger rollbackCount = new AtomicInteger();
+
+    @Override
+    protected Procedure<TestProcEnv>[] execute(TestProcEnv env) {
+      executionCount.incrementAndGet();
+      return null;
+    }
+
+    @Override
+    protected void rollback(TestProcEnv env) {
+      rollbackCount.incrementAndGet();
+      rolledBack.release();
+    }
+
+    private boolean awaitRollback(long timeout, TimeUnit unit) throws InterruptedException {
+      return rolledBack.tryAcquire(timeout, unit);
+    }
+
+    private int getExecutionCount() {
+      return executionCount.get();
+    }
+
+    private int getRollbackCount() {
+      return rollbackCount.get();
     }
   }
 }
