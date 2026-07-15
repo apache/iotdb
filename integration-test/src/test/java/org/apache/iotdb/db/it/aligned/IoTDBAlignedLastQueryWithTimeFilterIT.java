@@ -59,10 +59,8 @@ public class IoTDBAlignedLastQueryWithTimeFilterIT {
               + "s1 INT32 encoding=RLE, s2 INT32 encoding=RLE, s3 INT32 encoding=RLE)");
       // The queried sensors only have values in the first chunk, while s3 extends the aligned
       // time-series statistics into the query's time range.
-      statement.execute(
-          "insert into root.last_query_filter.d1(time,s1,s2) aligned values(1,1,11)");
-      statement.execute(
-          "insert into root.last_query_filter.d1(time,s1,s2) aligned values(2,2,22)");
+      statement.execute("insert into root.last_query_filter.d1(time,s1,s2) aligned values(1,1,11)");
+      statement.execute("insert into root.last_query_filter.d1(time,s1,s2) aligned values(2,2,22)");
       statement.execute("insert into root.last_query_filter.d1(time,s3) aligned values(100,100)");
       statement.execute("insert into root.last_query_filter.d1(time,s3) aligned values(101,101)");
       statement.execute("flush");
