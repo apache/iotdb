@@ -87,9 +87,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           ((AbstractAlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
-      // the time series metadata, so we don't need to filter it again.
-      if (alignedChunkMetadataList.size() > 1) {
+      if (!alignedChunkMetadataList.isEmpty()) {
         // remove not satisfied ChunkMetaData
         final long t2 = System.nanoTime();
         alignedChunkMetadataList.removeIf(
