@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.rest.protocol.v1.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -119,6 +121,11 @@ public class QueryDataSetHandlerTest {
     }
 
     @Override
+    public TSStatus getTSStatus() {
+      return null;
+    }
+
+    @Override
     public Optional<TsBlock> getBatchResult() throws IoTDBException {
       return batches.remove();
     }
@@ -151,6 +158,11 @@ public class QueryDataSetHandlerTest {
     @Override
     public boolean isQuery() {
       return true;
+    }
+
+    @Override
+    public boolean isInsert() {
+      return false;
     }
 
     @Override
@@ -211,6 +223,11 @@ public class QueryDataSetHandlerTest {
 
     @Override
     public String getClientHostname() {
+      return null;
+    }
+
+    @Override
+    public MPPQueryContext getContext() {
       return null;
     }
 
