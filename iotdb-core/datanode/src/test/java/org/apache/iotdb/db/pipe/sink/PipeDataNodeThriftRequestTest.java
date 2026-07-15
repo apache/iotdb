@@ -912,6 +912,51 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqV2SkipsStringInterningForSingleRawTablet()
+      throws IOException {
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                Collections.emptyList(),
+                Collections.singletonList(
+                    serializeTablet(
+                        createSingleValueTablet(new String("root.sg.d"), new String("s1")), false)),
+                Collections.emptyList(),
+                Collections.singletonList(new String("root.sg.d"))));
+
+    final PipeTransferTabletRawReqV2 tabletReq = deserializedReq.getTabletReqs().get(0);
+    Assert.assertEquals(tabletReq.getTablet().getDeviceId(), tabletReq.getDataBaseName());
+    Assert.assertNotSame(tabletReq.getTablet().getDeviceId(), tabletReq.getDataBaseName());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2InternsStringsAcrossMultipleRawTablets()
+      throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                Collections.emptyList(),
+                tabletBuffers,
+                Collections.emptyList(),
+                Arrays.asList(new String("root.sg.d"), new String("root.sg.d"))));
+
+    final PipeTransferTabletRawReqV2 firstTabletReq = deserializedReq.getTabletReqs().get(0);
+    final PipeTransferTabletRawReqV2 secondTabletReq = deserializedReq.getTabletReqs().get(1);
+    Assert.assertSame(
+        firstTabletReq.getTablet().getDeviceId(), secondTabletReq.getTablet().getDeviceId());
+    Assert.assertSame(firstTabletReq.getDataBaseName(), secondTabletReq.getDataBaseName());
+    Assert.assertSame(
+        ((MeasurementSchema) firstTabletReq.getTablet().getSchemas().get(0)).getMeasurementName(),
+        ((MeasurementSchema) secondTabletReq.getTablet().getSchemas().get(0)).getMeasurementName());
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqV2WithMultipleTreeModelDatabases() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();

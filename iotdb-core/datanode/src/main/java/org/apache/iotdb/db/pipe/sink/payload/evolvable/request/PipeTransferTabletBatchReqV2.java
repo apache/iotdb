@@ -215,21 +215,22 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
       final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
-    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Binary req, for rolling upgrade
     ReadWriteIOUtils.readInt(transferReq.body);
 
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int insertNodeCount = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < insertNodeCount; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
-              tabletStringInternPool.intern(ReadWriteIOUtils.readString(transferReq.body))));
+              ReadWriteIOUtils.readString(transferReq.body)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int rawTabletCount = ReadWriteIOUtils.readInt(transferReq.body);
+    final TabletStringInternPool tabletStringInternPool =
+        rawTabletCount > 1 ? new TabletStringInternPool() : null;
+    for (int i = 0; i < rawTabletCount; ++i) {
       batchReq.tabletReqs.add(
           PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
               transferReq.body, tabletStringInternPool));
