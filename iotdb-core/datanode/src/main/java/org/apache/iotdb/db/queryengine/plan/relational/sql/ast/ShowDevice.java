@@ -80,6 +80,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     super(source);
     this.offset = source.offset;
     this.limit = source.limit;
+    this.fetchSchema = source.fetchSchema;
   }
 
   @Override
