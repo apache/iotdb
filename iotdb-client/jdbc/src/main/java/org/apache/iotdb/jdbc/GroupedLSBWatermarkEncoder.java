@@ -22,9 +22,10 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 
 import org.apache.thrift.EncodingUtils;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -32,6 +33,25 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
+
+  private static final TypeService<FieldEncoder> FIELD_ENCODER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (encoder, field, timestamp) ->
+                    field.setIntV(encoder.encodeInt(field.getIntV(), timestamp));
+            case INT64, TIMESTAMP ->
+                (encoder, field, timestamp) ->
+                    field.setLongV(encoder.encodeLong(field.getLongV(), timestamp));
+            case FLOAT ->
+                (encoder, field, timestamp) ->
+                    field.setFloatV(encoder.encodeFloat(field.getFloatV(), timestamp));
+            case DOUBLE ->
+                (encoder, field, timestamp) ->
+                    field.setDoubleV(encoder.encodeDouble(field.getDoubleV(), timestamp));
+            default -> (encoder, field, timestamp) -> {};
+          };
+
   private String secretKey;
   private String bitString;
   private int markRate = 2;
@@ -116,33 +136,15 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
       if (field == null || field.getDataType() == null) {
         continue;
       }
-      TSDataType dataType = field.getDataType();
-      switch (dataType) {
-        case INT32:
-        case DATE:
-          int originIntValue = field.getIntV();
-          field.setIntV(encodeInt(originIntValue, timestamp));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long originLongValue = field.getLongV();
-          field.setLongV(encodeLong(originLongValue, timestamp));
-          break;
-        case FLOAT:
-          float originFloatValue = field.getFloatV();
-          field.setFloatV(encodeFloat(originFloatValue, timestamp));
-          break;
-        case DOUBLE:
-          double originDoubleValue = field.getDoubleV();
-          field.setDoubleV(encodeDouble(originDoubleValue, timestamp));
-          break;
-        case BLOB:
-        case STRING:
-        case BOOLEAN:
-        case TEXT:
-        default:
-      }
+      FIELD_ENCODER_SERVICE
+          .call(Type.fromTsDataType(field.getDataType()))
+          .encode(this, field, timestamp);
     }
     return rowRecord;
+  }
+
+  @FunctionalInterface
+  private interface FieldEncoder {
+    void encode(GroupedLSBWatermarkEncoder encoder, Field field, long timestamp);
   }
 }
