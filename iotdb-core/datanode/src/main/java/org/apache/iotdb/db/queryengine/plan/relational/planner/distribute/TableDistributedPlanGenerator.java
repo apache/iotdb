@@ -435,12 +435,14 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
+    // root TopK is not a runtime filter producer.
+    newTopKNode.setTopKRuntimeFilterSourceId(null);
     for (PlanNode child : childrenNodes) {
       PlanNode newChild;
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), child)) {
         newChild = child;
       } else {
-        newChild =
+        TopKNode regionTopK =
             new TopKNode(
                 queryId.genPlanNodeId(),
                 Collections.singletonList(child),
@@ -448,6 +450,8 @@ public class TableDistributedPlanGenerator
                 node.getCount(),
                 node.getOutputSymbols(),
                 node.isChildrenDataInOrder());
+        regionTopK.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
+        newChild = regionTopK;
       }
       newTopKNode.addChild(newChild);
     }

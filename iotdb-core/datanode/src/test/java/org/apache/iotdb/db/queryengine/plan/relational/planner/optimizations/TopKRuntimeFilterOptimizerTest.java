@@ -28,30 +28,47 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer.Context;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 public class TopKRuntimeFilterOptimizerTest {
 
-  /** Single region: the sole TopK sits directly over the scan and uses its own plan node id. */
+  private boolean originalEnableTopKRuntimeFilter;
+
+  @Before
+  public void setUp() {
+    originalEnableTopKRuntimeFilter =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTopKRuntimeFilter();
+    IoTDBDescriptor.getInstance().getConfig().setEnableTopKRuntimeFilter(true);
+  }
+
+  @After
+  public void tearDown() {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableTopKRuntimeFilter(originalEnableTopKRuntimeFilter);
+  }
+
   @Test
-  public void marksTopKAndScanWithOwnPlanNodeIdInSingleRegion() {
+  public void marksTopKAndScanWithCurrentTopKId() {
     PlanNodeId topKId = new PlanNodeId("topk");
     TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
     topKNode.addChild(createScan(new PlanNodeId("scan")));
@@ -59,15 +76,14 @@ public class TopKRuntimeFilterOptimizerTest {
     TopKNode optimized =
         (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertNotNull(optimized.getTopKRuntimeFilterSourceId());
-    Assert.assertTrue(optimized.isTopKRuntimeFilterAscending());
     Assert.assertEquals(topKId.getId(), optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertTrue(optimized.isTopKRuntimeFilterAscending());
     DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimized.getChildren().get(0);
     Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
   }
 
   @Test
-  public void marksOutputTopKScanSingleRegionWithOwnPlanNodeId() {
+  public void marksOutputTopKScanWithCurrentTopKId() {
     PlanNodeId topKId = new PlanNodeId("topk");
     TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
     topKNode.addChild(createScan(new PlanNodeId("scan")));
@@ -96,40 +112,10 @@ public class TopKRuntimeFilterOptimizerTest {
     TopKNode optimized =
         (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
 
-    Assert.assertNotNull(optimized.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(topKId.getId(), optimized.getTopKRuntimeFilterSourceId());
     Assert.assertFalse(optimized.isTopKRuntimeFilterAscending());
   }
 
-  /**
-   * Multi region: the coordinator TopK establishes the root id but is not a producer; each region
-   * TopK directly above a scan becomes the producer and both it and its scan carry the root id.
-   */
-  @Test
-  public void regionTopKAndScanShareRootTopKId() {
-    PlanNodeId rootTopKId = new PlanNodeId("root-topk");
-    PlanNodeId regionTopKId = new PlanNodeId("region-topk");
-    TopKNode rootTopK = createTopK(rootTopKId, SortOrder.DESC_NULLS_LAST);
-    ExchangeNode exchange = new ExchangeNode(new PlanNodeId("exchange"));
-    TopKNode regionTopK = createTopK(regionTopKId, SortOrder.DESC_NULLS_LAST);
-    regionTopK.addChild(createScan(new PlanNodeId("scan")));
-    exchange.addChild(regionTopK);
-    rootTopK.addChild(exchange);
-
-    TopKNode optimizedRoot =
-        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(rootTopK, queryContext());
-
-    // Coordinator TopK is not a producer (its child is an Exchange, not a scan).
-    Assert.assertNull(optimizedRoot.getTopKRuntimeFilterSourceId());
-
-    TopKNode optimizedRegion = (TopKNode) optimizedRoot.getChildren().get(0).getChildren().get(0);
-    Assert.assertNotNull(optimizedRegion.getTopKRuntimeFilterSourceId());
-    Assert.assertEquals(rootTopKId.getId(), optimizedRegion.getTopKRuntimeFilterSourceId());
-
-    DeviceTableScanNode optimizedScan = (DeviceTableScanNode) optimizedRegion.getChildren().get(0);
-    Assert.assertEquals(rootTopKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
-  }
-
-  /** Scan not a direct child of the TopK (a Limit in between): the structure is not marked. */
   @Test
   public void skipsWhenScanNotDirectChild() {
     PlanNodeId topKId = new PlanNodeId("topk");
@@ -159,37 +145,7 @@ public class TopKRuntimeFilterOptimizerTest {
   }
 
   @Test
-  public void marksTreeAlignedDeviceViewScanWhenDirectChild() {
-    PlanNodeId topKId = new PlanNodeId("topk");
-    TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
-    topKNode.addChild(createTreeAlignedScan(new PlanNodeId("tree-scan")));
-
-    TopKNode optimized =
-        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
-
-    Assert.assertEquals(topKId.getId(), optimized.getTopKRuntimeFilterSourceId());
-    TreeAlignedDeviceViewScanNode optimizedScan =
-        (TreeAlignedDeviceViewScanNode) optimized.getChildren().get(0);
-    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
-  }
-
-  @Test
-  public void marksExternalTsFileScanWhenDirectChild() {
-    PlanNodeId topKId = new PlanNodeId("topk");
-    TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
-    topKNode.addChild(createExternalTsFileScan(new PlanNodeId("external-scan")));
-
-    TopKNode optimized =
-        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
-
-    Assert.assertEquals(topKId.getId(), optimized.getTopKRuntimeFilterSourceId());
-    ExternalTsFileScanNode optimizedScan = (ExternalTsFileScanNode) optimized.getChildren().get(0);
-    Assert.assertEquals(topKId.getId(), optimizedScan.getTopKRuntimeFilterSourceId());
-  }
-
-  /** Sibling TopKs under UNION ALL must not share the same runtime filter id. */
-  @Test
-  public void siblingSingleRegionTopKsUseDistinctFilterIds() {
+  public void siblingTopKsUnderUnionUseDistinctFilterIds() {
     PlanNodeId leftTopKId = new PlanNodeId("left-topk");
     PlanNodeId rightTopKId = new PlanNodeId("right-topk");
     TopKNode leftTopK = createTopK(leftTopKId, SortOrder.DESC_NULLS_LAST);
@@ -217,6 +173,130 @@ public class TopKRuntimeFilterOptimizerTest {
         optimizedRight.getTopKRuntimeFilterSourceId());
   }
 
+  @Test
+  public void skipsWhenConfigDisabled() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTopKRuntimeFilter(false);
+    PlanNodeId topKId = new PlanNodeId("topk");
+    TopKNode topKNode = createTopK(topKId, SortOrder.ASC_NULLS_LAST);
+    topKNode.addChild(createScan(new PlanNodeId("scan")));
+
+    TopKNode optimized =
+        (TopKNode) new TopKRuntimeFilterOptimizer().optimize(topKNode, queryContext());
+
+    Assert.assertNull(optimized.getTopKRuntimeFilterSourceId());
+  }
+
+  @Test
+  public void distributedSingleRegionKeepsLogicalTopKSourceId() {
+    PlanNodeId logicalTopKId = new PlanNodeId("logical-topk");
+    TopKNode logicalTopK = createMarkedLogicalTopK(logicalTopKId);
+    DeviceTableScanNode regionScan = createScan(new PlanNodeId("region-scan"));
+
+    TopKNode distributedTopK =
+        (TopKNode)
+            simulateDistributedTopK(logicalTopK, Collections.singletonList(regionScan)).get(0);
+
+    Assert.assertEquals(logicalTopKId.getId(), distributedTopK.getTopKRuntimeFilterSourceId());
+  }
+
+  @Test
+  public void distributedMultiRegionCopiesSourceIdToRegionTopKAndClearsCoordinator() {
+    PlanNodeId logicalTopKId = new PlanNodeId("logical-topk");
+    TopKNode logicalTopK = createMarkedLogicalTopK(logicalTopKId);
+    List<DeviceTableScanNode> regionScans =
+        ImmutableList.of(
+            createScan(new PlanNodeId("scan-r1")), createScan(new PlanNodeId("scan-r2")));
+
+    TopKNode coordinator = (TopKNode) simulateDistributedTopK(logicalTopK, regionScans).get(0);
+
+    Assert.assertNull(coordinator.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(2, coordinator.getChildren().size());
+    for (PlanNode child : coordinator.getChildren()) {
+      TopKNode regionTopK = (TopKNode) child;
+      Assert.assertEquals(logicalTopKId.getId(), regionTopK.getTopKRuntimeFilterSourceId());
+    }
+  }
+
+  @Test
+  public void distributedUnionBranchesKeepDistinctSourceIds() {
+    PlanNodeId leftTopKId = new PlanNodeId("left-topk");
+    PlanNodeId rightTopKId = new PlanNodeId("right-topk");
+    TopKNode leftTopK = createMarkedLogicalTopK(leftTopKId);
+    TopKNode rightTopK = createMarkedLogicalTopK(rightTopKId);
+
+    TopKNode distributedLeftCoordinator =
+        (TopKNode)
+            simulateDistributedTopK(
+                    leftTopK,
+                    ImmutableList.of(
+                        createScan(new PlanNodeId("left-scan-r1")),
+                        createScan(new PlanNodeId("left-scan-r2"))))
+                .get(0);
+    TopKNode distributedRightTopK =
+        (TopKNode)
+            simulateDistributedTopK(
+                    rightTopK,
+                    Collections.singletonList(createScan(new PlanNodeId("right-scan-r1"))))
+                .get(0);
+
+    Assert.assertNull(distributedLeftCoordinator.getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        leftTopKId.getId(),
+        ((TopKNode) distributedLeftCoordinator.getChildren().get(0))
+            .getTopKRuntimeFilterSourceId());
+    Assert.assertEquals(
+        leftTopKId.getId(),
+        ((TopKNode) distributedLeftCoordinator.getChildren().get(1))
+            .getTopKRuntimeFilterSourceId());
+
+    Assert.assertEquals(rightTopKId.getId(), distributedRightTopK.getTopKRuntimeFilterSourceId());
+    Assert.assertNotEquals(
+        ((TopKNode) distributedLeftCoordinator.getChildren().get(0)).getTopKRuntimeFilterSourceId(),
+        distributedRightTopK.getTopKRuntimeFilterSourceId());
+  }
+
+  /**
+   * Mirrors {@code TableDistributedPlanGenerator#visitTopK} runtime-filter replication after scan
+   * distribution, without running full table partition logic.
+   */
+  private static List<PlanNode> simulateDistributedTopK(
+      TopKNode logicalTopK, List<DeviceTableScanNode> distributedScans) {
+    String sourceId = logicalTopK.getTopKRuntimeFilterSourceId();
+    QueryId queryId = QueryId.MOCK_QUERY_ID;
+    if (distributedScans.size() == 1) {
+      logicalTopK.setChildren(Collections.singletonList(distributedScans.get(0)));
+      return Collections.singletonList(logicalTopK);
+    }
+
+    TopKNode coordinator = (TopKNode) logicalTopK.clone();
+    coordinator.setTopKRuntimeFilterSourceId(null);
+    List<PlanNode> regionTopKs = new ArrayList<>(distributedScans.size());
+    for (DeviceTableScanNode distributedScan : distributedScans) {
+      TopKNode regionTopK =
+          new TopKNode(
+              queryId.genPlanNodeId(),
+              Collections.singletonList(distributedScan),
+              logicalTopK.getOrderingScheme(),
+              logicalTopK.getCount(),
+              logicalTopK.getOutputSymbols(),
+              logicalTopK.isChildrenDataInOrder());
+      regionTopK.setTopKRuntimeFilterSourceId(sourceId);
+      regionTopKs.add(regionTopK);
+    }
+    coordinator.setChildren(regionTopKs);
+    return Collections.singletonList(coordinator);
+  }
+
+  /** Logical optimizer output: TopK and scan share the TopK plan node id as source id. */
+  private TopKNode createMarkedLogicalTopK(PlanNodeId topKId) {
+    TopKNode topKNode = createTopK(topKId, SortOrder.DESC_NULLS_LAST);
+    DeviceTableScanNode scan = createScan(new PlanNodeId(topKId.getId() + "-scan"));
+    topKNode.addChild(scan);
+    topKNode.setTopKRuntimeFilterSourceId(topKId.getId());
+    scan.setTopKRuntimeFilterSourceId(topKId.getId());
+    return topKNode;
+  }
+
   private static Context queryContext() {
     Analysis analysis = Mockito.mock(Analysis.class);
     Mockito.when(analysis.isQuery()).thenReturn(true);
@@ -235,45 +315,5 @@ public class TopKRuntimeFilterOptimizerTest {
   private DeviceTableScanNode createScan(PlanNodeId id) {
     return new DeviceTableScanNode(
         id, null, Collections.emptyList(), Collections.emptyMap(), Collections.emptyMap());
-  }
-
-  private TreeAlignedDeviceViewScanNode createTreeAlignedScan(PlanNodeId id) {
-    return new TreeAlignedDeviceViewScanNode(
-        id,
-        null,
-        Collections.emptyList(),
-        Collections.emptyMap(),
-        Collections.emptyList(),
-        Collections.emptyMap(),
-        Ordering.ASC,
-        null,
-        null,
-        10,
-        0,
-        true,
-        false,
-        "root.test",
-        Collections.emptyMap());
-  }
-
-  private ExternalTsFileScanNode createExternalTsFileScan(PlanNodeId id) {
-    ExternalTsFileQueryResource resource = Mockito.mock(ExternalTsFileQueryResource.class);
-    Mockito.when(resource.getSharedDeviceEntries()).thenReturn(Collections.emptyList());
-    return new ExternalTsFileScanNode(
-        id,
-        null,
-        Collections.emptyList(),
-        Collections.emptyMap(),
-        null,
-        10,
-        0,
-        null,
-        Ordering.ASC,
-        true,
-        Collections.emptyMap(),
-        resource,
-        Collections.emptyList(),
-        0,
-        null);
   }
 }

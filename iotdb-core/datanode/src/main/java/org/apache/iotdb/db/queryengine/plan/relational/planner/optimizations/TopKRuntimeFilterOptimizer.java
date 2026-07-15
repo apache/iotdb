@@ -21,78 +21,54 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
 /**
- * <b>Optimization phase:</b> Distributed plan planning (after exchange nodes are inserted).
+ * <b>Optimization phase:</b> Logical plan planning (after {@code PushTopKThroughUnion}).
  *
- * <p>Marks the {@code TopK + DeviceTableScan} structure for TopK runtime filter.
- *
- * <p>The topmost TopK establishes the <b>root TopK id</b>. In the single-region case ({@code Output
- * -> TopK -> Scan}), the producer TopK uses its own plan node id as the root id. A per-region TopK
- * that sits directly on top of {@link DeviceTableScanNode}(s) becomes the runtime filter producer,
- * and both that TopK and its scan children are tagged with the <b>root</b> TopK id (not the region
- * TopK's own id when a coordinator TopK exists above Exchange). Because {@code
- * DataNodeQueryContext} is shared by all fragment instances of the same query on one DataNode,
- * using the root id lets multiple regions on the same DataNode share a single filter.
+ * <p>Marks the {@code TopK + DeviceTableScan} pattern for TopK runtime filter. A qualifying TopK
+ * uses its own plan node id as {@code topKRuntimeFilterSourceId}; the same id is stamped on direct
+ * raw {@link DeviceTableScanNode} children. Distributed planning later copies this id onto
+ * per-region TopK nodes and clears it on the root TopK.
  */
 public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Context context) {
-    if (!context.getAnalysis().isQuery()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableTopKRuntimeFilter()) {
       return plan;
     }
     return plan.accept(new Rewriter(), null);
   }
 
-  /** Context carries the root TopK id string, or {@code null} until the first TopK is seen. */
-  private static class Rewriter implements PlanVisitor<PlanNode, String> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Void> {
 
     @Override
-    public PlanNode visitPlan(PlanNode node, String rootTopKId) {
-      PlanNode newNode = node.clone();
+    public PlanNode visitPlan(PlanNode node, Void unused) {
       for (PlanNode child : node.getChildren()) {
-        newNode.addChild(child.accept(this, rootTopKId));
+        child.accept(this, null);
       }
-      return newNode;
+      return node;
     }
 
     @Override
-    public PlanNode visitTopK(TopKNode node, String rootTopKId) {
-      TopKNode topKNode = (TopKNode) node.clone();
-
+    public PlanNode visitTopK(TopKNode node, Void unused) {
       boolean orderByTimeOnly = TopKRuntimeFilterUtils.isOrderByTimeOnly(node.getOrderingScheme());
-      String effectiveRootTopKId = resolveEffectiveRootTopKId(node, rootTopKId);
-
-      // A TopK qualifies as a runtime filter producer only when it orders by time and directly
-      // parents raw DeviceTableScan(s). Detect qualification and tag both the producer TopK and its
-      // scan children (with the root id) in a single pass over the children.
+      String topKId = node.getPlanNodeId().getId();
       for (PlanNode child : node.getChildren()) {
         boolean isRawDeviceTableScan =
             child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode);
         if (orderByTimeOnly && isRawDeviceTableScan) {
-          if (topKNode.getTopKRuntimeFilterSourceId() == null) {
-            topKNode.setTopKRuntimeFilterSourceId(effectiveRootTopKId);
-          }
-          DeviceTableScanNode scanNode = (DeviceTableScanNode) child.clone();
-          scanNode.setTopKRuntimeFilterSourceId(effectiveRootTopKId);
-          topKNode.addChild(scanNode);
+          node.setTopKRuntimeFilterSourceId(topKId);
+          ((DeviceTableScanNode) child).setTopKRuntimeFilterSourceId(topKId);
         } else {
-          topKNode.addChild(child.accept(this, effectiveRootTopKId));
+          child.accept(this, null);
         }
       }
-      return topKNode;
-    }
-
-    private static String resolveEffectiveRootTopKId(TopKNode node, String rootTopKId) {
-      if (rootTopKId != null) {
-        return rootTopKId;
-      }
-      // Single-region producer or multi-region coordinator TopK: use this TopK's plan node id.
-      return node.getPlanNodeId().getId();
+      return node;
     }
   }
 }

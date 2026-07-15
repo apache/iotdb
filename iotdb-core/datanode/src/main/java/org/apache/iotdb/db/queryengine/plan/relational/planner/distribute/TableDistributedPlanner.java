@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TopKRuntimeFilterOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
 import java.util.Collections;
@@ -180,24 +178,6 @@ public class TableDistributedPlanner {
     // add exchange node for distributed plan
     PlanNode planWithExchange =
         new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
-
-    // Mark TopK runtime filter after exchange insertion.
-    if (analysis.isQuery()
-        && IoTDBDescriptor.getInstance().getConfig().isEnableTopKRuntimeFilter()) {
-      planWithExchange =
-          new TopKRuntimeFilterOptimizer()
-              .optimize(
-                  planWithExchange,
-                  new PlanOptimizer.Context(
-                      mppQueryContext.getSession(),
-                      analysis,
-                      metadata,
-                      mppQueryContext,
-                      new SymbolAllocator(),
-                      mppQueryContext.getQueryId(),
-                      NOOP,
-                      PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
-    }
 
     return planWithExchange;
   }
