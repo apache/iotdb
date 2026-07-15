@@ -36,7 +36,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
 
@@ -127,12 +129,35 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.isRecordedByMetric());
       Assert.assertEquals(initSeqFileNum + 1, FileMetrics.getInstance().getFileCount(true));
 
-      FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(resource));
-      FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(resource));
+      FileMetrics.getInstance().deleteTsFile(Collections.singletonList(resource));
+      FileMetrics.getInstance().deleteTsFile(Collections.singletonList(resource));
       Assert.assertFalse(resource.isRecordedByMetric());
       Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
     } finally {
-      FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(resource));
+      FileMetrics.getInstance().deleteTsFile(Collections.singletonList(resource));
+    }
+  }
+
+  @Test
+  public void testDeleteFileMetricByResourceSequence()
+      throws MetadataException, IOException, WriteProcessException {
+    registerTimeseriesInMManger(2, 3, false);
+    createFiles(1, 2, 3, 100, 1, 0, 50, 0, false, true);
+    createFiles(1, 2, 3, 50, 200, 30000, 50, 50, false, false);
+    List<TsFileResource> resources = Arrays.asList(seqResources.get(0), unseqResources.get(0));
+    long initSeqFileNum = FileMetrics.getInstance().getFileCount(true);
+    long initUnSeqFileNum = FileMetrics.getInstance().getFileCount(false);
+
+    try {
+      resources.forEach(FileMetrics.getInstance()::addTsFile);
+      Assert.assertEquals(initSeqFileNum + 1, FileMetrics.getInstance().getFileCount(true));
+      Assert.assertEquals(initUnSeqFileNum + 1, FileMetrics.getInstance().getFileCount(false));
+
+      FileMetrics.getInstance().deleteTsFile(resources);
+      Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
+      Assert.assertEquals(initUnSeqFileNum, FileMetrics.getInstance().getFileCount(false));
+    } finally {
+      FileMetrics.getInstance().deleteTsFile(resources);
     }
   }
 }

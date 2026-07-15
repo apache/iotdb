@@ -2284,7 +2284,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
       tsFileResourceList.forEach(
           x -> {
-            FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
+            FileMetrics.getInstance().deleteTsFile(Collections.singletonList(x));
             try {
               x.removeModFile();
             } catch (IOException e) {
@@ -3684,8 +3684,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
       try {
-        FileMetrics.getInstance()
-            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        FileMetrics.getInstance().deleteTsFile(Collections.singletonList(tsFileResource));
         tsFileResource.remove();
         logger.info(
             StorageEngineMessages.REMOVE_TSFILE_DIRECTLY_WHEN_DELETE_DATA,
@@ -3728,8 +3727,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
       try {
-        FileMetrics.getInstance()
-            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        FileMetrics.getInstance().deleteTsFile(Collections.singletonList(tsFileResource));
         tsFileResource.remove();
         logger.info(
             StorageEngineMessages.REMOVE_TSFILE_DIRECTLY_WHEN_DELETE_DATA,
@@ -4609,8 +4607,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           unloadedTsFileResource = sequenceResource;
           tsFileManager.remove(unloadedTsFileResource, true);
-          FileMetrics.getInstance()
-              .deleteTsFile(true, Collections.singletonList(unloadedTsFileResource));
+          FileMetrics.getInstance().deleteTsFile(Collections.singletonList(unloadedTsFileResource));
           break;
         }
       }
@@ -4622,7 +4619,7 @@ public class DataRegion implements IDataRegionForQuery {
             unloadedTsFileResource = unsequenceResource;
             tsFileManager.remove(unloadedTsFileResource, false);
             FileMetrics.getInstance()
-                .deleteTsFile(false, Collections.singletonList(unloadedTsFileResource));
+                .deleteTsFile(Collections.singletonList(unloadedTsFileResource));
             break;
           }
         }

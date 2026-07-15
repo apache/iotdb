@@ -390,16 +390,15 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
-    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList, true);
-    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList, false);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList);
   }
 
-  public static void deleteSourceTsFileAndUpdateFileMetrics(
-      List<TsFileResource> resources, boolean seq) {
+  public static void deleteSourceTsFileAndUpdateFileMetrics(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
       deleteTsFileResourceWithoutLock(resource);
     }
-    FileMetrics.getInstance().deleteTsFile(seq, resources);
+    FileMetrics.getInstance().deleteTsFile(resources);
   }
 
   public static void deleteTsFileResourceWithoutLock(TsFileResource resource) {

@@ -110,13 +110,14 @@ public class TsFileMetrics implements IMetricSet {
     }
   }
 
-  public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
+  public void deleteFile(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.markAsUnrecordedByMetric()) {
         continue;
       }
       String name = tsFileResource.getTsFile().getName();
       long size = tsFileResource.getTsFileSize();
+      boolean seq = tsFileResource.isSeq();
       updateGlobalTsFileCountAndSize(
           tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), -1, -size, seq);
       try {

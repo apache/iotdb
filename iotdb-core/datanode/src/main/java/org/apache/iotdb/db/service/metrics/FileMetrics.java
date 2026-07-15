@@ -68,8 +68,8 @@ public class FileMetrics implements IMetricSet {
     TS_FILE_METRICS.addTsFile(tsFileResource);
   }
 
-  public void deleteTsFile(boolean seq, List<TsFileResource> tsFileResourceList) {
-    TS_FILE_METRICS.deleteFile(seq, tsFileResourceList);
+  public void deleteTsFile(List<TsFileResource> tsFileResourceList) {
+    TS_FILE_METRICS.deleteFile(tsFileResourceList);
   }
 
   public void deleteRegion(String database, String regionId) {
