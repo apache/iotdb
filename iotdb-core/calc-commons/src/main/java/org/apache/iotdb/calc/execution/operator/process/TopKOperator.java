@@ -21,7 +21,6 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
@@ -35,21 +34,12 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -274,61 +264,7 @@ public abstract class TopKOperator implements ProcessOperator {
     int positionCount = topValue;
     Column[] columns = new Column[dataTypes.size()];
     for (int i = 0; i < dataTypes.size(); i++) {
-      switch (dataTypes.get(i)) {
-        case BOOLEAN:
-          columns[i] =
-              new BooleanColumn(
-                  positionCount,
-                  Optional.of(new boolean[positionCount]),
-                  new boolean[positionCount]);
-          break;
-        case INT32:
-          columns[i] =
-              new IntColumn(
-                  positionCount,
-                  Optional.of(new boolean[positionCount]),
-                  new int[positionCount],
-                  TSDataType.INT32);
-          break;
-        case DATE:
-          columns[i] =
-              new IntColumn(
-                  positionCount,
-                  Optional.of(new boolean[positionCount]),
-                  new int[positionCount],
-                  TSDataType.DATE);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columns[i] =
-              new LongColumn(
-                  positionCount, Optional.of(new boolean[positionCount]), new long[positionCount]);
-          break;
-        case FLOAT:
-          columns[i] =
-              new FloatColumn(
-                  positionCount, Optional.of(new boolean[positionCount]), new float[positionCount]);
-          break;
-        case DOUBLE:
-          columns[i] =
-              new DoubleColumn(
-                  positionCount,
-                  Optional.of(new boolean[positionCount]),
-                  new double[positionCount]);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          columns[i] =
-              new BinaryColumn(
-                  positionCount,
-                  Optional.of(new boolean[positionCount]),
-                  new Binary[positionCount]);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + dataTypes.get(i));
-      }
+      columns[i] = Type.fromTsDataType(dataTypes.get(i)).createColumnWithMaxPosition(positionCount);
     }
     this.tmpResultTsBlock = constrcutResultTsBlock(positionCount, columns);
   }
