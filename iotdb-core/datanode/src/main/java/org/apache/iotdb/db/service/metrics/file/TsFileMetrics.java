@@ -93,6 +93,9 @@ public class TsFileMetrics implements IMetricSet {
 
   // region external update tsfile related metrics
   public void addTsFile(TsFileResource tsFileResource) {
+    if (!tsFileResource.markAsRecordedByMetric()) {
+      return;
+    }
     long size = tsFileResource.getTsFileSize();
     boolean seq = tsFileResource.isSeq();
     updateGlobalTsFileCountAndSize(
@@ -109,6 +112,9 @@ public class TsFileMetrics implements IMetricSet {
 
   public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      if (!tsFileResource.markAsUnrecordedByMetric()) {
+        continue;
+      }
       String name = tsFileResource.getTsFile().getName();
       long size = tsFileResource.getTsFileSize();
       updateGlobalTsFileCountAndSize(
