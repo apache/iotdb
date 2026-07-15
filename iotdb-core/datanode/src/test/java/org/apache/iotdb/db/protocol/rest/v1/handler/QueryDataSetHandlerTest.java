@@ -152,6 +152,11 @@ public class QueryDataSetHandlerTest {
     }
 
     @Override
+    public boolean isDebug() {
+      return false;
+    }
+
+    @Override
     public String getQueryId() {
       return null;
     }
