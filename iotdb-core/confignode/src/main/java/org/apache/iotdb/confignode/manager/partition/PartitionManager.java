@@ -1176,12 +1176,15 @@ public class PartitionManager {
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
                 regionInfo.setRawDataSize(rawDataSize);
 
-                long objectFileSize =
-                    getLoadManager()
-                        .getLoadCache()
-                        .getRegionObjectSizeMap()
-                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
-                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                long objectFileSize = -1L;
+                if (TConsensusGroupType.DataRegion.equals(
+                    regionInfo.getConsensusGroupId().getType())) {
+                  objectFileSize =
+                      getLoadManager()
+                          .getLoadCache()
+                          .getRegionObjectSize(
+                              regionInfo.getDataNodeId(), regionInfo.getConsensusGroupId().getId());
+                }
                 regionInfo.setObjectFileSize(objectFileSize);
               });
 

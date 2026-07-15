@@ -947,4 +947,15 @@ public class LoadCache {
   public Map<Integer, Map<Integer, Long>> getRegionObjectSizeMap() {
     return regionObjectSizeMap;
   }
+
+  /**
+   * Returns -1 if the DataNode has not reported object file sizes, otherwise returns the reported
+   * size or 0 when the DataRegion has no object files.
+   */
+  public long getRegionObjectSize(int dataNodeId, int dataRegionId) {
+    final Map<Integer, Long> dataRegionObjectSizeMap = regionObjectSizeMap.get(dataNodeId);
+    return dataRegionObjectSizeMap == null
+        ? -1L
+        : dataRegionObjectSizeMap.getOrDefault(dataRegionId, 0L);
+  }
 }

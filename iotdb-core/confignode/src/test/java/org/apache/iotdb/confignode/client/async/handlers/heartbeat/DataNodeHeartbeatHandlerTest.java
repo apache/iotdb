@@ -111,6 +111,7 @@ public class DataNodeHeartbeatHandlerTest {
                 Collections.singletonMap(GROUP_ID.getId(), 100L),
                 Collections.singletonMap(GROUP_ID.getId(), 25L)));
     Assert.assertEquals(125L, diskUsageOf(loadCache));
+    Assert.assertEquals(25L, loadCache.getRegionObjectSize(DATA_NODE_ID, GROUP_ID.getId()));
   }
 
   @Test
@@ -121,6 +122,7 @@ public class DataNodeHeartbeatHandlerTest {
     buildHandler(loadCache)
         .onComplete(buildResp(Collections.singletonMap(GROUP_ID.getId(), 100L), null));
     Assert.assertEquals(100L, diskUsageOf(loadCache));
+    Assert.assertEquals(-1L, loadCache.getRegionObjectSize(DATA_NODE_ID, GROUP_ID.getId()));
   }
 
   @Test
@@ -133,5 +135,6 @@ public class DataNodeHeartbeatHandlerTest {
                 Collections.singletonMap(GROUP_ID.getId(), 100L),
                 Collections.singletonMap(GROUP_ID.getId() + 1, 25L)));
     Assert.assertEquals(100L, diskUsageOf(loadCache));
+    Assert.assertEquals(0L, loadCache.getRegionObjectSize(DATA_NODE_ID, GROUP_ID.getId()));
   }
 }
