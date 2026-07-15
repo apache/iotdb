@@ -783,6 +783,7 @@ public class TableDistributedPlanGenerator
               partition.getPartitionIndex(),
               node.getSchemaFilter());
       splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      splitNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
       result.add(splitNode);
     }
     sortPropertyContext.ifPresent(
@@ -1100,6 +1101,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.left = scanNode;
         }
 
@@ -1122,6 +1124,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.right = scanNode;
         }
 
