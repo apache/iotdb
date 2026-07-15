@@ -918,6 +918,7 @@ public class TableDistributedPlanGenerator
                         node.isPushLimitToEachDevice(),
                         node.containsNonAlignedDevice());
                 scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
+                scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                 return scanNode;
               });
       deviceTableScanNode.appendDeviceEntry(deviceEntry);
@@ -1004,6 +1005,7 @@ public class TableDistributedPlanGenerator
                           node.isPushLimitToEachDevice(),
                           node.containsNonAlignedDevice());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
+                  scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                   return scanNode;
                 });
         deviceTableScanNode.appendDeviceEntry(deviceEntry);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -56,12 +57,12 @@ public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
 
     @Override
     public PlanNode visitTopK(TopKNode node, Void unused) {
-      boolean orderByTimeOnly = TopKRuntimeFilterUtils.isOrderByTimeOnly(node.getOrderingScheme());
       String topKId = node.getPlanNodeId().getId();
       for (PlanNode child : node.getChildren()) {
         boolean isRawDeviceTableScan =
             child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode);
-        if (orderByTimeOnly && isRawDeviceTableScan) {
+        if (isRawDeviceTableScan
+            && isOrderByTimeOnly(node.getOrderingScheme(), (DeviceTableScanNode) child)) {
           node.setTopKRuntimeFilterSourceId(topKId);
           ((DeviceTableScanNode) child).setTopKRuntimeFilterSourceId(topKId);
         } else {
@@ -70,5 +71,13 @@ public class TopKRuntimeFilterOptimizer implements PlanOptimizer {
       }
       return node;
     }
+  }
+
+  private static boolean isOrderByTimeOnly(
+      OrderingScheme orderingScheme, DeviceTableScanNode scanNode) {
+    if (orderingScheme.getOrderBy().size() != 1) {
+      return false;
+    }
+    return scanNode.isTimeColumn(orderingScheme.getOrderBy().get(0));
   }
 }
