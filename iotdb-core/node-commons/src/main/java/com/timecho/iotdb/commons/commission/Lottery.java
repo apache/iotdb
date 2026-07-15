@@ -112,6 +112,7 @@ public class Lottery {
     CAPACITY_CONFIG.add(4);
     CAPACITY_CONFIG.add(8);
     CAPACITY_CONFIG.add(1);
+    CAPACITY_CONFIG.add(1);
   }
 
   public Lottery(Runnable onLicenseChange) {

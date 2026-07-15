@@ -20,6 +20,7 @@
 package com.timecho.iotdb.commons.commission;
 
 import org.apache.iotdb.commons.exception.LicenseException;
+import org.apache.iotdb.commons.i18n.CommissionMessages;
 
 import com.timecho.iotdb.commons.commission.complete.HmacProtocol;
 import com.timecho.iotdb.commons.external.codec.binary.Base32;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Bandit {
   private static final Logger LOG = LoggerFactory.getLogger(Bandit.class);
@@ -63,8 +65,6 @@ public class Bandit {
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
   public static final String CIPHER_ENCRYPT = "encrypt";
   public static final String CIPHER_DECRYPT = "decrypt";
-
-  private static final String ILLEGAL_LICENSE = "illegal license";
 
   private Bandit() {
     throw new IllegalStateException("Utility class");
@@ -128,7 +128,7 @@ public class Bandit {
         return out.toString();
       }
     } catch (Exception e) {
-      throw new LicenseException(ILLEGAL_LICENSE);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
     }
     return "";
   }
@@ -148,7 +148,7 @@ public class Bandit {
       cipher.init(Cipher.ENCRYPT_MODE, getPublicKey());
       return sectionV01(CIPHER_ENCRYPT, src, cipher);
     } catch (Exception e) {
-      throw new LicenseException(ILLEGAL_LICENSE);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
     }
   }
 
@@ -158,7 +158,7 @@ public class Bandit {
       cipher.init(Cipher.DECRYPT_MODE, getPublicKey());
       return sectionV00(CIPHER_DECRYPT, src, cipher);
     } catch (Exception e) {
-      throw new LicenseException(ILLEGAL_LICENSE);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
     }
   }
 
@@ -168,7 +168,7 @@ public class Bandit {
       cipher.init(Cipher.DECRYPT_MODE, getPublicKey());
       return sectionV01(CIPHER_DECRYPT, src, cipher);
     } catch (Exception e) {
-      throw new LicenseException(ILLEGAL_LICENSE);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
     }
   }
 
@@ -180,7 +180,8 @@ public class Bandit {
 
     /* Verify the length (the signature is fixed at HmacProtocol.SIGN_LENGTH bytes, so the payload must be at least more than HmacProtocol.SIGN_LENGTH bytes) */
     if (payload.length <= HmacProtocol.SIGN_LENGTH) {
-      throw new SecurityException("Invalid activation code format");
+      throw new SecurityException(
+          CommissionMessages.EXCEPTION_INVALID_ACTIVATION_CODE_FORMAT_21C60404);
     }
 
     ByteBuffer buf = ByteBuffer.wrap(payload);
@@ -228,15 +229,22 @@ public class Bandit {
       }
       return builder.toString();
     } catch (Exception e) {
-      LOG.error("License decryption error", e);
-      throw new LicenseException(ILLEGAL_LICENSE);
+      LOG.error(CommissionMessages.LOG_LICENSE_DECRYPTION_ERROR_D31D4781, e);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
     }
   }
 
   /** Decrypt V02 version activation code */
   public static String publicDecryptV02(String src, List<String> systemInfoList)
       throws LicenseException {
-    String localS9 = String.join(",", systemInfoList);
+    String localS9 =
+        String.join(
+            ",",
+            isHardwareSystemInfoCheckSkipped(src)
+                ? systemInfoList.stream()
+                    .map(Bandit::clearHardwareSystemInfo)
+                    .collect(Collectors.toList())
+                : systemInfoList);
     return publicDecryptCommon(
         src,
         data -> {
@@ -247,6 +255,32 @@ public class Bandit {
           }
         },
         Optional.of(localS9));
+  }
+
+  private static boolean isHardwareSystemInfoCheckSkipped(String src) throws LicenseException {
+    try {
+      byte[] payload = new Base32().decode(src);
+      if (payload.length <= HmacProtocol.SIGN_LENGTH) {
+        throw new SecurityException(
+            CommissionMessages.EXCEPTION_INVALID_ACTIVATION_CODE_FORMAT_21C60404);
+      }
+      byte[] data = Arrays.copyOf(payload, payload.length - HmacProtocol.SIGN_LENGTH);
+      return Boolean.parseBoolean(
+          unpack(data)
+              .getProperty(Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, Boolean.FALSE.toString()));
+    } catch (Exception e) {
+      LOG.error(CommissionMessages.LOG_LICENSE_DECRYPTION_ERROR_D31D4781, e);
+      throw new LicenseException(CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
+    }
+  }
+
+  private static String clearHardwareSystemInfo(String systemInfo) {
+    int hardwareStart = systemInfo.indexOf('-') + 1;
+    int hardwareEnd = systemInfo.indexOf('-', hardwareStart);
+    if (hardwareStart <= 0 || hardwareEnd < 0) {
+      return systemInfo;
+    }
+    return systemInfo.substring(0, hardwareStart) + "00000000" + systemInfo.substring(hardwareEnd);
   }
 
   /** Parse V03 version trial activation code */
@@ -286,10 +320,18 @@ public class Bandit {
             long dn4 = buffer.getLong();
             p.setProperty(Lottery.SENSOR_NUM_LIMIT_NAME, String.valueOf(dn4));
             break;
-          default:
+          case 3:
             byte ml1 = buffer.get();
             p.setProperty(Lottery.AINODE_NUM_LIMIT_NAME, String.valueOf(ml1 & 0xFF));
             break;
+          case 4:
+            boolean l4 = buffer.get() != 0x00;
+            p.setProperty(Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, String.valueOf(l4));
+            break;
+          default:
+            LOG.error(CommissionMessages.LOG_ILLEGAL_COLUMN_EXISTS_7C3E3453);
+            throw new IllegalArgumentException(
+                CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A);
         }
       }
     }

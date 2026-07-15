@@ -882,7 +882,7 @@ public class IoTDBActivationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String systemInfos = showSystemInfoTest(statement);
-      String sql = "activate '" + buildV02ActivationCode(systemInfos, 3) + "'";
+      String sql = "activate '" + buildV02ActivationCode(systemInfos, 3, false) + "'";
       try (Statement writeStatement = createStatementOnWriteConnection(connection);
           ResultSet ignored = writeStatement.executeQuery(sql)) {
         // The result set is checked after node activation statuses converge.
@@ -940,7 +940,8 @@ public class IoTDBActivationIT {
         checkShowActivationResult(resultSet, expectation);
       }
       String expandedSystemInfos = showSystemInfoTest(statement, 5);
-      String expandedSql = "activate '" + buildV02ActivationCode(expandedSystemInfos, 3) + "'";
+      String expandedSql =
+          "activate '" + buildV02ActivationCode(expandedSystemInfos, 3, true) + "'";
       try (Statement writeStatement = createStatementOnWriteConnection(connection);
           ResultSet ignored = writeStatement.executeQuery(expandedSql)) {
         // The result set is checked after node activation statuses converge.
@@ -980,39 +981,73 @@ public class IoTDBActivationIT {
     return systemInfos;
   }
 
-  private String buildV02ActivationCode(String systemInfos, int dataNodeLimit) throws Exception {
-    byte identifier = (byte) ((1 << 0) | (1 << 3));
-    ByteBuffer dataBuffer = ByteBuffer.allocate(7);
+  private String buildV02ActivationCode(
+      String systemInfos, int dataNodeLimit, boolean skipHardwareSystemInfoCheck) throws Exception {
+    List<String> systemInfoList = Arrays.asList(systemInfos.split(","));
+    byte identifier = (byte) ((1 << 0) | (1 << 3) | (skipHardwareSystemInfoCheck ? (1 << 4) : 0));
+    ByteBuffer dataBuffer = ByteBuffer.allocate(skipHardwareSystemInfoCheck ? 8 : 7);
     dataBuffer.put(identifier);
     dataBuffer.putInt(20300101);
     dataBuffer.put((byte) dataNodeLimit);
     dataBuffer.put((byte) 0);
+    if (skipHardwareSystemInfoCheck) {
+      dataBuffer.put((byte) 1);
+    }
     byte[] data = dataBuffer.array();
-    byte[] tag = HmacProtocol.calculateTag(data, systemInfos);
+    String salt =
+        systemInfoList.stream()
+            .map(
+                systemInfo ->
+                    skipHardwareSystemInfoCheck ? clearHardwareSystemInfo(systemInfo) : systemInfo)
+            .collect(Collectors.joining(","));
+    byte[] tag = HmacProtocol.calculateTag(data, salt);
     ByteBuffer payloadBuffer = ByteBuffer.allocate(data.length + tag.length);
     payloadBuffer.put(data);
     payloadBuffer.put(tag);
     String encodedPayload = new Base32().encodeAsString(payloadBuffer.array());
-    assertV02ActivationCode(encodedPayload, systemInfos, dataNodeLimit);
+    assertV02ActivationCode(
+        encodedPayload, systemInfoList, dataNodeLimit, skipHardwareSystemInfoCheck);
     return "02-" + encodedPayload;
   }
 
-  private void assertV02ActivationCode(String encodedPayload, String systemInfos, int dataNodeLimit)
+  private void assertV02ActivationCode(
+      String encodedPayload,
+      List<String> systemInfoList,
+      int dataNodeLimit,
+      boolean skipHardwareSystemInfoCheck)
       throws Exception {
     Properties decodedProperties = new Properties();
     decodedProperties.load(
-        new StringReader(
-            Bandit.publicDecryptV02(encodedPayload, Collections.singletonList(systemInfos))));
+        new StringReader(Bandit.publicDecryptV02(encodedPayload, systemInfoList)));
     Assert.assertNotNull(decodedProperties.getProperty(LICENSE_EXPIRE_TIMESTAMP_NAME));
+    Assert.assertEquals(
+        String.valueOf(skipHardwareSystemInfoCheck),
+        decodedProperties.getProperty(
+            Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, Boolean.FALSE.toString()));
     Assert.assertEquals(
         String.valueOf(dataNodeLimit),
         decodedProperties.getProperty(Lottery.DATANODE_NUM_LIMIT_NAME));
     Assert.assertEquals("0", decodedProperties.getProperty(Lottery.AINODE_NUM_LIMIT_NAME));
-    Assert.assertEquals(systemInfos, decodedProperties.getProperty(Lottery.SYSTEM_INFO_HASH));
+    Assert.assertEquals(
+        systemInfoList.stream()
+            .map(
+                systemInfo ->
+                    skipHardwareSystemInfoCheck ? clearHardwareSystemInfo(systemInfo) : systemInfo)
+            .collect(Collectors.joining(",")),
+        decodedProperties.getProperty(Lottery.SYSTEM_INFO_HASH));
     Lottery lottery = new Lottery(() -> {});
     Assert.assertTrue(lottery.loadFromProperties(decodedProperties, false));
     Assert.assertEquals(dataNodeLimit, lottery.getDataNodeNumLimit());
     Assert.assertEquals(Integer.MAX_VALUE, lottery.getDataNodeCpuCoreNumLimit());
+  }
+
+  private String clearHardwareSystemInfo(String systemInfo) {
+    int hardwareStart = systemInfo.indexOf('-') + 1;
+    int hardwareEnd = systemInfo.indexOf('-', hardwareStart);
+    if (hardwareStart <= 0 || hardwareEnd < 0) {
+      return systemInfo;
+    }
+    return systemInfo.substring(0, hardwareStart) + "00000000" + systemInfo.substring(hardwareEnd);
   }
 
   private void showActivationTest(Statement statement) throws Exception {
