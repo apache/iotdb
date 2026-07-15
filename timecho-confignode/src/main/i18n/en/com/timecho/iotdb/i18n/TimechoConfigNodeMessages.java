@@ -85,7 +85,7 @@ public final class TimechoConfigNodeMessages {
   public static final String DELETE_LICENSE_FILE = "delete license file：{}";
   public static final String READ_LICENSE_FILE_FAIL = "read license file {} fail: {}";
 
-  // Edition gate: a PRO-disabled feature (e.g. separation of powers, per-user connection limit)
+  // Edition gate: an IoTDB-edition-disabled feature (e.g. separation of powers, per-user connection limit)
   // cannot be enabled at runtime. %s is the feature display name.
   public static final String MESSAGE_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_7C713053 =
       "%s is not available in this edition.";

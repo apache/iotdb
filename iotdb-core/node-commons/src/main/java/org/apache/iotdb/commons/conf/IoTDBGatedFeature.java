@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** The nine commercial security features gated off in the PRO edition. */
-public enum ProFeature {
+/** The nine commercial security features gated off in the IoTDB edition. */
+public enum IoTDBGatedFeature {
   SEPARATION_OF_POWERS("Separation of powers", "enable_separation_of_powers"),
   TDE("Transparent data encryption", "encrypt_type"),
   FILE_ENCRYPTION(
@@ -43,7 +43,7 @@ public enum ProFeature {
   private final String displayName;
   private final List<String> configKeys;
 
-  ProFeature(String displayName, String... configKeys) {
+  IoTDBGatedFeature(String displayName, String... configKeys) {
     this.displayName = displayName;
     this.configKeys = Collections.unmodifiableList(Arrays.asList(configKeys));
   }

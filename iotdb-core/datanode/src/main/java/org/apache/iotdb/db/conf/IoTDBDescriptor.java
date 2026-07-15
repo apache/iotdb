@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.conf.ProFeature;
+import org.apache.iotdb.commons.conf.IoTDBGatedFeature;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -2354,10 +2354,10 @@ public class IoTDBDescriptor {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setEncryptType(
-            EditionGate.forceValueInPro(
+            EditionGate.forceValueInIoTDB(
                 properties.getProperty("encrypt_type", "UNENCRYPTED"),
                 "UNENCRYPTED",
-                ProFeature.TDE));
+                IoTDBGatedFeature.TDE));
 
     String booleanCompressor = properties.getProperty("boolean_compressor");
     if (booleanCompressor != null) {
@@ -3024,10 +3024,11 @@ public class IoTDBDescriptor {
         "audit_log_ttl_in_days", // overflow -> clamped
         Double.toString(commonDescriptor.getConfig().getAuditLogTtlInDays()));
 
-    // PRO-edition gated security keys: their setters clamp to the disabled form via EditionGate.
-    // In PRO the raw file value (e.g. enable_white_list=true) diverges from the effective value
-    // (false); overlaying with the getter ensures show configuration shows the post-clamp value.
-    // In MAX the setters are pass-through, so this overlay is a no-op.
+    // IoTDB-edition gated security keys: their setters clamp to the disabled form via EditionGate.
+    // In the IoTDB edition the raw file value (e.g. enable_white_list=true) diverges from the
+    // effective value (false); overlaying with the getter ensures show configuration shows the
+    // post-clamp value. In the TimechoDB edition the setters are pass-through, so this overlay is
+    // a no-op.
     ConfigurationFileUtils.updateAppliedProperties(
         "enable_white_list", Boolean.toString(conf.isEnableWhiteList()));
     ConfigurationFileUtils.updateAppliedProperties(

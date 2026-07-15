@@ -119,7 +119,7 @@ public class IPFilter {
   }
 
   public static boolean isDeniedConnect(String ip) {
-    if (EditionGate.isPro()) {
+    if (EditionGate.isIoTDB()) {
       return false;
     }
     loadIPCheckList();

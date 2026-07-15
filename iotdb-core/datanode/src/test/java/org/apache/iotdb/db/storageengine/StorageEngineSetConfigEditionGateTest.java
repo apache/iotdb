@@ -32,16 +32,16 @@ import java.util.Map;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 
-public class StorageEngineSetConfigProGateTest {
+public class StorageEngineSetConfigEditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
   @Test
-  public void proRejectsGatedKey() {
-    EditionGate.setProOverrideForTest(true);
+  public void iotdbRejectsGatedKey() {
+    EditionGate.setIoTDBOverrideForTest(true);
     Map<String, String> cfg = new HashMap<>();
     cfg.put("enable_white_list", "true");
     TSetConfigurationReq req = new TSetConfigurationReq();
@@ -51,11 +51,11 @@ public class StorageEngineSetConfigProGateTest {
   }
 
   @Test
-  public void proAllowsNonGatedKey() {
+  public void iotdbAllowsNonGatedKey() {
     // A non-gated key must NOT be rejected by the edition gate. The request may fail later for
     // unrelated reasons (e.g. missing config file), but that failure must not be the gated-key
     // rejection, so we assert the returned message never mentions the edition rejection text.
-    EditionGate.setProOverrideForTest(true);
+    EditionGate.setIoTDBOverrideForTest(true);
     Map<String, String> cfg = new HashMap<>();
     cfg.put("some_non_gated_key", "1");
     TSetConfigurationReq req = new TSetConfigurationReq();

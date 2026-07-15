@@ -17,29 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.session;
+package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.EditionGate;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
-public class CheckSessionNumsProGateTest {
+public class IoTDBConfigEditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
-  // PRO: maxSessionPerUser=0 would normally trip the per-user limit; PRO must skip it -> SUCCESS.
   @Test
-  public void proSkipsPerUserLimit() {
-    EditionGate.setProOverrideForTest(true);
-    TSStatus status = SessionManager.getInstance().checkSessionNums("someUser", 0, 0);
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+  public void iotdbForcesSecurityOff() {
+    EditionGate.setIoTDBOverrideForTest(true);
+    IoTDBConfig c = IoTDBDescriptor.getInstance().getConfig();
+
+    c.setFailedLoginAttempts(5);
+    assertEquals(0, c.getFailedLoginAttempts());
+
+    c.setFailedLoginAttemptsPerUser(1000);
+    assertEquals(0, c.getFailedLoginAttemptsPerUser());
+
+    c.setEnableWhiteList(true);
+    assertFalse(c.isEnableWhiteList());
+
+    c.setEnableBlackList(true);
+    assertFalse(c.isEnableBlackList());
+
+    // idle disabled value MUST be -1 (0 would be coerced to a 1-minute timeout by the loader)
+    c.setIdleSessionTimeoutInMinutes(30);
+    assertEquals(-1, c.getIdleSessionTimeoutInMinutes());
   }
 }

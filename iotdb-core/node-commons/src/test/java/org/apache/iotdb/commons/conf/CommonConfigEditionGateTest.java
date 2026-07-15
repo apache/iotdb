@@ -26,16 +26,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class CommonConfigProGateTest {
+public class CommonConfigEditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
   @Test
-  public void proForcesSecurityOff() {
-    EditionGate.setProOverrideForTest(true);
+  public void iotdbForcesSecurityOff() {
+    EditionGate.setIoTDBOverrideForTest(true);
     CommonConfig c = CommonDescriptor.getInstance().getConfig();
 
     c.setEnableInternalSSL(true);
@@ -52,8 +52,8 @@ public class CommonConfigProGateTest {
   }
 
   @Test
-  public void maxKeepsValues() {
-    EditionGate.setProOverrideForTest(false);
+  public void timechodbKeepsValues() {
+    EditionGate.setIoTDBOverrideForTest(false);
     CommonConfig c = CommonDescriptor.getInstance().getConfig();
     c.setEnableInternalSSL(true);
     assertTrue(c.isEnableInternalSSL());

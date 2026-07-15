@@ -1366,11 +1366,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq req) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Edition gate: reject enabling a PRO-disabled security feature here on the receiving DataNode,
-    // before the request is coordinated through the ConfigNode. Returning the SEMANTIC_ERROR (701)
-    // status directly gives the client a clean top-level 701, instead of the 301 that the
-    // multi-node config-sync aggregation would otherwise wrap it in. firstGatedKey is empty in the
-    // MAX edition, so this is a no-op there.
+    // Edition gate: reject enabling an IoTDB-disabled security feature here on the receiving
+    // DataNode, before the request is coordinated through the ConfigNode. Returning the
+    // SEMANTIC_ERROR (701) status directly gives the client a clean top-level 701, instead of the
+    // 301 that the multi-node config-sync aggregation would otherwise wrap it in. firstGatedKey is
+    // empty in the TimechoDB edition, so this is a no-op there.
     Optional<String> gatedConfigKey = EditionGate.firstGatedKey(req.getConfigs().keySet());
     if (gatedConfigKey.isPresent()) {
       future.setException(

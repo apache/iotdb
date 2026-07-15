@@ -3172,7 +3172,7 @@ public class CommonConfig {
 
   public void setEnableInternalSSL(boolean enableInternalSSL) {
     this.enableInternalSSL =
-        EditionGate.forceDisabledInPro(enableInternalSSL, ProFeature.INTERNAL_SSL);
+        EditionGate.forceDisabledInIoTDB(enableInternalSSL, IoTDBGatedFeature.INTERNAL_SSL);
   }
 
   public String getKeyStorePath() {
@@ -3229,7 +3229,8 @@ public class CommonConfig {
 
   public void setPasswordExpirationDays(long passwordExpirationDays) {
     this.passwordExpirationDays =
-        EditionGate.forceValueInPro(passwordExpirationDays, 0L, ProFeature.PASSWORD_EXPIRATION);
+        EditionGate.forceValueInIoTDB(
+            passwordExpirationDays, 0L, IoTDBGatedFeature.PASSWORD_EXPIRATION);
   }
 
   public long getPasswordReuseIntervalDays() {
@@ -3467,7 +3468,8 @@ public class CommonConfig {
 
   public void setEnableEncryptConfigFile(boolean enableEncryptConfigFile) {
     this.enableEncryptConfigFile =
-        EditionGate.forceDisabledInPro(enableEncryptConfigFile, ProFeature.FILE_ENCRYPTION);
+        EditionGate.forceDisabledInIoTDB(
+            enableEncryptConfigFile, IoTDBGatedFeature.FILE_ENCRYPTION);
   }
 
   public boolean isEnableEncryptPermissionFile() {
@@ -3476,7 +3478,8 @@ public class CommonConfig {
 
   public void setEnableEncryptPermissionFile(boolean enableEncryptPermissionFile) {
     this.enableEncryptPermissionFile =
-        EditionGate.forceDisabledInPro(enableEncryptPermissionFile, ProFeature.FILE_ENCRYPTION);
+        EditionGate.forceDisabledInIoTDB(
+            enableEncryptPermissionFile, IoTDBGatedFeature.FILE_ENCRYPTION);
   }
 
   public double getAuditLogSpaceTlInGB() {

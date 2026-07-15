@@ -50,7 +50,7 @@ public class ModuleConfigManager {
     moduleAEnabled = Boolean.parseBoolean(properties.getProperty("moduleA.enabled", "true"));
     moduleBEnabled = Boolean.parseBoolean(properties.getProperty("moduleB.enabled", "true"));
     versionSuffix = properties.getProperty("version.suffix", "");
-    edition = Edition.fromString(properties.getProperty("edition", "MAX"));
+    edition = Edition.fromString(properties.getProperty("edition", "TIMECHODB"));
   }
 
   public static ModuleConfigManager getInstance() {
@@ -96,24 +96,24 @@ public class ModuleConfigManager {
   }
 
   /**
-   * @return the build-time edition (MAX by default).
+   * @return the build-time edition (TIMECHODB by default).
    */
   public Edition getEdition() {
     return edition;
   }
 
   /**
-   * @return true if this is a PRO edition build.
+   * @return true if this is an IoTDB edition build.
    */
-  public boolean isPro() {
-    return edition == Edition.PRO;
+  public boolean isIoTDB() {
+    return edition == Edition.IOTDB;
   }
 
   /**
-   * @return true if this is a MAX edition build.
+   * @return true if this is a TimechoDB edition build.
    */
-  public boolean isMax() {
-    return edition == Edition.MAX;
+  public boolean isTimechoDB() {
+    return edition == Edition.TIMECHODB;
   }
 
   /**

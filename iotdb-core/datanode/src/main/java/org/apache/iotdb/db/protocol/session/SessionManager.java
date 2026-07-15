@@ -804,8 +804,8 @@ public class SessionManager implements SessionManagerMBean {
       return sessionNumCheckStatus;
     }
 
-    // PRO edition: per-user connection limit is not available; skip per-user enforcement.
-    if (EditionGate.isPro()) {
+    // IoTDB edition: per-user connection limit is not available; skip per-user enforcement.
+    if (EditionGate.isIoTDB()) {
       sessionNumCheckStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       return sessionNumCheckStatus;
     }

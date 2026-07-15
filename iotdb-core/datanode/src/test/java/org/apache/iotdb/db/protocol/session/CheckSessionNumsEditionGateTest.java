@@ -17,27 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.conf;
+package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.EditionGate;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Test;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 
-public class ConfigNodeConfigProGateTest {
+public class CheckSessionNumsEditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
+  // IoTDB edition: maxSessionPerUser=0 would normally trip the per-user limit; it must be skipped
+  // -> SUCCESS.
   @Test
-  public void proForcesSeparationOff() {
-    EditionGate.setProOverrideForTest(true);
-    ConfigNodeConfig c = ConfigNodeDescriptor.getInstance().getConf();
-    c.setEnableSeparationOfPowers(true);
-    assertFalse(c.isEnableSeparationOfPowers());
+  public void iotdbSkipsPerUserLimit() {
+    EditionGate.setIoTDBOverrideForTest(true);
+    TSStatus status = SessionManager.getInstance().checkSessionNums("someUser", 0, 0);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 }

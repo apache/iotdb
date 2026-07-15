@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.conf.ProFeature;
+import org.apache.iotdb.commons.conf.IoTDBGatedFeature;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
@@ -45,12 +45,12 @@ public class TimechoPermissionManager extends PermissionManager {
   @Override
   public TSStatus enableSeparationOfPowers(
       String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
-    if (EditionGate.isPro()) {
+    if (EditionGate.isIoTDB()) {
       TSStatus res = new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode());
       res.setMessage(
           String.format(
               TimechoConfigNodeMessages.MESSAGE_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_7C713053,
-              ProFeature.SEPARATION_OF_POWERS.getDisplayName()));
+              IoTDBGatedFeature.SEPARATION_OF_POWERS.getDisplayName()));
       return res;
     }
     try {

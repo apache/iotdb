@@ -27,24 +27,24 @@ import static org.junit.Assert.assertTrue;
 
 public class ModuleConfigManagerEditionTest {
 
-  // Default (IDE/unfiltered or MAX build) should resolve to MAX
+  // Default (IDE/unfiltered or TimechoDB build) should resolve to TIMECHODB
   @Test
-  public void testDefaultEditionIsMax() {
+  public void testDefaultEditionIsTimechoDB() {
     Edition edition = ModuleConfigManager.getInstance().getEdition();
-    assertEquals(Edition.MAX, edition);
-    assertTrue(ModuleConfigManager.getInstance().isMax());
-    assertFalse(ModuleConfigManager.getInstance().isPro());
+    assertEquals(Edition.TIMECHODB, edition);
+    assertTrue(ModuleConfigManager.getInstance().isTimechoDB());
+    assertFalse(ModuleConfigManager.getInstance().isIoTDB());
   }
 
-  // Parsing robustness: unknown/empty falls back to MAX
+  // Parsing robustness: unknown/empty falls back to TIMECHODB
   @Test
   public void testParseEditionFallback() {
-    assertEquals(Edition.MAX, Edition.fromString(null));
-    assertEquals(Edition.MAX, Edition.fromString(""));
-    assertEquals(Edition.MAX, Edition.fromString("garbage"));
-    assertEquals(Edition.MAX, Edition.fromString("${edition}")); // unfiltered placeholder
-    assertEquals(Edition.PRO, Edition.fromString("PRO"));
-    assertEquals(Edition.PRO, Edition.fromString("pro"));
-    assertEquals(Edition.MAX, Edition.fromString("MAX"));
+    assertEquals(Edition.TIMECHODB, Edition.fromString(null));
+    assertEquals(Edition.TIMECHODB, Edition.fromString(""));
+    assertEquals(Edition.TIMECHODB, Edition.fromString("garbage"));
+    assertEquals(Edition.TIMECHODB, Edition.fromString("${edition}")); // unfiltered placeholder
+    assertEquals(Edition.IOTDB, Edition.fromString("IOTDB"));
+    assertEquals(Edition.IOTDB, Edition.fromString("iotdb"));
+    assertEquals(Edition.TIMECHODB, Edition.fromString("TIMECHODB"));
   }
 }

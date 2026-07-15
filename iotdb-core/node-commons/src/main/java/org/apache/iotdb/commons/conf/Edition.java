@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.commons.conf;
 
-/** Build-time product edition. Defaults to {@link #MAX} when unset or unrecognized. */
+/** Build-time product edition. Defaults to {@link #TIMECHODB} when unset or unrecognized. */
 public enum Edition {
-  MAX,
-  PRO;
+  TIMECHODB,
+  IOTDB;
 
   public static Edition fromString(String value) {
     if (value == null) {
-      return MAX;
+      return TIMECHODB;
     }
     String trimmed = value.trim();
-    if ("PRO".equalsIgnoreCase(trimmed)) {
-      return PRO;
+    if ("IOTDB".equalsIgnoreCase(trimmed)) {
+      return IOTDB;
     }
-    return MAX;
+    return TIMECHODB;
   }
 }

@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.EditionGate;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.conf.ProFeature;
+import org.apache.iotdb.commons.conf.IoTDBGatedFeature;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -1424,7 +1424,8 @@ public class ConfigNodeConfig {
 
   public void setEnableSeparationOfPowers(boolean enableSeparationOfPowers) {
     this.enableSeparationOfPowers =
-        EditionGate.forceDisabledInPro(enableSeparationOfPowers, ProFeature.SEPARATION_OF_POWERS);
+        EditionGate.forceDisabledInIoTDB(
+            enableSeparationOfPowers, IoTDBGatedFeature.SEPARATION_OF_POWERS);
   }
 
   /**

@@ -63,7 +63,7 @@ public class TimechoSessionManager extends SessionManager {
   }
 
   private void cleanExpiredSessions() {
-    if (EditionGate.isPro()) {
+    if (EditionGate.isIoTDB()) {
       return;
     }
     int idleSessionTimeoutInMinutes =

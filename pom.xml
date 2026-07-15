@@ -194,9 +194,9 @@
         <moduleA.enabled>true</moduleA.enabled>
         <moduleB.enabled>true</moduleB.enabled>
         <version.suffix/>
-        <!-- Edition: MAX (full, default) or PRO (iotdb, security features gated off) -->
-        <edition>MAX</edition>
-        <!-- Distribution package name prefix: timechodb (MAX) or iotdb (PRO) -->
+        <!-- Edition: TIMECHODB (full, default) or IOTDB (security features gated off) -->
+        <edition>TIMECHODB</edition>
+        <!-- Distribution package name prefix: timechodb (TIMECHODB) or iotdb (IOTDB) -->
         <package.name>timechodb</package.name>
         <!-- Filename suffix for locale-specific distribution packages (empty for default en, e.g. "-zh" when with-zh-locale is active) -->
         <locale.suffix/>
@@ -2084,10 +2084,17 @@
             </properties>
         </profile>
         <profile>
-            <id>pro</id>
+            <id>iotdb</id>
             <properties>
-                <edition>PRO</edition>
+                <edition>IOTDB</edition>
                 <package.name>iotdb</package.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>timechodb</id>
+            <properties>
+                <edition>TIMECHODB</edition>
+                <package.name>timechodb</package.name>
             </properties>
         </profile>
     </profiles>

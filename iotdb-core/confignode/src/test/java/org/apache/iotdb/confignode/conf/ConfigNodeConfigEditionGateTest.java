@@ -17,42 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.conf;
+package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.EditionGate;
 
 import org.junit.After;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-public class IoTDBConfigProGateTest {
+public class ConfigNodeConfigEditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
   @Test
-  public void proForcesSecurityOff() {
-    EditionGate.setProOverrideForTest(true);
-    IoTDBConfig c = IoTDBDescriptor.getInstance().getConfig();
-
-    c.setFailedLoginAttempts(5);
-    assertEquals(0, c.getFailedLoginAttempts());
-
-    c.setFailedLoginAttemptsPerUser(1000);
-    assertEquals(0, c.getFailedLoginAttemptsPerUser());
-
-    c.setEnableWhiteList(true);
-    assertFalse(c.isEnableWhiteList());
-
-    c.setEnableBlackList(true);
-    assertFalse(c.isEnableBlackList());
-
-    // idle disabled value MUST be -1 (0 would be coerced to a 1-minute timeout by the loader)
-    c.setIdleSessionTimeoutInMinutes(30);
-    assertEquals(-1, c.getIdleSessionTimeoutInMinutes());
+  public void iotdbForcesSeparationOff() {
+    EditionGate.setIoTDBOverrideForTest(true);
+    ConfigNodeConfig c = ConfigNodeDescriptor.getInstance().getConf();
+    c.setEnableSeparationOfPowers(true);
+    assertFalse(c.isEnableSeparationOfPowers());
   }
 }

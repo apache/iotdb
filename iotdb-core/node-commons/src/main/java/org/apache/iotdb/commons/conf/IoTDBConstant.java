@@ -106,10 +106,10 @@ public class IoTDBConstant {
           + "/_/ /_/_/ /_/ /_/\\___/\\___/_/ /_/\\____/_____/_____/  ";
 
   public static final String BRAND_NAME =
-      ModuleConfigManager.getInstance().isPro() ? "IoTDB" : "TimechoDB";
+      ModuleConfigManager.getInstance().isIoTDB() ? "IoTDB" : "TimechoDB";
 
   public static final String LOGO =
-      ModuleConfigManager.getInstance().isPro() ? IOTDB_LOGO : TIMECHODB_LOGO;
+      ModuleConfigManager.getInstance().isIoTDB() ? IOTDB_LOGO : TIMECHODB_LOGO;
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()

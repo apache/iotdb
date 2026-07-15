@@ -3804,7 +3804,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references is null";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
 
-  // Edition gate: runtime set-configuration of a PRO-disabled key is rejected before ConfigNode
+  // Edition gate: runtime set-configuration of an IoTDB-edition-disabled key is rejected before ConfigNode
   // coordination so the client sees a clean top-level 701. %s is the config key.
   public static final String EXCEPTION_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =
       "Configuration '%s' is not available in this edition and cannot be set.";

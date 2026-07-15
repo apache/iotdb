@@ -144,7 +144,7 @@ public final class ConfigMessages {
   public static final String LOG_PIPEEVENTREFERENCETRACKINGENABLED_SET_ARG_98E9A640 = "pipeEventReferenceTrackingEnabled is set to {}";
   public static final String LOG_PIPEEVENTREFERENCEELIMINATEINTERVALSECONDS_SET_ARG_62542387 = "pipeEventReferenceEliminateIntervalSeconds is set to {}";
 
-  // Edition gate: a PRO-disabled feature was clamped to its disabled form during config load.
+  // Edition gate: an IoTDB-edition-disabled feature was clamped to its disabled form during config load.
   public static final String LOG_EDITION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_HAS_BEEN_DISABLED_605345CE =
       "[Edition] {} is not available in this edition and has been disabled.";
 

@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 public class BrandingTest {
 
-  // Default MAX -> TimechoDB
+  // Default TIMECHODB edition -> TimechoDB
   @Test
   public void brandNameDefaultsToTimechoDb() {
     assertEquals("TimechoDB", IoTDBConstant.BRAND_NAME);

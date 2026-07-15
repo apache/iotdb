@@ -156,9 +156,9 @@ public class IoTDBLoadConfigurationTableIT {
     Assert.assertEquals(
         Double.toString(Double.MAX_VALUE), auditSpaceReload.get("audit_log_space_tl_in_GB"));
 
-    // password_expiration_days: in MAX (this IT build) the setter is pass-through, so the
-    // overlay is a no-op and show displays the applied value 30. In PRO the setter clamps to 0
-    // via EditionGate; verifying that requires a PRO build.
+    // password_expiration_days: in TimechoDB edition (this IT build) the setter is pass-through,
+    // so the overlay is a no-op and show displays the applied value 30. In the IoTDB edition the
+    // setter clamps to 0 via EditionGate; verifying that requires an IoTDB-edition build.
     Map<String, String> passwordExpirationReload =
         appendLinesLoadAndShow(dataNodeId, confPath, "password_expiration_days=30");
     Assert.assertEquals("30", passwordExpirationReload.get("password_expiration_days"));

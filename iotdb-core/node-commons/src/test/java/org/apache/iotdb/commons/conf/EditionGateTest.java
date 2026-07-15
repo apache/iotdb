@@ -34,27 +34,28 @@ public class EditionGateTest {
 
   @After
   public void tearDown() {
-    EditionGate.clearProOverrideForTest();
+    EditionGate.clearIoTDBOverrideForTest();
   }
 
   @Test
-  public void maxIsNoOp() {
-    EditionGate.setProOverrideForTest(false);
-    assertTrue(EditionGate.forceDisabledInPro(true, ProFeature.WHITE_BLACK_LIST));
-    assertEquals(7, EditionGate.forceValueInPro(7, 0, ProFeature.BRUTE_FORCE));
-    assertEquals("x", EditionGate.forceValueInPro("x", "UNENCRYPTED", ProFeature.TDE));
-    assertFalse(EditionGate.isProGatedConfigKey("enable_white_list"));
+  public void timechodbIsNoOp() {
+    EditionGate.setIoTDBOverrideForTest(false);
+    assertTrue(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.WHITE_BLACK_LIST));
+    assertEquals(7, EditionGate.forceValueInIoTDB(7, 0, IoTDBGatedFeature.BRUTE_FORCE));
+    assertEquals("x", EditionGate.forceValueInIoTDB("x", "UNENCRYPTED", IoTDBGatedFeature.TDE));
+    assertFalse(EditionGate.isIoTDBGatedConfigKey("enable_white_list"));
   }
 
   @Test
-  public void proClampsAndDetects() {
-    EditionGate.setProOverrideForTest(true);
-    assertFalse(EditionGate.forceDisabledInPro(true, ProFeature.WHITE_BLACK_LIST));
-    assertEquals(0, EditionGate.forceValueInPro(5, 0, ProFeature.BRUTE_FORCE));
-    assertEquals(-1, EditionGate.forceValueInPro(10, -1, ProFeature.IDLE_EVICTION));
+  public void iotdbClampsAndDetects() {
+    EditionGate.setIoTDBOverrideForTest(true);
+    assertFalse(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.WHITE_BLACK_LIST));
+    assertEquals(0, EditionGate.forceValueInIoTDB(5, 0, IoTDBGatedFeature.BRUTE_FORCE));
+    assertEquals(-1, EditionGate.forceValueInIoTDB(10, -1, IoTDBGatedFeature.IDLE_EVICTION));
     assertEquals(
-        "UNENCRYPTED", EditionGate.forceValueInPro("com.timecho.x", "UNENCRYPTED", ProFeature.TDE));
-    assertTrue(EditionGate.isProGatedConfigKey("enable_white_list"));
+        "UNENCRYPTED",
+        EditionGate.forceValueInIoTDB("com.timecho.x", "UNENCRYPTED", IoTDBGatedFeature.TDE));
+    assertTrue(EditionGate.isIoTDBGatedConfigKey("enable_white_list"));
     Optional<String> hit =
         EditionGate.firstGatedKey(new HashSet<>(Arrays.asList("foo", "enable_internal_ssl")));
     assertTrue(hit.isPresent());

@@ -30,13 +30,13 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Central gate for PRO-edition security features.
+ * Central gate for IoTDB-edition security features.
  *
- * <p>Two behaviors: (a) {@code forceDisabledInPro}/{@code forceValueInPro} silently clamp a value
- * to its disabled form during config load (used inside setters); (b) {@code firstGatedKey} lets a
- * runtime entry point detect and reject a user's attempt to set a gated config key.
+ * <p>Two behaviors: (a) {@code forceDisabledInIoTDB}/{@code forceValueInIoTDB} silently clamp a
+ * value to its disabled form during config load (used inside setters); (b) {@code firstGatedKey}
+ * lets a runtime entry point detect and reject a user's attempt to set a gated config key.
  *
- * <p>In the MAX edition every method is a no-op.
+ * <p>In the TimechoDB edition every method is a no-op.
  */
 public final class EditionGate {
 
@@ -45,44 +45,44 @@ public final class EditionGate {
   private EditionGate() {}
 
   // Test hook: null = use real ModuleConfigManager.
-  private static volatile Boolean isProOverride = null;
+  private static volatile Boolean isIoTDBOverride = null;
 
-  public static boolean isPro() {
-    Boolean override = isProOverride;
+  public static boolean isIoTDB() {
+    Boolean override = isIoTDBOverride;
     if (override != null) {
       return override;
     }
-    return ModuleConfigManager.getInstance().isPro();
+    return ModuleConfigManager.getInstance().isIoTDB();
   }
 
   /** Test hook (public so tests in other modules/packages can toggle edition). */
-  public static void setProOverrideForTest(boolean pro) {
-    isProOverride = pro;
+  public static void setIoTDBOverrideForTest(boolean iotdb) {
+    isIoTDBOverride = iotdb;
   }
 
   /** Test hook: restore real ModuleConfigManager-backed edition. */
-  public static void clearProOverrideForTest() {
-    isProOverride = null;
+  public static void clearIoTDBOverrideForTest() {
+    isIoTDBOverride = null;
   }
 
   /** Gated config keys settable via {@code set configuration}. */
   private static final Set<String> GATED_CONFIG_KEYS = new HashSet<>();
 
   static {
-    for (ProFeature f : ProFeature.values()) {
+    for (IoTDBGatedFeature f : IoTDBGatedFeature.values()) {
       GATED_CONFIG_KEYS.addAll(f.getConfigKeys());
     }
   }
 
-  public static boolean isProGatedConfigKey(String key) {
-    return isPro() && GATED_CONFIG_KEYS.contains(key);
+  public static boolean isIoTDBGatedConfigKey(String key) {
+    return isIoTDB() && GATED_CONFIG_KEYS.contains(key);
   }
 
   /**
-   * @return the first key in {@code keys} that is PRO-gated, if any. Always empty in MAX.
+   * @return the first key in {@code keys} that is IoTDB-gated, if any. Always empty in TimechoDB.
    */
   public static Optional<String> firstGatedKey(Collection<String> keys) {
-    if (!isPro()) {
+    if (!isIoTDB()) {
       return Optional.empty();
     }
     for (String k : keys) {
@@ -93,9 +93,11 @@ public final class EditionGate {
     return Optional.empty();
   }
 
-  /** Silent clamp for boolean switches. Returns false (disabled) in PRO when requested was true. */
-  public static boolean forceDisabledInPro(boolean requested, ProFeature feature) {
-    if (isPro() && requested) {
+  /**
+   * Silent clamp for boolean switches. Returns false (disabled) in IoTDB when requested was true.
+   */
+  public static boolean forceDisabledInIoTDB(boolean requested, IoTDBGatedFeature feature) {
+    if (isIoTDB() && requested) {
       warnDisabled(feature);
       return false;
     }
@@ -103,18 +105,20 @@ public final class EditionGate {
   }
 
   /**
-   * Silent clamp for numeric switches. Returns {@code disabledValue} in PRO when requested differs.
+   * Silent clamp for numeric switches. Returns {@code disabledValue} in IoTDB when requested
+   * differs.
    */
-  public static int forceValueInPro(int requested, int disabledValue, ProFeature feature) {
-    if (isPro() && requested != disabledValue) {
+  public static int forceValueInIoTDB(int requested, int disabledValue, IoTDBGatedFeature feature) {
+    if (isIoTDB() && requested != disabledValue) {
       warnDisabled(feature);
       return disabledValue;
     }
     return requested;
   }
 
-  public static long forceValueInPro(long requested, long disabledValue, ProFeature feature) {
-    if (isPro() && requested != disabledValue) {
+  public static long forceValueInIoTDB(
+      long requested, long disabledValue, IoTDBGatedFeature feature) {
+    if (isIoTDB() && requested != disabledValue) {
       warnDisabled(feature);
       return disabledValue;
     }
@@ -122,15 +126,16 @@ public final class EditionGate {
   }
 
   /** Silent clamp for string switches (e.g. encrypt_type). */
-  public static String forceValueInPro(String requested, String disabledValue, ProFeature feature) {
-    if (isPro() && requested != null && !requested.equals(disabledValue)) {
+  public static String forceValueInIoTDB(
+      String requested, String disabledValue, IoTDBGatedFeature feature) {
+    if (isIoTDB() && requested != null && !requested.equals(disabledValue)) {
       warnDisabled(feature);
       return disabledValue;
     }
     return requested;
   }
 
-  private static void warnDisabled(ProFeature feature) {
+  private static void warnDisabled(IoTDBGatedFeature feature) {
     LOGGER.warn(
         ConfigMessages
             .LOG_EDITION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_HAS_BEEN_DISABLED_605345CE,

@@ -85,6 +85,6 @@ public final class TimechoConfigNodeMessages {
   public static final String DELETE_LICENSE_FILE = "删除 license 文件：{}";
   public static final String READ_LICENSE_FILE_FAIL = "读取 license 文件 {} 失败：{}";
 
-  // 版本门禁：PRO 版禁用的功能（如三权分立、每用户连接数限制）无法在运行时开启。%s 为功能名。
+  // 版本门禁：IoTDB 版禁用的功能（如三权分立、每用户连接数限制）无法在运行时开启。%s 为功能名。
   public static final String MESSAGE_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_7C713053 = "本版本不支持 %s。";
 }
