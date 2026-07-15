@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
+import org.apache.iotdb.confignode.persistence.schema.mnode.basic.ConfigBasicMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
@@ -675,6 +676,136 @@ public class ConfigMTree {
           String.format(ConfigNodeMessages.TEMPLATE_IS_NOT_SET_ON_PATH, templateId, path));
     }
     return cur;
+  }
+
+  public void recordPipeRenameTimeSeries(final PartialPath oldPath, final PartialPath newPath)
+      throws DatabaseNotSetException {
+    final IConfigMNode oldNode = getNodeWithAutoCreate(oldPath);
+    final String physicalPath =
+        Objects.nonNull(getPipeRenamedPhysicalPath(oldNode))
+            ? getPipeRenamedPhysicalPath(oldNode)
+            : oldPath.getFullPath();
+    unsetPipeRenameTimeSeriesPaths(oldNode);
+    deleteNodeIfEmpty(oldNode);
+
+    setPipeRenameTimeSeriesPaths(
+        getNodeWithAutoCreate(newPath), physicalPath, newPath.getFullPath());
+  }
+
+  public void removePipeRenameTimeSeries(final PathPatternTree patternTree) {
+    patternTree.getAllPathPatterns().forEach(pattern -> removePipeRenameTimeSeries(root, pattern));
+  }
+
+  public List<Pair<PartialPath, PartialPath>> getPipeRenameTimeSeriesList() {
+    final List<Pair<PartialPath, PartialPath>> result = new ArrayList<>();
+    collectPipeRenameTimeSeries(root, result);
+    return result;
+  }
+
+  public List<Pair<String, String>> getPipeRenameTimeSeriesPaths() {
+    final List<Pair<String, String>> result = new ArrayList<>();
+    collectPipeRenameTimeSeriesPaths(root, result);
+    return result;
+  }
+
+  @Nullable
+  public PartialPath getPipeRenamedAliasPath(final PartialPath physicalPath) {
+    return getPipeRenamedAliasPath(root, physicalPath.getFullPath());
+  }
+
+  @Nullable
+  private PartialPath getPipeRenamedAliasPath(final IConfigMNode node, final String physicalPath) {
+    if (physicalPath.equals(getPipeRenamedPhysicalPath(node))) {
+      return parsePartialPath(getPipeRenamedAliasPath(node));
+    }
+    for (final IConfigMNode child : node.getChildren().values()) {
+      final PartialPath aliasPath = getPipeRenamedAliasPath(child, physicalPath);
+      if (aliasPath != null) {
+        return aliasPath;
+      }
+    }
+    return null;
+  }
+
+  private void collectPipeRenameTimeSeries(
+      final IConfigMNode node, final List<Pair<PartialPath, PartialPath>> result) {
+    final String physicalPath = getPipeRenamedPhysicalPath(node);
+    final String aliasPath = getPipeRenamedAliasPath(node);
+    if (Objects.nonNull(physicalPath) && Objects.nonNull(aliasPath)) {
+      result.add(new Pair<>(parsePartialPath(physicalPath), parsePartialPath(aliasPath)));
+    }
+    for (final IConfigMNode child : node.getChildren().values()) {
+      collectPipeRenameTimeSeries(child, result);
+    }
+  }
+
+  private void collectPipeRenameTimeSeriesPaths(
+      final IConfigMNode node, final List<Pair<String, String>> result) {
+    final String physicalPath = getPipeRenamedPhysicalPath(node);
+    final String aliasPath = getPipeRenamedAliasPath(node);
+    if (Objects.nonNull(physicalPath) && Objects.nonNull(aliasPath)) {
+      result.add(new Pair<>(physicalPath, aliasPath));
+    }
+    for (final IConfigMNode child : node.getChildren().values()) {
+      collectPipeRenameTimeSeriesPaths(child, result);
+    }
+  }
+
+  private void removePipeRenameTimeSeries(final IConfigMNode node, final PartialPath pattern) {
+    if (Objects.nonNull(getPipeRenamedPhysicalPath(node))
+        && pattern.matchFullPath(node.getPartialPath())) {
+      unsetPipeRenameTimeSeriesPaths(node);
+      deleteNodeIfEmpty(node);
+      return;
+    }
+    for (final IConfigMNode child : new ArrayList<>(node.getChildren().values())) {
+      removePipeRenameTimeSeries(child, pattern);
+    }
+  }
+
+  private void deleteNodeIfEmpty(IConfigMNode node) {
+    while (Objects.nonNull(node.getParent())
+        && !node.isDatabase()
+        && node.getChildren().isEmpty()
+        && Objects.isNull(getPipeRenamedPhysicalPath(node))
+        && node.getSchemaTemplateId() < 0) {
+      final IConfigMNode parent = node.getParent();
+      parent.deleteChild(node.getName());
+      node = parent;
+    }
+  }
+
+  private void setPipeRenameTimeSeriesPaths(
+      final IConfigMNode node, final String physicalPath, final String pipeRenamedAliasPath) {
+    if (node instanceof ConfigBasicMNode) {
+      ((ConfigBasicMNode) node).setPipeRenameTimeSeriesPaths(physicalPath, pipeRenamedAliasPath);
+    }
+  }
+
+  private String getPipeRenamedPhysicalPath(final IConfigMNode node) {
+    return node instanceof ConfigBasicMNode
+        ? ((ConfigBasicMNode) node).getPipeRenamedPhysicalPath()
+        : null;
+  }
+
+  private String getPipeRenamedAliasPath(final IConfigMNode node) {
+    return node instanceof ConfigBasicMNode
+        ? ((ConfigBasicMNode) node).getPipeRenamedAliasPath()
+        : null;
+  }
+
+  private void unsetPipeRenameTimeSeriesPaths(final IConfigMNode node) {
+    if (node instanceof ConfigBasicMNode) {
+      ((ConfigBasicMNode) node).unsetPipeRenameTimeSeriesPaths();
+    }
+  }
+
+  private PartialPath parsePartialPath(final String path) {
+    try {
+      return new PartialPath(path);
+    } catch (final IllegalPathException e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 
   // endregion

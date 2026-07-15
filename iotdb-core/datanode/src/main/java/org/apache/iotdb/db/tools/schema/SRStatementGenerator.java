@@ -66,6 +66,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -417,6 +418,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());
         stmt.setEncoding(node.getAsMeasurementMNode().getSchema().getEncodingType());
+        stmt.setProps(copyProps(node));
         if (node.getOffset() >= 0) {
           try {
             final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
@@ -494,6 +496,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
         stmt.addEncoding(measurement.getAsMeasurementMNode().getSchema().getEncodingType());
         stmt.addCompressor(measurement.getAsMeasurementMNode().getSchema().getCompressor());
+        stmt.addPropsList(copyProps(measurement));
         if (measurement.getAsMeasurementMNode().getOffset() >= 0) {
           try {
             final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
@@ -519,6 +522,11 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       return hasMeasurement ? stmt : null;
     }
     return null;
+  }
+
+  private Map<String, String> copyProps(final IMNode<?> node) {
+    final Map<String, String> props = node.getAsMeasurementMNode().getSchema().getProps();
+    return Objects.nonNull(props) ? new HashMap<>(props) : null;
   }
 
   private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(final long offset)

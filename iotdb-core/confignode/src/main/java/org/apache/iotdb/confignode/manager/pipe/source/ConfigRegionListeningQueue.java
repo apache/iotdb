@@ -40,12 +40,12 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser.SnapshotPathInfo;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,12 +124,11 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     }
   }
 
-  public synchronized void tryListenToSnapshots(
-      final List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPathInfoList) {
+  public synchronized void tryListenToSnapshots(final List<SnapshotPathInfo> snapshotPathInfoList) {
     final List<PipeSnapshotEvent> events = new ArrayList<>();
-    for (final Pair<Pair<Path, Path>, CNSnapshotFileType> snapshotPathInfo : snapshotPathInfoList) {
-      final Path snapshotPath = snapshotPathInfo.getLeft().getLeft();
-      final CNSnapshotFileType type = snapshotPathInfo.getRight();
+    for (final SnapshotPathInfo snapshotPathInfo : snapshotPathInfoList) {
+      final Path snapshotPath = snapshotPathInfo.getSnapshotPath();
+      final CNSnapshotFileType type = snapshotPathInfo.getType();
       // Filter empty and superuser snapshots
       if (snapshotPath.toFile().length() == 0
           || type == CNSnapshotFileType.USER
@@ -148,14 +147,19 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
           || snapshotPath.toFile().getName().equals("user_id.profile")) {
         continue;
       }
-      final Path templateFilePath = snapshotPathInfo.getLeft().getRight();
+      final Path templateFilePath = snapshotPathInfo.getTemplatePath();
+      final Path pipeRenameTimeSeriesFilePath = snapshotPathInfo.getPipeRenameTimeSeriesPath();
       PipeConfigRegionSnapshotEvent curEvent =
           new PipeConfigRegionSnapshotEvent(
               snapshotPath.toString(),
               Objects.nonNull(templateFilePath) && templateFilePath.toFile().length() > 0
                   ? templateFilePath.toString()
                   : null,
-              snapshotPathInfo.getRight());
+              Objects.nonNull(pipeRenameTimeSeriesFilePath)
+                      && pipeRenameTimeSeriesFilePath.toFile().length() > 0
+                  ? pipeRenameTimeSeriesFilePath.toString()
+                  : null,
+              snapshotPathInfo.getType());
       if (type == CNSnapshotFileType.USER_ROLE) {
         String userName = snapshotPath.toFile().getName().split("_")[0];
         long userId;

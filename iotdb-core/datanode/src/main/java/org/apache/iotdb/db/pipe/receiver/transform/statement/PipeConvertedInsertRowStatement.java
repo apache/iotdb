@@ -59,6 +59,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     attrColumnIndices = insertRowStatement.getAttrColumnIndices();
     writeToTable = insertRowStatement.isWriteToTable();
     databaseName = insertRowStatement.getDatabaseName().orElse(null);
+    allowInsertIntoInvalidSeries = insertRowStatement.isAllowInsertIntoInvalidSeries();
     // InsertRowStatement
     time = insertRowStatement.getTime();
     values = insertRowStatement.getValues();

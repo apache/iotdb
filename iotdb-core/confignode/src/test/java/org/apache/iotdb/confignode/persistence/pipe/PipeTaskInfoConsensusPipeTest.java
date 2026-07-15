@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 
 import org.junit.Assert;
@@ -82,6 +84,19 @@ public class PipeTaskInfoConsensusPipeTest {
     Map<String, PipeStatus> result = pipeTaskInfo.getConsensusPipeStatusMap();
     Assert.assertNotNull(result);
     Assert.assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void testCheckBeforeCreatePipeAllowsSystemDialect() {
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put("extractor", "iotdb-source");
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    Assert.assertTrue(
+        pipeTaskInfo.checkBeforeCreatePipe(
+            new TCreatePipeReq()
+                .setPipeName("pipeWithSystemDialect")
+                .setExtractorAttributes(extractorAttributes)));
   }
 
   @Test

@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeRenameTimeSeriesPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -247,6 +248,9 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
             Objects.nonNull(snapshotEvent.getTemplateFile())
                 ? Paths.get(snapshotEvent.getTemplateFile().getPath())
                 : null,
+            Objects.nonNull(snapshotEvent.getPipeRenameTimeSeriesFile())
+                ? Paths.get(snapshotEvent.getPipeRenameTimeSeriesFile().getPath())
+                : null,
             snapshotEvent.getFileType(),
             snapshotEvent.getAuthUserName());
   }
@@ -258,7 +262,11 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
-    return new PipeConfigRegionWritePlanEvent(parser.next(), false);
+    final ConfigPhysicalPlan plan = parser.next();
+    if (plan instanceof PipeRenameTimeSeriesPlan) {
+      ((PipeRenameTimeSeriesPlan) plan).markAsGeneratedFromSnapshot();
+    }
+    return new PipeConfigRegionWritePlanEvent(plan, false);
   }
 
   @Override

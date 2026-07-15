@@ -831,6 +831,7 @@ public class LoadTsFileScheduler implements IScheduler {
     }
     if (isGeneratedByPipe) {
       statement.markIsGeneratedByPipe();
+      statement.setTsFileIsPhysicalPath(true);
     }
     return statement;
   }

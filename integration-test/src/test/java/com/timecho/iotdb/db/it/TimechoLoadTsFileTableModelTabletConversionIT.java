@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.timecho.iotdb.db.it;
+package com.timecho.iotdb.db.it;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;

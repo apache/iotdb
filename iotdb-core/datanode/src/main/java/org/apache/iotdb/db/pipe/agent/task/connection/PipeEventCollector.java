@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -186,9 +185,7 @@ public class PipeEventCollector implements EventCollector {
     // delete data event does not have progress index currently
     (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
             ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
-                .process(
-                    deleteDataEvent.getDeleteDataNode(),
-                    (IoTDBTreePatternOperations) deleteDataEvent.getTreePattern())
+                .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTreePattern())
                 .flatMap(
                     planNode ->
                         new PipePlanTreePrivilegeParseVisitor(

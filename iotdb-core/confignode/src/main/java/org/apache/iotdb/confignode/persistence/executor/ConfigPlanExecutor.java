@@ -95,7 +95,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeRenameTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -722,7 +724,8 @@ public class ConfigPlanExecutor {
       case PipeEnriched:
         return executeNonQueryPlan(((PipeEnrichedPlan) physicalPlan).getInnerPlan());
       case PipeDeleteTimeSeries:
-      case PipeRenameTimeSeries:
+        return clusterSchemaInfo.removePipeRenameTimeSeriesByDelete(
+            (PipeDeleteTimeSeriesPlan) physicalPlan);
       case PipeDeleteLogicalView:
       case PipeDeactivateTemplate:
       case PipeDeleteDevices:
@@ -731,6 +734,11 @@ public class ConfigPlanExecutor {
         // Pipe payload, used to trigger plan extraction.
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      case PipeRenameTimeSeries:
+        // Pipe rename time series is also persisted in cluster schema snapshot so historical pipe
+        // extraction does not depend on the short-lived completed procedure cache.
+        return clusterSchemaInfo.recordPipeRenameTimeSeries(
+            (PipeRenameTimeSeriesPlan) physicalPlan);
       case PipeUnsetTemplate:
         // PipeUnsetTemplate plan will not be written here, and exists only after pipe
         // sender collects UnsetTemplatePlan and before receiver calls ConfigManager.

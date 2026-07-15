@@ -62,6 +62,8 @@ public final class ProcedureMessages {
       "AlterPipeProcedureV2: rollbackFromValidateTask({})";
   public static final String ALTERPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS =
       "AlterPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})";
+  public static final String FAILED_TO_CHECK_WHETHER_PIPE_SHOULD_COLLECT_REGION =
+      "检查 pipe 是否应收集 region {}、database {} 失败，将默认收集该 region。";
   public static final String ALTERTABLECOLUMNDATATYPE_COSTS_MS =
       "AlterTableColumnDataType-{}.{}-{} costs {}ms";
   public static final String ALTERTIMESERIESDATATYPE_COSTS_MS =

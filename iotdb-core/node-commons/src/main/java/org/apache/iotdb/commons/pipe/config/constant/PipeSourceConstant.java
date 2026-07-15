@@ -21,9 +21,11 @@ package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +91,21 @@ public class PipeSourceConstant {
   public static final String SOURCE_ORIGINAL_TABLE_KEY = "__system.source.original.table-name";
   public static final String SOURCE_ORIGINAL_DATABASE_TABLES_KEY =
       "__system.source.original.database-tables";
+  public static final String SOURCE_INTERNAL_PATTERN_INCLUSION_KEY =
+      "__system.source.pattern.inclusion";
+  public static final String SOURCE_INTERNAL_PATTERN_EXCLUSION_KEY =
+      "__system.source.pattern.exclusion";
+
+  /** Internal source attributes that must only be set by the system, never by users. */
+  public static final Set<String> INTERNAL_SOURCE_ATTRIBUTE_KEYS =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  SOURCE_ORIGINAL_DATABASE_KEY,
+                  SOURCE_ORIGINAL_TABLE_KEY,
+                  SOURCE_ORIGINAL_DATABASE_TABLES_KEY,
+                  SOURCE_INTERNAL_PATTERN_INCLUSION_KEY,
+                  SOURCE_INTERNAL_PATTERN_EXCLUSION_KEY)));
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
@@ -220,6 +237,78 @@ public class PipeSourceConstant {
       "extractor.consensus.sender-dn-id";
   public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
       "extractor.consensus.receiver-dn-id";
+
+  public static boolean isUserForbiddenSourceAttributeKey(final String attributeKey) {
+    return attributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)
+        || attributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY);
+  }
+
+  public static void validateUserProvidedSourceAttributes(
+      final Map<String, String> sourceAttributes, final String pipeName, final boolean isAlter)
+      throws PipeException {
+    if (sourceAttributes == null) {
+      return;
+    }
+    for (final String attributeKey : sourceAttributes.keySet()) {
+      if (isUserForbiddenSourceAttributeKey(attributeKey)) {
+        if (pipeName == null) {
+          throw new PipeException(
+              String.format(PipeMessages.SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED, attributeKey));
+        }
+        throw new PipeException(
+            String.format(
+                isAlter
+                    ? PipeMessages.FAILED_TO_ALTER_PIPE_MODIFYING_SOURCE_ATTRIBUTE_NOT_ALLOWED
+                    : PipeMessages.FAILED_TO_CREATE_PIPE_SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED,
+                pipeName,
+                attributeKey));
+      }
+    }
+  }
+
+  public static Map<String, String> removeInternalSourceAttributes(
+      final Map<String, String> sourceAttributes) {
+    final Map<String, String> userVisibleAttributes = new HashMap<>(sourceAttributes);
+    for (final String internalSourceAttributeKey : INTERNAL_SOURCE_ATTRIBUTE_KEYS) {
+      userVisibleAttributes.remove(internalSourceAttributeKey);
+      userVisibleAttributes.remove(PipeParameters.KeyReducer.reduce(internalSourceAttributeKey));
+    }
+    return userVisibleAttributes;
+  }
+
+  public static void validateUserProvidedInternalSourcePatternAttributes(
+      final Map<String, String> sourceAttributes, final String pipeName, final boolean isAlter)
+      throws PipeException {
+    if (sourceAttributes == null) {
+      return;
+    }
+    for (final String attributeKey : sourceAttributes.keySet()) {
+      if (!INTERNAL_SOURCE_ATTRIBUTE_KEYS.contains(attributeKey)) {
+        continue;
+      }
+      if (pipeName == null) {
+        throw new PipeException(
+            String.format(PipeMessages.SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED, attributeKey));
+      }
+      throw new PipeException(
+          String.format(
+              isAlter
+                  ? PipeMessages.FAILED_TO_ALTER_PIPE_MODIFYING_SOURCE_ATTRIBUTE_NOT_ALLOWED
+                  : PipeMessages.FAILED_TO_CREATE_PIPE_SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED,
+              pipeName,
+              attributeKey));
+    }
+  }
+
+  public static void stripInternalSourceAttributes(final Map<String, String> sourceAttributes) {
+    if (sourceAttributes == null) {
+      return;
+    }
+    for (final String internalKey : INTERNAL_SOURCE_ATTRIBUTE_KEYS) {
+      sourceAttributes.remove(internalKey);
+      sourceAttributes.remove(PipeParameters.KeyReducer.reduce(internalKey));
+    }
+  }
 
   public static boolean isDoubleLiving(final PipeParameters sourceParameters) {
     return sourceParameters.getBooleanOrDefault(

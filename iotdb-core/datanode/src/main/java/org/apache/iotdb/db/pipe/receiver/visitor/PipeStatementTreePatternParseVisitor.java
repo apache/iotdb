@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionPlanUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -60,10 +61,15 @@ public class PipeStatementTreePatternParseVisitor
   @Override
   public Optional<Statement> visitCreateTimeseries(
       final CreateTimeSeriesStatement statement, final IoTDBTreePatternOperations pattern) {
-    return pattern.matchesMeasurement(
-            statement.getPath().getIDeviceID(), statement.getPath().getMeasurement())
-        ? Optional.of(statement)
-        : Optional.empty();
+    if (PipeSchemaRegionPlanUtil.hasNonTransferableRenameInternalProps(statement.getProps())) {
+      return Optional.empty();
+    }
+    if (!pattern.matchesMeasurement(
+        statement.getPath().getIDeviceID(), statement.getPath().getMeasurement())) {
+      return Optional.empty();
+    }
+    statement.setProps(PipeSchemaRegionPlanUtil.sanitizeRenameInternalProps(statement.getProps()));
+    return Optional.of(statement);
   }
 
   @Override
@@ -76,6 +82,7 @@ public class PipeStatementTreePatternParseVisitor
                     pattern.matchesMeasurement(
                         statement.getDevicePath().getIDeviceIDAsFullDevice(),
                         statement.getMeasurements().get(index)))
+            .filter(index -> !hasNonTransferableRenameInternalProps(statement, index))
             .toArray();
     if (filteredIndexes.length == 0) {
       return Optional.empty();
@@ -101,8 +108,20 @@ public class PipeStatementTreePatternParseVisitor
                   statement.getAttributesList().get(index));
               targetCreateAlignedTimeSeriesStatement.addAliasList(
                   statement.getAliasList().get(index));
+              if (index < statement.getPropsList().size()) {
+                targetCreateAlignedTimeSeriesStatement.addPropsList(
+                    PipeSchemaRegionPlanUtil.sanitizeRenameInternalProps(
+                        statement.getPropsList().get(index)));
+              }
             });
     return Optional.of(targetCreateAlignedTimeSeriesStatement);
+  }
+
+  private static boolean hasNonTransferableRenameInternalProps(
+      final CreateAlignedTimeSeriesStatement statement, final int index) {
+    return index < statement.getPropsList().size()
+        && PipeSchemaRegionPlanUtil.hasNonTransferableRenameInternalProps(
+            statement.getPropsList().get(index));
   }
 
   // For logical view with tags/attributes

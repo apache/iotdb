@@ -66,8 +66,11 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
               insertNode));
     }
 
-    return (InsertBaseStatement)
-        IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    final InsertBaseStatement statement =
+        (InsertBaseStatement)
+            IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    statement.setAllowInsertIntoInvalidSeries(true);
+    return statement;
   }
 
   protected InsertNode parseByteBuffer() {

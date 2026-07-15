@@ -57,6 +57,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
   private String snapshotPath;
   // This will only be filled in when the snapshot is a schema info file.
   private String templateFilePath;
+  // This will only be filled in when the snapshot is a tree schema info file.
+  private String pipeRenameTimeSeriesFilePath;
   private static final Map<CNSnapshotFileType, Set<Short>>
       SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new EnumMap<>(CNSnapshotFileType.class);
   private CNSnapshotFileType fileType;
@@ -99,6 +101,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
                     ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
                     ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
                     ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType(),
+                    ConfigPhysicalPlanType.PipeRenameTimeSeries.getPlanType(),
                     ConfigPhysicalPlanType.PipeCreateTableOrView.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.TTL, Collections.singleton(ConfigPhysicalPlanType.SetTTL.getPlanType()));
@@ -106,17 +109,39 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent() {
     // Used for deserialization
-    this(null, null, null);
+    this(null, null, null, null);
   }
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, null, null, true);
+    this(snapshotPath, templateFilePath, null, type);
   }
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath,
       final String templateFilePath,
+      final String pipeRenameTimeSeriesFilePath,
+      final CNSnapshotFileType type) {
+    this(
+        snapshotPath,
+        templateFilePath,
+        pipeRenameTimeSeriesFilePath,
+        type,
+        null,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true);
+  }
+
+  public PipeConfigRegionSnapshotEvent(
+      final String snapshotPath,
+      final String templateFilePath,
+      final String pipeRenameTimeSeriesFilePath,
       final CNSnapshotFileType type,
       final String pipeName,
       final long creationTime,
@@ -140,6 +165,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
+    this.pipeRenameTimeSeriesFilePath =
+        Objects.nonNull(pipeRenameTimeSeriesFilePath) ? pipeRenameTimeSeriesFilePath : "";
     this.fileType = type;
   }
 
@@ -159,6 +186,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     return !templateFilePath.isEmpty() ? new File(templateFilePath) : null;
   }
 
+  public File getPipeRenameTimeSeriesFile() {
+    return !pipeRenameTimeSeriesFilePath.isEmpty() ? new File(pipeRenameTimeSeriesFilePath) : null;
+  }
+
   public CNSnapshotFileType getFileType() {
     return fileType;
   }
@@ -169,6 +200,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       snapshotPath = resourceManager.increaseSnapshotReference(snapshotPath);
       if (!templateFilePath.isEmpty()) {
         templateFilePath = resourceManager.increaseSnapshotReference(templateFilePath);
+      }
+      if (!pipeRenameTimeSeriesFilePath.isEmpty()) {
+        pipeRenameTimeSeriesFilePath =
+            resourceManager.increaseSnapshotReference(pipeRenameTimeSeriesFilePath);
       }
       return true;
     } catch (final Exception e) {
@@ -189,6 +224,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       resourceManager.decreaseSnapshotReference(snapshotPath);
       if (!templateFilePath.isEmpty()) {
         resourceManager.decreaseSnapshotReference(templateFilePath);
+      }
+      if (!pipeRenameTimeSeriesFilePath.isEmpty()) {
+        resourceManager.decreaseSnapshotReference(pipeRenameTimeSeriesFilePath);
       }
       return true;
     } catch (final Exception e) {
@@ -220,6 +258,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         new PipeConfigRegionSnapshotEvent(
             snapshotPath,
             templateFilePath,
+            pipeRenameTimeSeriesFilePath,
             fileType,
             pipeName,
             creationTime,
@@ -241,11 +280,13 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
             2 * Byte.BYTES
                 + 2 * Integer.BYTES
                 + snapshotPath.getBytes().length
-                + templateFilePath.getBytes().length);
+                + templateFilePath.getBytes().length
+                + pipeRenameTimeSeriesFilePath.getBytes().length);
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_SNAPSHOT.getType(), result);
     ReadWriteIOUtils.write(fileType.getType(), result);
     ReadWriteIOUtils.write(snapshotPath, result);
     ReadWriteIOUtils.write(templateFilePath, result);
+    ReadWriteIOUtils.write(pipeRenameTimeSeriesFilePath, result);
     return result;
   }
 
@@ -254,6 +295,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     fileType = CNSnapshotFileType.deserialize(ReadWriteIOUtils.readByte(buffer));
     snapshotPath = ReadWriteIOUtils.readString(buffer);
     templateFilePath = ReadWriteIOUtils.readString(buffer);
+    pipeRenameTimeSeriesFilePath = buffer.hasRemaining() ? ReadWriteIOUtils.readString(buffer) : "";
   }
 
   /////////////////////////////// Type parsing ///////////////////////////////
@@ -296,8 +338,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, fileType=%s}",
-            snapshotPath, templateFilePath, fileType)
+            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, pipeRenameTimeSeriesFilePath=%s, fileType=%s}",
+            snapshotPath, templateFilePath, pipeRenameTimeSeriesFilePath, fileType)
         + " - "
         + super.toString();
   }
@@ -305,8 +347,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, fileType=%s}",
-            snapshotPath, templateFilePath, fileType)
+            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, pipeRenameTimeSeriesFilePath=%s, fileType=%s}",
+            snapshotPath, templateFilePath, pipeRenameTimeSeriesFilePath, fileType)
         + " - "
         + super.coreReportMessage();
   }
@@ -325,7 +367,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         this.referenceCount,
         this.resourceManager,
         this.snapshotPath,
-        this.templateFilePath);
+        this.templateFilePath,
+        this.pipeRenameTimeSeriesFilePath);
   }
 
   private static class PipeConfigRegionSnapshotEventResource extends PipeEventResource {
@@ -333,17 +376,20 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     private final PipeSnapshotResourceManager resourceManager;
     private final String snapshotPath;
     private final String templateFilePath;
+    private final String pipeRenameTimeSeriesFilePath;
 
     private PipeConfigRegionSnapshotEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final PipeSnapshotResourceManager resourceManager,
         final String snapshotPath,
-        final String templateFilePath) {
+        final String templateFilePath,
+        final String pipeRenameTimeSeriesFilePath) {
       super(isReleased, referenceCount);
       this.resourceManager = resourceManager;
       this.snapshotPath = snapshotPath;
       this.templateFilePath = templateFilePath;
+      this.pipeRenameTimeSeriesFilePath = pipeRenameTimeSeriesFilePath;
     }
 
     @Override
@@ -352,6 +398,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         resourceManager.decreaseSnapshotReference(snapshotPath);
         if (!templateFilePath.isEmpty()) {
           resourceManager.decreaseSnapshotReference(templateFilePath);
+        }
+        if (!pipeRenameTimeSeriesFilePath.isEmpty()) {
+          resourceManager.decreaseSnapshotReference(pipeRenameTimeSeriesFilePath);
         }
       } catch (final Exception e) {
         LOGGER.warn(ManagerMessages.DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR, snapshotPath, e);

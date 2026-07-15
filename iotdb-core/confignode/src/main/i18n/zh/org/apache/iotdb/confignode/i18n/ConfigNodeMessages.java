@@ -314,6 +314,12 @@ public final class ConfigNodeMessages {
   public static final String PATH1_SHOULD_NOT_BE_NULL = "Path1 不应为 null";
   public static final String PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES =
       "PipeMetaSyncer 正在尝试重启 pipe：{}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNRECOGNIZED_MAGIC =
+      "忽略无法识别的 pipe rename time series 快照 magic：{}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNSUPPORTED_VERSION =
+      "忽略不支持的 pipe rename time series 快照版本：{}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_RESTORE_ENTRY_FAILED =
+      "恢复 pipe rename time series 快照条目失败，old path：{}，alias path：{}";
   public static final String PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION =
       "Pipe {} 使用外部 source，跳过 region leader 切换。PipeHandleLeaderChangePlan: {}";
   public static final String PLAN_TYPE_IS_NOT_SUPPORTED = "不支持的计划类型 %s。";

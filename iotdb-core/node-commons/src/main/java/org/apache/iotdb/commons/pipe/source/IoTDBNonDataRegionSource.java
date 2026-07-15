@@ -50,6 +50,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.removeInternalSourceAttributes;
+
 @TreeModel
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
@@ -79,7 +81,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+    final TreePattern pattern =
+        TreePattern.parsePipePatternFromSourceParameters(
+            new PipeParameters(removeInternalSourceAttributes(parameters.getAttribute())));
 
     if (!(pattern instanceof IoTDBTreePatternOperations
         && (((IoTDBTreePatternOperations) pattern).isPrefixOrFullPath()))) {

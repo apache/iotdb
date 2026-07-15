@@ -142,7 +142,8 @@ public class PipeTreeStatementToBatchVisitor extends StatementVisitor<Optional<S
           statement.getDataTypes().get(i),
           statement.getEncodings().get(i),
           statement.getCompressors().get(i))) {
-        group.addProps(new HashMap<>());
+        group.addProps(
+            i < statement.getPropsList().size() ? statement.getPropsList().get(i) : null);
         // Non-null lists
         group.addTags(statement.getTagsList().get(i));
         group.addAttributes(statement.getAttributesList().get(i));

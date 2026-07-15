@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -47,8 +48,6 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanE
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -77,9 +76,6 @@ import java.util.stream.Stream;
  */
 public class PipeConfigTreePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBTreePatternOperations> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigTreePatternParseVisitor.class);
-
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
       final ConfigPhysicalPlan plan, final IoTDBTreePatternOperations pattern) {
@@ -264,12 +260,13 @@ public class PipeConfigTreePatternParseVisitor
       final PipeRenameTimeSeriesPlan pipeRenameTimeSeriesPlan,
       final IoTDBTreePatternOperations pattern) {
     final PartialPath oldPath =
-        (PartialPath)
-            org.apache.iotdb.commons.path.PathDeserializeUtil.deserialize(
-                pipeRenameTimeSeriesPlan.getOldPathBytes());
-
-    final List<PartialPath> intersectionList = pattern.getIntersection(oldPath);
-    return !intersectionList.isEmpty() ? Optional.of(pipeRenameTimeSeriesPlan) : Optional.empty();
+        (PartialPath) PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getOldPathBytes());
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getNewPathBytes());
+    final PartialPath matchedPath =
+        pipeRenameTimeSeriesPlan.isGeneratedFromSnapshot() ? newPath : oldPath;
+    final boolean matched = !pattern.getIntersection(matchedPath).isEmpty();
+    return matched ? Optional.of(pipeRenameTimeSeriesPlan) : Optional.empty();
   }
 
   @Override

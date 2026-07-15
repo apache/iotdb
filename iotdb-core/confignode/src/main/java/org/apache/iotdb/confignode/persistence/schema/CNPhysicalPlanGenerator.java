@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
@@ -39,15 +40,16 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeRenameTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
-import org.apache.tsfile.external.commons.io.IOUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -80,6 +82,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
+import static org.apache.tsfile.external.commons.io.IOUtils.toByteArray;
 
 public class CNPhysicalPlanGenerator
     implements Iterator<ConfigPhysicalPlan>, Iterable<ConfigPhysicalPlan> {
@@ -90,8 +93,13 @@ public class CNPhysicalPlanGenerator
   // File input stream.
   private InputStream inputStream = null;
   private InputStream templateInputStream = null;
+  private InputStream pipeRenameTimeSeriesInputStream = null;
 
   private static final String STRING_ENCODING = "utf-8";
+
+  // Format: magic, version, pathCount, repeated {physicalPath, finalAliasPath}.
+  private static final int PIPE_RENAME_TIME_SERIES_SNAPSHOT_MAGIC = 0x50525453;
+  private static final int PIPE_RENAME_TIME_SERIES_SNAPSHOT_VERSION = 2;
 
   private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
@@ -123,10 +131,19 @@ public class CNPhysicalPlanGenerator
 
   public CNPhysicalPlanGenerator(final Path schemaInfoFile, final Path templateFile)
       throws IOException {
+    this(schemaInfoFile, templateFile, null);
+  }
+
+  public CNPhysicalPlanGenerator(
+      final Path schemaInfoFile, final Path templateFile, final Path pipeRenameTimeSeriesFile)
+      throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
     // Template file is null for table mTree
     if (Objects.nonNull(templateFile)) {
       templateInputStream = Files.newInputStream(templateFile);
+    }
+    if (Objects.nonNull(pipeRenameTimeSeriesFile)) {
+      pipeRenameTimeSeriesInputStream = Files.newInputStream(pipeRenameTimeSeriesFile);
     }
     snapshotFileType = CNSnapshotFileType.SCHEMA;
   }
@@ -504,6 +521,7 @@ public class CNPhysicalPlanGenerator
             return;
         }
       }
+      generateHistoricalPipeRenameTimeSeriesPlans();
     } catch (final IOException ioException) {
       logger.error(
           ManagerMessages.LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621, ioException);
@@ -514,7 +532,7 @@ public class CNPhysicalPlanGenerator
   private void generateTemplatePlan() {
     try (final BufferedInputStream bufferedInputStream =
         new BufferedInputStream(templateInputStream)) {
-      final ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(bufferedInputStream));
+      final ByteBuffer byteBuffer = ByteBuffer.wrap(toByteArray(bufferedInputStream));
       // Skip id
       ReadWriteIOUtils.readInt(byteBuffer);
       int size = ReadWriteIOUtils.readInt(byteBuffer);
@@ -533,6 +551,54 @@ public class CNPhysicalPlanGenerator
           ManagerMessages.LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E, ioException);
       latestException = ioException;
     }
+  }
+
+  private void generateHistoricalPipeRenameTimeSeriesPlans() throws IOException {
+    if (Objects.isNull(pipeRenameTimeSeriesInputStream)) {
+      return;
+    }
+
+    try (final BufferedInputStream bufferedInputStream =
+        new BufferedInputStream(pipeRenameTimeSeriesInputStream)) {
+      final int magic = ReadWriteIOUtils.readInt(bufferedInputStream);
+      if (magic != PIPE_RENAME_TIME_SERIES_SNAPSHOT_MAGIC) {
+        logger.warn(ConfigNodeMessages.PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNRECOGNIZED_MAGIC, magic);
+        return;
+      }
+
+      final int version = ReadWriteIOUtils.readInt(bufferedInputStream);
+      if (version != PIPE_RENAME_TIME_SERIES_SNAPSHOT_VERSION) {
+        logger.warn(
+            ConfigNodeMessages.PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNSUPPORTED_VERSION, version);
+        return;
+      }
+
+      int pathCount = ReadWriteIOUtils.readInt(bufferedInputStream);
+      while (pathCount-- > 0) {
+        final PartialPath physicalPath =
+            parsePartialPath(ReadWriteIOUtils.readString(bufferedInputStream));
+        final PartialPath aliasPath =
+            parsePartialPath(ReadWriteIOUtils.readString(bufferedInputStream));
+        planDeque.add(
+            new PipeRenameTimeSeriesPlan(
+                    serializeAsMeasurementPath(physicalPath), serializeAsMeasurementPath(aliasPath))
+                .markAsGeneratedFromSnapshot());
+      }
+    }
+  }
+
+  private PartialPath parsePartialPath(final String path) throws IOException {
+    try {
+      return new PartialPath(path);
+    } catch (final IllegalPathException e) {
+      throw new IOException(e);
+    }
+  }
+
+  private ByteBuffer serializeAsMeasurementPath(final PartialPath path) {
+    return path instanceof MeasurementPath
+        ? path.serialize()
+        : new MeasurementPath(path.getNodes()).serialize();
   }
 
   private void generateSetTemplatePlan() {

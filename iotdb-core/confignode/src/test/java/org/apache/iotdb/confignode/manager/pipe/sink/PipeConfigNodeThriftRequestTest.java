@@ -198,6 +198,8 @@ public class PipeConfigNodeThriftRequestTest {
             100,
             templateInfoName,
             10,
+            null,
+            0,
             fileType,
             typeString,
             "");

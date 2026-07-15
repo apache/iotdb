@@ -26,9 +26,9 @@ import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -57,6 +57,8 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final long snapshotLength,
       final String templateFileName,
       final long templateFileLength,
+      final String pipeRenameTimeSeriesFileName,
+      final long pipeRenameTimeSeriesFileLength,
       final CNSnapshotFileType fileType,
       final String typeString,
       final String authUserName)
@@ -78,12 +80,13 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
     return (PipeTransferConfigSnapshotSealReq)
         new PipeTransferConfigSnapshotSealReq()
             .convertToTPipeTransferReq(
-                Objects.nonNull(templateFileName)
-                    ? Arrays.asList(snapshotName, templateFileName)
-                    : Collections.singletonList(snapshotName),
-                Objects.nonNull(templateFileName)
-                    ? Arrays.asList(snapshotLength, templateFileLength)
-                    : Collections.singletonList(snapshotLength),
+                buildFileNameList(snapshotName, templateFileName, pipeRenameTimeSeriesFileName),
+                buildFileLengthList(
+                    snapshotLength,
+                    templateFileName,
+                    templateFileLength,
+                    pipeRenameTimeSeriesFileName,
+                    pipeRenameTimeSeriesFileLength),
                 parameters);
   }
 
@@ -104,6 +107,8 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final long snapshotLength,
       final String templateFileName,
       final long templateFileLength,
+      final String pipeRenameTimeSeriesFileName,
+      final long pipeRenameTimeSeriesFileLength,
       final CNSnapshotFileType fileType,
       final String typeString,
       final String authUserName)
@@ -123,13 +128,46 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
     parameters.put("authUserName", authUserName);
     return new PipeTransferConfigSnapshotSealReq()
         .convertToTPipeTransferSnapshotSealBytes(
-            Objects.nonNull(templateFileName)
-                ? Arrays.asList(snapshotName, templateFileName)
-                : Collections.singletonList(snapshotName),
-            Objects.nonNull(templateFileName)
-                ? Arrays.asList(snapshotLength, templateFileLength)
-                : Collections.singletonList(snapshotLength),
+            buildFileNameList(snapshotName, templateFileName, pipeRenameTimeSeriesFileName),
+            buildFileLengthList(
+                snapshotLength,
+                templateFileName,
+                templateFileLength,
+                pipeRenameTimeSeriesFileName,
+                pipeRenameTimeSeriesFileLength),
             parameters);
+  }
+
+  private static List<String> buildFileNameList(
+      final String snapshotName,
+      final String templateFileName,
+      final String pipeRenameTimeSeriesFileName) {
+    final List<String> fileNameList = new ArrayList<>();
+    fileNameList.add(snapshotName);
+    if (Objects.nonNull(templateFileName)) {
+      fileNameList.add(templateFileName);
+    }
+    if (Objects.nonNull(pipeRenameTimeSeriesFileName)) {
+      fileNameList.add(pipeRenameTimeSeriesFileName);
+    }
+    return fileNameList;
+  }
+
+  private static List<Long> buildFileLengthList(
+      final long snapshotLength,
+      final String templateFileName,
+      final long templateFileLength,
+      final String pipeRenameTimeSeriesFileName,
+      final long pipeRenameTimeSeriesFileLength) {
+    final List<Long> fileLengthList = new ArrayList<>();
+    fileLengthList.add(snapshotLength);
+    if (Objects.nonNull(templateFileName)) {
+      fileLengthList.add(templateFileLength);
+    }
+    if (Objects.nonNull(pipeRenameTimeSeriesFileName)) {
+      fileLengthList.add(pipeRenameTimeSeriesFileLength);
+    }
+    return fileLengthList;
   }
 
   /////////////////////////////// Object ///////////////////////////////

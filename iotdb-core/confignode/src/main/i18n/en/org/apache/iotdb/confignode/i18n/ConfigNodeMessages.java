@@ -339,6 +339,12 @@ public final class ConfigNodeMessages {
   public static final String PATH1_SHOULD_NOT_BE_NULL = "Path1 should not be null";
   public static final String PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES =
       "PipeMetaSyncer is trying to restart the pipes: {}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNRECOGNIZED_MAGIC =
+      "Ignore unrecognized pipe rename time series snapshot magic: {}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNSUPPORTED_VERSION =
+      "Ignore unsupported pipe rename time series snapshot version: {}";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_RESTORE_ENTRY_FAILED =
+      "Failed to restore pipe rename time series snapshot entry, old path: {}, alias path: {}";
   public static final String PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION =
       "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}";
   public static final String PLAN_TYPE_IS_NOT_SUPPORTED = "Plan type %s is not supported.";

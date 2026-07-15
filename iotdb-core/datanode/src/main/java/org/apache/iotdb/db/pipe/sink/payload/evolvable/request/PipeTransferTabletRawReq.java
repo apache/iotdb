@@ -92,10 +92,12 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       if (isTabletEmpty(tablet)) {
         // Empty statement, will be filtered after construction
         statement = new InsertTabletStatement();
+        statement.setAllowInsertIntoInvalidSeries(true);
         return statement;
       }
 
       statement = new InsertTabletStatement(tablet, isAligned, null);
+      statement.setAllowInsertIntoInvalidSeries(true);
       return statement;
     } catch (final MetadataException e) {
       LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);

@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
-import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
@@ -198,27 +196,31 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               (regionGroupId, regionLeaderNodeId) -> {
                 final String databaseName =
                     env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
+                if (!isUserVisibleDatabase(databaseName)) {
+                  return;
+                }
+                if (!shouldCollectRegionForPipe(
+                    env,
+                    regionGroupId,
+                    databaseName,
+                    updatedPipeStaticMeta.getSourceParameters())) {
+                  return;
+                }
+
                 final PipeTaskMeta currentPipeTaskMeta =
                     currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
-                if (databaseName != null
-                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
-                    && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
-                    && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
-                    && !databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE + ".")
-                    && !Objects.isNull(currentPipeTaskMeta)
-                    && !(PipeTaskAgent.isHistoryOnlyPipe(
-                            currentPipeStaticMeta.getSourceParameters())
-                        && PipeTaskAgent.isHistoryOnlyPipe(
-                            updatedPipeStaticMeta.getSourceParameters())
-                        && regionGroupId.getType() == TConsensusGroupType.DataRegion
-                        && currentPipeTaskMeta.isNewlyAdded())) {
-                  // Pipe only collect user's data, filter metric database here.
-                  // If it is altered to "pure historical", then the regionIds are always new here,
-                  // then it will extract all existing data now, not existing data since the
-                  // original pipe was created
-                  // Similar for "pure realtime"
+                final boolean isDataRegion =
+                    regionGroupId.getType() == TConsensusGroupType.DataRegion;
+
+                if (currentPipeTaskMeta != null) {
+                  if (isDataRegion
+                      && PipeTaskAgent.isHistoryOnlyPipe(
+                          currentPipeStaticMeta.getSourceParameters())
+                      && PipeTaskAgent.isHistoryOnlyPipe(
+                          updatedPipeStaticMeta.getSourceParameters())
+                      && currentPipeTaskMeta.isNewlyAdded()) {
+                    return;
+                  }
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
                       new PipeTaskMeta(
@@ -239,7 +241,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                                           updatedPipeStaticMeta.getSourceParameters()))
                               ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
                               : regionLeaderNodeId));
+                  return;
                 }
+
+                if (isDataRegion
+                    && PipeTaskAgent.isHistoryOnlyPipe(
+                        updatedPipeStaticMeta.getSourceParameters())) {
+                  return;
+                }
+                updatedConsensusGroupIdToTaskMetaMap.put(
+                    regionGroupId.getId(),
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId)
+                        .markAsNewlyAdded());
               });
 
       final PipeTaskMeta configRegionTaskMeta =

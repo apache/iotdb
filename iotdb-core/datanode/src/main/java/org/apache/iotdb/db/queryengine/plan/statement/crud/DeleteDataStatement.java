@@ -33,6 +33,7 @@ public class DeleteDataStatement extends Statement {
   private List<MeasurementPath> pathList;
   private long deleteStartTime;
   private long deleteEndTime;
+  private boolean allowDeleteInvalidSeries = false;
 
   public DeleteDataStatement() {
     super();
@@ -71,6 +72,14 @@ public class DeleteDataStatement extends Statement {
   public void setTimeRange(TimeRange timeRange) {
     this.deleteStartTime = timeRange.getMin();
     this.deleteEndTime = timeRange.getMax();
+  }
+
+  public boolean isAllowDeleteInvalidSeries() {
+    return allowDeleteInvalidSeries;
+  }
+
+  public void setAllowDeleteInvalidSeries(final boolean allowDeleteInvalidSeries) {
+    this.allowDeleteInvalidSeries = allowDeleteInvalidSeries;
   }
 
   @Override

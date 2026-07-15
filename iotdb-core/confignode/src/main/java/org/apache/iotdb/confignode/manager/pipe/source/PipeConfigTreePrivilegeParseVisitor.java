@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
@@ -466,8 +467,10 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PipeRenameTimeSeriesPlan pipeRenameTimeSeriesPlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
-    final PartialPath oldPath = PartialPath.deserialize(pipeRenameTimeSeriesPlan.getOldPathBytes());
-    final PartialPath newPath = PartialPath.deserialize(pipeRenameTimeSeriesPlan.getOldPathBytes());
+    final PartialPath oldPath =
+        (PartialPath) PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getOldPathBytes());
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getNewPathBytes());
     final String auditObject = oldPath.getFullPath();
     try {
       final List<PartialPath> oldPaths =

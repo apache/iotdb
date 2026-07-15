@@ -1432,6 +1432,13 @@ public final class DataNodePipeMessages {
   // pipe – IoTDBDataRegionSource
   // ---------------------------------------------------------------------------
   public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" 非法。";
+  public static final String
+      EXCEPTION_THE_PATH_PATTERN_ARG_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_OR_FULL_PATH_IS_ALLOWED_784778B8 =
+          "路径 pattern %s 对 source 无效。仅允许 prefix 或 full path。";
+  public static final String PIPE_SOURCE_ONLY_MATCHES_INVALID_RENAMED_PHYSICAL_SERIES =
+      "Pipe source %s 只匹配到无效的重命名物理序列：%s";
+  public static final String FAILED_TO_FETCH_PIPE_SOURCE_PATTERN =
+      "获取 pipe source %s 的 schema 失败：%s";
 
   // ---------------------------------------------------------------------------
   // pipe – OpcUaServerBuilder

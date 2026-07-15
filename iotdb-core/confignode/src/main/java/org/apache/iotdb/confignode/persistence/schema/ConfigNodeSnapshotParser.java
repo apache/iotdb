@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +51,41 @@ public class ConfigNodeSnapshotParser {
     // Empty constructor
   }
 
+  public static class SnapshotPathInfo {
+
+    private final Path snapshotPath;
+    private final Path templatePath;
+    private final Path pipeRenameTimeSeriesPath;
+    private final CNSnapshotFileType type;
+
+    public SnapshotPathInfo(
+        final Path snapshotPath,
+        final Path templatePath,
+        final Path pipeRenameTimeSeriesPath,
+        final CNSnapshotFileType type) {
+      this.snapshotPath = snapshotPath;
+      this.templatePath = templatePath;
+      this.pipeRenameTimeSeriesPath = pipeRenameTimeSeriesPath;
+      this.type = type;
+    }
+
+    public Path getSnapshotPath() {
+      return snapshotPath;
+    }
+
+    public Path getTemplatePath() {
+      return templatePath;
+    }
+
+    public Path getPipeRenameTimeSeriesPath() {
+      return pipeRenameTimeSeriesPath;
+    }
+
+    public CNSnapshotFileType getType() {
+      return type;
+    }
+  }
+
   private static Path getLatestSnapshotPath(final List<Path> snapshotPathList) {
     if (snapshotPathList.isEmpty()) {
       return null;
@@ -67,8 +101,8 @@ public class ConfigNodeSnapshotParser {
     return pathArray[0];
   }
 
-  public static List<Pair<Pair<Path, Path>, CNSnapshotFileType>> getSnapshots() throws IOException {
-    final List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPairList = new ArrayList<>();
+  public static List<SnapshotPathInfo> getSnapshots() throws IOException {
+    final List<SnapshotPathInfo> snapshotPairList = new ArrayList<>();
     final String snapshotPath = CONF.getConsensusDir();
     try (final DirectoryStream<Path> stream =
         Files.newDirectoryStream(Paths.get(snapshotPath), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
@@ -96,8 +130,8 @@ public class ConfigNodeSnapshotParser {
             try (final DirectoryStream<Path> roleStream =
                 Files.newDirectoryStream(Paths.get(rolePath))) {
               for (final Path role : roleStream) {
-                final Pair<Path, Path> roleFile = new Pair<>(role, null);
-                snapshotPairList.add(new Pair<>(roleFile, CNSnapshotFileType.ROLE));
+                snapshotPairList.add(
+                    new SnapshotPathInfo(role, null, null, CNSnapshotFileType.ROLE));
               }
             }
             // Get user files.
@@ -120,11 +154,12 @@ public class ConfigNodeSnapshotParser {
               }
               // We should add user file firstly.
               for (final Path user : userFilePath) {
-                snapshotPairList.add(new Pair<>(new Pair<>(user, null), CNSnapshotFileType.USER));
+                snapshotPairList.add(
+                    new SnapshotPathInfo(user, null, null, CNSnapshotFileType.USER));
               }
               for (final Path roleList : userRoleFilePath) {
                 snapshotPairList.add(
-                    new Pair<>(new Pair<>(roleList, null), CNSnapshotFileType.USER_ROLE));
+                    new SnapshotPathInfo(roleList, null, null, CNSnapshotFileType.USER_ROLE));
               }
             }
 
@@ -135,10 +170,17 @@ public class ConfigNodeSnapshotParser {
             final File templateInfoFile =
                 SystemFileFactory.INSTANCE.getFile(
                     latestSnapshotPath + File.separator + SNAPSHOT_TEMPLATE_FILENAME);
+            final File pipeRenameTimeSeriesFile =
+                SystemFileFactory.INSTANCE.getFile(
+                    latestSnapshotPath
+                        + File.separator
+                        + ClusterSchemaInfo.PIPE_RENAME_TIME_SERIES_SNAPSHOT_FILENAME);
             if (schemaInfoFile.exists() && templateInfoFile.exists()) {
               snapshotPairList.add(
-                  new Pair<>(
-                      new Pair<>(schemaInfoFile.toPath(), templateInfoFile.toPath()),
+                  new SnapshotPathInfo(
+                      schemaInfoFile.toPath(),
+                      templateInfoFile.toPath(),
+                      pipeRenameTimeSeriesFile.exists() ? pipeRenameTimeSeriesFile.toPath() : null,
                       CNSnapshotFileType.SCHEMA));
             }
 
@@ -148,7 +190,8 @@ public class ConfigNodeSnapshotParser {
                     latestSnapshotPath + File.separator + SNAPSHOT_TABLE_CLUSTER_SCHEMA_FILENAME);
             if (tableInfoFile.exists()) {
               snapshotPairList.add(
-                  new Pair<>(new Pair<>(tableInfoFile.toPath(), null), CNSnapshotFileType.SCHEMA));
+                  new SnapshotPathInfo(
+                      tableInfoFile.toPath(), null, null, CNSnapshotFileType.SCHEMA));
             }
 
             // Get ttl info file
@@ -157,7 +200,7 @@ public class ConfigNodeSnapshotParser {
                     latestSnapshotPath + File.separator + TTLInfo.SNAPSHOT_FILENAME);
             if (ttlInfoFile.exists()) {
               snapshotPairList.add(
-                  new Pair<>(new Pair<>(ttlInfoFile.toPath(), null), CNSnapshotFileType.TTL));
+                  new SnapshotPathInfo(ttlInfoFile.toPath(), null, null, CNSnapshotFileType.TTL));
             }
           }
         }
@@ -168,6 +211,16 @@ public class ConfigNodeSnapshotParser {
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       final Path path1, final Path path2, final CNSnapshotFileType type, final String userName)
+      throws IOException {
+    return translate2PhysicalPlan(path1, path2, null, type, userName);
+  }
+
+  public static CNPhysicalPlanGenerator translate2PhysicalPlan(
+      final Path path1,
+      final Path path2,
+      final Path pipeRenameTimeSeriesPath,
+      final CNSnapshotFileType type,
+      final String userName)
       throws IOException {
     if (path1 == null) {
       LOGGER.warn(ConfigNodeMessages.PATH1_SHOULD_NOT_BE_NULL);
@@ -180,7 +233,7 @@ public class ConfigNodeSnapshotParser {
     }
 
     if (type == CNSnapshotFileType.SCHEMA) {
-      return new CNPhysicalPlanGenerator(path1, path2);
+      return new CNPhysicalPlanGenerator(path1, path2, pipeRenameTimeSeriesPath);
     } else {
       return new CNPhysicalPlanGenerator(path1, type, userName);
     }

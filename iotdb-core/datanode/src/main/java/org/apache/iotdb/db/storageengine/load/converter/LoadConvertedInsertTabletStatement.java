@@ -48,9 +48,7 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
       final boolean isTsFilePhysicalPath) {
     super(insertTabletStatement);
     this.shouldConvertOnTypeMismatch = shouldConvertOnTypeMismatch;
-    if (isTsFilePhysicalPath) {
-      setAllowInsertIntoInvalidSeries(true);
-    }
+    setAllowInsertIntoInvalidSeries(isTsFilePhysicalPath);
   }
 
   @Override

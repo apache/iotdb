@@ -2051,6 +2051,11 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getDatabaseMaxTTL(database);
   }
 
+  @Nullable
+  public PartialPath getPipeRenamedAliasPath(final PartialPath physicalPath) {
+    return clusterSchemaInfo.getPipeRenamedAliasPath(physicalPath);
+  }
+
   public void clearSchemaQuotaCache() {
     schemaQuotaStatistics.clear();
   }

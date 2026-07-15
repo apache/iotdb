@@ -36,6 +36,7 @@ public class PipeRenameTimeSeriesPlan extends ConfigPhysicalPlan {
 
   private ByteBuffer oldPathBytes;
   private ByteBuffer newPathBytes;
+  private boolean generatedFromSnapshot;
 
   public PipeRenameTimeSeriesPlan() {
     super(ConfigPhysicalPlanType.PipeRenameTimeSeries);
@@ -56,6 +57,15 @@ public class PipeRenameTimeSeriesPlan extends ConfigPhysicalPlan {
   public ByteBuffer getNewPathBytes() {
     newPathBytes.rewind();
     return newPathBytes;
+  }
+
+  public boolean isGeneratedFromSnapshot() {
+    return generatedFromSnapshot;
+  }
+
+  public PipeRenameTimeSeriesPlan markAsGeneratedFromSnapshot() {
+    generatedFromSnapshot = true;
+    return this;
   }
 
   @Override

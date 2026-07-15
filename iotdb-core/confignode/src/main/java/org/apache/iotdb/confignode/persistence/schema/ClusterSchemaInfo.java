@@ -30,7 +30,9 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
 import org.apache.iotdb.commons.exception.table.DropInvalidCategoryColumnException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
@@ -59,6 +61,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeRenameTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
@@ -123,8 +127,11 @@ import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewCommentPlan;
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -134,6 +141,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -148,6 +156,7 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.path.PartialPath.getQualifiedDatabasePartialPath;
@@ -175,7 +184,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
+  public static final String PIPE_RENAME_TIME_SERIES_SNAPSHOT_FILENAME =
+      "pipe_rename_timeseries.bin";
   private static final String ERROR_NAME = "Error Database name";
+
+  // Format: magic, version, pathCount, repeated {physicalPath, finalAliasPath}.
+  private static final int PIPE_RENAME_TIME_SERIES_SNAPSHOT_MAGIC = 0x50525453;
+  private static final int PIPE_RENAME_TIME_SERIES_SNAPSHOT_VERSION = 2;
+
   private final TemplateTable templateTable;
 
   private final TemplatePreSetTable templatePreSetTable;
@@ -304,6 +320,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Delete Database
       (isTableModel ? tableModelMTree : treeModelMTree)
           .deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
+      if (!isTableModel) {
+        final PathPatternTree deletedDatabasePatternTree = new PathPatternTree();
+        deletedDatabasePatternTree.appendPathPattern(
+            getQualifiedDatabasePartialPath(plan.getName()).concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        deletedDatabasePatternTree.constructTree();
+        treeModelMTree.removePipeRenameTimeSeries(deletedDatabasePatternTree);
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
@@ -733,10 +756,126 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus recordPipeRenameTimeSeries(final PipeRenameTimeSeriesPlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final PartialPath oldPath =
+          (PartialPath) PathDeserializeUtil.deserialize(plan.getOldPathBytes().duplicate());
+      final PartialPath newPath =
+          (PartialPath) PathDeserializeUtil.deserialize(plan.getNewPathBytes().duplicate());
+      treeModelMTree.recordPipeRenameTimeSeries(oldPath, newPath);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (final DatabaseNotSetException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus removePipeRenameTimeSeriesByDelete(final PipeDeleteTimeSeriesPlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final PathPatternTree patternTree = PathPatternTree.deserialize(plan.getPatternTreeBytes());
+      treeModelMTree.removePipeRenameTimeSeries(patternTree);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Nullable
+  public PartialPath getPipeRenamedAliasPath(final PartialPath physicalPath) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return treeModelMTree.getPipeRenamedAliasPath(physicalPath);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public List<PipeRenameTimeSeriesPlan> getHistoricalPipeRenameTimeSeriesPlans() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return treeModelMTree.getPipeRenameTimeSeriesList().stream()
+          .map(
+              pair ->
+                  new PipeRenameTimeSeriesPlan(
+                      serializeAsMeasurementPath(pair.left),
+                      serializeAsMeasurementPath(pair.right)))
+          .collect(Collectors.toList());
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  private ByteBuffer serializeAsMeasurementPath(final PartialPath path) {
+    return path instanceof MeasurementPath
+        ? path.serialize()
+        : new MeasurementPath(path.getNodes()).serialize();
+  }
+
+  private void serializeHistoricalPipeRenameTimeSeries(final OutputStream outputStream)
+      throws IOException {
+    final List<Pair<String, String>> paths = treeModelMTree.getPipeRenameTimeSeriesPaths();
+    ReadWriteIOUtils.write(PIPE_RENAME_TIME_SERIES_SNAPSHOT_MAGIC, outputStream);
+    ReadWriteIOUtils.write(PIPE_RENAME_TIME_SERIES_SNAPSHOT_VERSION, outputStream);
+    ReadWriteIOUtils.write(paths.size(), outputStream);
+    for (final Pair<String, String> path : paths) {
+      ReadWriteIOUtils.write(path.left, outputStream);
+      ReadWriteIOUtils.write(path.right, outputStream);
+    }
+  }
+
+  private void deserializeHistoricalPipeRenameTimeSeries(final InputStream inputStream)
+      throws IOException {
+    if (inputStream.available() <= 0) {
+      return;
+    }
+
+    final int magic = ReadWriteIOUtils.readInt(inputStream);
+    if (magic != PIPE_RENAME_TIME_SERIES_SNAPSHOT_MAGIC) {
+      LOGGER.warn(ConfigNodeMessages.PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNRECOGNIZED_MAGIC, magic);
+      return;
+    }
+
+    final int version = ReadWriteIOUtils.readInt(inputStream);
+    if (version != PIPE_RENAME_TIME_SERIES_SNAPSHOT_VERSION) {
+      LOGGER.warn(ConfigNodeMessages.PIPE_RENAME_TIME_SERIES_SNAPSHOT_UNSUPPORTED_VERSION, version);
+      return;
+    }
+
+    int pathCount = ReadWriteIOUtils.readInt(inputStream);
+    while (pathCount-- > 0) {
+      final PartialPath physicalPath = parsePartialPath(ReadWriteIOUtils.readString(inputStream));
+      final PartialPath aliasPath = parsePartialPath(ReadWriteIOUtils.readString(inputStream));
+      try {
+        treeModelMTree.recordPipeRenameTimeSeries(physicalPath, aliasPath);
+      } catch (final DatabaseNotSetException e) {
+        LOGGER.warn(
+            ConfigNodeMessages.PIPE_RENAME_TIME_SERIES_SNAPSHOT_RESTORE_ENTRY_FAILED,
+            physicalPath,
+            aliasPath,
+            e);
+      }
+    }
+  }
+
+  private PartialPath parsePartialPath(final String path) throws IOException {
+    try {
+      return new PartialPath(path);
+    } catch (final IllegalPathException e) {
+      throw new IOException(e);
+    }
+  }
+
   @Override
   public boolean processTakeSnapshot(final File snapshotDir) throws IOException {
     return processDatabaseSchemaSnapshot(
             snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree::serialize)
+        && processDatabaseSchemaSnapshot(
+            snapshotDir,
+            PIPE_RENAME_TIME_SERIES_SNAPSHOT_FILENAME,
+            this::serializeHistoricalPipeRenameTimeSeries)
         && processDatabaseSchemaSnapshot(
             snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree::serialize)
         && templateTable.processTakeSnapshot(snapshotDir)
@@ -795,6 +934,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           treeModelMTree.clear();
           treeModelMTree.deserialize(stream);
         });
+    processOptionalMTreeLoadSnapshot(
+        snapshotDir,
+        PIPE_RENAME_TIME_SERIES_SNAPSHOT_FILENAME,
+        this::deserializeHistoricalPipeRenameTimeSeries);
     processMTreeLoadSnapshot(
         snapshotDir,
         TABLE_SNAPSHOT_FILENAME,
@@ -826,6 +969,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
+  }
+
+  public void processOptionalMTreeLoadSnapshot(
+      final File snapshotDir,
+      final String snapshotFileName,
+      final SerDeFunction<InputStream> function)
+      throws IOException {
+    final File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      return;
+    }
+    processMTreeLoadSnapshot(snapshotDir, snapshotFileName, function);
   }
 
   @FunctionalInterface

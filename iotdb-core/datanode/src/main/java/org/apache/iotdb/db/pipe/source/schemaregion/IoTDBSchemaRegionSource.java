@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionPlanUtil;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
@@ -265,9 +266,15 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
           TABLE_STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
     }
     while (generator.hasNext()) {
-      final Optional<Statement> statement =
-          batchVisitor.process((StatementNode) generator.next(), null);
-      if (statement.isPresent()) {
+      final Statement snapshotStatement = (Statement) generator.next();
+      final Optional<Statement> sanitizedSnapshotStatement =
+          PipeSchemaRegionPlanUtil.sanitizeRenameInternalStatement(snapshotStatement);
+      if (!sanitizedSnapshotStatement.isPresent()) {
+        continue;
+      }
+      final Optional<Statement> batchedStatement =
+          batchVisitor.process((StatementNode) sanitizedSnapshotStatement.get(), null);
+      if (batchedStatement.isPresent()) {
         if (!generator.hasNext()) {
           remainBatches =
               batchVisitor.getRemainBatches().stream()
@@ -276,7 +283,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
                   .iterator();
         }
         return new PipeSchemaRegionWritePlanEvent(
-            TREE_STATEMENT_TO_PLAN_VISITOR.process(statement.get(), null), false);
+            TREE_STATEMENT_TO_PLAN_VISITOR.process(batchedStatement.get(), null), false);
       }
     }
     if (Objects.isNull(remainBatches)) {

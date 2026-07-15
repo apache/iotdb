@@ -1083,6 +1083,7 @@ public final class DataNodeMiscMessages {
   public static final String STOP_AND_CLEAR_DATA_NODE_SUCCEED = "停止并清理 DataNode 成功";
   public static final String NO_DATA_PARTITION_TABLE_GENERATION_TASK_FOUND =
       "未找到 DataPartitionTable 生成任务";
+  public static final String FAILED_TO_SERIALIZE_PATH = "序列化路径失败：%s";
 
   // --- DataNode ---
   public static final String SUCCESSFULLY_REGISTERED_ALL_UDFS_TAKES_MS =

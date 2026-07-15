@@ -92,6 +92,7 @@ public class RenameTimeSeriesProcedure
   private String queryId;
   private PartialPath oldPath;
   private PartialPath newPath;
+  private PartialPath pipeRecordOldPath;
 
   // Transient: Request context
   private transient ByteBuffer oldPathBytes;
@@ -143,6 +144,10 @@ public class RenameTimeSeriesProcedure
     return analysisContext;
   }
 
+  public PipeRenameTimeSeriesPlan generatePipeRenameTimeSeriesPlan() {
+    return new PipeRenameTimeSeriesPlan(getPipeRecordOldPath().serialize(), newPath.serialize());
+  }
+
   protected final void registerRollbackAction(final RollbackAction rollbackAction) {
     rollbackActions.push(rollbackAction);
   }
@@ -159,6 +164,7 @@ public class RenameTimeSeriesProcedure
     try {
       switch (state) {
         case LOCK_AND_GET_SCHEMA_INFO:
+          redirectPipeReceiverOldPathFromConfigMTreeIfNecessary(env);
           LOGGER.info("Phase 1: Validate and get schema info for {}", requestMessage);
           fetchAndValidateSchemaInfo(env);
 
@@ -207,6 +213,23 @@ public class RenameTimeSeriesProcedure
 
   // ==================== Context Management ====================
 
+  private void redirectPipeReceiverOldPathFromConfigMTreeIfNecessary(
+      final ConfigNodeProcedureEnv env) {
+    if (!isGeneratedByPipe || pipeRecordOldPath != null) {
+      return;
+    }
+
+    final PartialPath aliasPath =
+        env.getConfigManager().getClusterSchemaManager().getPipeRenamedAliasPath(oldPath);
+    if (aliasPath == null || oldPath.equals(aliasPath)) {
+      return;
+    }
+
+    pipeRecordOldPath = oldPath;
+    oldPath = aliasPath;
+    generateRequestBytes();
+  }
+
   private void fetchAndValidateSchemaInfo(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         getRelatedSchemaRegionGroup(env, oldPath);
@@ -237,7 +260,33 @@ public class RenameTimeSeriesProcedure
       handleLockFailure(resp);
     } else {
       setAnalysisContext(resp);
+      redirectPipeReceiverOldPathIfNecessary(env);
     }
+  }
+
+  void redirectPipeReceiverOldPathIfNecessary(final ConfigNodeProcedureEnv env) {
+    if (!isGeneratedByPipe
+        || analysisContext == null
+        || analysisContext.getTimeSeriesInfo() == null
+        || !analysisContext.getTimeSeriesInfo().isSetPath()
+        || analysisContext.getTimeSeriesInfo().isSetDataType()) {
+      return;
+    }
+
+    final PartialPath fetchedPath =
+        (PartialPath)
+            PathDeserializeUtil.deserialize(
+                ByteBuffer.wrap(analysisContext.getTimeSeriesInfo().getPath()));
+    if (oldPath.equals(fetchedPath)) {
+      return;
+    }
+
+    if (pipeRecordOldPath == null) {
+      pipeRecordOldPath = oldPath;
+    }
+    oldPath = fetchedPath;
+    generateRequestBytes();
+    fetchAndValidateSchemaInfo(env);
   }
 
   private void handleLockFailure(TRenameTimeSeriesResp resp) {
@@ -541,7 +590,8 @@ public class RenameTimeSeriesProcedure
 
   private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
     try {
-      PipeRenameTimeSeriesPlan plan = new PipeRenameTimeSeriesPlan(oldPathBytes, newPathBytes);
+      final PipeRenameTimeSeriesPlan plan =
+          new PipeRenameTimeSeriesPlan(getPipeRecordOldPath().serialize(), newPathBytes);
       TSStatus result =
           env.getConfigManager()
               .getConsensusManager()
@@ -699,6 +749,10 @@ public class RenameTimeSeriesProcedure
     newPath.serialize(stream);
     serializeAnalysisContext(stream);
     serializeRollbackActions(stream);
+    ReadWriteIOUtils.write(pipeRecordOldPath != null, stream);
+    if (pipeRecordOldPath != null) {
+      pipeRecordOldPath.serialize(stream);
+    }
   }
 
   @Override
@@ -720,6 +774,16 @@ public class RenameTimeSeriesProcedure
       return;
     }
     deserializeRollbackActions(byteBuffer);
+    if (!byteBuffer.hasRemaining()) {
+      return;
+    }
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeRecordOldPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    }
+  }
+
+  private PartialPath getPipeRecordOldPath() {
+    return pipeRecordOldPath == null ? oldPath : pipeRecordOldPath;
   }
 
   private void serializeAnalysisContext(final DataOutputStream stream) throws IOException {

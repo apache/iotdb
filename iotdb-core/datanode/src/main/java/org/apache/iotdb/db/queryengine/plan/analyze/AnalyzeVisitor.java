@@ -979,7 +979,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * @return the path to add, or null if should be skipped
    */
   private MeasurementPath processMatchedPathForPattern(
-      MeasurementPath matchedPath, ISchemaTree schemaTree, MPPQueryContext context) {
+      MeasurementPath matchedPath,
+      ISchemaTree schemaTree,
+      MPPQueryContext context,
+      boolean allowDeleteInvalidSeries) {
     IMeasurementSchema schema = matchedPath.getMeasurementSchema();
     if (!(schema instanceof MeasurementSchema)) {
       // Not a MeasurementSchema, keep the matched path
@@ -987,9 +990,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     Map<String, String> props = schema.getProps();
-    // Skip invalid series
     if (MeasurementPropsUtils.isInvalid(props)) {
-      return null;
+      return allowDeleteInvalidSeries ? matchedPath : null;
     }
 
     // Replace alias series with physical path
@@ -1017,7 +1019,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * @return the path to add, or null if should be skipped
    */
   private MeasurementPath processMatchedPathForExact(
-      MeasurementPath originalPath, List<MeasurementPath> matchedPaths) {
+      MeasurementPath originalPath,
+      List<MeasurementPath> matchedPaths,
+      boolean allowDeleteInvalidSeries) {
     for (MeasurementPath matchedPath : matchedPaths) {
       // Verify exact match
       if (!matchedPath.getFullPath().equals(originalPath.getFullPath())) {
@@ -1031,9 +1035,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       Map<String, String> props = schema.getProps();
-      // Skip invalid series
       if (MeasurementPropsUtils.isInvalid(props)) {
-        return null;
+        return allowDeleteInvalidSeries ? originalPath : null;
       }
 
       // Replace alias series with physical path
@@ -4402,9 +4405,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context, canSeeAuditDB);
     Set<IDeviceID> deduplicatedDeviceIDs = new HashSet<>();
 
-    // Check for invalid series and alias series
-    // If all series are invalid, throw exception
-    if (schemaTree.allInvalidSeries()) {
+    final boolean allowDeleteInvalidSeries = deleteDataStatement.isAllowDeleteInvalidSeries();
+
+    // Check for invalid series and alias series. Pipe receiver data deletion may target the
+    // physical invalid series behind a renamed series, while user SQL keeps rejecting it.
+    if (schemaTree.allInvalidSeries() && !allowDeleteInvalidSeries) {
       throw new SemanticException("Cannot delete data: all target series are invalid");
     }
 
@@ -4424,14 +4429,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // For pattern paths, process each matched path individually
           for (MeasurementPath matchedPath : searchResult.left) {
             MeasurementPath pathToAdd =
-                processMatchedPathForPattern(matchedPath, schemaTree, context);
+                processMatchedPathForPattern(
+                    matchedPath, schemaTree, context, allowDeleteInvalidSeries);
             if (pathToAdd != null) {
               processedPathList.add(pathToAdd);
             }
           }
         } else {
           // For exact paths, should match only one path
-          MeasurementPath processedPath = processMatchedPathForExact(path, searchResult.left);
+          MeasurementPath processedPath =
+              processMatchedPathForExact(path, searchResult.left, allowDeleteInvalidSeries);
           if (processedPath != null) {
             processedPathList.add(processedPath);
           }

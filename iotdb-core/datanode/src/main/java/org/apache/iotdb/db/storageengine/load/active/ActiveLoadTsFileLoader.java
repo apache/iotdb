@@ -280,6 +280,9 @@ public class ActiveLoadTsFileLoader {
               ? null
               : parentFile.getName());
     }
+    if (entry.isGeneratedByPipe()) {
+      statement.setTsFileIsPhysicalPath(true);
+    }
 
     return executeStatement(
         entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);

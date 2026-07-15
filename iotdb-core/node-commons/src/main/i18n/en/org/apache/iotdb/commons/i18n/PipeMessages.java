@@ -410,6 +410,20 @@ public final class PipeMessages {
       "Pipe: %s and %s cannot be used together.";
   public static final String PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN =
       "Pipe: The parameter %s only supports a single pattern now.";
+  public static final String SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe: Setting %s is not allowed.";
+  public static final String FAILED_TO_ALTER_PIPE_MODIFYING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe: Failed to alter pipe %s, modifying %s is not allowed.";
+  public static final String FAILED_TO_CREATE_PIPE_SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe: Failed to create pipe %s, setting %s is not allowed.";
+  public static final String FAILED_TO_CHECK_INTERNAL_PIPE_SOURCE_PATTERN_OVERLAP_FOR_DATABASE =
+      "Pipe: Failed to check internal pipe source pattern overlap for database {}.";
+  public static final String FAILED_TO_PARSE_INTERNAL_PIPE_SOURCE_PATTERN_INCLUSION_PATH =
+      "Pipe: Failed to parse internal pipe source pattern inclusion path {}.";
+  public static final String PATTERN_LIST_HAS_EMPTY_SEGMENT =
+      "Pipe: The pattern list contains an empty segment: %s";
+  public static final String PATTERN_LIST_HAS_UNCLOSED_BACKQUOTE =
+      "Pipe: The pattern list contains an unclosed backquote: %s";
   public static final String FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK =
       "Pipe: Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].";
   public static final String EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN =

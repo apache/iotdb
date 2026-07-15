@@ -155,6 +155,7 @@ public class PipePlanToStatementVisitor implements PlanVisitor<Object, Void> {
     statement.setCompressors(node.getCompressors());
     statement.setEncodings(node.getEncodings());
     statement.setAttributesList(node.getAttributesList());
+    node.getMeasurements().forEach(measurement -> statement.addPropsList(null));
     statement.setAliasList(node.getAliasList());
     statement.setDevicePath(node.getDevicePath());
     statement.setMeasurements(node.getMeasurements());
@@ -284,6 +285,7 @@ public class PipePlanToStatementVisitor implements PlanVisitor<Object, Void> {
     statement.setDeleteEndTime(node.getDeleteEndTime());
     statement.setDeleteStartTime(node.getDeleteStartTime());
     statement.setPathList(node.getPathList());
+    statement.setAllowDeleteInvalidSeries(true);
     return statement;
   }
 

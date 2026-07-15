@@ -598,12 +598,7 @@ public class PipePlanTreePatternParseVisitorTest {
 
   @Test
   public void testDeleteData() throws IllegalPathException {
-    Assert.assertEquals(
-        new DeleteDataNode(
-            new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
-            Long.MIN_VALUE,
-            Long.MAX_VALUE),
+    Assert.assertFalse(
         IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteData(
                 new DeleteDataNode(
@@ -614,7 +609,7 @@ public class PipePlanTreePatternParseVisitorTest {
                     Long.MIN_VALUE,
                     Long.MAX_VALUE),
                 prefixPathPattern)
-            .orElseThrow(AssertionError::new));
+            .isPresent());
 
     Assert.assertEquals(
         new DeleteDataNode(

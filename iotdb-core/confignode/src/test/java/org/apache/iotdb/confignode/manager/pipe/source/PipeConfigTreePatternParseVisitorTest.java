@@ -531,6 +531,8 @@ public class PipeConfigTreePatternParseVisitorTest {
                 .visitPipeRenameTimeSeries(pipeRenameTimeSeriesPlan, fullPathPattern)
                 .orElseThrow(AssertionError::new);
 
+    Assert.assertEquals(pipeRenameTimeSeriesPlan, parsedPlan2);
+
     // Test: Plan matches multiple path pattern - should pass
     final PipeRenameTimeSeriesPlan parsedPlan3 =
         (PipeRenameTimeSeriesPlan)
@@ -540,7 +542,7 @@ public class PipeConfigTreePatternParseVisitorTest {
 
     Assert.assertEquals(pipeRenameTimeSeriesPlan, parsedPlan3);
 
-    // Test: Plan should be filtered when neither oldPath nor newPath matches the pattern
+    // Test: Plan should be filtered when oldPath does not match the pattern
     final PartialPath unmatchedOldPath = new PartialPath("root.other_db.device.s1");
     final PartialPath unmatchedNewPath = new PartialPath("root.other_db.device.s1_alias");
 
@@ -576,7 +578,7 @@ public class PipeConfigTreePatternParseVisitorTest {
             .visitPipeRenameTimeSeries(pipeRenameTimeSeriesPlanToFilter, multiplePathPattern)
             .isPresent());
 
-    // Test: Plan should pass when only oldPath matches the pattern (rename out of scope)
+    // Test: Plan should pass when oldPath matches the pattern
     final PartialPath matchedOldPath = new PartialPath("root.db.device.s1");
     final PartialPath unmatchedNewPath2 = new PartialPath("root.other_db.device.s1_alias");
 
@@ -594,13 +596,13 @@ public class PipeConfigTreePatternParseVisitorTest {
     final PipeRenameTimeSeriesPlan pipeRenameTimeSeriesPlanOldMatch =
         new PipeRenameTimeSeriesPlan(matchedOldPathBytes, unmatchedNewPathBytes2);
 
-    // Should pass when oldPath matches (rename out of scope is still captured)
+    // Should pass when oldPath matches
     Assert.assertTrue(
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitPipeRenameTimeSeries(pipeRenameTimeSeriesPlanOldMatch, prefixPathPattern)
             .isPresent());
 
-    // Test: Plan should pass when only newPath matches the pattern (rename into scope)
+    // Test: Plan should be filtered when only newPath matches the pattern
     final PartialPath unmatchedOldPath2 = new PartialPath("root.other_db.device.s1");
     final PartialPath matchedNewPath = new PartialPath("root.db.device.s1_alias");
 
@@ -618,6 +620,7 @@ public class PipeConfigTreePatternParseVisitorTest {
     final PipeRenameTimeSeriesPlan pipeRenameTimeSeriesPlanNewMatch =
         new PipeRenameTimeSeriesPlan(unmatchedOldPathBytes2, matchedNewPathBytes);
 
+    // Should be filtered because rename capture is decided by oldPath
     Assert.assertFalse(
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitPipeRenameTimeSeries(pipeRenameTimeSeriesPlanNewMatch, prefixPathPattern)

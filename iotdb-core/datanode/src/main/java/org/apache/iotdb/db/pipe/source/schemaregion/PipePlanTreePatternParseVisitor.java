@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithInternalSourceIotdbTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithInternalSourceTreePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionPlanUtil;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -45,7 +48,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,32 +70,63 @@ import java.util.stream.IntStream;
  * one is used in the {@link PipeSchemaRegionWritePlanEvent} in {@link SchemaRegionListeningQueue}.
  */
 public class PipePlanTreePatternParseVisitor
-    implements PlanVisitor<Optional<PlanNode>, IoTDBTreePatternOperations> {
+    implements PlanVisitor<Optional<PlanNode>, TreePattern> {
   @Override
-  public Optional<PlanNode> visitPlan(
-      final PlanNode node, final IoTDBTreePatternOperations pattern) {
+  public Optional<PlanNode> visitPlan(final PlanNode node, final TreePattern pattern) {
     return Optional.of(node);
   }
 
-  @Override
-  public Optional<PlanNode> visitCreateTimeSeries(
-      final CreateTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
-    return pattern.matchesMeasurement(
-            node.getPath().getIDeviceID(), node.getPath().getMeasurement())
-        ? Optional.of(node)
+  private static TreePattern unwrapInternalSourcePattern(final TreePattern pattern) {
+    if (pattern instanceof WithInternalSourceIotdbTreePattern) {
+      return ((WithInternalSourceIotdbTreePattern) pattern).getUserPattern();
+    }
+    return pattern instanceof WithInternalSourceTreePattern
+        ? ((WithInternalSourceTreePattern) pattern).getUserPattern()
+        : pattern;
+  }
+
+  private static Optional<IoTDBTreePatternOperations> unwrapInternalSourceIotdbPattern(
+      final TreePattern pattern) {
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
+    return userPattern instanceof IoTDBTreePatternOperations iotdbPattern
+        ? Optional.of(iotdbPattern)
         : Optional.empty();
   }
 
   @Override
+  public Optional<PlanNode> visitCreateTimeSeries(
+      final CreateTimeSeriesNode node, final TreePattern pattern) {
+    if (PipeSchemaRegionPlanUtil.hasRealtimeNonTransferableRenameInternalProps(node.getProps())) {
+      return Optional.empty();
+    }
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
+    if (!userPattern.matchesMeasurement(
+        node.getPath().getIDeviceID(), node.getPath().getMeasurement())) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new CreateTimeSeriesNode(
+            node.getPlanNodeId(),
+            node.getPath(),
+            node.getDataType(),
+            node.getEncoding(),
+            node.getCompressor(),
+            PipeSchemaRegionPlanUtil.sanitizeRenameInternalProps(node.getProps()),
+            node.getTags(),
+            node.getAttributes(),
+            node.getAlias()));
+  }
+
+  @Override
   public Optional<PlanNode> visitCreateAlignedTimeSeries(
-      final CreateAlignedTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
+      final CreateAlignedTimeSeriesNode node, final TreePattern pattern) {
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
     final int[] filteredIndexes =
         IntStream.range(0, node.getMeasurements().size())
             .filter(
                 index ->
-                    pattern.matchesMeasurement(
-                        node.getDevicePath().getIDeviceIDAsFullDevice(),
-                        node.getMeasurements().get(index)))
+                    userPattern.matchesMeasurement(
+                        node.getDevicePath().getIDeviceID(), node.getMeasurements().get(index)))
             .toArray();
     return filteredIndexes.length > 0
         ? Optional.of(
@@ -112,16 +145,22 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitCreateMultiTimeSeries(
-      final CreateMultiTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
+      final CreateMultiTimeSeriesNode node, final TreePattern pattern) {
+    final Optional<IoTDBTreePatternOperations> iotdbPatternOptional =
+        unwrapInternalSourceIotdbPattern(pattern);
+    if (iotdbPatternOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final IoTDBTreePatternOperations iotdbPattern = iotdbPatternOptional.get();
     final Map<PartialPath, MeasurementGroup> filteredMeasurementGroupMap =
         node.getMeasurementGroupMap().entrySet().stream()
-            .filter(entry -> pattern.matchPrefixPath(entry.getKey().getFullPath()))
+            .filter(entry -> iotdbPattern.matchPrefixPath(entry.getKey().getFullPath()))
             .map(
                 entry ->
                     new Pair<>(
                         entry.getKey(),
                         trimMeasurementGroup(
-                            entry.getKey().getIDeviceIDAsFullDevice(), entry.getValue(), pattern)))
+                            entry.getKey().getIDeviceID(), entry.getValue(), iotdbPattern)))
             .filter(pair -> Objects.nonNull(pair.getRight()))
             .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     return !filteredMeasurementGroupMap.isEmpty()
@@ -137,6 +176,7 @@ public class PipePlanTreePatternParseVisitor
     final int[] filteredIndexes =
         IntStream.range(0, group.size())
             .filter(index -> pattern.matchesMeasurement(device, group.getMeasurements().get(index)))
+            .filter(index -> !hasRealtimeNonTransferableRenameInternalProps(group, index))
             .toArray();
     if (filteredIndexes.length == 0) {
       return null;
@@ -160,16 +200,27 @@ public class PipePlanTreePatternParseVisitor
                 targetMeasurementGroup.addAlias(group.getAliasList().get(index));
               }
               if (Objects.nonNull(group.getPropsList())) {
-                targetMeasurementGroup.addProps(group.getPropsList().get(index));
+                targetMeasurementGroup.addProps(
+                    PipeSchemaRegionPlanUtil.sanitizeRenameInternalProps(
+                        group.getPropsList().get(index)));
               }
             });
     return targetMeasurementGroup;
   }
 
+  private static boolean hasRealtimeNonTransferableRenameInternalProps(
+      final MeasurementGroup group, final int index) {
+    return Objects.nonNull(group.getPropsList())
+        && index < group.getPropsList().size()
+        && PipeSchemaRegionPlanUtil.hasRealtimeNonTransferableRenameInternalProps(
+            group.getPropsList().get(index));
+  }
+
   @Override
   public Optional<PlanNode> visitAlterTimeSeries(
-      final AlterTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
-    return pattern.matchesMeasurement(
+      final AlterTimeSeriesNode node, final TreePattern pattern) {
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
+    return userPattern.matchesMeasurement(
             node.getPath().getIDeviceID(), node.getPath().getMeasurement())
         ? Optional.of(node)
         : Optional.empty();
@@ -177,13 +228,17 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitInternalCreateTimeSeries(
-      final InternalCreateTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
+      final InternalCreateTimeSeriesNode node, final TreePattern pattern) {
+    final Optional<IoTDBTreePatternOperations> iotdbPatternOptional =
+        unwrapInternalSourceIotdbPattern(pattern);
+    if (iotdbPatternOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final IoTDBTreePatternOperations iotdbPattern = iotdbPatternOptional.get();
     final MeasurementGroup group =
-        pattern.matchPrefixPath(node.getDevicePath().getFullPath())
+        iotdbPattern.matchPrefixPath(node.getDevicePath().getFullPath())
             ? trimMeasurementGroup(
-                node.getDevicePath().getIDeviceIDAsFullDevice(),
-                node.getMeasurementGroup(),
-                pattern)
+                node.getDevicePath().getIDeviceID(), node.getMeasurementGroup(), iotdbPattern)
             : null;
     return Objects.nonNull(group)
         ? Optional.of(
@@ -194,18 +249,24 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitActivateTemplate(
-      final ActivateTemplateNode node, final IoTDBTreePatternOperations pattern) {
-    return pattern.matchDevice(node.getActivatePath().getFullPath())
-        ? Optional.of(node)
-        : Optional.empty();
+      final ActivateTemplateNode node, final TreePattern pattern) {
+    return unwrapInternalSourceIotdbPattern(pattern)
+        .filter(iotdbPattern -> iotdbPattern.matchDevice(node.getActivatePath().getFullPath()))
+        .map(iotdbPattern -> node);
   }
 
   @Override
   public Optional<PlanNode> visitInternalBatchActivateTemplate(
-      final InternalBatchActivateTemplateNode node, final IoTDBTreePatternOperations pattern) {
+      final InternalBatchActivateTemplateNode node, final TreePattern pattern) {
+    final Optional<IoTDBTreePatternOperations> iotdbPatternOptional =
+        unwrapInternalSourceIotdbPattern(pattern);
+    if (iotdbPatternOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final IoTDBTreePatternOperations iotdbPattern = iotdbPatternOptional.get();
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
+            .filter(entry -> iotdbPattern.matchDevice(entry.getKey().getFullPath()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(
@@ -216,10 +277,16 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitInternalCreateMultiTimeSeries(
-      final InternalCreateMultiTimeSeriesNode node, final IoTDBTreePatternOperations pattern) {
+      final InternalCreateMultiTimeSeriesNode node, final TreePattern pattern) {
+    final Optional<IoTDBTreePatternOperations> iotdbPatternOptional =
+        unwrapInternalSourceIotdbPattern(pattern);
+    if (iotdbPatternOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final IoTDBTreePatternOperations iotdbPattern = iotdbPatternOptional.get();
     final Map<PartialPath, Pair<Boolean, MeasurementGroup>> filteredDeviceMap =
         node.getDeviceMap().entrySet().stream()
-            .filter(entry -> pattern.matchPrefixPath(entry.getKey().getFullPath()))
+            .filter(entry -> iotdbPattern.matchPrefixPath(entry.getKey().getFullPath()))
             .map(
                 entry ->
                     new Pair<>(
@@ -227,9 +294,9 @@ public class PipePlanTreePatternParseVisitor
                         new Pair<>(
                             entry.getValue().getLeft(),
                             trimMeasurementGroup(
-                                entry.getKey().getIDeviceIDAsFullDevice(),
+                                entry.getKey().getIDeviceID(),
                                 entry.getValue().getRight(),
-                                pattern))))
+                                iotdbPattern))))
             .filter(pair -> Objects.nonNull(pair.getRight().getRight()))
             .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     return !filteredDeviceMap.isEmpty()
@@ -240,10 +307,16 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitBatchActivateTemplate(
-      final BatchActivateTemplateNode node, final IoTDBTreePatternOperations pattern) {
+      final BatchActivateTemplateNode node, final TreePattern pattern) {
+    final Optional<IoTDBTreePatternOperations> iotdbPatternOptional =
+        unwrapInternalSourceIotdbPattern(pattern);
+    if (iotdbPatternOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    final IoTDBTreePatternOperations iotdbPattern = iotdbPatternOptional.get();
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
+            .filter(entry -> iotdbPattern.matchDevice(entry.getKey().getFullPath()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(
@@ -253,12 +326,13 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitCreateLogicalView(
-      final CreateLogicalViewNode node, final IoTDBTreePatternOperations pattern) {
+      final CreateLogicalViewNode node, final TreePattern pattern) {
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
     final Map<PartialPath, ViewExpression> filteredViewPathToSourceMap =
         node.getViewPathToSourceExpressionMap().entrySet().stream()
             .filter(
                 entry ->
-                    pattern.matchesMeasurement(
+                    userPattern.matchesMeasurement(
                         entry.getKey().getIDeviceID(), entry.getKey().getMeasurement()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredViewPathToSourceMap.isEmpty()
@@ -268,12 +342,13 @@ public class PipePlanTreePatternParseVisitor
 
   @Override
   public Optional<PlanNode> visitAlterLogicalView(
-      final AlterLogicalViewNode node, final IoTDBTreePatternOperations pattern) {
+      final AlterLogicalViewNode node, final TreePattern pattern) {
+    final TreePattern userPattern = unwrapInternalSourcePattern(pattern);
     final Map<PartialPath, ViewExpression> filteredViewPathToSourceMap =
         node.getViewPathToSourceMap().entrySet().stream()
             .filter(
                 entry ->
-                    pattern.matchesMeasurement(
+                    userPattern.matchesMeasurement(
                         entry.getKey().getIDeviceID(), entry.getKey().getMeasurement()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredViewPathToSourceMap.isEmpty()
@@ -282,14 +357,10 @@ public class PipePlanTreePatternParseVisitor
   }
 
   @Override
-  public Optional<PlanNode> visitDeleteData(
-      final DeleteDataNode node, final IoTDBTreePatternOperations pattern) {
+  public Optional<PlanNode> visitDeleteData(final DeleteDataNode node, final TreePattern pattern) {
     final List<MeasurementPath> intersectedPaths =
         node.getPathList().stream()
-            .map(pattern::getIntersection)
-            .flatMap(Collection::stream)
-            .distinct()
-            .map(d -> (MeasurementPath) d)
+            .filter(path -> pattern.matchesMeasurement(path.getIDeviceID(), path.getMeasurement()))
             .collect(Collectors.toList());
     return !intersectedPaths.isEmpty()
         ? Optional.of(

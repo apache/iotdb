@@ -219,9 +219,10 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
     final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
+    final File pipeRenameTimeSeriesFile = snapshotEvent.getPipeRenameTimeSeriesFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = getClientManager().getClient();
 
-    // 1. Transfer snapshotFile, and template File if exists
+    // 1. Transfer snapshotFile, template file and pipe rename file if exists.
     transferFilePieces(
         Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
         snapshotFile,
@@ -231,6 +232,13 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       transferFilePieces(
           Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
           templateFile,
+          clientAndStatus,
+          true);
+    }
+    if (Objects.nonNull(pipeRenameTimeSeriesFile)) {
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          pipeRenameTimeSeriesFile,
           clientAndStatus,
           true);
     }
@@ -250,6 +258,10 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
                   snapshotFile.length(),
                   Objects.nonNull(templateFile) ? templateFile.getName() : null,
                   Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                  Objects.nonNull(pipeRenameTimeSeriesFile)
+                      ? pipeRenameTimeSeriesFile.getName()
+                      : null,
+                  Objects.nonNull(pipeRenameTimeSeriesFile) ? pipeRenameTimeSeriesFile.length() : 0,
                   snapshotEvent.getFileType(),
                   snapshotEvent.toSealTypeString(),
                   snapshotEvent.getAuthUserName()));

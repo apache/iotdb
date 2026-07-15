@@ -1085,6 +1085,7 @@ public final class DataNodeMiscMessages {
   public static final String STOP_AND_CLEAR_DATA_NODE_SUCCEED = "Stop And Clear Data Node succeed";
   public static final String NO_DATA_PARTITION_TABLE_GENERATION_TASK_FOUND =
       "No DataPartitionTable generation task found";
+  public static final String FAILED_TO_SERIALIZE_PATH = "Failed to serialize path: %s";
 
   // --- DataNode ---
   public static final String SUCCESSFULLY_REGISTERED_ALL_UDFS_TAKES_MS =

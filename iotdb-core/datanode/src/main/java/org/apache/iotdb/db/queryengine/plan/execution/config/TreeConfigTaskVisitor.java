@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -248,6 +249,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -675,22 +677,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
-    for (final String sourceAttribute : createPipeStatement.getSourceAttributes().keySet()) {
-      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
-                createPipeStatement.getPipeName(),
-                sourceAttribute));
-      }
-      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
-                createPipeStatement.getPipeName(),
-                sourceAttribute));
-      }
-    }
+    PipeSourceConstant.validateUserProvidedSourceAttributes(
+        createPipeStatement.getSourceAttributes(), createPipeStatement.getPipeName(), false);
 
     // Inject tree model into the source attributes
     createPipeStatement
@@ -714,21 +702,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterPipe(
       final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (final String extractorAttributeKey : alterPipeStatement.getSourceAttributes().keySet()) {
-      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
-                alterPipeStatement.getPipeName(),
-                extractorAttributeKey));
-      }
-      if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
-                alterPipeStatement.getPipeName(),
-                extractorAttributeKey));
-      }
+    try {
+      PipeSourceConstant.validateUserProvidedSourceAttributes(
+          alterPipeStatement.getSourceAttributes(), alterPipeStatement.getPipeName(), true);
+    } catch (final PipeException e) {
+      throw new SemanticException(e.getMessage());
     }
 
     final String userName = context.getSession().getUserName();

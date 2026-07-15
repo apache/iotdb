@@ -53,7 +53,9 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionPlanUtil;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
@@ -108,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -116,6 +119,7 @@ import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.db.utils.PipeRenamedSeriesUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -149,6 +153,7 @@ import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
+import static org.apache.iotdb.db.utils.PipeRenamedSeriesUtils.markPipeInsertStatementAllowingInvalidSeries;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -499,6 +504,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferTabletInsertNode(
       final PipeTransferTabletInsertNodeReq req) {
     final InsertBaseStatement statement = req.constructStatement();
+    markPipeInsertStatementAllowingInvalidSeries(statement);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -507,6 +513,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
     final InsertBaseStatement statement = req.constructStatement();
+    markPipeInsertStatementAllowingInvalidSeries(statement);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -515,6 +522,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
     final InsertTabletStatement statement = req.constructStatement();
+    markPipeInsertStatementAllowingInvalidSeries(statement);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -562,6 +570,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
+    markPipeInsertStatementAllowingInvalidSeries(statementPair.getLeft());
+    markPipeInsertStatementAllowingInvalidSeries(statementPair.getRight());
     return new TPipeTransferResp(
         PipeReceiverStatusHandler.getPriorStatus(
             Stream.of(
@@ -576,6 +586,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletBatchV2(final PipeTransferTabletBatchReqV2 req) {
     final List<InsertBaseStatement> statementSet = req.constructStatements();
+    statementSet.forEach(PipeRenamedSeriesUtils::markPipeInsertStatementAllowingInvalidSeries);
     return new TPipeTransferResp(
         PipeReceiverStatusHandler.getPriorStatus(
             (statementSet.isEmpty()
@@ -710,7 +721,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         validateTsFile || shouldConvertDataTypeOnTypeMismatch,
         null,
         shouldMarkAsPipeRequest,
-        false,
+        shouldMarkAsPipeRequest,
         AuthorityChecker.SUPER_USER);
   }
 
@@ -738,6 +749,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
     statement.updateDatabaseLevelByTreeDatabase();
+    statement.setTsFileIsPhysicalPath(true);
     return statement;
   }
 
@@ -791,6 +803,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         if (!executionTypes.contains(originalStatement.getType())) {
           continue;
         }
+        if (shouldSkipRenamedTimeseriesSnapshotStatement(originalStatement)) {
+          continue;
+        }
+
+        if (PipeSchemaRegionPlanUtil.isInvalidPhysicalSnapshotStatement(originalStatement)) {
+          flushSchemaSnapshotStatementBatches(results);
+          STATEMENT_TREE_PATTERN_PARSE_VISITOR
+              .process(originalStatement, (IoTDBTreePatternOperations) treePattern)
+              .ifPresent(
+                  statement ->
+                      results.add(
+                          classifyInvalidPhysicalSnapshotCreateResult(
+                              executeStatementAndClassifyExceptions(statement),
+                              (CreateTimeSeriesStatement) statement)));
+          continue;
+        }
 
         // The statements do not contain AlterLogicalViewStatements
         // Here we apply the statements as many as possible
@@ -819,10 +847,32 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                             statement, databasePath.getNodes()[1])));
       }
     }
+    flushSchemaSnapshotStatementBatches(results);
+    return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  private void flushSchemaSnapshotStatementBatches(final List<TSStatus> results) {
     batchVisitor.getRemainBatches().stream()
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
-    return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  private TSStatus classifyInvalidPhysicalSnapshotCreateResult(
+      final TSStatus status, final CreateTimeSeriesStatement statement) {
+    return status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+            && status.isSetMessage()
+            && status
+                .getMessage()
+                .equals(
+                    String.format(
+                        DataNodeSchemaMessages.EXCEPTION_TIMESERIES_ARG_IS_INVALID,
+                        statement.getPath()))
+        ? RpcUtils.SUCCESS_STATUS
+        : status;
+  }
+
+  private static boolean shouldSkipRenamedTimeseriesSnapshotStatement(final Statement statement) {
+    return PipeSchemaRegionPlanUtil.isRenameInternalStatement(statement);
   }
 
   static boolean shouldLoadTreeSchemaSnapshotDatabase(
@@ -875,6 +925,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
+    if (PipeSchemaRegionPlanUtil.isRenameInternalPlan(req.getPlanNode())) {
+      return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+    }
+
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
     if (req.getPlanNode() instanceof AlterLogicalViewNode) {
@@ -1073,6 +1127,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         PIPE_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
     try {
       if (statement instanceof InsertBaseStatement) {
+        markPipeInsertStatementAllowingInvalidSeries((InsertBaseStatement) statement);
         estimatedMemory = ((InsertBaseStatement) statement).ramBytesUsed();
         for (int i = 0; i < tryCount; ++i) {
           try {
@@ -1469,6 +1524,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTreeModel(
       final Statement statement, final String databaseName) {
+    if (statement instanceof InsertBaseStatement insertBaseStatement) {
+      markPipeInsertStatementAllowingInvalidSeries(insertBaseStatement);
+    }
+
     if (autoCreateTreeDatabaseIfNecessary(databaseName) == TreeDatabaseCreationResult.CONFLICTED) {
       // Continue execution, but let partition analysis infer the receiver-side database.
       clearTreeDatabaseName(statement);

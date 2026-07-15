@@ -69,6 +69,7 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
     final InsertBaseStatement statement =
         (InsertBaseStatement)
             IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
+    statement.setAllowInsertIntoInvalidSeries(true);
 
     // Tree model
     if (Objects.isNull(dataBaseName)) {

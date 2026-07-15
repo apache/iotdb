@@ -22,11 +22,13 @@ package org.apache.iotdb.db.pipe.agent.task.builder;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
@@ -55,6 +57,9 @@ public class PipeDataNodeBuilder {
 
     final List<DataRegionId> dataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
     final List<SchemaRegionId> schemaRegionIds = SchemaEngine.getInstance().getAllSchemaRegionIds();
+    final PathPatternTree internalInclusionPathPatternTree =
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(
+            pipeStaticMeta.getSourceParameters());
 
     final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
     for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
@@ -68,7 +73,7 @@ public class PipeDataNodeBuilder {
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
-                    sourceParameters, dataRegionId);
+                    sourceParameters, dataRegionId, internalInclusionPathPatternTree);
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(

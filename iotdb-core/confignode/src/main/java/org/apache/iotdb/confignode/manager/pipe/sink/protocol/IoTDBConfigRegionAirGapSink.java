@@ -222,11 +222,16 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
     final long creationTime = pipeConfigRegionSnapshotEvent.getCreationTime();
     final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
     final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
+    final File pipeRenameTimeSeriesFile =
+        pipeConfigRegionSnapshotEvent.getPipeRenameTimeSeriesFile();
 
-    // 1. Transfer snapshotFile, and template file if exists
+    // 1. Transfer snapshotFile, template file and pipe rename file if exists.
     transferFilePieces(pipeName, creationTime, snapshot, socket, true);
     if (Objects.nonNull(templateFile)) {
       transferFilePieces(pipeName, creationTime, templateFile, socket, true);
+    }
+    if (Objects.nonNull(pipeRenameTimeSeriesFile)) {
+      transferFilePieces(pipeName, creationTime, pipeRenameTimeSeriesFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     if (!send(
@@ -244,6 +249,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             snapshot.length(),
             Objects.nonNull(templateFile) ? templateFile.getName() : null,
             Objects.nonNull(templateFile) ? templateFile.length() : 0,
+            Objects.nonNull(pipeRenameTimeSeriesFile) ? pipeRenameTimeSeriesFile.getName() : null,
+            Objects.nonNull(pipeRenameTimeSeriesFile) ? pipeRenameTimeSeriesFile.length() : 0,
             pipeConfigRegionSnapshotEvent.getFileType(),
             pipeConfigRegionSnapshotEvent.toSealTypeString(),
             pipeConfigRegionSnapshotEvent.getAuthUserName()))) {

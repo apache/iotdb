@@ -296,6 +296,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -1517,22 +1518,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     final Map<String, String> sourceAttributes = node.getSourceAttributes();
     final String pipeName = node.getPipeName();
-    for (final String sourceAttribute : sourceAttributes.keySet()) {
-      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
-                node.getPipeName(),
-                sourceAttribute));
-      }
-      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_S_SETTING_S_IS_NOT_ALLOWED,
-                node.getPipeName(),
-                sourceAttribute));
-      }
-    }
+    PipeSourceConstant.validateUserProvidedSourceAttributes(
+        sourceAttributes, node.getPipeName(), false);
 
     // Inject table model into the extractor attributes
     sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
@@ -1676,21 +1663,10 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     final String pipeName = node.getPipeName();
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
-    for (final String extractorAttributeKey : extractorAttributes.keySet()) {
-      if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
-                pipeName,
-                extractorAttributeKey));
-      }
-      if (extractorAttributeKey.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.FAILED_TO_ALTER_PIPE_S_MODIFYING_S_IS_NOT_ALLOWED,
-                pipeName,
-                extractorAttributeKey));
-      }
+    try {
+      PipeSourceConstant.validateUserProvidedSourceAttributes(extractorAttributes, pipeName, true);
+    } catch (final PipeException e) {
+      throw new SemanticException(e.getMessage());
     }
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.

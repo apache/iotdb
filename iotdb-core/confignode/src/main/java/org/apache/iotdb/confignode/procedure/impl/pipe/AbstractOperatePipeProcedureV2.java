@@ -21,9 +21,15 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -36,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskStat
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -663,6 +670,11 @@ public abstract class AbstractOperatePipeProcedureV2
   public static PipeMeta copyAndFilterOutNonWorkingDataRegionPipeTasks(PipeMeta originalPipeMeta)
       throws IOException {
     final PipeMeta copiedPipeMeta = originalPipeMeta.deepCopy4TaskAgent();
+    final PathPatternTree internalInclusionPathPatternTree =
+        originalPipeMeta.getStaticMeta().isSourceExternal()
+            ? null
+            : PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(
+                copiedPipeMeta.getStaticMeta().getSourceParameters());
 
     copiedPipeMeta
         .getRuntimeMeta()
@@ -714,14 +726,79 @@ public abstract class AbstractOperatePipeProcedureV2
               }
 
               try {
-                return !DataRegionListeningFilter.shouldDatabaseBeListened(
-                    copiedPipeMeta.getStaticMeta().getSourceParameters(), isTableModel, database);
+                return !shouldCollectDataRegionForPipe(
+                    copiedPipeMeta.getStaticMeta().getSourceParameters(),
+                    database,
+                    isTableModel,
+                    internalInclusionPathPatternTree);
               } catch (final Exception e) {
                 return false;
               }
             });
 
     return copiedPipeMeta;
+  }
+
+  public static boolean isUserVisibleDatabase(final String databaseName) {
+    return databaseName != null
+        && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+        && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + IoTDBConstant.PATH_SEPARATOR)
+        && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
+        && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + IoTDBConstant.PATH_SEPARATOR)
+        && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
+        && !databaseName.startsWith(
+            Audit.TABLE_MODEL_AUDIT_DATABASE + IoTDBConstant.PATH_SEPARATOR);
+  }
+
+  public static boolean shouldCollectDataRegionForPipe(
+      final PipeParameters sourceParameters, final String databaseName, final boolean isTableModel)
+      throws IllegalPathException {
+    return DataRegionListeningFilter.shouldDatabaseBeListened(
+        sourceParameters, isTableModel, databaseName);
+  }
+
+  public static boolean shouldCollectDataRegionForPipe(
+      final PipeParameters sourceParameters,
+      final String databaseName,
+      final boolean isTableModel,
+      final PathPatternTree internalInclusionPathPatternTree)
+      throws IllegalPathException {
+    return DataRegionListeningFilter.shouldDatabaseBeListened(
+        sourceParameters, isTableModel, databaseName, internalInclusionPathPatternTree);
+  }
+
+  public static boolean shouldCollectSchemaRegionForPipe(final PipeParameters sourceParameters)
+      throws IllegalPathException {
+    return !SchemaRegionListeningFilter.parseListeningPlanTypeSet(sourceParameters).isEmpty();
+  }
+
+  public static boolean shouldCollectRegionForPipe(
+      final ConfigNodeProcedureEnv env,
+      final TConsensusGroupId regionGroupId,
+      final String databaseName,
+      final PipeParameters sourceParameters) {
+    if (!isUserVisibleDatabase(databaseName)) {
+      return false;
+    }
+    try {
+      if (regionGroupId.getType() == TConsensusGroupType.DataRegion) {
+        final TDatabaseSchema schema =
+            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(databaseName);
+        if (schema == null) {
+          return true;
+        }
+        return shouldCollectDataRegionForPipe(
+            sourceParameters, databaseName, schema.isIsTableModel());
+      }
+      return shouldCollectSchemaRegionForPipe(sourceParameters);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_CHECK_WHETHER_PIPE_SHOULD_COLLECT_REGION,
+          regionGroupId,
+          databaseName,
+          e);
+      return true;
+    }
   }
 
   @Override

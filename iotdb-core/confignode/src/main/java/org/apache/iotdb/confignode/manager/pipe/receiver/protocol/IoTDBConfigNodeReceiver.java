@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -578,8 +579,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         break;
       case PipeRenameTimeSeries:
         final List<PartialPath> list = new ArrayList<>(2);
-        list.add(PartialPath.deserialize(((PipeRenameTimeSeriesPlan) plan).getOldPathBytes()));
-        list.add(PartialPath.deserialize(((PipeRenameTimeSeriesPlan) plan).getOldPathBytes()));
+        list.add(
+            (PartialPath)
+                PathDeserializeUtil.deserialize(
+                    ((PipeRenameTimeSeriesPlan) plan).getOldPathBytes()));
+        list.add(
+            (PartialPath)
+                PathDeserializeUtil.deserialize(
+                    ((PipeRenameTimeSeriesPlan) plan).getNewPathBytes()));
         status = checkPathsStatus(userEntity, PrivilegeType.WRITE_SCHEMA, list, true);
         break;
       case UpdateTriggerStateInTable:
@@ -1117,13 +1124,16 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 ((PipeAlterTimeSeriesPlan) plan).getDataType(),
                 true);
       case PipeRenameTimeSeries:
+        final PipeRenameTimeSeriesPlan pipeRenameTimeSeriesPlan = (PipeRenameTimeSeriesPlan) plan;
+        final PartialPath oldPath =
+            (PartialPath)
+                PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getOldPathBytes());
+        final PartialPath newPath =
+            (PartialPath)
+                PathDeserializeUtil.deserialize(pipeRenameTimeSeriesPlan.getNewPathBytes());
         return configManager
             .getProcedureManager()
-            .renameTimeSeries(
-                queryId,
-                PartialPath.deserialize(((PipeRenameTimeSeriesPlan) plan).getOldPathBytes()),
-                PartialPath.deserialize(((PipeRenameTimeSeriesPlan) plan).getNewPathBytes()),
-                true);
+            .renameTimeSeries(queryId, oldPath, newPath, true);
       case PipeCreateTableOrView:
         return executeIdempotentCreateTableOrView(
             (PipeCreateTableOrViewPlan) plan, queryId, shouldMarkAsPipeRequest.get());
@@ -1948,6 +1958,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         ConfigNodeSnapshotParser.translate2PhysicalPlan(
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
+            fileAbsolutePaths.size() > 2 ? Paths.get(fileAbsolutePaths.get(2)) : null,
             CNSnapshotFileType.deserialize(
                 Byte.parseByte(parameters.get(PipeTransferConfigSnapshotSealReq.FILE_TYPE))),
             parameters.getOrDefault("authUserName", ""));

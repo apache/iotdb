@@ -393,6 +393,20 @@ public final class PipeMessages {
       "Pipe：%s 和 %s 不能同时使用。";
   public static final String PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN =
       "Pipe：参数 %s 当前只支持单个 pattern。";
+  public static final String SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe：不允许设置 %s。";
+  public static final String FAILED_TO_ALTER_PIPE_MODIFYING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe：修改 Pipe %s 失败，不允许修改 %s。";
+  public static final String FAILED_TO_CREATE_PIPE_SETTING_SOURCE_ATTRIBUTE_NOT_ALLOWED =
+      "Pipe：创建 Pipe %s 失败，不允许设置 %s。";
+  public static final String FAILED_TO_CHECK_INTERNAL_PIPE_SOURCE_PATTERN_OVERLAP_FOR_DATABASE =
+      "Pipe：检查数据库 {} 与内部 source pattern 的重叠关系失败。";
+  public static final String FAILED_TO_PARSE_INTERNAL_PIPE_SOURCE_PATTERN_INCLUSION_PATH =
+      "Pipe：解析内部 source pattern inclusion 路径 {} 失败。";
+  public static final String PATTERN_LIST_HAS_EMPTY_SEGMENT =
+      "Pipe：pattern 列表包含空片段：%s";
+  public static final String PATTERN_LIST_HAS_UNCLOSED_BACKQUOTE =
+      "Pipe：pattern 列表包含未闭合的反引号：%s";
   public static final String FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK =
       "Pipe：对 inclusion [{}] 和 exclusion [{}] 执行 pattern 覆盖检查失败。";
   public static final String EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN =

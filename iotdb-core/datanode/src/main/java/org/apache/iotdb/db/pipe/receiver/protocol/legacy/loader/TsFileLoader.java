@@ -58,6 +58,7 @@ public class TsFileLoader implements ILoader {
       statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
+      statement.setTsFileIsPhysicalPath(true);
       statement.setAutoCreateDatabase(
           IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
 

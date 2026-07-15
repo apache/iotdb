@@ -2351,10 +2351,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    final PipeParameters sourcePipeParameters =
-        new PipeParameters(createPipeStatement.getSourceAttributes());
+    final PipeParameters sourcePipeParameters;
     final PipeParameters sinkPipeParameters =
         new PipeParameters(createPipeStatement.getSinkAttributes());
+    try {
+      final Map<String, String> resolvedSourceAttributes =
+          PipeRenamedSeriesSourceParameterResolver.resolve(
+                  new PipeParameters(createPipeStatement.getSourceAttributes()))
+              .getAttribute();
+      createPipeStatement.getSourceAttributes().clear();
+      createPipeStatement.getSourceAttributes().putAll(resolvedSourceAttributes);
+      sourcePipeParameters = new PipeParameters(resolvedSourceAttributes);
+    } catch (final Exception e) {
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
 
     // Validate pipe plugin before creation
     try {
@@ -2720,8 +2732,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final Map<String, String> sourceAttributes;
     final Map<String, String> processorAttributes;
     final Map<String, String> sinkAttributes;
+    final Map<String, String> resolvedSourceAttributes;
+    final Map<String, String> sourceAttributesForAlterRequest;
+    final boolean isSourceAltered = !alterPipeStatement.getSourceAttributes().isEmpty();
     try {
-      if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
+      if (isSourceAltered) {
+        PipeSourceConstant.validateUserProvidedInternalSourcePatternAttributes(
+            alterPipeStatement.getSourceAttributes(), alterPipeStatement.getPipeName(), true);
+        PipeRenamedSeriesSourceParameterResolver.resolve(
+            new PipeParameters(alterPipeStatement.getSourceAttributes()));
+
         // We don't allow changing the extractor plugin type
         if (alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.EXTRACTOR_KEY)
             || alterPipeStatement.getSourceAttributes().containsKey(PipeSourceConstant.SOURCE_KEY)
@@ -2795,7 +2815,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
 
-      final Map<String, String> checkedSource = new HashMap<>(sourceAttributes);
+      final Map<String, String> resolvedSourceAttributeBase = new HashMap<>(sourceAttributes);
+      PipeSourceConstant.stripInternalSourceAttributes(resolvedSourceAttributeBase);
+      resolvedSourceAttributes =
+          PipeRenamedSeriesSourceParameterResolver.resolve(
+                  new PipeParameters(resolvedSourceAttributeBase))
+              .getAttribute();
+      sourceAttributesForAlterRequest =
+          buildSourceAttributesForAlterRequest(
+              alterPipeStatement, resolvedSourceAttributes, isSourceAltered);
+      final Map<String, String> checkedSource = new HashMap<>(resolvedSourceAttributes);
       keepCheckedSourceVisibilityConsistentWithTargetModel(
           checkedSource,
           pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
@@ -2834,7 +2863,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               alterPipeStatement.getSinkAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllSinkAttributes());
-      req.setExtractorAttributes(alterPipeStatement.getSourceAttributes());
+      req.setExtractorAttributes(sourceAttributesForAlterRequest);
       req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllSourceAttributes());
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
       req.setIsTableModel(alterPipeStatement.isTableModel());
@@ -2848,6 +2877,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static Map<String, String> buildSourceAttributesForAlterRequest(
+      final AlterPipeStatement alterPipeStatement,
+      final Map<String, String> resolvedSourceAttributes,
+      final boolean isSourceAltered) {
+    if (!isSourceAltered) {
+      return Collections.emptyMap();
+    }
+    if (alterPipeStatement.isReplaceAllSourceAttributes()) {
+      return resolvedSourceAttributes;
+    }
+
+    final Map<String, String> sourceAttributesForAlterRequest =
+        new HashMap<>(alterPipeStatement.getSourceAttributes());
+    PipeSourceConstant.stripInternalSourceAttributes(sourceAttributesForAlterRequest);
+    putIfPresent(
+        sourceAttributesForAlterRequest,
+        resolvedSourceAttributes,
+        PipeSourceConstant.SOURCE_INTERNAL_PATTERN_INCLUSION_KEY);
+    putIfPresent(
+        sourceAttributesForAlterRequest,
+        resolvedSourceAttributes,
+        PipeSourceConstant.SOURCE_INTERNAL_PATTERN_EXCLUSION_KEY);
+    return sourceAttributesForAlterRequest;
+  }
+
+  private static void putIfPresent(
+      final Map<String, String> target, final Map<String, String> source, final String key) {
+    final String value = source.get(key);
+    if (value != null) {
+      target.put(key, value);
+    }
   }
 
   private static void keepCheckedSourceVisibilityConsistentWithTargetModel(

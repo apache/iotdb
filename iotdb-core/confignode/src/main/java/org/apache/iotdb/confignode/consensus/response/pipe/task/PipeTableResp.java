@@ -308,6 +308,7 @@ public class PipeTableResp implements DataSet {
     attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY);
     attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY);
     attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY);
+    PipeSourceConstant.stripInternalSourceAttributes(attributes);
     return new PipeParameters(attributes);
   }
 

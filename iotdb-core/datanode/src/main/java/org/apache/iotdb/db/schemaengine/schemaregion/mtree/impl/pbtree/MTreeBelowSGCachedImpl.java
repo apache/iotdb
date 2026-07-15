@@ -416,7 +416,9 @@ public class MTreeBelowSGCachedImpl {
               if (measurementNode.isPreDeleted()) {
                 throw new MeasurementInBlackListException(path);
               } else if (measurementNode.isInvalid()) {
-                throw new MetadataException(String.format("timeseries %s is invalid", path));
+                throw new MetadataException(
+                    String.format(
+                        DataNodeSchemaMessages.EXCEPTION_TIMESERIES_ARG_IS_INVALID, path));
               } else if (!withMerge || measurementNode.getDataType() != dataType) {
                 // Report conflict if the types are different
                 throw new MeasurementAlreadyExistException(

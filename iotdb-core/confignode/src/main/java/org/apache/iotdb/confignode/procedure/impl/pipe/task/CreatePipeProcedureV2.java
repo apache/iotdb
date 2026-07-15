@@ -35,8 +35,6 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -508,13 +506,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               (regionGroupId, regionLeaderNodeId) -> {
                 final String databaseName =
                     env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
-                if (databaseName != null
-                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
-                    && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
-                    && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
-                    && !databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE + ".")) {
+                if (isUserVisibleDatabase(databaseName)) {
                   // Pipe only collect user's data, filter out metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),

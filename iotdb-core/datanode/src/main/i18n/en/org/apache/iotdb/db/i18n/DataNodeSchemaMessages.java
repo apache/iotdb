@@ -545,6 +545,8 @@ public final class DataNodeSchemaMessages {
 
   public static final String TIMESERIES_NUM_UPPER_LIMIT =
       "The number of timeseries has reached the upper limit";
+  public static final String EXCEPTION_TIMESERIES_ARG_IS_INVALID =
+      "timeseries %s is invalid";
   public static final String ALIAS_DUPLICATED_DETAIL = ", fullPath: ";
   public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT = ", otherMeasurement: ";
   public static final String START_CREATE_TABLE_DEVICE = "Start to create table device {}.{}";

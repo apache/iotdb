@@ -253,6 +253,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator.getSourceParameters().getAttribute());
       } else {
+        PipeSourceConstant.stripInternalSourceAttributes(
+            copiedPipeStaticMetaFromCoordinator.getSourceParameters().getAttribute());
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator
                 .getSourceParameters()

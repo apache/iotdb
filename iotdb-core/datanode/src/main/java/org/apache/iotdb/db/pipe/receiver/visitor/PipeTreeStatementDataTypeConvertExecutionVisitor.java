@@ -50,6 +50,8 @@ import java.io.File;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.PipeRenamedSeriesUtils.markPipeInsertStatementAllowingInvalidSeries;
+
 /**
  * This visitor transforms the data type of the statement when the statement is executed and an
  * exception occurs. The transformed statement (if any) is returned and will be executed again.
@@ -128,6 +130,9 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
           }
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(insertTabletStatement, false);
+          if (loadTsFileStatement.isTsFilePhysicalPath()) {
+            markPipeInsertStatementAllowingInvalidSeries(statement);
+          }
 
           TSStatus result;
           try {

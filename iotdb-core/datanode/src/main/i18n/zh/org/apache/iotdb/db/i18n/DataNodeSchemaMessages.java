@@ -546,6 +546,8 @@ public final class DataNodeSchemaMessages {
 
   public static final String TIMESERIES_NUM_UPPER_LIMIT =
       "时间序列数量已达到上限";
+  public static final String EXCEPTION_TIMESERIES_ARG_IS_INVALID =
+      "时间序列 %s 已失效";
   public static final String ALIAS_DUPLICATED_DETAIL =
       "，完整路径：";
   public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =

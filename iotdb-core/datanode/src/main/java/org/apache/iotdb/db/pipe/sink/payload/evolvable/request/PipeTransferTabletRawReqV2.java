@@ -84,6 +84,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       if (isTabletEmpty(tablet)) {
         // Empty statement, will be filtered after construction
         statement = new InsertTabletStatement();
+        statement.setAllowInsertIntoInvalidSeries(true);
         return statement;
       }
 
@@ -95,6 +96,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
           statement.setDatabaseName(dataBaseName);
         }
       }
+      statement.setAllowInsertIntoInvalidSeries(true);
       return statement;
     } catch (final MetadataException e) {
       LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);

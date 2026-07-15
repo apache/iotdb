@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.source.dataregion;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -35,6 +37,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
@@ -44,6 +48,8 @@ import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionO
  * {@link DataRegion} to collect.
  */
 public class DataRegionListeningFilter {
+
+  private static final String ROOT_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private static final Set<PartialPath> OPTION_SET = new HashSet<>();
 
@@ -59,6 +65,19 @@ public class DataRegionListeningFilter {
   public static boolean shouldDatabaseBeListened(
       final PipeParameters parameters, final boolean isTableModel, final String databaseRawName)
       throws IllegalPathException {
+    return shouldDatabaseBeListened(
+        parameters,
+        isTableModel,
+        databaseRawName,
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters));
+  }
+
+  public static boolean shouldDatabaseBeListened(
+      final PipeParameters parameters,
+      final boolean isTableModel,
+      final String databaseRawName,
+      final PathPatternTree internalInclusionPathPatternTree)
+      throws IllegalPathException {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
     final boolean hasSpecificListeningOption =
@@ -70,22 +89,37 @@ public class DataRegionListeningFilter {
 
     if (isTableModel) {
       final String databaseTableModel =
-          databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
+          databaseRawName.startsWith(ROOT_PREFIX)
+              ? databaseRawName.substring(ROOT_PREFIX.length())
+              : databaseRawName;
       final TablePattern tablePattern =
           TablePattern.parsePipeDataPatternFromSourceParameters(parameters);
       return tablePattern.isTableModelDataAllowedToBeCaptured()
           && tablePattern.mayMatchDatabase(databaseTableModel);
     } else {
       final String databaseTreeModel =
-          databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
+          databaseRawName.startsWith(ROOT_PREFIX) ? databaseRawName : ROOT_PREFIX + databaseRawName;
       final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
       return treePattern.isTreeModelDataAllowedToBeCaptured()
-          && treePattern.mayOverlapWithDb(databaseTreeModel);
+          && (treePattern.mayOverlapWithDb(databaseTreeModel)
+              || PipeSourceTreePatternUtils.mayDatabaseOverlapInternalInclusion(
+                  databaseRawName, internalInclusionPathPatternTree));
     }
   }
 
   public static boolean shouldDataRegionBeListened(
       PipeParameters parameters, DataRegionId dataRegionId) throws IllegalPathException {
+    return shouldDataRegionBeListened(
+        parameters,
+        dataRegionId,
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters));
+  }
+
+  public static boolean shouldDataRegionBeListened(
+      PipeParameters parameters,
+      DataRegionId dataRegionId,
+      PathPatternTree internalInclusionPathPatternTree)
+      throws IllegalPathException {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
     final boolean hasSpecificListeningOption =
@@ -102,16 +136,20 @@ public class DataRegionListeningFilter {
 
     final String databaseRawName = dataRegion.getDatabaseName();
     final String databaseTreeModel =
-        databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
+        databaseRawName.startsWith(ROOT_PREFIX) ? databaseRawName : ROOT_PREFIX + databaseRawName;
     final String databaseTableModel =
-        databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
+        databaseRawName.startsWith(ROOT_PREFIX)
+            ? databaseRawName.substring(ROOT_PREFIX.length())
+            : databaseRawName;
 
     final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     final TablePattern tablePattern =
         TablePattern.parsePipeDataPatternFromSourceParameters(parameters);
 
     return treePattern.isTreeModelDataAllowedToBeCaptured()
-            && treePattern.mayOverlapWithDb(databaseTreeModel)
+            && (treePattern.mayOverlapWithDb(databaseTreeModel)
+                || PipeSourceTreePatternUtils.mayDatabaseOverlapInternalInclusion(
+                    databaseRawName, internalInclusionPathPatternTree))
         || tablePattern.isTableModelDataAllowedToBeCaptured()
             && tablePattern.mayMatchDatabase(databaseTableModel);
   }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionPlanUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -101,11 +102,12 @@ public class SchemaRegionListeningFilter {
 
   static boolean shouldPlanBeListened(final PlanNode node) {
     try {
-      return node.getType() == PlanNodeType.PIPE_ENRICHED_WRITE
-          || node.getType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE
-          || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(node.getType()))
-              && (node.getType() != PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE
-                  || !((CreateOrUpdateTableDeviceNode) node).getAttributeNameList().isEmpty());
+      return !PipeSchemaRegionPlanUtil.isRenameInternalPlan(node)
+          && (node.getType() == PlanNodeType.PIPE_ENRICHED_WRITE
+              || node.getType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE
+              || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(node.getType()))
+                  && (node.getType() != PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE
+                      || !((CreateOrUpdateTableDeviceNode) node).getAttributeNameList().isEmpty()));
     } catch (final Exception e) {
       // Some plan nodes may not contain "getType()" implementation
       return false;

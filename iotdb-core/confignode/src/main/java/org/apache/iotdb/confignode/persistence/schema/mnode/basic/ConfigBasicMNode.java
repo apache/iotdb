@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigMNodeInfo;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +39,9 @@ public abstract class ConfigBasicMNode implements IConfigMNode {
 
   private IConfigMNode parent;
   private final ConfigMNodeInfo configMNodeInfo;
+
+  private String pipeRenamedPhysicalPath;
+  private String pipeRenamedAliasPath;
 
   /** from root to this node, only be set when used once for InternalMNode */
   private String fullPath;
@@ -206,6 +211,25 @@ public abstract class ConfigBasicMNode implements IConfigMNode {
     configMNodeInfo.unsetSchemaTemplate();
   }
 
+  public void setPipeRenameTimeSeriesPaths(
+      final String pipeRenamedPhysicalPath, final String pipeRenamedAliasPath) {
+    this.pipeRenamedPhysicalPath = pipeRenamedPhysicalPath;
+    this.pipeRenamedAliasPath = pipeRenamedAliasPath;
+  }
+
+  public String getPipeRenamedPhysicalPath() {
+    return pipeRenamedPhysicalPath;
+  }
+
+  public String getPipeRenamedAliasPath() {
+    return pipeRenamedAliasPath;
+  }
+
+  public void unsetPipeRenameTimeSeriesPaths() {
+    this.pipeRenamedPhysicalPath = null;
+    this.pipeRenamedAliasPath = null;
+  }
+
   /**
    * The basic memory occupied by any ConfigBasicMNode object
    *
@@ -216,6 +240,8 @@ public abstract class ConfigBasicMNode implements IConfigMNode {
    *         <li>basicMNodeInfo reference, 8B
    *         <li>parent reference, 8B
    *         <li>fullPath reference, 8B
+   *         <li>pipeRenamedPhysicalPath reference, 8B
+   *         <li>pipeRenamedAliasPath reference, 8B
    *       </ol>
    *   <li>MapEntry in parent
    *       <ol>
@@ -227,6 +253,21 @@ public abstract class ConfigBasicMNode implements IConfigMNode {
    */
   @Override
   public int estimateSize() {
-    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + configMNodeInfo.estimateSize();
+    return Math.toIntExact(
+        8L
+            + 8
+            + 8
+            + 8
+            + 8
+            + 8
+            + 28
+            + configMNodeInfo.estimateSize()
+            + estimateStringSize(fullPath)
+            + estimateStringSize(pipeRenamedPhysicalPath)
+            + estimateStringSize(pipeRenamedAliasPath));
+  }
+
+  private long estimateStringSize(final String string) {
+    return string == null ? 0 : RamUsageEstimator.sizeOf(string);
   }
 }

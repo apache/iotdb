@@ -48,6 +48,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
+  private List<Map<String, String>> propsList = new ArrayList<>();
   private List<String> aliasList = new ArrayList<>();
   private List<Map<String, String>> tagsList = new ArrayList<>();
   private List<Map<String, String>> attributesList = new ArrayList<>();
@@ -122,6 +123,18 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
     this.compressors.add(compression);
   }
 
+  public List<Map<String, String>> getPropsList() {
+    return propsList;
+  }
+
+  public void setPropsList(List<Map<String, String>> propsList) {
+    this.propsList = propsList;
+  }
+
+  public void addPropsList(Map<String, String> props) {
+    this.propsList.add(props);
+  }
+
   public List<String> getAliasList() {
     return aliasList;
   }
@@ -177,6 +190,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
         && Objects.equals(this.dataTypes, that.dataTypes)
         && Objects.equals(this.encodings, that.encodings)
         && Objects.equals(this.compressors, that.compressors)
+        && Objects.equals(this.propsList, that.propsList)
         && Objects.equals(this.aliasList, that.aliasList)
         && Objects.equals(this.tagsList, that.tagsList)
         && Objects.equals(this.attributesList, that.attributesList);
@@ -190,6 +204,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
         dataTypes,
         encodings,
         compressors,
+        propsList,
         aliasList,
         tagsList,
         attributesList);
@@ -208,6 +223,8 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
         + encodings
         + "', compressors="
         + compressors
+        + "', propsList="
+        + propsList
         + "', aliasList="
         + aliasList
         + "', tagsList="

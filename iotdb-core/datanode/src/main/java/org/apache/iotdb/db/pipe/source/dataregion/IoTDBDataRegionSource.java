@@ -123,6 +123,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._SOURCE_WATERMARK_INTERVAL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.removeInternalSourceAttributes;
 
 @TreeModel
 @TableModel
@@ -166,7 +167,10 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
     // Validate tree pattern and table pattern
-    validatePattern(TreePattern.parsePipePatternFromSourceParameters(validator.getParameters()));
+    validatePattern(
+        TreePattern.parsePipePatternFromSourceParameters(
+            new PipeParameters(
+                removeInternalSourceAttributes(validator.getParameters().getAttribute()))));
 
     // Validate source.history.enable and source.realtime.enable
     validator
@@ -245,11 +249,11 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     if (shouldExtractDeletion
         && !(treePattern instanceof IoTDBTreePatternOperations
-            && (((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath()))) {
+            && ((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath())) {
       throw new IllegalArgumentException(
           String.format(
               DataNodePipeMessages
-                  .PIPE_EXCEPTION_THE_PATH_PATTERN_S_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_139F93D6,
+                  .EXCEPTION_THE_PATH_PATTERN_ARG_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_OR_FULL_PATH_IS_ALLOWED_784778B8,
               treePattern));
     }
   }

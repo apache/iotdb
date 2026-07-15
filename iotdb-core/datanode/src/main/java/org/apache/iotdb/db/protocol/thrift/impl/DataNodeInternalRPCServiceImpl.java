@@ -1111,10 +1111,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TRenameTimeSeriesResp lockAndGetSchemaInfoForAlias(
       final TLockAndGetSchemaInfoForAliasReq req) throws TException {
-    final PartialPath oldPath =
-        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
-    final PartialPath newPath =
-        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+    final PartialPath oldPath = deserializeAsMeasurementPath(req.getOldPath());
+    final PartialPath newPath = deserializeAsMeasurementPath(req.getNewPath());
 
     final TRenameTimeSeriesResp resp = new TRenameTimeSeriesResp();
     try {
@@ -1198,6 +1196,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     TSStatus status = lockResult.getStatus();
+    if (isPipeReceiverInvalidPhysicalPath(req, status)) {
+      final PartialPath currentAliasPath =
+          getCurrentAliasPathForPipeReceiverInvalidPhysicalPath(oldPath, schemaRegion);
+      if (currentAliasPath != null) {
+        setCurrentAliasPathForPipeReceiver(currentAliasPath, resp);
+        return resp.getStatus();
+      }
+    }
+
     if (isDirectErrorStatus(status)) {
       resp.setStatus(status);
       return status;
@@ -1216,6 +1223,43 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         || status.getCode() == TSStatusCode.VIEW_TIMESERIES_CANNOT_CREATE_ALIAS.getStatusCode()
         || status.getCode() == TSStatusCode.INVALID_TIMESERIES_CANNOT_CREATE_ALIAS.getStatusCode()
         || status.getCode() == TSStatusCode.TIMESERIES_ALREADY_RENAMING.getStatusCode();
+  }
+
+  private boolean isPipeReceiverInvalidPhysicalPath(
+      final TLockAndGetSchemaInfoForAliasReq req, final TSStatus status) {
+    return req.isSetIsGeneratedByPipe()
+        && req.isIsGeneratedByPipe()
+        && status.getCode() == TSStatusCode.INVALID_TIMESERIES_CANNOT_CREATE_ALIAS.getStatusCode();
+  }
+
+  private PartialPath getCurrentAliasPathForPipeReceiverInvalidPhysicalPath(
+      final PartialPath physicalPath, final ISchemaRegion schemaRegion) throws MetadataException {
+    // Fetch the exact physical node directly. Schema-tree pattern queries hide invalid nodes,
+    // while this path must inspect the invalid node's internal alias reference.
+    final IMeasurementSchema schema =
+        schemaRegion.fetchMeasurementPath(physicalPath).getMeasurementSchema();
+    if (!(schema instanceof MeasurementSchema)
+        || !MeasurementPropsUtils.isInvalid(((MeasurementSchema) schema).getProps())) {
+      return null;
+    }
+    return MeasurementPropsUtils.getAliasPath(((MeasurementSchema) schema).getProps());
+  }
+
+  private void setCurrentAliasPathForPipeReceiver(
+      final PartialPath currentAliasPath, final TRenameTimeSeriesResp resp) {
+    final TTimeSeriesInfo timeSeriesInfo = new TTimeSeriesInfo();
+    final ByteArrayOutputStream pathStream = new ByteArrayOutputStream();
+    try {
+      currentAliasPath.serialize(pathStream);
+      timeSeriesInfo.setPath(ByteBuffer.wrap(pathStream.toByteArray()));
+      resp.setTimeSeriesInfo(timeSeriesInfo);
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (IOException e) {
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.INTERNAL_SERVER_ERROR,
+              String.format(DataNodeMiscMessages.FAILED_TO_SERIALIZE_PATH, e.getMessage())));
+    }
   }
 
   private TSStatus handlePathNotExistError(
@@ -1317,7 +1361,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (IOException e) {
       resp.setStatus(
           RpcUtils.getStatus(
-              TSStatusCode.INTERNAL_SERVER_ERROR, "Failed to serialize path: " + e.getMessage()));
+              TSStatusCode.INTERNAL_SERVER_ERROR,
+              String.format(DataNodeMiscMessages.FAILED_TO_SERIALIZE_PATH, e.getMessage())));
     }
   }
 
@@ -1402,10 +1447,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createAliasSeries(final TCreateAliasSeriesReq req) throws TException {
-    final PartialPath oldPath =
-        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
-    final PartialPath newPath =
-        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+    final MeasurementPath oldPath = deserializeAsMeasurementPath(req.getOldPath());
+    final MeasurementPath newPath = deserializeAsMeasurementPath(req.getNewPath());
 
     final org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo timeSeriesInfo = req.getTimeSeriesInfo();
 
@@ -1447,6 +1490,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(
           TSStatusCode.INTERNAL_SERVER_ERROR, "Error creating alias series: " + e.getMessage());
     }
+  }
+
+  private MeasurementPath deserializeAsMeasurementPath(final byte[] pathBytes) {
+    final PartialPath path =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(pathBytes));
+    return path instanceof MeasurementPath
+        ? (MeasurementPath) path
+        : new MeasurementPath(path.getNodes());
   }
 
   @Override

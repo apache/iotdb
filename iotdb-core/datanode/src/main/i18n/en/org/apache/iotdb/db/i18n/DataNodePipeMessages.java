@@ -1528,6 +1528,13 @@ public final class DataNodePipeMessages {
   // pipe – IoTDBDataRegionSource
   // ---------------------------------------------------------------------------
   public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" is illegal.";
+  public static final String
+      EXCEPTION_THE_PATH_PATTERN_ARG_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_OR_FULL_PATH_IS_ALLOWED_784778B8 =
+          "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
+  public static final String PIPE_SOURCE_ONLY_MATCHES_INVALID_RENAMED_PHYSICAL_SERIES =
+      "Pipe source %s only matches invalid renamed physical series: %s";
+  public static final String FAILED_TO_FETCH_PIPE_SOURCE_PATTERN =
+      "Failed to fetch schema for pipe source %s: %s";
 
   // ---------------------------------------------------------------------------
   // pipe – OpcUaServerBuilder

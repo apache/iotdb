@@ -46,6 +46,7 @@ public abstract class IoTDBTreePatternOperations extends TreePattern {
 
   public abstract PathPatternTree getIntersection(final PathPatternTree patternTree);
 
+  @Override
   public abstract boolean isPrefixOrFullPath();
 
   public abstract boolean mayMatchMultipleTimeSeriesInOneDevice();
