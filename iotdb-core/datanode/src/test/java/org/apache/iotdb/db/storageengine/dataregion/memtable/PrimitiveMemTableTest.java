@@ -243,7 +243,7 @@ public class PrimitiveMemTableTest {
     AlignedReadOnlyMemChunk firstQueryMemChunk =
         (AlignedReadOnlyMemChunk)
             resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
-                new QueryContext(1), memTable, null, Long.MAX_VALUE, null);
+                new QueryContext(1, false), memTable, null, Long.MAX_VALUE, null);
     TVList originalWorkingList = memTable.getWritableMemChunk(deviceID, "").getWorkingTVList();
     Assert.assertSame(
         originalWorkingList,
@@ -263,7 +263,7 @@ public class PrimitiveMemTableTest {
     AlignedReadOnlyMemChunk flushingQueryMemChunk =
         (AlignedReadOnlyMemChunk)
             resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
-                new QueryContext(2), memTable, new ArrayList<>(), Long.MAX_VALUE, null);
+                new QueryContext(2, false), memTable, new ArrayList<>(), Long.MAX_VALUE, null);
     TVList flushingQueryList =
         flushingQueryMemChunk.getAligendTvListQueryMap().keySet().iterator().next();
     Assert.assertNotSame(originalWorkingList, flushingQueryList);
@@ -589,7 +589,9 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
     IPointReader tvPair =
-        memTable.query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null).getPointReader();
+        memTable
+            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -616,7 +618,9 @@ public class PrimitiveMemTableTest {
                     Collections.emptyMap())));
 
     tvPair =
-        memTable.query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null).getPointReader();
+        memTable
+            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
