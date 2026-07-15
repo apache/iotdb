@@ -64,8 +64,8 @@ public class FileMetrics implements IMetricSet {
   }
 
   // region TsFile Related Metrics Update
-  public void addTsFile(String database, String regionId, long size, boolean seq, String name) {
-    TS_FILE_METRICS.addTsFile(database, regionId, size, seq, name);
+  public void addTsFile(TsFileResource tsFileResource) {
+    TS_FILE_METRICS.addTsFile(tsFileResource);
   }
 
   public void deleteTsFile(boolean seq, List<TsFileResource> tsFileResourceList) {

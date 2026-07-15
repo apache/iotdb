@@ -268,13 +268,7 @@ public class CompactionUtils {
   }
 
   public static void addFilesToFileMetrics(TsFileResource resource) {
-    FileMetrics.getInstance()
-        .addTsFile(
-            resource.getDatabaseName(),
-            resource.getDataRegionId(),
-            resource.getTsFile().length(),
-            resource.isSeq(),
-            resource.getTsFile().getName());
+    FileMetrics.getInstance().addTsFile(resource);
   }
 
   private static void updateOneTargetMods(TsFileResource targetFile, Set<ModEntry> modifications)

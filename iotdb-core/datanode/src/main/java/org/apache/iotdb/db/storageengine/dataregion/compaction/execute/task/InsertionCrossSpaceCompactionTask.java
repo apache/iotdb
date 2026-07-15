@@ -376,13 +376,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     // The statistics of the mods file can be left unchanged, as it does not
     // differentiate between sequence or unsequence.
     FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(targetFile));
-    FileMetrics.getInstance()
-        .addTsFile(
-            targetFile.getDatabaseName(),
-            targetFile.getDataRegionId(),
-            targetFile.getTsFileSize(),
-            true,
-            targetFile.getTsFile().getName());
+    FileMetrics.getInstance().addTsFile(targetFile);
   }
 
   @Override
