@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
@@ -34,6 +35,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.function.Function;
 
@@ -75,6 +77,20 @@ public class TypeServices {
                     DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
           };
 
+  public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, BLOB, STRING -> Object::toString;
+            case DATE ->
+                value -> ((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toString();
+            case TIMESTAMP -> value -> DateTimeUtils.convertLongToDate((long) value);
+            default ->
+                value -> {
+                  throw new PipeRuntimeNonCriticalException(
+                      DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                };
+          };
+
   public static final TypeService<Function<TsPrimitiveType, Object>>
       PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE =
           type ->
@@ -98,6 +114,7 @@ public class TypeServices {
   static {
     VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
     OPC_DA_VARIANT_TYPE_SERVICE.check();
+    OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
   }
 

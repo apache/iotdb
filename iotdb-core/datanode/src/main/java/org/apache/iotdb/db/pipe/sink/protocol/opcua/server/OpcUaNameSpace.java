@@ -22,17 +22,18 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -65,7 +66,6 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,6 +78,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
@@ -446,6 +447,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
+      final Function<Object, String> valueStringifier =
+          TypeServices.OPC_UA_VALUE_STRINGIFIER_SERVICE.call(Type.fromTsDataType(dataType));
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       if (!isTableModel) {
@@ -479,58 +482,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         eventNode.setTime(new DateTime(timestampToUtc(tablet.getTimestamp(rowIndex))));
 
         // Message --> Value
-        switch (dataType) {
-          case BOOLEAN:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Boolean.toString((boolean) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case INT32:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Integer.toString((int) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case DATE:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    ((LocalDate) tablet.getValue(rowIndex, columnIndex))
-                        .atStartOfDay(ZoneId.systemDefault())
-                        .toString()));
-            break;
-          case INT64:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Long.toString((long) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case TIMESTAMP:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    DateTimeUtils.convertLongToDate(
-                        (long) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case FLOAT:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Float.toString((float) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case DOUBLE:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Double.toString((double) tablet.getValue(rowIndex, columnIndex))));
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            eventNode.setMessage(
-                LocalizedText.english(tablet.getValue(rowIndex, columnIndex).toString()));
-            break;
-          case VECTOR:
-          case UNKNOWN:
-          default:
-            throw new PipeRuntimeNonCriticalException(
-                DataNodePipeMessages.UNSUPPORTED_DATA_TYPE
-                    + tablet.getSchemas().get(columnIndex).getType());
-        }
+        eventNode.setMessage(
+            LocalizedText.english(valueStringifier.apply(tablet.getValue(rowIndex, columnIndex))));
 
         // Send the event
         getServer().getEventBus().post(eventNode);
