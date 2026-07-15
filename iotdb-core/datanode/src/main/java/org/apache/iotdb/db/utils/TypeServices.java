@@ -29,6 +29,7 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.time.Instant;
@@ -74,9 +75,30 @@ public class TypeServices {
                     DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
           };
 
+  public static final TypeService<Function<TsPrimitiveType, Object>>
+      PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> TsPrimitiveType::getValue;
+                case DATE -> primitiveType -> DateUtils.parseIntToLocalDate(primitiveType.getInt());
+                case TEXT, BLOB, STRING ->
+                    primitiveType -> {
+                      final Binary binary = primitiveType.getBinary();
+                      return binary == null || binary.getValues() == null
+                          ? Binary.EMPTY_VALUE
+                          : binary;
+                    };
+                default ->
+                    primitiveType -> {
+                      throw new UnSupportedDataTypeException(
+                          DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
+                    };
+              };
+
   static {
     VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
     OPC_DA_VARIANT_TYPE_SERVICE.check();
+    PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {

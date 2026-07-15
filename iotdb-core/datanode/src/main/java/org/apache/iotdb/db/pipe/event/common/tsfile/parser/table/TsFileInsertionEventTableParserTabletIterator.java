@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -43,15 +44,14 @@ import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.controller.IMetadataQuerier;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -488,6 +488,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     boolean hasNonDeletedField = dataTypeList.size() == deviceIdSize;
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
+      final TSDataType dataType = dataTypeList.get(i);
       final TsPrimitiveType primitiveType =
           i - deviceIdSize < primitiveTypes.length ? primitiveTypes[i - deviceIdSize] : null;
       final boolean isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i));
@@ -495,64 +496,21 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         hasNonDeletedField = true;
       }
       if (primitiveType == null || isDeleted) {
-        switch (dataTypeList.get(i)) {
-          case TEXT:
-          case BLOB:
-          case STRING:
-            PipeTabletUtils.putValue(tablet, rowIndex, i, dataTypeList.get(i), Binary.EMPTY_VALUE);
+        if (dataType.isTextStringOrBlob()) {
+          PipeTabletUtils.putValue(tablet, rowIndex, i, dataType, Binary.EMPTY_VALUE);
         }
         PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         continue;
       }
       needFillTime = true;
-
-      switch (dataTypeList.get(i)) {
-        case BOOLEAN:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getBoolean());
-          break;
-        case INT32:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getInt());
-          break;
-        case DATE:
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              i,
-              dataTypeList.get(i),
-              DateUtils.parseIntToLocalDate(primitiveType.getInt()));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getLong());
-          break;
-        case FLOAT:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getFloat());
-          break;
-        case DOUBLE:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          Binary binary = primitiveType.getBinary();
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              i,
-              dataTypeList.get(i),
-              Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                  ? Binary.EMPTY_VALUE
-                  : binary);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
-      }
+      PipeTabletUtils.putValue(
+          tablet,
+          rowIndex,
+          i,
+          dataType,
+          TypeServices.PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .apply(primitiveType));
     }
     return needFillTime || hasNonDeletedField;
   }
