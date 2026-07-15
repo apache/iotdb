@@ -33,6 +33,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestProcedureExecutor extends TestProcedureBase {
@@ -54,6 +55,34 @@ public class TestProcedureExecutor extends TestProcedureBase {
     TestProcEnv env = this.getEnv();
     AtomicInteger acc = env.getAcc();
     Assert.assertEquals(acc.get(), 1);
+  }
+
+  @Test
+  public void testProcedureFailedDuringSubmissionIsRolledBack() throws InterruptedException {
+    TestProcEnv localEnv = new TestProcEnv();
+    FailOnFirstUpdateProcedureStore localStore = new FailOnFirstUpdateProcedureStore();
+    ProcedureExecutor<TestProcEnv> localExecutor = new ProcedureExecutor<>(localEnv, localStore);
+    localEnv.setScheduler(localExecutor.getScheduler());
+    localStore.start();
+    localExecutor.init(1);
+    localExecutor.startWorkers();
+
+    try {
+      FailedDuringSubmissionProcedure procedure = new FailedDuringSubmissionProcedure();
+      long procId = localExecutor.submitProcedure(procedure);
+
+      Assert.assertTrue(procedure.awaitRollback(10, TimeUnit.SECONDS));
+      ProcedureTestUtil.waitForProcedure(localExecutor, procId);
+      Assert.assertTrue(localExecutor.isFinished(procId));
+      Assert.assertEquals(ProcedureState.ROLLEDBACK, procedure.getState());
+      Assert.assertEquals(0, procedure.getExecutionCount());
+      Assert.assertEquals(1, procedure.getRollbackCount());
+    } finally {
+      localStore.stop();
+      localExecutor.stop();
+      localExecutor.join();
+      localStore.cleanup();
+    }
   }
 
   @Test
@@ -221,6 +250,49 @@ public class TestProcedureExecutor extends TestProcedureBase {
 
     private int getExecutionCount() {
       return executionCount.get();
+    }
+  }
+
+  private static class FailOnFirstUpdateProcedureStore extends NoopProcedureStore {
+
+    private final AtomicBoolean firstUpdate = new AtomicBoolean(true);
+
+    @Override
+    public void update(Procedure procedure) {
+      if (firstUpdate.compareAndSet(true, false)) {
+        procedure.setFailure(new ProcedureException("Failed to deserialize procedure"));
+      }
+    }
+  }
+
+  private static class FailedDuringSubmissionProcedure extends Procedure<TestProcEnv> {
+
+    private final Semaphore rolledBack = new Semaphore(0);
+    private final AtomicInteger executionCount = new AtomicInteger();
+    private final AtomicInteger rollbackCount = new AtomicInteger();
+
+    @Override
+    protected Procedure<TestProcEnv>[] execute(TestProcEnv env) {
+      executionCount.incrementAndGet();
+      return null;
+    }
+
+    @Override
+    protected void rollback(TestProcEnv env) {
+      rollbackCount.incrementAndGet();
+      rolledBack.release();
+    }
+
+    private boolean awaitRollback(long timeout, TimeUnit unit) throws InterruptedException {
+      return rolledBack.tryAcquire(timeout, unit);
+    }
+
+    private int getExecutionCount() {
+      return executionCount.get();
+    }
+
+    private int getRollbackCount() {
+      return rollbackCount.get();
     }
   }
 }

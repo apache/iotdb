@@ -810,6 +810,13 @@ public class ProcedureExecutor<Env> {
     // Update metrics on start of a procedure
     procedure.updateMetricsOnSubmit(getEnvironment());
     RootProcedureStack<Env> stack = new RootProcedureStack<>();
+    // Persisting a newly submitted procedure may serialize and deserialize it through the
+    // consensus layer. If that process marks the procedure as failed before it is scheduled, the
+    // rollback stack still needs an entry so the executor can finish the failed procedure instead
+    // of leaving it in the active procedure map forever.
+    if (procedure.isFailed()) {
+      stack.addRollbackStep(procedure);
+    }
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
     scheduler.addBack(procedure);
