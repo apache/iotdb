@@ -275,7 +275,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
       if (measurementSchema == null) {
-        markFailedMeasurement(index, new PathNotExistException(fullPath));
+        markFailedMeasurement(index, createPathNotExistException(fullPath, dataType));
       } else if ((dataType != measurementSchema.getType()
           && !checkAndCastDataType(index, measurementSchema.getType()))) {
         markFailedMeasurement(
@@ -291,7 +291,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     } else {
       // if not enable partial insert, throw the exception directly
       if (measurementSchema == null) {
-        throw new PathNotExistException(fullPath);
+        throw createPathNotExistException(fullPath, dataType);
       } else if ((dataType != measurementSchema.getType()
           && !checkAndCastDataType(index, measurementSchema.getType()))) {
         throw new DataTypeMismatchException(
@@ -303,6 +303,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             getFirstValueOfIndex(index));
       }
     }
+  }
+
+  protected PathNotExistException createPathNotExistException(
+      String fullPath, TSDataType dataType) {
+    return dataType == null
+        ? PathNotExistException.forNullValue(fullPath)
+        : new PathNotExistException(fullPath);
   }
 
   protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
