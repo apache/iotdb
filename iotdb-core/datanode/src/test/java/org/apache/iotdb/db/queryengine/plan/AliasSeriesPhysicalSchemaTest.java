@@ -197,7 +197,7 @@ public class AliasSeriesPhysicalSchemaTest {
             new PartialPath("root.view.d3.temperature").getNodes(),
             createAliasSchema(originalPath, true));
 
-    AnalyzeVisitor analyzeVisitor = new AnalyzeVisitor(null, null);
+    AnalyzeVisitor analyzeVisitor = new AnalyzeVisitor(null, null, null);
     Method replacePathWithOriginal =
         AnalyzeVisitor.class.getDeclaredMethod(
             "replacePathWithOriginal", PartialPath.class, MeasurementPath.class);
