@@ -222,7 +222,7 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
         try {
           statement.execute(sql);
         } catch (SQLException e) {
-          Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+          Assert.assertTrue(e.getMessage().contains("Timeseris [root.sg0.d3.s1] does not exist"));
         }
       }
     }
