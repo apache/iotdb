@@ -30,6 +30,8 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +46,19 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CommitProgressKeeperTest {
+
+  @Test
+  public void testStateAccessUsesOneInstanceMonitor() throws Exception {
+    assertSynchronized("removeTopicProgress", String.class, String.class);
+    assertSynchronized("updateRegionProgress", String.class, ByteBuffer.class);
+    assertSynchronized("getRegionProgress", String.class);
+    assertSynchronized("getAllRegionProgress");
+    assertSynchronized("replaceAll", Map.class);
+    assertSynchronized("isEmpty");
+    assertSynchronized("processTakeSnapshot", FileOutputStream.class);
+    assertSynchronized("processLoadSnapshot", FileInputStream.class);
+    assertSynchronized("serializeToStream", DataOutputStream.class);
+  }
 
   @Test
   public void testVersionedKeysAvoidLegacySeparatorCollision() {
@@ -386,5 +401,11 @@ public class CommitProgressKeeperTest {
     public int read(final byte[] bytes, final int offset, final int length) throws IOException {
       return super.read(bytes, offset, Math.min(length, 1));
     }
+  }
+
+  private static void assertSynchronized(final String methodName, final Class<?>... parameterTypes)
+      throws Exception {
+    final Method method = CommitProgressKeeper.class.getMethod(methodName, parameterTypes);
+    assertTrue(methodName, Modifier.isSynchronized(method.getModifiers()));
   }
 }

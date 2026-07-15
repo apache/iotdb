@@ -1432,6 +1432,9 @@ public final class ProcedureMessages {
   public static final String LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31 =
       "通过 consumer group 元数据推送（无需创建 pipe）";
   public static final String
+      LOG_CREATESUBSCRIPTIONPROCEDURE_SYNCHRONIZING_COMMIT_PROGRESS_AFTER_CONSUMER_GROUP_NEWLY_SUBSCRIBED_CONSENSUS_TOPICS_ARG_F5687D36 =
+          "CreateSubscriptionProcedure：consumer group 新订阅共识 topic {} 后同步提交进度";
+  public static final String
       LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C =
           "DropSubscriptionProcedure: topic [{}] 使用共识订阅模式 ";
   public static final String LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6 = "(mode={})，跳过移除 pipe";
@@ -1445,6 +1448,9 @@ public final class ProcedureMessages {
           "CommitProgressSyncProcedure: executeFromOperateOnConfigNodes";
   public static final String LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29 =
       "拉取 DataNode {} 的提交进度失败，状态：{}";
+  public static final String
+      EXCEPTION_FAILED_TO_PULL_REQUIRED_COMMIT_PROGRESS_FROM_DATANODE_ARG_STATUS_ARG_E08A2450 =
+          "从 DataNode %s 拉取必要的提交进度失败，状态：%s";
   public static final String
       LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360 =
           "CommitProgressSyncProcedure: executeFromOperateOnDataNodes（无操作）";

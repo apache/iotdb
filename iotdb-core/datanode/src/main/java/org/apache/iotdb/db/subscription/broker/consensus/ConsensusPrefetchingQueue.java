@@ -110,6 +110,8 @@ public class ConsensusPrefetchingQueue {
 
   private static final int PENDING_QUEUE_CAPACITY = 4096;
 
+  private static final long FIRST_CONSENSUS_SEARCH_INDEX = 1L;
+
   private final ConsensusLogToTabletConverter converter;
 
   private final ConsensusSubscriptionCommitManager commitManager;
@@ -199,6 +201,11 @@ public class ConsensusPrefetchingQueue {
   private volatile boolean prefetchInitialized = false;
 
   private volatile PendingSeekRequest pendingSeekRequest;
+
+  private final Object runtimeActivationLock = new Object();
+
+  /** Active runtime state waiting for an explicitly available ConfigNode frontier. */
+  private volatile ConsensusRegionRuntimeState pendingActivationRuntimeState;
 
   private final DeliveryBatchState lingerBatch = new DeliveryBatchState();
 
@@ -580,13 +587,16 @@ public class ConsensusPrefetchingQueue {
   }
 
   public SubscriptionEvent poll(final String consumerId, final RegionProgress regionProgress) {
+    if (!retryPendingRuntimeActivation()) {
+      return null;
+    }
     acquireReadLock();
     try {
       if (isClosed || closeRequested || !isActive) {
         return null;
       }
-      if (!prefetchInitialized) {
-        initPrefetch(regionProgress);
+      if (!prefetchInitialized && !initPrefetch(regionProgress)) {
+        return null;
       }
       if (pendingSeekRequest != null) {
         return null;
@@ -603,14 +613,24 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private synchronized void initPrefetch(final RegionProgress regionProgress) {
+  private synchronized boolean initPrefetch(final RegionProgress regionProgress) {
     if (prefetchInitialized) {
-      return; // double-check under synchronization
+      return true; // double-check under synchronization
     }
 
+    if (!commitManager.refreshPendingInitialProgress(
+        consumerGroupId, topicName, consensusGroupId)) {
+      return false;
+    }
+
+    final boolean configNodeProgressAvailable =
+        commitManager.isConfigNodeProgressAvailable(consumerGroupId, topicName, consensusGroupId);
+    final boolean hasPersistedState =
+        commitManager.hasPersistedState(consumerGroupId, topicName, consensusGroupId);
     final RegionProgress committedRegionProgress = resolveCommittedRegionProgressForInit();
     final boolean useConsumerHint =
-        shouldUseConsumerRegionProgressHint(regionProgress, committedRegionProgress);
+        !configNodeProgressAvailable
+            && shouldUseConsumerRegionProgressHint(regionProgress, committedRegionProgress);
     final RegionProgress recoveryRegionProgress =
         useConsumerHint
             ? mergeRecoveryRegionProgress(committedRegionProgress, regionProgress)
@@ -623,7 +643,10 @@ public class ConsensusPrefetchingQueue {
                 : "consumer topic progress hint"
             : "committed region progress fallback";
     final ReplayLocateDecision resolvedStart =
-        resolveInitReplayStartDecision(recoveryRegionProgress, progressSource);
+        resolveInitReplayStartDecision(
+            recoveryRegionProgress,
+            progressSource,
+            configNodeProgressAvailable || hasPersistedState);
 
     clearRecoveryWriterProgress();
     final RegionProgress effectiveRecoveryRegionProgress =
@@ -653,14 +676,17 @@ public class ConsensusPrefetchingQueue {
         recoveryWriterProgressByWriter.size());
 
     requestPrefetch();
+    return true;
   }
 
   private ReplayLocateDecision resolveInitReplayStartDecision(
-      final RegionProgress recoveryRegionProgress, final String progressSource) {
+      final RegionProgress recoveryRegionProgress,
+      final String progressSource,
+      final boolean startFromBeginningWhenEmpty) {
     if (Objects.isNull(recoveryRegionProgress)
         || recoveryRegionProgress.getWriterPositions().isEmpty()) {
       return ReplayLocateDecision.found(
-          fallbackTailSearchIndex,
+          startFromBeginningWhenEmpty ? FIRST_CONSENSUS_SEARCH_INDEX : fallbackTailSearchIndex,
           new RegionProgress(Collections.emptyMap()),
           progressSource + " (tail start without progress)");
     }
@@ -678,9 +704,13 @@ public class ConsensusPrefetchingQueue {
     switch (replayTarget.getStatus()) {
       case FOUND:
       case AT_END:
+        final long resolvedReplayStartSearchIndex =
+            replayTarget.getStatus() == ReplayLocateStatus.AT_END
+                ? Math.min(replayTarget.getStartSearchIndex(), fallbackTailSearchIndex)
+                : replayTarget.getStartSearchIndex();
         return new ReplayLocateDecision(
             replayTarget.getStatus(),
-            replayTarget.getStartSearchIndex(),
+            resolvedReplayStartSearchIndex,
             replayTarget.getRecoveryRegionProgress(),
             progressSource + " (" + replayTarget.getDetail() + ")");
       case LOCATE_MISS:
@@ -762,7 +792,10 @@ public class ConsensusPrefetchingQueue {
     final RegionProgress latestCommittedRegionProgress =
         commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
     if (Objects.nonNull(latestCommittedRegionProgress)
-        && !latestCommittedRegionProgress.getWriterPositions().isEmpty()) {
+        && (!latestCommittedRegionProgress.getWriterPositions().isEmpty()
+            || commitManager.isConfigNodeProgressAvailable(
+                consumerGroupId, topicName, consensusGroupId)
+            || commitManager.hasPersistedState(consumerGroupId, topicName, consensusGroupId))) {
       return latestCommittedRegionProgress;
     }
     return Objects.nonNull(fallbackCommittedRegionProgress)
@@ -793,7 +826,7 @@ public class ConsensusPrefetchingQueue {
 
   private boolean hasComparableWriterProgress(final IndexedConsensusRequest request) {
     return request.getNodeId() >= 0
-        && request.getPhysicalTime() > 0
+        && request.getPhysicalTime() >= 0
         && request.getProgressLocalSeq() >= 0;
   }
 
@@ -901,7 +934,7 @@ public class ConsensusPrefetchingQueue {
     }
     return ReplayLocateDecision.atEnd(
         consensusReqReader.getCurrentSearchIndex(),
-        computeTailRegionProgress(),
+        effectiveRecoveryRegionProgress,
         "all locally replayable WAL records are already covered");
   }
 
@@ -2762,29 +2795,31 @@ public class ConsensusPrefetchingQueue {
         seekGeneration.get());
   }
 
-  private RegionProgress computeTailRegionProgress() {
+  public RegionProgress computeTailRegionProgress() {
     if (!(consensusReqReader instanceof WALNode)) {
       return new RegionProgress(Collections.emptyMap());
     }
 
     final WALNode walNode = (WALNode) consensusReqReader;
+    // A successful write may already have advanced currentSearchIndex while its writer metadata is
+    // still waiting in the asynchronous WAL buffer. Rolling establishes a durable snapshot
+    // boundary before the initial subscription frontier is published.
+    walNode.rollWALFile();
+    final LiveWALMetaDataSnapshot liveSnapshot = captureLiveWALMetaDataSnapshot(walNode);
     final Map<WriterId, WriterProgress> tailProgressByWriter = new LinkedHashMap<>();
     final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
     if (Objects.isNull(walFiles) || walFiles.length == 0) {
-      mergeTailProgress(tailProgressByWriter, walNode.getCurrentWALMetaDataSnapshot());
+      mergeTailProgress(tailProgressByWriter, liveSnapshot.metadata);
       return new RegionProgress(tailProgressByWriter);
     }
 
     WALFileUtils.ascSortByVersionId(walFiles);
-    final long liveVersionId = walNode.getCurrentWALFileVersion();
-    final WALMetaData liveSnapshot = walNode.getCurrentWALMetaDataSnapshot();
     for (final File walFile : walFiles) {
       final long versionId = WALFileUtils.parseVersionId(walFile.getName());
-      if (versionId == liveVersionId) {
-        mergeTailProgress(tailProgressByWriter, liveSnapshot);
+      if (versionId >= liveSnapshot.versionId || ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
         continue;
       }
-      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
+      try (final ProgressWALReader reader = openProgressWALReader(walFile)) {
         mergeTailProgress(tailProgressByWriter, reader.getMetaData());
       } catch (final IOException e) {
         LOGGER.warn(
@@ -2795,7 +2830,33 @@ public class ConsensusPrefetchingQueue {
             e);
       }
     }
+    mergeTailProgress(tailProgressByWriter, liveSnapshot.metadata);
     return new RegionProgress(tailProgressByWriter);
+  }
+
+  ProgressWALReader openProgressWALReader(final File walFile) throws IOException {
+    return new ProgressWALReader(walFile);
+  }
+
+  private static LiveWALMetaDataSnapshot captureLiveWALMetaDataSnapshot(final WALNode walNode) {
+    while (true) {
+      final long versionId = walNode.getCurrentWALFileVersion();
+      final WALMetaData metadata = walNode.getCurrentWALMetaDataSnapshot();
+      if (versionId == walNode.getCurrentWALFileVersion()) {
+        return new LiveWALMetaDataSnapshot(versionId, metadata);
+      }
+    }
+  }
+
+  private static final class LiveWALMetaDataSnapshot {
+
+    private final long versionId;
+    private final WALMetaData metadata;
+
+    private LiveWALMetaDataSnapshot(final long versionId, final WALMetaData metadata) {
+      this.versionId = versionId;
+      this.metadata = metadata;
+    }
   }
 
   private void mergeTailProgress(
@@ -3220,27 +3281,76 @@ public class ConsensusPrefetchingQueue {
 
   public void applyRuntimeState(final ConsensusRegionRuntimeState runtimeState) {
     Objects.requireNonNull(runtimeState, DataNodeMiscMessages.EXCEPTION_RUNTIMESTATE_D4D018BA);
-    this.runtimeVersion = runtimeState.getRuntimeVersion();
-    runtimeVersionChangeCount.incrementAndGet();
-    LOGGER.info(
-        DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMEVERSION_36E05B80,
-        this,
-        runtimeState.getRuntimeVersion());
-    setPreferredWriterNodeId(runtimeState.getPreferredWriterNodeId());
-    setActiveWriterNodeIds(runtimeState.getActiveWriterNodeIds());
-    // "active" decides whether this replica should serve subscription traffic on the current node.
-    // In multi-writer mode, activeWriterNodeIds may intentionally include follower replicas for
-    // ordering/watermark coordination, so it must not be reused as the local service-activation
-    // signal.
-    setActive(runtimeState.isActive());
-    LOGGER.info(
-        DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMESTATE_PREFERREDWRITERNODEID_D845E9D6,
-        this,
-        runtimeState,
-        runtimeState.getPreferredWriterNodeId());
-    if (runtimeState.isActive()) {
-      requestPrefetch();
+    synchronized (runtimeActivationLock) {
+      final boolean requiresAuthoritativeActivation = runtimeState.isActive() && !isActive;
+      if (requiresAuthoritativeActivation) {
+        pendingActivationRuntimeState = runtimeState;
+        // Keep the worker dormant until every routing field is installed and the authoritative
+        // seek has either completed or remains pending.
+        setActive(false);
+      }
+      this.runtimeVersion = runtimeState.getRuntimeVersion();
+      runtimeVersionChangeCount.incrementAndGet();
+      LOGGER.info(
+          DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMEVERSION_36E05B80,
+          this,
+          runtimeState.getRuntimeVersion());
+      setPreferredWriterNodeId(runtimeState.getPreferredWriterNodeId());
+      setActiveWriterNodeIds(runtimeState.getActiveWriterNodeIds());
+      // "active" decides whether this replica should serve subscription traffic on the current
+      // node.
+      // In multi-writer mode, activeWriterNodeIds may intentionally include follower replicas for
+      // ordering/watermark coordination, so it must not be reused as the local service-activation
+      // signal.
+      if (!runtimeState.isActive()) {
+        pendingActivationRuntimeState = null;
+      }
+      if (requiresAuthoritativeActivation) {
+        tryActivatePendingRuntimeState();
+      } else {
+        setActive(runtimeState.isActive() && Objects.isNull(pendingActivationRuntimeState));
+      }
+      LOGGER.info(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMESTATE_PREFERREDWRITERNODEID_D845E9D6,
+          this,
+          runtimeState,
+          runtimeState.getPreferredWriterNodeId());
+    }
+  }
+
+  private boolean retryPendingRuntimeActivation() {
+    if (Objects.isNull(pendingActivationRuntimeState)) {
+      return true;
+    }
+    if (isClosed || closeRequested) {
+      return false;
+    }
+    return tryActivatePendingRuntimeState();
+  }
+
+  private boolean tryActivatePendingRuntimeState() {
+    synchronized (runtimeActivationLock) {
+      if (Objects.isNull(pendingActivationRuntimeState)) {
+        return true;
+      }
+      final ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult queryResult =
+          commitManager.refreshAuthoritativeProgress(consumerGroupId, topicName, consensusGroupId);
+      if (!queryResult.isAvailable()) {
+        return false;
+      }
+
+      final RegionProgress authoritativeProgress = queryResult.getRegionProgress();
+      if (prefetchInitialized) {
+        if (authoritativeProgress.getWriterPositions().isEmpty()) {
+          seekToBeginning();
+        } else {
+          seekAfterRegionProgress(authoritativeProgress);
+        }
+      }
+      pendingActivationRuntimeState = null;
+      setActive(true);
+      return true;
     }
   }
 

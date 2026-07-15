@@ -95,7 +95,8 @@ public class CommitProgressKeeper {
     return isCanonicalDataNodeId(key.substring(keyPrefix.length()));
   }
 
-  public void removeTopicProgress(final String consumerGroupId, final String topicName) {
+  public synchronized void removeTopicProgress(
+      final String consumerGroupId, final String topicName) {
     final String versionedTopicKeyPrefix =
         VERSIONED_KEY_PREFIX
             + encodeKeyComponent(consumerGroupId)
@@ -142,25 +143,26 @@ public class CommitProgressKeeper {
         .encodeToString(String.valueOf(component).getBytes(StandardCharsets.UTF_8));
   }
 
-  public void updateRegionProgress(final String key, final ByteBuffer committedRegionProgress) {
+  public synchronized void updateRegionProgress(
+      final String key, final ByteBuffer committedRegionProgress) {
     if (Objects.isNull(committedRegionProgress)) {
       return;
     }
     regionProgressMap.put(key, copyBuffer(committedRegionProgress));
   }
 
-  public ByteBuffer getRegionProgress(final String key) {
+  public synchronized ByteBuffer getRegionProgress(final String key) {
     final ByteBuffer buffer = regionProgressMap.get(key);
     return Objects.nonNull(buffer) ? copyBuffer(buffer) : null;
   }
 
-  public Map<String, ByteBuffer> getAllRegionProgress() {
+  public synchronized Map<String, ByteBuffer> getAllRegionProgress() {
     final Map<String, ByteBuffer> result = new HashMap<>(regionProgressMap.size());
     regionProgressMap.forEach((key, value) -> result.put(key, copyBuffer(value)));
     return result;
   }
 
-  public void replaceAll(final Map<String, ByteBuffer> newRegionProgressMap) {
+  public synchronized void replaceAll(final Map<String, ByteBuffer> newRegionProgressMap) {
     regionProgressMap.clear();
     if (Objects.nonNull(newRegionProgressMap)) {
       for (final Map.Entry<String, ByteBuffer> entry : newRegionProgressMap.entrySet()) {
@@ -171,15 +173,17 @@ public class CommitProgressKeeper {
     }
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return regionProgressMap.isEmpty();
   }
 
-  public void processTakeSnapshot(final FileOutputStream fileOutputStream) throws IOException {
+  public synchronized void processTakeSnapshot(final FileOutputStream fileOutputStream)
+      throws IOException {
     serializeRegionProgressMapToStream(regionProgressMap, new DataOutputStream(fileOutputStream));
   }
 
-  public void processLoadSnapshot(final FileInputStream fileInputStream) throws IOException {
+  public synchronized void processLoadSnapshot(final FileInputStream fileInputStream)
+      throws IOException {
     regionProgressMap.clear();
     final DataInputStream dataInputStream = new DataInputStream(fileInputStream);
     final byte[] sizeBytes = new byte[4];
@@ -248,7 +252,7 @@ public class CommitProgressKeeper {
     }
   }
 
-  public void serializeToStream(final DataOutputStream stream) throws IOException {
+  public synchronized void serializeToStream(final DataOutputStream stream) throws IOException {
     serializeRegionProgressMapToStream(regionProgressMap, stream);
   }
 

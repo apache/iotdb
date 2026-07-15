@@ -36,8 +36,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -197,6 +199,290 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testFreshTailProposalWaitsForExplicitConfigNodeProgress() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("pendingInitialProposal");
+    try {
+      final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
+          queryResult =
+              new AtomicReference<>(
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(systemDir, (consumerGroupId, topicName, regionId) -> queryResult.get());
+      final DataRegionId regionId = new DataRegionId(21);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress tailProposal =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
+
+      manager.initializeStateFromTailProposal("cg", "topic", regionId, tailProposal);
+
+      assertTrue(manager.hasPersistedState("cg", "topic", regionId));
+      assertTrue(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertEquals(tailProposal, manager.getCommittedRegionProgress("cg", "topic", regionId));
+      assertFalse(manager.refreshPendingInitialProgress("cg", "topic", regionId));
+      assertFalse(manager.refreshAuthoritativeProgress("cg", "topic", regionId).isAvailable());
+
+      queryResult.set(
+          ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+              new RegionProgress(Collections.emptyMap())));
+      assertTrue(manager.refreshPendingInitialProgress("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertTrue(manager.isConfigNodeProgressAvailable("cg", "topic", regionId));
+      assertTrue(
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .isEmpty());
+      assertTrue(manager.refreshAuthoritativeProgress("cg", "topic", regionId).isAvailable());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testFreshTailProposalUsesAvailableConfigNodeProgressExactly() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("availableInitialProgress");
+    try {
+      final DataRegionId regionId = new DataRegionId(22);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress configNodeProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)));
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir,
+              (consumerGroupId, topicName, ignoredRegionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      configNodeProgress));
+      final RegionProgress laterTailProposal =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
+
+      manager.initializeStateFromTailProposal("cg", "topic", regionId, laterTailProposal);
+
+      assertEquals(configNodeProgress, manager.getCommittedRegionProgress("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testNewRegionStartsFromBeginningWhenConfigNodeExplicitlyHasNoProgress()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("newRegionAbsentProgress");
+    try {
+      final DataRegionId regionId = new DataRegionId(24);
+      final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
+          queryResult =
+              new AtomicReference<>(
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir, (consumerGroupId, topicName, ignoredRegionId) -> queryResult.get());
+
+      manager.initializeStateWithoutTailProposal("cg", "topic", regionId);
+
+      assertTrue(manager.hasPersistedState("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertTrue(manager.isConfigNodeProgressAvailable("cg", "topic", regionId));
+      assertTrue(
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .isEmpty());
+      manager.initializeStateWithoutTailProposal("cg", "topic", regionId);
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertTrue(manager.isConfigNodeProgressAvailable("cg", "topic", regionId));
+      assertTrue(manager.refreshAuthoritativeProgress("cg", "topic", regionId).isAvailable());
+
+      queryResult.set(
+          ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+              new RegionProgress(
+                  Collections.singletonMap(
+                      new WriterId(regionId.toString(), 7), new WriterProgress(100L, 1L)))));
+      assertTrue(manager.refreshAuthoritativeProgress("cg", "topic", regionId).isAvailable());
+
+      queryResult.set(ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      assertFalse(manager.refreshAuthoritativeProgress("cg", "topic", regionId).isAvailable());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testNewRegionWaitsThroughUnavailableConfigNodeThenAcceptsExplicitAbsence()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("newRegionUnavailableProgress");
+    try {
+      final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
+          queryResult =
+              new AtomicReference<>(
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.unavailable());
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir, (consumerGroupId, topicName, ignoredRegionId) -> queryResult.get());
+      final DataRegionId regionId = new DataRegionId(25);
+
+      manager.initializeStateWithoutTailProposal("cg", "topic", regionId);
+
+      assertFalse(manager.hasPersistedState("cg", "topic", regionId));
+      assertTrue(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertFalse(manager.refreshPendingInitialProgress("cg", "topic", regionId));
+
+      queryResult.set(ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      assertTrue(manager.refreshPendingInitialProgress("cg", "topic", regionId));
+      assertTrue(manager.hasPersistedState("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertTrue(manager.isConfigNodeProgressAvailable("cg", "topic", regionId));
+      assertTrue(
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .isEmpty());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testPersistedProgressWaitsForAndUsesAuthoritativeConfigNodeProgress()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("persistedProgressMerge");
+    try {
+      final DataRegionId regionId = new DataRegionId(23);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final WriterProgress persistedProgress = new WriterProgress(200L, 2L);
+      final ConsensusSubscriptionCommitManager firstManager =
+          newCommitManager(
+              systemDir,
+              (consumerGroupId, topicName, ignoredRegionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.unavailable());
+      firstManager.receiveProgressBroadcast(
+          "cg", "topic", regionId.toString(), writerId, persistedProgress);
+
+      final RegionProgress olderConfigNodeProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)));
+      final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
+          queryResult =
+              new AtomicReference<>(
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final ConsensusSubscriptionCommitManager recoveredManager =
+          newCommitManager(
+              systemDir, (consumerGroupId, topicName, ignoredRegionId) -> queryResult.get());
+      recoveredManager.initializeStateFromTailProposal(
+          "cg",
+          "topic",
+          regionId,
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(300L, 3L))));
+
+      assertTrue(recoveredManager.isInitialProgressPending("cg", "topic", regionId));
+      assertEquals(
+          persistedProgress,
+          recoveredManager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+
+      queryResult.set(
+          ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+              olderConfigNodeProgress));
+      assertTrue(recoveredManager.refreshPendingInitialProgress("cg", "topic", regionId));
+      assertFalse(recoveredManager.isInitialProgressPending("cg", "topic", regionId));
+      assertEquals(
+          olderConfigNodeProgress,
+          recoveredManager.getCommittedRegionProgress("cg", "topic", regionId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testSetupRollbackRestoresExistingProgressAndInitializationMarkers() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("setupRollbackExistingProgress");
+    try {
+      final DataRegionId regionId = new DataRegionId(26);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress existingProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)));
+      final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
+          queryResult =
+              new AtomicReference<>(
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      existingProgress));
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir, (consumerGroupId, topicName, ignoredRegionId) -> queryResult.get());
+      manager.getOrCreateState("cg", "topic", regionId);
+      manager.persistAll();
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
+          manager.captureSetupSnapshot("cg", Collections.singleton("topic"));
+
+      queryResult.set(ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      manager.initializeStateFromTailProposal(
+          "cg",
+          "topic",
+          regionId,
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L))));
+      assertTrue(manager.isInitialProgressPending("cg", "topic", regionId));
+
+      manager.restoreSetupSnapshot(setupSnapshot, Collections.singleton("topic"));
+
+      assertEquals(existingProgress, manager.getCommittedRegionProgress("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertTrue(manager.isConfigNodeProgressAvailable("cg", "topic", regionId));
+
+      manager.initializeStateFromTailProposal(
+          "cg",
+          "topic",
+          regionId,
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(300L, 3L))));
+      assertTrue(manager.isInitialProgressPending("cg", "topic", regionId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testSetupRollbackRemovesFreshProposalAndReportedProgress() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("setupRollbackFreshProgress");
+    try {
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir,
+              (consumerGroupId, topicName, ignoredRegionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent());
+      final DataRegionId regionId = new DataRegionId(27);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
+          manager.captureSetupSnapshot("cg", Collections.singleton("topic"));
+
+      manager.initializeStateFromTailProposal(
+          "cg",
+          "topic",
+          regionId,
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L))));
+      assertTrue(manager.hasPersistedState("cg", "topic", regionId));
+
+      manager.restoreSetupSnapshot(setupSnapshot, Collections.singleton("topic"));
+
+      assertFalse(manager.hasPersistedState("cg", "topic", regionId));
+      assertFalse(manager.isInitialProgressPending("cg", "topic", regionId));
+      assertFalse(
+          manager
+              .collectAllRegionProgress(11)
+              .containsKey(
+                  CommitProgressKeeper.generateKey("cg", "topic", regionId.toString(), 11)));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testPersistGroupedTopicProgressAndRecoverAllRegions() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("system");
@@ -227,6 +513,10 @@ public class ConsensusSubscriptionCommitStateTest {
       final ConsensusSubscriptionCommitManager recoveredManager = newCommitManager(systemDir);
       final Map<String, ByteBuffer> collectedProgress =
           recoveredManager.collectAllRegionProgress(11);
+      for (final ByteBuffer progressBuffer : collectedProgress.values()) {
+        assertTrue(progressBuffer.hasArray());
+        assertFalse(progressBuffer.isReadOnly());
+      }
 
       assertEquals(
           progress1,
@@ -378,5 +668,12 @@ public class ConsensusSubscriptionCommitStateTest {
         ConsensusSubscriptionCommitManager.class.getDeclaredConstructor();
     constructor.setAccessible(true);
     return constructor.newInstance();
+  }
+
+  private static ConsensusSubscriptionCommitManager newCommitManager(
+      final File systemDir,
+      final ConsensusSubscriptionCommitManager.ConfigNodeProgressFetcher progressFetcher) {
+    IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+    return new ConsensusSubscriptionCommitManager(progressFetcher);
   }
 }

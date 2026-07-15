@@ -2686,21 +2686,38 @@ public class ConfigManager implements IManager {
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
             .getCommitProgressKeeper();
-    final RegionProgress mergedRegionProgress =
-        mergeCommitProgress(
-            keeper.getAllRegionProgress(),
-            req.getConsumerGroupId(),
-            req.getTopicName(),
-            req.getRegionId());
+    return buildCommitProgressResponse(
+        keeper.getAllRegionProgress(),
+        req.getConsumerGroupId(),
+        req.getTopicName(),
+        req.getRegionId());
+  }
+
+  static TGetCommitProgressResp buildCommitProgressResponse(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String consumerGroupId,
+      final String topicName,
+      final int regionId) {
+    final CommitProgressMergeResult mergeResult =
+        mergeCommitProgressWithPresence(allRegionProgress, consumerGroupId, topicName, regionId);
     final TGetCommitProgressResp resp =
         new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    if (!mergedRegionProgress.getWriterPositions().isEmpty()) {
-      resp.setCommittedRegionProgress(serializeRegionProgress(mergedRegionProgress));
+    if (mergeResult.hasMatchingProgress) {
+      resp.setCommittedRegionProgress(serializeRegionProgress(mergeResult.regionProgress));
     }
     return resp;
   }
 
   static RegionProgress mergeCommitProgress(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String consumerGroupId,
+      final String topicName,
+      final int regionId) {
+    return mergeCommitProgressWithPresence(allRegionProgress, consumerGroupId, topicName, regionId)
+        .regionProgress;
+  }
+
+  private static CommitProgressMergeResult mergeCommitProgressWithPresence(
       final Map<String, ByteBuffer> allRegionProgress,
       final String consumerGroupId,
       final String topicName,
@@ -2713,16 +2730,32 @@ public class ConfigManager implements IManager {
             CommitProgressKeeper.generateRegionKeyPrefix(
                 consumerGroupId, topicName, regionIdString),
             mergedWriterPositions);
+    boolean hasMatchingProgress = hasVersionedProgress;
     if (!hasVersionedProgress
         || CommitProgressKeeper.isLegacyKeyUnambiguous(
             consumerGroupId, topicName, regionIdString)) {
-      mergeCommitProgressForPrefix(
-          allRegionProgress,
-          CommitProgressKeeper.generateLegacyRegionKeyPrefix(
-              consumerGroupId, topicName, regionIdString),
-          mergedWriterPositions);
+      final boolean hasLegacyProgress =
+          mergeCommitProgressForPrefix(
+              allRegionProgress,
+              CommitProgressKeeper.generateLegacyRegionKeyPrefix(
+                  consumerGroupId, topicName, regionIdString),
+              mergedWriterPositions);
+      hasMatchingProgress = hasMatchingProgress || hasLegacyProgress;
     }
-    return new RegionProgress(mergedWriterPositions);
+    return new CommitProgressMergeResult(
+        new RegionProgress(mergedWriterPositions), hasMatchingProgress);
+  }
+
+  private static final class CommitProgressMergeResult {
+
+    private final RegionProgress regionProgress;
+    private final boolean hasMatchingProgress;
+
+    private CommitProgressMergeResult(
+        final RegionProgress regionProgress, final boolean hasMatchingProgress) {
+      this.regionProgress = regionProgress;
+      this.hasMatchingProgress = hasMatchingProgress;
+    }
   }
 
   private static boolean mergeCommitProgressForPrefix(
@@ -2764,7 +2797,7 @@ public class ConfigManager implements IManager {
     try (final PublicBAOS baos = new PublicBAOS();
         final DataOutputStream dos = new DataOutputStream(baos)) {
       regionProgress.serialize(dos);
-      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size()).asReadOnlyBuffer();
+      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     } catch (final IOException e) {
       throw new RuntimeException(
           ManagerMessages.EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 + regionProgress, e);

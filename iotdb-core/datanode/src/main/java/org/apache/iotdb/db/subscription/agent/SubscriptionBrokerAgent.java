@@ -35,6 +35,7 @@ import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -617,7 +618,7 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
-  public void bindConsensusPrefetchingQueue(
+  public ConsensusPrefetchingQueue bindConsensusPrefetchingQueue(
       final String consumerGroupId,
       final String topicName,
       final String orderMode,
@@ -630,28 +631,30 @@ public class SubscriptionBrokerAgent {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
-    getOrCreateBroker(
-            consumerGroupId,
-            ConsensusSubscriptionBroker.class,
-            id -> {
-              LOGGER.info(
-                  DataNodeMiscMessages.SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING,
-                  consumerGroupId);
-              return new ConsensusSubscriptionBroker(consumerGroupId);
-            })
-        .bindConsensusPrefetchingQueue(
-            topicName,
-            orderMode,
-            consensusGroupId,
-            serverImpl,
-            retentionPolicy,
-            converter,
-            commitManager,
-            fallbackCommittedRegionProgress,
-            tailStartSearchIndex,
-            initialRuntimeVersion,
-            initialActive);
+    final ConsensusPrefetchingQueue queue =
+        getOrCreateBroker(
+                consumerGroupId,
+                ConsensusSubscriptionBroker.class,
+                id -> {
+                  LOGGER.info(
+                      DataNodeMiscMessages.SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING,
+                      consumerGroupId);
+                  return new ConsensusSubscriptionBroker(consumerGroupId);
+                })
+            .bindConsensusPrefetchingQueue(
+                topicName,
+                orderMode,
+                consensusGroupId,
+                serverImpl,
+                retentionPolicy,
+                converter,
+                commitManager,
+                fallbackCommittedRegionProgress,
+                tailStartSearchIndex,
+                initialRuntimeVersion,
+                initialActive);
     prefetchingQueueCount.invalidate();
+    return queue;
   }
 
   public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
