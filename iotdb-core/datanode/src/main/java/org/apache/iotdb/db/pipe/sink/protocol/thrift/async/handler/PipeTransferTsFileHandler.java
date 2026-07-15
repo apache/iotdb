@@ -78,6 +78,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private File currentFile;
 
   private final boolean transferMod;
+  private final String dataBaseName;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
@@ -98,7 +99,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
-      final boolean transferMod)
+      final boolean transferMod,
+      final String dataBaseName)
       throws InterruptedException {
     super(connector);
 
@@ -111,6 +113,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
@@ -120,11 +123,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // the memory of the TsFile event is not released, so the memory is not enough for slicing. This
     // will cause a deadlock.
     waitForResourceEnough4Slicing((long) ((1 + Math.random()) * 20 * 1000)); // 20 - 40 seconds
+    final long maxFileLength =
+        transferMod && Objects.nonNull(modFile)
+            ? Math.max(tsFile.length(), modFile.length())
+            : tsFile.length();
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
-                transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
+                (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                Math.max(maxFileLength, 1L));
     position = 0;
 
     isSealSignalSent = new AtomicBoolean(false);
@@ -138,30 +145,27 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
+    this.clientManager = clientManager;
+    this.client = client;
+
+    if (client == null) {
+      PipeLogger.log(
+          LOGGER::warn,
+          "Client has been returned to the pool. Current handler status is %s. Will not transfer %s.",
+          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
+          tsFile);
+      return;
+    }
+
     // Delay creation of resources to avoid OOM or too many open files
     if (readBuffer == null) {
       memoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
-                      ? readFileBufferSize
-                      : 0);
+          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
       readBuffer = new byte[readFileBufferSize];
     }
 
     if (reader == null) {
       reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
-    }
-
-    this.clientManager = clientManager;
-    this.client = client;
-
-    if (client == null) {
-      LOGGER.warn(
-          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
-          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
-          tsFile);
-      return;
     }
 
     client.setShouldReturnSelf(false);
@@ -190,8 +194,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : dataBaseName == null
+                    ? PipeTransferTsFileSealReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length())
+                    : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length(), dataBaseName);
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -242,6 +254,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
     }
@@ -305,6 +318,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               referenceCount);
         }
 
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       }
 
@@ -347,6 +361,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     try {
       super.onError(exception);
     } finally {
+      releaseReadBufferMemoryBlock();
       returnClientIfNecessary();
     }
   }
@@ -398,6 +413,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
       try {
+        releaseReadBufferMemoryBlock();
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
@@ -420,7 +436,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.returnSelf(
         (e) -> {
           if (e instanceof IllegalStateException) {
-            LOGGER.info(
+            PipeLogger.log(
+                LOGGER::info,
                 "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
             return true;
           }
@@ -434,8 +451,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
     if (client == null) {
-      LOGGER.warn(
-          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Client has been returned to the pool. Current handler status is %s. Will not transfer %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
@@ -452,10 +470,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+    releaseReadBufferMemoryBlock();
+  }
 
+  private void releaseReadBufferMemoryBlock() {
     if (memoryBlock != null) {
       memoryBlock.close();
       memoryBlock = null;
+      readBuffer = null;
     }
   }
 

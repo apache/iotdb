@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -33,6 +34,9 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,6 +52,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -757,6 +762,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -793,9 +803,10 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(at1) from root.db.d1",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          Collections.singleton("3,"),
+          handleFailure);
 
       // Insert realtime data that overlapped with time range
       TestUtils.executeNonQueries(
@@ -808,9 +819,33 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(at1) from root.db.d1, root.db.d3",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("3,3,"),
+          handleFailure);
+
+      // Session Tablet can have unused timestamp slots when rowSize is smaller than maxRowNumber.
+      // The pipe source time range filter should ignore the unused zero tail.
+      final List<MeasurementSchema> schemas =
+          Collections.singletonList(new MeasurementSchema("at1", TSDataType.INT32));
+      final Tablet tabletWithUnusedTail = new Tablet("root.db.d5", schemas, 5);
+      for (int time = 2000; time <= 4000; time += 1000) {
+        final int rowIndex = tabletWithUnusedTail.rowSize++;
+        tabletWithUnusedTail.addTimestamp(rowIndex, time);
+        tabletWithUnusedTail.addValue("at1", rowIndex, time / 1000);
+      }
+      Assert.assertEquals(3, tabletWithUnusedTail.rowSize);
+      Assert.assertEquals(5, tabletWithUnusedTail.timestamps.length);
+      try (final ISession session = senderEnv.getSessionConnection()) {
+        session.insertTablet(tabletWithUnusedTail);
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
+          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
+          Collections.singleton("3,3,3,"),
+          handleFailure);
 
       // Insert realtime data that does not overlap with time range
       TestUtils.executeNonQueries(
@@ -823,9 +858,20 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
+          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
+          Collections.singleton("3,3,3,"),
+          600);
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d2.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.d4.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
     }
   }
 

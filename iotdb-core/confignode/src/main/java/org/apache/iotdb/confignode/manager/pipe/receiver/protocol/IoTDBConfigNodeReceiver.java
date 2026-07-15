@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
@@ -57,7 +58,7 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
-import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotPieceReq;
@@ -123,13 +124,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   .setMessage(
                       "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
         }
-        TPipeTransferResp resp;
-        long startTime = System.nanoTime();
+        final TPipeTransferResp authResp = checkPipeTransferAuthenticated(type);
+        if (Objects.nonNull(authResp)) {
+          return authResp;
+        }
+        final TPipeTransferResp resp;
+        final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
-            resp =
-                handleTransferHandshakeV1(
-                    PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            resp = new TPipeTransferResp(getUnsupportedHandshakeV1Status());
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
             return resp;
@@ -146,14 +149,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            resp =
-                handleTransferFilePiece(
+            try {
+              try (final AutoCloseable ignored =
+                  PipeConfigNodeResourceManager.memory()
+                      .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
+                return handleTransferFilePiece(
                     PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
-            return resp;
+              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                return getReceiverTemporaryUnavailableResp(e);
+              }
+            } finally {
+              PipeConfigNodeReceiverMetrics.getInstance()
+                  .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             resp =
                 handleTransferFileSealV2(
@@ -162,7 +172,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            try (final AutoCloseable ignored =
+                PipeConfigNodeResourceManager.memory()
+                    .tryAllocateReceiverMemory(
+                        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req))) {
+              return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              return getReceiverTemporaryUnavailableResp(e);
+            }
           default:
             break;
         }
@@ -197,6 +214,45 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
+  }
+
+  private TPipeTransferResp checkPipeTransferAuthenticated(final PipeRequestType type) {
+    if (!requiresAuthentication(type)) {
+      return null;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
+      if (!hasPipeHandshakeCredential && clientSession != null) {
+        username = clientSession.getUsername();
+      }
+      return null;
+    }
+
+    return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  private static long getRequestBodySizeInBytes(final TPipeTransferReq req) {
+    return req.getBody() == null ? 0 : req.getBody().length;
+  }
+
+  private static TPipeTransferResp getReceiverTemporaryUnavailableResp(
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TPipeTransferResp(
+        new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(e.getMessage()));
+  }
+
+  private static boolean requiresAuthentication(final PipeRequestType type) {
+    switch (type) {
+      case TRANSFER_CONFIG_PLAN:
+      case TRANSFER_CONFIG_SNAPSHOT_PIECE:
+      case TRANSFER_CONFIG_SNAPSHOT_SEAL:
+      case TRANSFER_COMPRESSED:
+        return true;
+      default:
+        return false;
+    }
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final PipeTransferConfigPlanReq req)
@@ -480,11 +536,19 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected boolean shouldLogin() {
-    return lastSuccessfulLoginTime == Long.MIN_VALUE || super.shouldLogin();
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return hasPipeHandshakeCredential || clientSession == null || !clientSession.isLogin();
   }
 
   @Override
   protected TSStatus login() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (!hasPipeHandshakeCredential) {
+      return session != null && session.isLogin()
+          ? RpcUtils.SUCCESS_STATUS
+          : getNotLoggedInStatus();
+    }
+
     return configManager.login(username, password).getStatus();
   }
 

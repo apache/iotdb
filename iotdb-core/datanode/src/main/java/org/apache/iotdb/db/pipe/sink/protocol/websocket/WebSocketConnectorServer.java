@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
-import org.apache.iotdb.commons.pipe.datastructure.Triple;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -59,9 +59,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
 
-  // Pipe name, creation time, region id
-  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
-      ConcurrentHashMap.newKeySet();
+  private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
@@ -117,33 +115,33 @@ public class WebSocketConnectorServer extends WebSocketServer {
           .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
     }
 
-    droppedPipeTaskKeys.removeIf(key -> key.getFirst().equals(pipeName));
+    droppedPipeTaskKeys.removeIf(key -> key.getPipeName().equals(pipeName));
   }
 
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
 
     final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
-        eventsWaitingForTransfer.get(pipeNameToDrop);
+        eventsWaitingForTransfer.get(committerKey.getPipeName());
     if (eventTransferQueue != null) {
       eventTransferQueue.removeIf(
-          eventWrapper ->
-              discardIfMatches(eventWrapper.event, pipeNameToDrop, creationTimeToDrop, regionId));
+          eventWrapper -> discardIfMatches(eventWrapper.event, committerKey));
       synchronized (eventTransferQueue) {
         eventTransferQueue.notifyAll();
       }
     }
 
     final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
-        eventsWaitingForAck.get(pipeNameToDrop);
+        eventsWaitingForAck.get(committerKey.getPipeName());
     if (eventId2EventMap != null) {
       eventId2EventMap
           .entrySet()
-          .removeIf(
-              entry ->
-                  discardIfMatches(
-                      entry.getValue().event, pipeNameToDrop, creationTimeToDrop, regionId));
+          .removeIf(entry -> discardIfMatches(entry.getValue().event, committerKey));
     }
   }
 
@@ -515,19 +513,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
     }
   }
 
-  private boolean discardIfMatches(
-      final Event event,
-      final String pipeNameToDrop,
-      final long creationTimeToDrop,
-      final int regionId) {
+  private boolean discardIfMatches(final Event event, final CommitterKey committerKey) {
     if (!(event instanceof EnrichedEvent)) {
       return false;
     }
 
     final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
-    if (!pipeNameToDrop.equals(enrichedEvent.getPipeName())
-        || creationTimeToDrop != enrichedEvent.getCreationTime()
-        || regionId != enrichedEvent.getRegionId()) {
+    if (!isEventFromPipe(enrichedEvent, committerKey)) {
       return false;
     }
 
@@ -537,11 +529,16 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private boolean isDroppedPipe(final Event event) {
     return event instanceof EnrichedEvent
-        && droppedPipeTaskKeys.contains(
-            new Triple<>(
-                ((EnrichedEvent) event).getPipeName(),
-                ((EnrichedEvent) event).getCreationTime(),
-                ((EnrichedEvent) event).getRegionId()));
+        && droppedPipeTaskKeys.stream()
+            .anyMatch(key -> isEventFromPipe((EnrichedEvent) event, key));
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   private boolean isQueueAvailable(

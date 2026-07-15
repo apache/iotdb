@@ -39,7 +39,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CQScheduleTask implements Runnable {
 
@@ -69,7 +72,7 @@ public class CQScheduleTask implements Runnable {
   private final long endTimeOffset;
   private final TimeoutPolicy timeoutPolicy;
   private final String queryBody;
-  private final String md5;
+  private final String cqToken;
 
   private final String zoneId;
 
@@ -81,12 +84,15 @@ public class CQScheduleTask implements Runnable {
 
   private final long retryWaitTimeInMS;
 
+  private final AtomicBoolean cancelled;
+  private final AtomicReference<ScheduledFuture<?>> scheduledFuture;
+
   private long executionTime;
 
   public CQScheduleTask(
       TCreateCQReq req,
       long firstExecutionTime,
-      String md5,
+      String cqToken,
       ScheduledExecutorService executor,
       ConfigManager configManager) {
     this(
@@ -96,7 +102,7 @@ public class CQScheduleTask implements Runnable {
         req.endTimeOffset,
         TimeoutPolicy.deserialize(req.timeoutPolicy),
         req.queryBody,
-        md5,
+        cqToken,
         req.zoneId,
         req.username,
         executor,
@@ -113,7 +119,7 @@ public class CQScheduleTask implements Runnable {
         entry.getEndTimeOffset(),
         entry.getTimeoutPolicy(),
         entry.getQueryBody(),
-        entry.getMd5(),
+        entry.getCqToken(),
         entry.getZoneId(),
         entry.getUsername(),
         executor,
@@ -129,7 +135,7 @@ public class CQScheduleTask implements Runnable {
       long endTimeOffset,
       TimeoutPolicy timeoutPolicy,
       String queryBody,
-      String md5,
+      String cqToken,
       String zoneId,
       String username,
       ScheduledExecutorService executor,
@@ -141,12 +147,14 @@ public class CQScheduleTask implements Runnable {
     this.endTimeOffset = endTimeOffset;
     this.timeoutPolicy = timeoutPolicy;
     this.queryBody = queryBody;
-    this.md5 = md5;
+    this.cqToken = cqToken;
     this.zoneId = zoneId;
     this.username = username;
     this.executor = executor;
     this.configManager = configManager;
     this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval / FACTOR);
+    this.cancelled = new AtomicBoolean(false);
+    this.scheduledFuture = new AtomicReference<>();
     this.executionTime = executionTime;
   }
 
@@ -165,6 +173,9 @@ public class CQScheduleTask implements Runnable {
 
   @Override
   public void run() {
+    if (cancelled.get()) {
+      return;
+    }
     long startTime = executionTime - startTimeOffset;
     long endTime = executionTime - endTimeOffset;
 
@@ -177,6 +188,9 @@ public class CQScheduleTask implements Runnable {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }
     } else {
+      if (cancelled.get()) {
+        return;
+      }
       LOGGER.info(
           "[StartExecuteCQ] execute CQ {} on DataNode[{}], time range is [{}, {}), current time is {}",
           cqId,
@@ -206,12 +220,32 @@ public class CQScheduleTask implements Runnable {
   }
 
   private void submitSelf(long delay, TimeUnit unit) {
-    executor.schedule(this, delay, unit);
+    if (cancelled.get()) {
+      return;
+    }
+    ScheduledFuture<?> newFuture = executor.schedule(this, delay, unit);
+    ScheduledFuture<?> previousFuture = scheduledFuture.getAndSet(newFuture);
+    if (previousFuture != null) {
+      previousFuture.cancel(false);
+    }
+    if (cancelled.get() && scheduledFuture.compareAndSet(newFuture, null)) {
+      newFuture.cancel(false);
+    }
+  }
+
+  public void cancel() {
+    cancelled.set(true);
+    ScheduledFuture<?> currentFuture = scheduledFuture.getAndSet(null);
+    if (currentFuture != null) {
+      currentFuture.cancel(false);
+    }
   }
 
   private boolean needSubmit() {
     // current node is still leader and thread pool is not shut down.
-    return configManager.getConsensusManager().isLeader() && !executor.isShutdown();
+    return !cancelled.get()
+        && configManager.getConsensusManager().isLeader()
+        && !executor.isShutdown();
   }
 
   private class AsyncExecuteCQCallback implements AsyncMethodCallback<TSStatus> {
@@ -238,6 +272,9 @@ public class CQScheduleTask implements Runnable {
 
     @Override
     public void onComplete(TSStatus response) {
+      if (cancelled.get()) {
+        return;
+      }
       if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
 
         LOGGER.info(
@@ -251,7 +288,7 @@ public class CQScheduleTask implements Runnable {
           result =
               configManager
                   .getConsensusManager()
-                  .write(new UpdateCQLastExecTimePlan(cqId, executionTime, md5));
+                  .write(new UpdateCQLastExecTimePlan(cqId, executionTime, cqToken));
         } catch (ConsensusException e) {
           result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           result.setMessage(e.getMessage());
@@ -291,6 +328,9 @@ public class CQScheduleTask implements Runnable {
 
     @Override
     public void onError(Exception exception) {
+      if (cancelled.get()) {
+        return;
+      }
       LOGGER.warn("Execute CQ {} failed", cqId, exception);
       if (needSubmit()) {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);

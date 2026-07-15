@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSinkMetrics;
@@ -106,14 +107,21 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
   @Override
   public void onError(Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
+    final Object eventReportMessage =
         event instanceof EnrichedEvent
             ? ((EnrichedEvent) event).coreReportMessage()
-            : event.toString(),
-        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
-        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
-        exception);
+            : event.toString();
+    final Object committerKey =
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null;
+    final Object commitId =
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null;
+    PipeLogger.log(
+        LOGGER::warn,
+        exception,
+        "Failed to transfer TabletInsertionEvent %s (committer key=%s, commit id=%s).",
+        eventReportMessage,
+        committerKey,
+        commitId);
 
     connector.addFailureEventToRetryQueue(event);
     metric.recordRetryCounter();

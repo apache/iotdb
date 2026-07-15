@@ -88,6 +88,34 @@ public class PipeTaskInfoAutoRestartTest {
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
   }
 
+  @Test
+  public void testHandleSuccessfulRestartClearsRuntimeExceptionMessages() {
+    final String pipeName = "restartPipe";
+    createPipe(pipeName, PipeStatus.RUNNING);
+
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
+
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
+    Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertFalse(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
+
+    Assert.assertTrue(pipeTaskInfo.autoRestart());
+    final long exceptionsClearTime = runtimeMeta.getExceptionsClearTime();
+    Assert.assertTrue(
+        runtimeMeta.getNodeId2PipeRuntimeExceptionMap().values().stream()
+            .allMatch(exception -> exception.getTimeStamp() <= exceptionsClearTime));
+
+    pipeTaskInfo.handleSuccessfulRestart();
+
+    Assert.assertEquals(PipeStatus.RUNNING, runtimeMeta.getStatus().get());
+    Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
+    Assert.assertEquals(exceptionsClearTime, runtimeMeta.getExceptionsClearTime());
+  }
+
   private Map<Integer, TPushPipeMetaResp> createErrorRespMap(final String pipeName) {
     final TPushPipeMetaRespExceptionMessage exceptionMessage =
         new TPushPipeMetaRespExceptionMessage(

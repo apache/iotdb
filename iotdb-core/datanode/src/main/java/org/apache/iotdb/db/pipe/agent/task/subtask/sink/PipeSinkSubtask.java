@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBDataRegionAirGapSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -47,6 +50,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
@@ -65,6 +73,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
+  private final ReentrantLock outputPipeConnectorOperationLock = new ReentrantLock();
+  private final Queue<CommitterKey> pendingDiscardCommitterKeys = new ConcurrentLinkedQueue<>();
 
   public PipeSinkSubtask(
       final String taskID,
@@ -109,15 +119,19 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       }
 
       if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
-        PipeDataRegionSinkMetrics.getInstance().markTabletEvent(taskID);
+        if (executeOutputPipeConnectorOperation(
+            () -> outputPipeConnector.transfer((TabletInsertionEvent) event))) {
+          PipeDataRegionSinkMetrics.getInstance().markTabletEvent(taskID);
+        }
       } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        PipeDataRegionSinkMetrics.getInstance().markTsFileEvent(taskID);
+        if (executeOutputPipeConnectorOperation(
+            () -> outputPipeConnector.transfer((TsFileInsertionEvent) event))) {
+          PipeDataRegionSinkMetrics.getInstance().markTsFileEvent(taskID);
+        }
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        outputPipeConnector.transfer(event);
-        if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
-            != PlanNodeType.DELETE_DATA) {
+        if (executeOutputPipeConnectorOperation(() -> outputPipeConnector.transfer(event))
+            && ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
+                != PlanNodeType.DELETE_DATA) {
           // Only plan nodes in schema region will be marked, delete data node is currently not
           // taken into account
           PipeSchemaRegionSinkMetrics.getInstance().markSchemaEvent(taskID);
@@ -125,10 +139,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(
-            event instanceof UserDefinedEnrichedEvent
-                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
-                : event);
+        executeOutputPipeConnectorOperation(
+            () ->
+                outputPipeConnector.transfer(
+                    event instanceof UserDefinedEnrichedEvent
+                        ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                        : event));
       }
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
@@ -147,8 +163,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     try {
-      outputPipeConnector.heartbeat();
-      outputPipeConnector.transfer(event);
+      if (!executeOutputPipeConnectorOperation(
+          () -> {
+            outputPipeConnector.heartbeat();
+            outputPipeConnector.transfer(event);
+          })) {
+        return;
+      }
     } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
@@ -166,6 +187,54 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   @Override
+  protected boolean handshakeOutputPipeConnector() throws Exception {
+    return executeOutputPipeConnectorOperation(() -> outputPipeConnector.handshake());
+  }
+
+  private boolean executeOutputPipeConnectorOperation(final OutputPipeConnectorOperation operation)
+      throws Exception {
+    outputPipeConnectorOperationLock.lock();
+    try {
+      discardPendingEventsOfPipeUnderLock();
+      if (isClosed.get()) {
+        return false;
+      }
+
+      operation.execute();
+      discardPendingEventsOfPipeUnderLock();
+      return true;
+    } finally {
+      outputPipeConnectorOperationLock.unlock();
+    }
+  }
+
+  private void discardPendingEventsOfPipeUnderLock() {
+    if (!(outputPipeConnector instanceof PipeConnectorWithEventDiscard)) {
+      pendingDiscardCommitterKeys.clear();
+      return;
+    }
+
+    CommitterKey committerKey;
+    while ((committerKey = pendingDiscardCommitterKeys.poll()) != null) {
+      try {
+        ((PipeConnectorWithEventDiscard) outputPipeConnector).discardEventsOfPipe(committerKey);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to discard events of pipe {} in connector subtask {}.",
+            committerKey.getPipeName(),
+            taskID,
+            e);
+      }
+    }
+  }
+
+  @FunctionalInterface
+  private interface OutputPipeConnectorOperation {
+
+    void execute() throws Exception;
+  }
+
+  @Override
   public void close() {
     if (!attributeSortedString.startsWith("schema_")) {
       PipeDataRegionSinkMetrics.getInstance().deregister(taskID);
@@ -176,12 +245,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     isClosed.set(true);
     try {
       final long startTime = System.currentTimeMillis();
-      outputPipeConnector.close();
-      LOGGER.info(
-          "Pipe: connector subtask {} ({}) was closed within {} ms",
-          taskID,
-          outputPipeConnector,
-          System.currentTimeMillis() - startTime);
+      if (closeOutputPipeConnector()) {
+        LOGGER.info(
+            "Pipe: connector subtask {} ({}) was closed within {} ms",
+            taskID,
+            outputPipeConnector,
+            System.currentTimeMillis() - startTime);
+      }
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
@@ -196,14 +266,62 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  private boolean closeOutputPipeConnector() throws Exception {
+    final AtomicReference<Exception> exception = new AtomicReference<>();
+    final AtomicBoolean closeStarted = new AtomicBoolean(false);
+    final Thread closeThread =
+        new Thread(
+            () -> {
+              outputPipeConnectorOperationLock.lock();
+              try {
+                discardPendingEventsOfPipeUnderLock();
+                closeStarted.set(true);
+                outputPipeConnector.close();
+              } catch (final Exception e) {
+                exception.set(e);
+              } finally {
+                outputPipeConnectorOperationLock.unlock();
+              }
+            },
+            "PipeSinkSubtaskClose-" + taskID);
+    closeThread.setDaemon(true);
+    closeThread.start();
+
+    final long timeoutInMs =
+        Math.max(
+            1L, CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3);
+    try {
+      closeThread.join(timeoutInMs);
+    } catch (final InterruptedException e) {
+      closeThread.interrupt();
+      Thread.currentThread().interrupt();
+      throw e;
+    }
+    if (closeThread.isAlive()) {
+      if (closeStarted.get()) {
+        closeThread.interrupt();
+      }
+      LOGGER.warn(
+          "Pipe sink subtask close timed out after {} ms for {}, close operation {}.",
+          timeoutInMs,
+          taskID,
+          closeStarted.get() ? "is still running" : "will run after current connector operation");
+      return false;
+    }
+
+    if (exception.get() != null) {
+      throw exception.get();
+    }
+    return true;
+  }
+
   /**
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(
-      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
     // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    inputPendingQueue.discardEventsOfPipe(committerKey);
 
     try {
       increaseHighPriorityTaskCount();
@@ -216,9 +334,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // use a new thread to stop all the pipes, we will not encounter deadlock here. Or else we
         // will.
         if (lastEvent instanceof EnrichedEvent
-            && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
-            && creationTimeToDrop == ((EnrichedEvent) lastEvent).getCreationTime()
-            && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
+            && isEventFromPipe((EnrichedEvent) lastEvent, committerKey)) {
           // Do not clear the last event's reference counts because it may be on transferring
           lastEvent = null;
           // Submit self to avoid that the lastEvent has been retried "max times" times and has
@@ -240,9 +356,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
         // "nonnull" detection.
         if (lastExceptionEvent instanceof EnrichedEvent
-            && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
-            && creationTimeToDrop == ((EnrichedEvent) lastExceptionEvent).getCreationTime()
-            && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
+            && isEventFromPipe((EnrichedEvent) lastExceptionEvent, committerKey)) {
           clearReferenceCountAndReleaseLastExceptionEvent();
         }
       }
@@ -250,10 +364,30 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       decreaseHighPriorityTaskCount();
     }
 
-    if (outputPipeConnector instanceof PipeConnectorWithEventDiscard) {
-      ((PipeConnectorWithEventDiscard) outputPipeConnector)
-          .discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    discardOutputPipeConnectorEventsOfPipe(committerKey);
+  }
+
+  private void discardOutputPipeConnectorEventsOfPipe(final CommitterKey committerKey) {
+    if (!(outputPipeConnector instanceof PipeConnectorWithEventDiscard)) {
+      return;
     }
+
+    pendingDiscardCommitterKeys.offer(committerKey);
+    if (outputPipeConnectorOperationLock.tryLock()) {
+      try {
+        discardPendingEventsOfPipeUnderLock();
+      } finally {
+        outputPipeConnectorOperationLock.unlock();
+      }
+    }
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -300,6 +434,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeConnector instanceof IoTDBDataRegionSyncSink) {
       return ((IoTDBDataRegionSyncSink) outputPipeConnector).getBatchSize();
     }
+    if (outputPipeConnector instanceof IoTDBDataRegionAirGapSink) {
+      return ((IoTDBDataRegionAirGapSink) outputPipeConnector).getBatchSize();
+    }
     return 0;
   }
 
@@ -321,6 +458,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector).setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
+    }
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (outputPipeConnector instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeConnector).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
@@ -331,6 +474,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     if (outputPipeConnector instanceof IoTDBSink) {
       ((IoTDBSink) outputPipeConnector)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
+    if (outputPipeConnector instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeConnector)
+          .setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
     }
   }
 

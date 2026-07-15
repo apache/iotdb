@@ -40,6 +40,7 @@ public class LoadTsFileConfigurator {
       case ON_SUCCESS_KEY:
         validateOnSuccessParam(value);
         break;
+      case DATABASE_NAME_KEY:
       case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
@@ -85,6 +86,12 @@ public class LoadTsFileConfigurator {
     return Integer.parseInt(
         loadAttributes.getOrDefault(
             DATABASE_LEVEL_KEY, String.valueOf(DATABASE_LEVEL_DEFAULT_VALUE)));
+  }
+
+  public static final String DATABASE_NAME_KEY = "database-name";
+
+  public static String parseDatabaseName(final Map<String, String> loadAttributes) {
+    return loadAttributes.get(DATABASE_NAME_KEY);
   }
 
   public static final String ON_SUCCESS_KEY = "on-success";

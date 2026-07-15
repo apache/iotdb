@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
@@ -74,6 +75,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TwoStageCountProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
+  private static final String LEGACY_PROCESSOR_OUTPUT_SERIES_KEY = "processor.output.series";
 
   private String pipeName;
   private long creationTime;
@@ -92,16 +94,26 @@ public class TwoStageCountProcessor implements PipeProcessor {
   private final Queue<Pair<long[], ProgressIndex> /* ([timestamp, local count], progress index) */>
       localCommitQueue = new ConcurrentLinkedQueue<>();
 
+  private UserEntity sourceUserEntity;
+  private String sourcePassword;
+
   private TwoStageAggregateSender twoStageAggregateSender;
   private final Queue<Pair<Long, Long> /* (timestamp, global count) */> globalCountQueue =
       new ConcurrentLinkedQueue<>();
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+    validator.validateSynonymAttributes(
+        Collections.singletonList(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY),
+        Collections.singletonList(LEGACY_PROCESSOR_OUTPUT_SERIES_KEY),
+        true);
 
     final String rawOutputSeries =
-        validator.getParameters().getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+        validator
+            .getParameters()
+            .getStringByKeys(
+                PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY,
+                LEGACY_PROCESSOR_OUTPUT_SERIES_KEY);
     try {
       PathUtils.isLegalPath(rawOutputSeries);
     } catch (IllegalPathException e) {
@@ -118,9 +130,10 @@ public class TwoStageCountProcessor implements PipeProcessor {
     creationTime = runtimeEnvironment.getCreationTime();
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
+    sourceUserEntity = runtimeEnvironment.getSourceUserEntity();
+    sourcePassword = runtimeEnvironment.getSourcePassword();
 
-    outputSeries =
-        new PartialPath(parameters.getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
@@ -149,7 +162,15 @@ public class TwoStageCountProcessor implements PipeProcessor {
     PipeCombineHandlerManager.getInstance()
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
-    twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+    twoStageAggregateSender =
+        new TwoStageAggregateSender(pipeName, creationTime, sourceUserEntity, sourcePassword);
+  }
+
+  static PartialPath parseOutputSeries(final PipeParameters parameters)
+      throws IllegalPathException {
+    return new PartialPath(
+        parameters.getStringByKeys(
+            PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY, LEGACY_PROCESSOR_OUTPUT_SERIES_KEY));
   }
 
   @Override

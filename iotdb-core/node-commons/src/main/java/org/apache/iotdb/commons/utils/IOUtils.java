@@ -28,10 +28,12 @@ import com.google.common.base.Supplier;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +96,26 @@ public class IOUtils {
     outputStream.write(encodingBuffer.array(), 0, Integer.BYTES);
   }
 
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer) throws IOException {
+    while (buffer.hasRemaining()) {
+      if (fileChannel.read(buffer) <= 0) {
+        throw new EOFException();
+      }
+    }
+  }
+
+  public static void readFully(FileChannel fileChannel, ByteBuffer buffer, long position)
+      throws IOException {
+    long currentPosition = position;
+    while (buffer.hasRemaining()) {
+      final int readBytes = fileChannel.read(buffer, currentPosition);
+      if (readBytes <= 0) {
+        throw new EOFException();
+      }
+      currentPosition += readBytes;
+    }
+  }
+
   /**
    * Read a string from the given stream.
    *
@@ -120,7 +142,7 @@ public class IOUtils {
         strBuffer = new byte[length];
       }
 
-      inputStream.read(strBuffer, 0, length);
+      inputStream.readFully(strBuffer, 0, length);
       return new String(strBuffer, 0, length, encoding);
     }
     return null;

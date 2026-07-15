@@ -287,4 +287,51 @@ public class RegionScanLogicalPlannerTest {
     buffer.flip();
     Assert.assertEquals(timeseriesRegionScanNode, PlanNodeType.deserialize(buffer));
   }
+
+  @Test
+  public void serializeDeserializeLogicalViewContextTest() throws IllegalPathException {
+    Map<String, TimeseriesContext> logicalViewContextMap =
+        Collections.singletonMap(
+            "root.sg.view.v1",
+            new TimeseriesContext(
+                "INT32",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                1,
+                true,
+                "root.sg",
+                new HashMap<>()));
+    Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap = new HashMap<>();
+    timeseriesSchemaInfoMap.put(
+        new MeasurementPath("root.sg.d3.s1", TSDataType.INT32),
+        Collections.singletonList(
+            new TimeseriesContext(
+                "INT32",
+                null,
+                TSFileDescriptor.getInstance().getConfig().getValueEncoder(TSDataType.INT32),
+                "LZ4",
+                null,
+                null,
+                null,
+                null,
+                0,
+                logicalViewContextMap)));
+    Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemaInfo =
+        new HashMap<>();
+    deviceToTimeseriesSchemaInfo.put(new PartialPath("root.sg.d3"), timeseriesSchemaInfoMap);
+
+    TimeseriesRegionScanNode timeseriesRegionScanNode =
+        new TimeseriesRegionScanNode(
+            new PlanNodeId("timeseries_test_id"), deviceToTimeseriesSchemaInfo, false, null);
+
+    ByteBuffer buffer = ByteBuffer.allocate(10240);
+    timeseriesRegionScanNode.serialize(buffer);
+    buffer.flip();
+    Assert.assertEquals(timeseriesRegionScanNode, PlanNodeType.deserialize(buffer));
+  }
 }

@@ -169,6 +169,11 @@ public class PipeEventCommitManager {
     return true;
   }
 
+  public CommitterKey getCommitterKey(
+      final String pipeName, final long creationTime, final int regionId) {
+    return generateCommitterKey(pipeName, creationTime, regionId);
+  }
+
   private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
     return taskAgent.getCommitterKey(

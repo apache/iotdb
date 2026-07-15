@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -155,6 +156,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletsSizeInBytes(tablets));
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
         if (tablet.rowSize == 0) {
@@ -173,6 +175,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       if (tablet.rowSize == 0) {
         return true;
       }
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletSizeInBytes(tablet));
       bufferTablet(
           rawTabletInsertionEvent.getPipeName(),
           rawTabletInsertionEvent.getCreationTime(),
@@ -188,16 +191,23 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return true;
   }
 
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    return tablets.stream()
+        .filter(tablet -> tablet.rowSize > 0)
+        .mapToLong(PipeTabletEventTsFileBatch::calculateTabletSizeInBytes)
+        .sum();
+  }
+
+  private static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+  }
+
   private void bufferTablet(
       final String pipeName,
       final long creationTime,
       final Tablet tablet,
       final boolean isAligned) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-
-    // TODO: Currently, PipeTsFileBuilderV2 still uses a fallback builder, so memory table writing
-    // and storing temporary tablets require double the memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -361,7 +371,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedValues.addAll(Arrays.asList(tablet.values));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.bitMaps));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {
@@ -464,8 +474,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   @Override
   public synchronized void onSuccess() {
-    super.onSuccess();
+    clearBatchData();
 
+    super.onSuccess();
+  }
+
+  @Override
+  protected void clearBatchData() {
     pipeName2WeightMap.clear();
 
     tabletList.clear();
@@ -478,13 +493,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   @Override
   public synchronized void close() {
-    super.close();
-
-    pipeName2WeightMap.clear();
-
-    tabletList.clear();
-    isTabletAlignedList.clear();
-
     if (Objects.nonNull(fileWriter)) {
       try {
         fileWriter.close();
@@ -510,6 +518,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
       fileWriter = null;
     }
+
+    super.close();
   }
 
   protected File createFile() throws IOException {
@@ -563,7 +573,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                 .map(schema -> (MeasurementSchema) schema)
                 .toArray(MeasurementSchema[]::new);
         Object[] values = Arrays.copyOf(tablet.values, tablet.values.length);
-        BitMap[] bitMaps = Arrays.copyOf(tablet.bitMaps, tablet.bitMaps.length);
+        BitMap[] bitMaps = PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet);
 
         // convert date value to int refer to
         // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet

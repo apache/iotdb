@@ -62,6 +62,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -103,7 +104,7 @@ public class UpdateLastCacheOperatorTest {
 
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
-      TsBlock result = updateLastCacheOperator.next();
+      TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 
@@ -133,7 +134,7 @@ public class UpdateLastCacheOperatorTest {
 
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
-      TsBlock result = updateLastCacheOperator.next();
+      TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 
@@ -163,7 +164,7 @@ public class UpdateLastCacheOperatorTest {
 
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
-      TsBlock result = updateLastCacheOperator.next();
+      TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 

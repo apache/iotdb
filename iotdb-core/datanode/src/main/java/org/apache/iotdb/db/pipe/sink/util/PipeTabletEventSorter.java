@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink.util;
 
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -129,6 +131,7 @@ public class PipeTabletEventSorter {
   // Col: [6, 1]
   private void sortAndMayDeduplicateValuesAndBitMaps() {
     int columnIndex = 0;
+    boolean bitMapsModified = false;
     for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
@@ -145,9 +148,14 @@ public class PipeTabletEventSorter {
 
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] = deDuplicatedBitMap;
+          bitMapsModified = true;
         }
         columnIndex++;
       }
+    }
+
+    if (bitMapsModified) {
+      tablet.bitMaps = PipeTabletUtils.compactBitMaps(tablet.bitMaps, deDuplicatedSize);
     }
   }
 

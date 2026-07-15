@@ -24,6 +24,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
@@ -52,4 +53,16 @@ public interface ISchemaSource<T extends ISchemaInfo> {
   boolean hasSchemaStatistic(ISchemaRegion schemaRegion);
 
   long getSchemaStatistic(ISchemaRegion schemaRegion);
+
+  default boolean shouldSkipSchemaRegion(ISchemaRegion schemaRegion) {
+    return false;
+  }
+
+  default boolean checkRegionDatabaseIncluded(ISchemaRegion schemaRegion) {
+    return true;
+  }
+
+  default long getMaxMemory(ISchemaRegion schemaRegion) {
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+  }
 }

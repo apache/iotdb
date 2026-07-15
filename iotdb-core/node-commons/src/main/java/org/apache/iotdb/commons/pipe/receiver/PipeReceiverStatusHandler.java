@@ -46,6 +46,7 @@ public class PipeReceiverStatusHandler {
   private static final String NO_PERMISSION = "No permission";
   private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
+  private static final int MAX_RECORD_MESSAGE_LENGTH_IN_LOG = 2048;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
   private final long retryMaxMillisWhenConflictOccurs;
@@ -134,6 +135,7 @@ public class PipeReceiverStatusHandler {
               "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
               shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
               status);
+          logDiscardedUserConflictData("retry is not allowed", recordMessage, status);
           return;
         }
 
@@ -147,6 +149,7 @@ public class PipeReceiverStatusHandler {
                 "User conflict exception: retry timeout. will be ignored. event: {}. status: {}",
                 shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
                 status);
+            logDiscardedUserConflictData("retry timeout", recordMessage, status);
             resetExceptionStatus();
             return;
           }
@@ -250,6 +253,32 @@ public class PipeReceiverStatusHandler {
 
   private static String getNoPermission(final boolean noPermission) {
     return noPermission ? NO_PERMISSION : UNCLASSIFIED_EXCEPTION;
+  }
+
+  private void logDiscardedUserConflictData(
+      final String reason, final String recordMessage, final TSStatus status) {
+    if (!LOGGER.isWarnEnabled()) {
+      return;
+    }
+
+    LOGGER.warn(
+        "User conflict exception: discarded data info because {}. data: {}. receiver message: {}. status: {}",
+        reason,
+        summarizeRecordMessage(recordMessage),
+        status.getMessage(),
+        status);
+  }
+
+  private String summarizeRecordMessage(final String recordMessage) {
+    if (Objects.isNull(recordMessage) || recordMessage.isEmpty()) {
+      return "<empty>";
+    }
+
+    final String normalizedRecordMessage =
+        recordMessage.replace('\r', ' ').replace('\n', ' ').trim();
+    return normalizedRecordMessage.length() <= MAX_RECORD_MESSAGE_LENGTH_IN_LOG
+        ? normalizedRecordMessage
+        : normalizedRecordMessage.substring(0, MAX_RECORD_MESSAGE_LENGTH_IN_LOG) + "...(truncated)";
   }
 
   private void recordExceptionStatusIfNecessary(final String message) {

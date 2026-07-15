@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -93,20 +92,20 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForTablet =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    LOGGER.info(
-        "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
-        tsFile,
-        getClass().getSimpleName(),
-        pipeName,
-        creationTime,
-        pattern,
-        startTime,
-        endTime,
-        isWithMod);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
+          tsFile,
+          getClass().getSimpleName(),
+          pipeName,
+          creationTime,
+          pattern,
+          startTime,
+          endTime,
+          isWithMod);
+    }
   }
 
   /**
@@ -161,6 +160,13 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
       PipeTsFileToTabletsMetrics.getInstance().recordTabletGenerated(taskID, tabletMemorySize);
     } catch (final Exception e) {
       LOGGER.warn("Failed to record tablet metrics for pipe {}", pipeName, e);
+    }
+  }
+
+  protected void releaseTabletMemoryBlock() {
+    if (allocatedMemoryBlockForTablet != null
+        && allocatedMemoryBlockForTablet.getMemoryUsageInBytes() > 0) {
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
     }
   }
 

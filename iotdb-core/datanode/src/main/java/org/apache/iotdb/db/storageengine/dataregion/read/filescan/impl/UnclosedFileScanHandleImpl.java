@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -39,15 +40,19 @@ import org.apache.tsfile.read.common.TimeRange;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
   private final Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataMap;
   private final Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap;
+  private final Map<IDeviceID, List<TimeRange>> deviceToDeletionRanges;
+  private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToTimeSeriesDeletionRanges;
 
   public UnclosedFileScanHandleImpl(
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataMap,
@@ -56,6 +61,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     this.deviceToChunkMetadataMap = deviceToChunkMetadataMap;
     this.deviceToMemChunkHandleMap = deviceToMemChunkHandleMap;
     this.tsFileResource = tsFileResource;
+    this.deviceToDeletionRanges = new ConcurrentHashMap<>();
+    this.deviceToTimeSeriesDeletionRanges = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -68,19 +75,9 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timeArray) {
-    Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
-    for (List<IChunkMetadata> chunkMetadataList : chunkMetadataMap.values()) {
-      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-        if (chunkMetadata.getDeleteIntervalList() != null) {
-          for (TimeRange deleteInterval : chunkMetadata.getDeleteIntervalList()) {
-            if (deleteInterval.contains(timeArray)) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return false;
+    List<TimeRange> deletionRanges =
+        deviceToDeletionRanges.computeIfAbsent(deviceID, this::collectDeviceDeletionRanges);
+    return ModificationUtils.isPointDeleted(timeArray, deletionRanges);
   }
 
   @Override
@@ -121,19 +118,13 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isTimeSeriesTimeDeleted(
       IDeviceID deviceID, String timeSeriesName, long timestamp) {
-    List<IChunkMetadata> chunkMetadataList =
-        deviceToChunkMetadataMap.get(deviceID).get(timeSeriesName);
-    // check if timestamp is deleted by deleteInterval
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      if (chunkMetadata.getDeleteIntervalList() != null) {
-        for (TimeRange deleteInterval : chunkMetadata.getDeleteIntervalList()) {
-          if (deleteInterval.contains(timestamp)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    Map<String, List<TimeRange>> timeSeriesDeletionRanges =
+        deviceToTimeSeriesDeletionRanges.computeIfAbsent(
+            deviceID, key -> new ConcurrentHashMap<>());
+    List<TimeRange> deletionRanges =
+        timeSeriesDeletionRanges.computeIfAbsent(
+            timeSeriesName, key -> collectTimeSeriesDeletionRanges(deviceID, key));
+    return ModificationUtils.isPointDeleted(timestamp, deletionRanges);
   }
 
   @Override
@@ -166,5 +157,45 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public TsFileResource getTsResource() {
     return tsFileResource;
+  }
+
+  private List<TimeRange> collectDeviceDeletionRanges(IDeviceID deviceID) {
+    Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
+    if (chunkMetadataMap == null || chunkMetadataMap.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<TimeRange> deletionRanges = new ArrayList<>();
+    for (List<IChunkMetadata> chunkMetadataList : chunkMetadataMap.values()) {
+      appendDeletionRanges(deletionRanges, chunkMetadataList);
+    }
+    TimeRange.sortAndMerge(deletionRanges);
+    return deletionRanges;
+  }
+
+  private List<TimeRange> collectTimeSeriesDeletionRanges(
+      IDeviceID deviceID, String timeSeriesName) {
+    Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
+    if (chunkMetadataMap == null) {
+      return Collections.emptyList();
+    }
+    List<IChunkMetadata> chunkMetadataList = chunkMetadataMap.get(timeSeriesName);
+    if (chunkMetadataList == null || chunkMetadataList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<TimeRange> deletionRanges = new ArrayList<>();
+    appendDeletionRanges(deletionRanges, chunkMetadataList);
+    TimeRange.sortAndMerge(deletionRanges);
+    return deletionRanges;
+  }
+
+  private void appendDeletionRanges(
+      List<TimeRange> deletionRanges, List<IChunkMetadata> chunkMetadataList) {
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      if (chunkMetadata.getDeleteIntervalList() != null) {
+        for (TimeRange deletionRange : chunkMetadata.getDeleteIntervalList()) {
+          deletionRanges.add(new TimeRange(deletionRange.getMin(), deletionRange.getMax()));
+        }
+      }
+    }
   }
 }

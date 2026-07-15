@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -126,7 +127,11 @@ public class DataNodeRegionManager {
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
     } catch (MetadataException e2) {
-      LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
+      if (LoggerPeriodicalLogReducer.shouldLog(
+          "Create Schema Region failed because of %s",
+          e2.getClass().getName() + String.valueOf(e2.getMessage()))) {
+        LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
+      }
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));

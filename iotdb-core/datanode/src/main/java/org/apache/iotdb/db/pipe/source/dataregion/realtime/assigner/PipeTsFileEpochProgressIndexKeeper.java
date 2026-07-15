@@ -31,40 +31,90 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileEpochProgressIndexKeeper {
 
-  // data region id -> pipeName -> tsFile path -> max progress index
+  // data region id -> task scope id -> tsFile path -> max progress index
   private final Map<String, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
   public synchronized void registerProgressIndex(
-      final String dataRegionId, final String pipeName, final TsFileResource resource) {
+      final String dataRegionId, final String taskScopeID, final TsFileResource resource) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(taskScopeID, k -> new ConcurrentHashMap<>())
         .putIfAbsent(resource.getTsFilePath(), resource);
   }
 
   public synchronized void eliminateProgressIndex(
-      final String dataRegionId, final @Nonnull String pipeName, final String filePath) {
-    progressIndexKeeper
-        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-        .remove(filePath);
+      final String dataRegionId, final @Nonnull String taskScopeID, final String filePath) {
+    final Map<String, Map<String, TsFileResource>> scopeProgressIndexKeeper =
+        progressIndexKeeper.get(dataRegionId);
+    if (scopeProgressIndexKeeper == null) {
+      return;
+    }
+
+    final Map<String, TsFileResource> tsFileProgressIndexKeeper =
+        scopeProgressIndexKeeper.get(taskScopeID);
+    if (tsFileProgressIndexKeeper == null) {
+      return;
+    }
+
+    tsFileProgressIndexKeeper.remove(filePath);
+    if (tsFileProgressIndexKeeper.isEmpty()) {
+      scopeProgressIndexKeeper.remove(taskScopeID);
+      if (scopeProgressIndexKeeper.isEmpty()) {
+        progressIndexKeeper.remove(dataRegionId);
+      }
+    }
+  }
+
+  public synchronized void clearProgressIndex(
+      final String dataRegionId, final @Nonnull String taskScopeID) {
+    final Map<String, Map<String, TsFileResource>> scopeProgressIndexKeeper =
+        progressIndexKeeper.get(dataRegionId);
+    if (scopeProgressIndexKeeper == null) {
+      return;
+    }
+
+    scopeProgressIndexKeeper.remove(taskScopeID);
+    if (scopeProgressIndexKeeper.isEmpty()) {
+      progressIndexKeeper.remove(dataRegionId);
+    }
+  }
+
+  public synchronized boolean containsTsFile(
+      final String dataRegionId, final @Nonnull String taskScopeID, final String tsFilePath) {
+    final Map<String, Map<String, TsFileResource>> scopeProgressIndexKeeper =
+        progressIndexKeeper.get(dataRegionId);
+    if (scopeProgressIndexKeeper == null) {
+      return false;
+    }
+
+    final Map<String, TsFileResource> tsFileProgressIndexKeeper =
+        scopeProgressIndexKeeper.get(taskScopeID);
+    return tsFileProgressIndexKeeper != null && tsFileProgressIndexKeeper.containsKey(tsFilePath);
   }
 
   public synchronized boolean isProgressIndexAfterOrEquals(
       final String dataRegionId,
-      final String pipeName,
+      final String taskScopeID,
       final String tsFilePath,
       final ProgressIndex progressIndex) {
-    return progressIndexKeeper
-        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-        .entrySet()
-        .stream()
+    final Map<String, Map<String, TsFileResource>> scopeProgressIndexKeeper =
+        progressIndexKeeper.get(dataRegionId);
+    if (scopeProgressIndexKeeper == null) {
+      return false;
+    }
+
+    final Map<String, TsFileResource> tsFileProgressIndexKeeper =
+        scopeProgressIndexKeeper.get(taskScopeID);
+    if (tsFileProgressIndexKeeper == null) {
+      return false;
+    }
+
+    return tsFileProgressIndexKeeper.entrySet().stream()
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
         .filter(Objects::nonNull)
-        .anyMatch(resource -> !resource.getMaxProgressIndex().isAfter(progressIndex));
+        .anyMatch(resource -> progressIndex.isEqualOrAfter(resource.getMaxProgressIndex()));
   }
 
   //////////////////////////// singleton ////////////////////////////

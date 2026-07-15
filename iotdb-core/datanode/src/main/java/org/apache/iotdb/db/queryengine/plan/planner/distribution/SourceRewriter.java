@@ -823,7 +823,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return planNodeList;
     }
 
-    boolean outputCountInScanNode = node.isOutputCount() && !context.isOneSeriesInMultiRegion();
+    boolean outputCountInScanNode =
+        node.isOutputCount()
+            && !context.isOneSeriesInMultiRegion()
+            && !hasActiveLogicalViewContext(node);
     ActiveRegionScanMergeNode regionMergeNode =
         new ActiveRegionScanMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
@@ -835,6 +838,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       regionMergeNode.addChild(planNode);
     }
     return Collections.singletonList(regionMergeNode);
+  }
+
+  private boolean hasActiveLogicalViewContext(RegionScanNode node) {
+    return node instanceof TimeseriesRegionScanNode
+        && ((TimeseriesRegionScanNode) node).hasActiveLogicalViewContext();
   }
 
   @Override

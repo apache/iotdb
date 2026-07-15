@@ -128,12 +128,30 @@ public class PipeRuntimeMeta {
     }
   }
 
+  public void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    nodeId2PipeRuntimeExceptionMap
+        .entrySet()
+        .removeIf(entry -> entry.getValue().getTimeStamp() <= exceptionsClearTime);
+    consensusGroupId2TaskMetaMap
+        .values()
+        .forEach(pipeTaskMeta -> pipeTaskMeta.clearExceptionMessagesBefore(exceptionsClearTime));
+  }
+
   public boolean getIsStoppedByRuntimeException() {
     return isStoppedByRuntimeException.get();
   }
 
   public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
+  }
+
+  /**
+   * We use negative regionId to identify the external pipe source, which is not a consensus group
+   * id. Then we can reuse the regionId to schedule the external pipe source and store the progress
+   * information.
+   */
+  public static boolean isSourceExternal(int regionId) {
+    return regionId < 0;
   }
 
   public ByteBuffer serialize() throws IOException {

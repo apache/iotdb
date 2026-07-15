@@ -143,7 +143,7 @@ public class DeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
+                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
   }
 
@@ -165,7 +165,7 @@ public class DeviceSchemaCache {
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.update(
-          cachedDeviceID -> cachedDeviceID.matchFullPath(devicePath), updateFunction);
+          cachedDeviceID -> devicePath.matchFullPath(cachedDeviceID), updateFunction);
     }
   }
 

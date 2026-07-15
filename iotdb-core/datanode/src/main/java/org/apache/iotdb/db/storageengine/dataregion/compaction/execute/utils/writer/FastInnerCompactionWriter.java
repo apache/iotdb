@@ -182,6 +182,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         valuePageHeaders,
         subTaskId);
 
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+
     lastTime[subTaskId] = timePageHeader.getEndTime();
     lastTimeSet[subTaskId] = true;
     return true;
@@ -218,6 +220,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         valuePageHeaders,
         subTaskId);
 
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+
     lastTime[subTaskId] = timePageHeader.getEndTime();
     lastTimeSet[subTaskId] = true;
     return true;
@@ -228,10 +232,12 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true.
    *
+   * @throws IOException if io errors occurred
    * @throws PageException if errors occurred when write data page header
    */
   public boolean flushNonAlignedPage(
-      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) throws PageException {
+      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
+      throws IOException, PageException {
     checkPreviousTimestamp(pageHeader.getStartTime(), subTaskId);
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
@@ -243,6 +249,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
     flushNonAlignedPageToChunkWriter(
         (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
+
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
 
     lastTime[subTaskId] = pageHeader.getEndTime();
     lastTimeSet[subTaskId] = true;

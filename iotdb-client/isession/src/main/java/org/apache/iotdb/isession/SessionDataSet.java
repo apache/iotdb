@@ -40,8 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
-
 public class SessionDataSet implements ISessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
@@ -176,56 +174,45 @@ public class SessionDataSet implements ISessionDataSet {
   }
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
-    List<Field> outFields = new ArrayList<>();
-    for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
+    int valueColumnStartIndex = ioTDBRpcDataSet.getValueColumnStartIndex();
+    int columnSize = ioTDBRpcDataSet.getColumnSize();
+    List<Field> outFields = new ArrayList<>(columnSize - valueColumnStartIndex);
+    for (int columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize; columnIndex++) {
       Field field;
-
-      int index = i + 1;
-      int datasetColumnIndex = i + START_INDEX;
-      if (ioTDBRpcDataSet.ignoreTimeStamp) {
-        index--;
-        datasetColumnIndex--;
-      }
-      int loc =
-          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(index))
-              - START_INDEX;
-
-      if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
-        TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
+      if (!ioTDBRpcDataSet.isNull(columnIndex)) {
+        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
         field = new Field(dataType);
         switch (dataType) {
           case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(datasetColumnIndex);
+            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnIndex);
             field.setBoolV(booleanValue);
             break;
           case INT32:
           case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(datasetColumnIndex);
+            int intValue = ioTDBRpcDataSet.getInt(columnIndex);
             field.setIntV(intValue);
             break;
           case INT64:
           case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(datasetColumnIndex);
+            long longValue = ioTDBRpcDataSet.getLong(columnIndex);
             field.setLongV(longValue);
             break;
           case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(datasetColumnIndex);
+            float floatValue = ioTDBRpcDataSet.getFloat(columnIndex);
             field.setFloatV(floatValue);
             break;
           case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(datasetColumnIndex);
+            double doubleValue = ioTDBRpcDataSet.getDouble(columnIndex);
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
           case BLOB:
           case STRING:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
+            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnIndex));
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format(
-                    "Data type %s is not supported.",
-                    ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
+                String.format("Data type %s is not supported.", dataType));
         }
       } else {
         field = new Field(null);

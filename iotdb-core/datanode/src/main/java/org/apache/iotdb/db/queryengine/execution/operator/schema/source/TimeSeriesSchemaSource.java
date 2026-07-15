@@ -54,6 +54,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
+  private final boolean includeSystemDatabase;
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -63,6 +64,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
       boolean needViewDetail,
+      boolean includeSystemDatabase,
       PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
@@ -71,6 +73,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
+    this.includeSystemDatabase = includeSystemDatabase;
     this.scope = scope;
   }
 
@@ -134,6 +137,15 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(true);
+  }
+
+  @Override
+  public boolean shouldSkipSchemaRegion(final ISchemaRegion schemaRegion) {
+    final String database = schemaRegion.getDatabaseFullPath();
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)) {
+      return !includeSystemDatabase;
+    }
+    return false;
   }
 
   public static String mapToString(Map<String, String> map) {

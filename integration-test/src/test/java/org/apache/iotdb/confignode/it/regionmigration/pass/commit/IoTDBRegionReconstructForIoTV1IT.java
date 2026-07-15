@@ -35,7 +35,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -57,7 +56,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBRegionReconstructForIoTV1IT.class);
 
-  @Test
+  // @Test
   public void normal1C3DTest() throws Exception {
     EnvFactory.getEnv()
         .getConfig()

@@ -44,6 +44,7 @@ import org.apache.tsfile.write.writer.TsFileIOWriter;
 import javax.annotation.Nonnull;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -287,7 +288,7 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void deserializeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
-    final InputStream stream = new ByteArrayInputStream(chunkData);
+    final InputStream stream = createTsFileDataInputStream();
     if (needDecodeChunk) {
       buildChunkWriter(stream, writer);
     } else {
@@ -295,12 +296,16 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
+  private InputStream createTsFileDataInputStream() {
+    return chunkData == null
+        ? new ByteArrayInputStream(byteStream.getBuf(), 0, byteStream.size())
+        : new ByteArrayInputStream(chunkData);
+  }
+
   protected void deserializeTsFileDataByte(final InputStream stream) throws IOException {
     final int size = ReadWriteIOUtils.readInt(stream);
     this.chunkData = new byte[size];
-    if (size != stream.read(chunkData)) {
-      throw new IOException("TsFileData byte array read error, size mismatch.");
-    }
+    new DataInputStream(stream).readFully(chunkData);
   }
 
   private void deserializeEntireChunk(final InputStream stream, final TsFileIOWriter writer)

@@ -445,9 +445,11 @@ public class PipeDescriptor {
 
     config.setPipeSinkRequestSliceThresholdBytes(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_request_slice_threshold_bytes",
-                String.valueOf(config.getPipeSinkRequestSliceThresholdBytes()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_request_slice_threshold_bytes"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_request_slice_threshold_bytes",
+                        String.valueOf(config.getPipeSinkRequestSliceThresholdBytes())))));
 
     config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
         Long.parseLong(
@@ -474,16 +476,20 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_load_conversion_enabled",
                 String.valueOf(config.isPipeReceiverLoadConversionEnabled()))));
-    config.setPipePeriodicalLogMinIntervalSeconds(
+    config.setLoggerPeriodicalLogMinIntervalSeconds(
         Long.parseLong(
             properties.getProperty(
-                "pipe_periodical_log_min_interval_seconds",
-                String.valueOf(config.getPipePeriodicalLogMinIntervalSeconds()))));
-    config.setPipeLoggerCacheMaxSizeInBytes(
+                "logger_periodical_log_min_interval_seconds",
+                properties.getProperty(
+                    "pipe_periodical_log_min_interval_seconds",
+                    String.valueOf(config.getLoggerPeriodicalLogMinIntervalSeconds())))));
+    config.setLoggerCacheMaxSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "pipe_logger_cache_max_size_in_bytes",
-                String.valueOf(config.getPipeLoggerCacheMaxSizeInBytes()))));
+                "logger_cache_max_size_in_bytes",
+                properties.getProperty(
+                    "pipe_logger_cache_max_size_in_bytes",
+                    String.valueOf(config.getLoggerCacheMaxSizeInBytes())))));
 
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(

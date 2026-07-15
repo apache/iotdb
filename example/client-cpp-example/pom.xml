@@ -28,6 +28,9 @@
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB: Example: CPP Client</name>
+    <properties>
+        <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -61,6 +64,14 @@
                                     <destinationFile>${project.build.directory}/AlignedTimeseriesSessionExample.cpp</destinationFile>
                                 </fileSet>
                                 <fileSet>
+                                    <sourceFile>${project.basedir}/src/MultiSvrNodeClient.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/MultiSvrNodeClient.cpp</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/tree_example.c</sourceFile>
+                                    <destinationFile>${project.build.directory}/tree_example.c</destinationFile>
+                                </fileSet>
+                                <fileSet>
                                     <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
                                     <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
                                 </fileSet>
@@ -90,37 +101,17 @@
                                     <artifactId>client-cpp</artifactId>
                                     <version>${project.version}</version>
                                     <type>zip</type>
-                                    <classifier>cpp-${os.classifier}</classifier>
+                                    <classifier>${client.cpp.package.classifier}</classifier>
                                     <overWrite>true</overWrite>
                                 </artifactItem>
                             </artifactItems>
                             <outputDirectory>${project.build.directory}/client</outputDirectory>
                         </configuration>
                     </execution>
-                    <execution>
-                        <id>unpack-thrift</id>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb.tools</groupId>
-                                    <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${iotdb-tools-thrift.version}</version>
-                                    <classifier>${os.classifier}</classifier>
-                                    <type>zip</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
+                <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
                     <execution>
@@ -132,10 +123,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
-                            <targetPath>${project.build.directory}</targetPath>
-                            <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                            </options>
+                            <projectDirectory>${project.build.directory}</projectDirectory>
                         </configuration>
                     </execution>
                     <execution>
@@ -154,4 +142,100 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>.os-unix</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>spotless-cpp</id>
+            <activation>
+                <jdk>[11,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>2.44.5</version>
+                        <configuration>
+                            <cpp>
+                                <includes>
+                                    <include>src/**/*.h</include>
+                                    <include>src/**/*.hpp</include>
+                                    <include>src/**/*.c</include>
+                                    <include>src/**/*.cc</include>
+                                    <include>src/**/*.cpp</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>src/test/catch2/**</exclude>
+                                </excludes>
+                                <clangFormat>
+                                    <version>${clang.format.version}</version>
+                                    <style>file</style>
+                                </clangFormat>
+                            </cpp>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

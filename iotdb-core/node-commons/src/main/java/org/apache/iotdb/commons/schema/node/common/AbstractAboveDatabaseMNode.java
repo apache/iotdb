@@ -37,6 +37,10 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
     this.basicMNode = basicMNode;
   }
 
+  public BasicNode getBasicMNode() {
+    return basicMNode;
+  }
+
   @Override
   public String getName() {
     return basicMNode.getName();

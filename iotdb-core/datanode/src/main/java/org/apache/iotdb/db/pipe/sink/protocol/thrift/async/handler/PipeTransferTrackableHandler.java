@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -49,6 +50,10 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
+    if (Objects.nonNull(client) && Objects.nonNull(response)) {
+      sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
+    }
+
     if (sink.isClosed()) {
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
@@ -98,23 +103,36 @@ public abstract class PipeTransferTrackableHandler
     }
     // track handler before checking if connector is closed
     sink.trackHandler(this);
-    if (sink.isClosed()) {
-      clearEventsReferenceCount();
-      sink.eliminateHandler(this, true);
-      client.setShouldReturnSelf(true);
-      client.returnSelf(
-          (e) -> {
-            if (e instanceof IllegalStateException) {
-              LOGGER.info(
-                  "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
-              return true;
-            }
-            return false;
-          });
-      this.client = null;
+    if (returnFalseIfSinkIsClosed(client)) {
+      return false;
+    }
+    sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+    if (returnFalseIfSinkIsClosed(client)) {
       return false;
     }
     doTransfer(client, req);
+    return true;
+  }
+
+  private boolean returnFalseIfSinkIsClosed(final AsyncPipeDataTransferServiceClient client) {
+    if (!sink.isClosed()) {
+      return false;
+    }
+
+    clearEventsReferenceCount();
+    sink.eliminateHandler(this, true);
+    client.setShouldReturnSelf(true);
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            PipeLogger.log(
+                LOGGER::info,
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
+    this.client = null;
     return true;
   }
 
@@ -186,6 +204,10 @@ public abstract class PipeTransferTrackableHandler
               return;
             }
 
+            if (Objects.nonNull(response)) {
+              sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
+            }
+
             if (response == null) {
               fallbackToWholeRequest(
                   client,
@@ -249,6 +271,10 @@ public abstract class PipeTransferTrackableHandler
 
     try {
       client.setShouldReturnSelf(shouldReturnSelf);
+      sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+      if (returnFalseIfSinkIsClosed(client)) {
+        return;
+      }
       client.pipeTransfer(originalReq, this);
     } catch (final Exception e) {
       PipeTransferTrackableHandler.this.onError(e);

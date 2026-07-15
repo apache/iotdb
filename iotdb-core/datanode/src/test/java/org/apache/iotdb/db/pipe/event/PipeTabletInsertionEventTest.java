@@ -22,11 +22,16 @@ package org.apache.iotdb.db.pipe.event;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
+import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -39,7 +44,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class PipeTabletInsertionEventTest {
 
@@ -217,7 +224,7 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertRowNode.values = values;
     tabletForInsertRowNode.timestamps = new long[] {times[0]};
     tabletForInsertRowNode.rowSize = 1;
-    tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
+    tabletForInsertRowNode.bitMaps = PipeTabletUtils.compactBitMaps(bitMapsForInsertRowNode, 1);
 
     // create tablet for insertTabletNode
     BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
@@ -253,7 +260,8 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertTabletNode.values = values;
     tabletForInsertTabletNode.timestamps = times;
     tabletForInsertTabletNode.rowSize = times.length;
-    tabletForInsertTabletNode.bitMaps = bitMapsForInsertTabletNode;
+    tabletForInsertTabletNode.bitMaps =
+        PipeTabletUtils.compactBitMaps(bitMapsForInsertTabletNode, times.length);
   }
 
   @Test
@@ -316,6 +324,89 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void processAlignedTabletWithCollectPreservesAlignmentForTest() {
+    final PipeRawTabletInsertionEvent event =
+        new PipeRawTabletInsertionEvent(
+            tabletForInsertTabletNode, true, new PrefixPipePattern(pattern));
+
+    final List<TabletInsertionEvent> events = new ArrayList<>();
+    event
+        .processTabletWithCollect(
+            (tablet, collector) -> {
+              try {
+                collector.collectTablet(tablet);
+              } catch (final Exception e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .forEach(events::add);
+
+    Assert.assertEquals(1, events.size());
+    final PipeRawTabletInsertionEvent collectedEvent = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals(tabletForInsertTabletNode, collectedEvent.convertToTablet());
+    Assert.assertTrue(collectedEvent.isAligned());
+  }
+
+  @Test
+  public void collectRowWithOverriddenTreeDatabaseForTest() {
+    final PipeRowCollector rowCollector = new PipeRowCollector(null, null, "root.test.sg_0", false);
+    rowCollector.resetDatabaseInfo("root.userResultDB", false, null, "root.userResultDB");
+
+    final MeasurementSchema[] outputSchemas = {new MeasurementSchema("avg", TSDataType.INT32)};
+    rowCollector.collectRow(
+        new PipeResetTabletRow(
+            0,
+            "root.userResultDB.d_0.s_1",
+            false,
+            outputSchemas,
+            new long[] {1L},
+            new TSDataType[] {TSDataType.INT32},
+            new Object[] {new int[] {1}},
+            null,
+            new String[] {"avg"}));
+
+    final List<org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent> events =
+        rowCollector.convertToTabletInsertionEvents(false);
+    Assert.assertEquals(1, events.size());
+
+    final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals("root.userResultDB", event.getSourceDatabaseNameFromDataRegion());
+    Assert.assertFalse(event.isTableModelEvent());
+    Assert.assertEquals("root.userResultDB", event.getTreeModelDatabaseName());
+    Assert.assertEquals("root.userResultDB.d_0.s_1", event.convertToTablet().deviceId);
+  }
+
+  @Test
+  public void convertToTabletSkipsUnnecessaryBitMapsForTest() throws Exception {
+    final BitMap[] bitMaps = new BitMap[schemas.length];
+    bitMaps[0] = new BitMap(times.length);
+    bitMaps[1] = new BitMap(times.length);
+    bitMaps[1].mark(1);
+
+    final InsertTabletNode nodeWithSparseColumn =
+        new InsertTabletNode(
+            new PlanNodeId("plannode bitmap"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            times,
+            bitMaps,
+            insertTabletNode.getColumns(),
+            times.length);
+
+    final Tablet tablet =
+        new TabletInsertionDataContainer(nodeWithSparseColumn, new PrefixPipePattern(pattern))
+            .convertToTablet();
+
+    Assert.assertNotNull(tablet.bitMaps);
+    Assert.assertNull(tablet.bitMaps[0]);
+    Assert.assertNotNull(tablet.bitMaps[1]);
+    Assert.assertTrue(tablet.bitMaps[1].isMarked(1));
   }
 
   @Test
@@ -384,5 +475,51 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void isEventTimeOverlappedWithTimeRangeUsesActualRowSizeForTest() throws Exception {
+    final long[] timestamps = new long[] {110L, 111L, 112L, 0L, 0L};
+
+    final Tablet partialTablet = new Tablet(deviceId, Arrays.asList(schemas), times.length);
+    partialTablet.timestamps = timestamps;
+    partialTablet.rowSize = 3;
+
+    PipeRawTabletInsertionEvent rawEvent =
+        new PipeRawTabletInsertionEvent(partialTablet, 111L, 112L);
+    Assert.assertTrue(rawEvent.mayEventTimeOverlappedWithTimeRange());
+    rawEvent = new PipeRawTabletInsertionEvent(partialTablet, 113L, Long.MAX_VALUE);
+    Assert.assertFalse(rawEvent.mayEventTimeOverlappedWithTimeRange());
+
+    final InsertTabletNode partialInsertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("partial tablet node"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            timestamps,
+            null,
+            insertTabletNode.getColumns(),
+            3);
+
+    final Tablet convertedTablet =
+        new TabletInsertionDataContainer(partialInsertTabletNode, new PrefixPipePattern(pattern))
+            .convertToTablet();
+    Assert.assertEquals(3, convertedTablet.rowSize);
+    Assert.assertArrayEquals(
+        new long[] {110L, 111L, 112L},
+        Arrays.copyOf(convertedTablet.timestamps, convertedTablet.rowSize));
+
+    PipeInsertNodeTabletInsertionEvent insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(partialInsertTabletNode)
+            .shallowCopySelfAndBindPipeTaskMetaForProgressReport(null, 0, null, null, 111L, 112L);
+    Assert.assertTrue(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
+    insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(partialInsertTabletNode)
+            .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                null, 0, null, null, 113L, Long.MAX_VALUE);
+    Assert.assertFalse(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
   }
 }

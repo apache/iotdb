@@ -32,9 +32,16 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The {@link PipeTerminateEvent} is an {@link EnrichedEvent} that controls the termination of pipe,
@@ -43,6 +50,8 @@ import java.util.concurrent.TimeUnit;
  * be discarded.
  */
 public class PipeTerminateEvent extends EnrichedEvent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTerminateEvent.class);
 
   private final int dataRegionId;
 
@@ -56,6 +65,9 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   // Do not use call run policy to avoid deadlock
   private static final ExecutorService terminateExecutor = createTerminateExecutor();
+
+  private static final ConcurrentMap<HistoricalTransferKey, HistoricalTransferSummaryCounter>
+      HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP = new ConcurrentHashMap<>();
 
   private static ExecutorService createTerminateExecutor() {
     final WrappedThreadPoolExecutor executor =
@@ -128,6 +140,18 @@ public class PipeTerminateEvent extends EnrichedEvent {
   }
 
   public void markCompleted() {
+    final HistoricalTransferSummary summary =
+        snapshotAndClearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    if (Objects.nonNull(summary)) {
+      LOGGER.info(
+          "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, shouldMark: {}. {}",
+          pipeName,
+          dataRegionId,
+          creationTime,
+          shouldMark,
+          summary.toReportMessage());
+    }
+
     // To avoid deadlock
     if (shouldMark) {
       terminateExecutor.submit(
@@ -141,5 +165,160 @@ public class PipeTerminateEvent extends EnrichedEvent {
             "PipeTerminateEvent{dataRegionId=%s, shouldMark=%s}", dataRegionId, shouldMark)
         + " - "
         + super.toString();
+  }
+
+  public static void initializeHistoricalTransferSummary(
+      final String pipeName,
+      final long creationTime,
+      final int dataRegionId,
+      final long extractedHistoricalTsFileCount,
+      final long extractedHistoricalDeletionCount) {
+    HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP
+        .computeIfAbsent(
+            new HistoricalTransferKey(pipeName, creationTime, dataRegionId),
+            ignored -> new HistoricalTransferSummaryCounter())
+        .initialize(extractedHistoricalTsFileCount, extractedHistoricalDeletionCount);
+  }
+
+  public static void markHistoricalTsFileSkipped(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    getOrCreateHistoricalTransferSummaryCounter(pipeName, creationTime, dataRegionId)
+        .skippedHistoricalTsFileCount
+        .incrementAndGet();
+  }
+
+  public static void markHistoricalTsFileSplit(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    getOrCreateHistoricalTransferSummaryCounter(pipeName, creationTime, dataRegionId)
+        .splitHistoricalTsFileCount
+        .incrementAndGet();
+  }
+
+  public static void markHistoricalTsFileUnsplit(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    getOrCreateHistoricalTransferSummaryCounter(pipeName, creationTime, dataRegionId)
+        .unsplitHistoricalTsFileCount
+        .incrementAndGet();
+  }
+
+  public static HistoricalTransferSummary snapshotHistoricalTransferSummary(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    final HistoricalTransferSummaryCounter counter =
+        HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP.get(
+            new HistoricalTransferKey(pipeName, creationTime, dataRegionId));
+    return Objects.nonNull(counter) ? counter.snapshot() : null;
+  }
+
+  public static void clearHistoricalTransferSummary(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP.remove(
+        new HistoricalTransferKey(pipeName, creationTime, dataRegionId));
+  }
+
+  private static HistoricalTransferSummary snapshotAndClearHistoricalTransferSummary(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    final HistoricalTransferSummaryCounter counter =
+        HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP.remove(
+            new HistoricalTransferKey(pipeName, creationTime, dataRegionId));
+    return Objects.nonNull(counter) ? counter.snapshot() : null;
+  }
+
+  private static HistoricalTransferSummaryCounter getOrCreateHistoricalTransferSummaryCounter(
+      final String pipeName, final long creationTime, final int dataRegionId) {
+    return HISTORICAL_TRANSFER_SUMMARY_COUNTER_MAP.computeIfAbsent(
+        new HistoricalTransferKey(pipeName, creationTime, dataRegionId),
+        ignored -> new HistoricalTransferSummaryCounter());
+  }
+
+  public static final class HistoricalTransferSummary {
+
+    private final long extractedHistoricalTsFileCount;
+    private final long skippedHistoricalTsFileCount;
+    private final long splitHistoricalTsFileCount;
+    private final long unsplitHistoricalTsFileCount;
+    private final long extractedHistoricalDeletionCount;
+
+    private HistoricalTransferSummary(
+        final long extractedHistoricalTsFileCount,
+        final long skippedHistoricalTsFileCount,
+        final long splitHistoricalTsFileCount,
+        final long unsplitHistoricalTsFileCount,
+        final long extractedHistoricalDeletionCount) {
+      this.extractedHistoricalTsFileCount = extractedHistoricalTsFileCount;
+      this.skippedHistoricalTsFileCount = skippedHistoricalTsFileCount;
+      this.splitHistoricalTsFileCount = splitHistoricalTsFileCount;
+      this.unsplitHistoricalTsFileCount = unsplitHistoricalTsFileCount;
+      this.extractedHistoricalDeletionCount = extractedHistoricalDeletionCount;
+    }
+
+    public String toReportMessage() {
+      return String.format(
+          "historical summary: extractedTsFileCount=%s, skippedTsFileCount=%s, splitTsFileCount=%s, unsplitTsFileCount=%s, deletionCount=%s",
+          extractedHistoricalTsFileCount,
+          skippedHistoricalTsFileCount,
+          splitHistoricalTsFileCount,
+          unsplitHistoricalTsFileCount,
+          extractedHistoricalDeletionCount);
+    }
+  }
+
+  private static final class HistoricalTransferSummaryCounter {
+
+    private final AtomicLong extractedHistoricalTsFileCount = new AtomicLong(0);
+    private final AtomicLong skippedHistoricalTsFileCount = new AtomicLong(0);
+    private final AtomicLong splitHistoricalTsFileCount = new AtomicLong(0);
+    private final AtomicLong unsplitHistoricalTsFileCount = new AtomicLong(0);
+    private final AtomicLong extractedHistoricalDeletionCount = new AtomicLong(0);
+
+    private void initialize(
+        final long extractedHistoricalTsFileCount, final long extractedHistoricalDeletionCount) {
+      this.extractedHistoricalTsFileCount.set(extractedHistoricalTsFileCount);
+      this.skippedHistoricalTsFileCount.set(0);
+      this.splitHistoricalTsFileCount.set(0);
+      this.unsplitHistoricalTsFileCount.set(0);
+      this.extractedHistoricalDeletionCount.set(extractedHistoricalDeletionCount);
+    }
+
+    private HistoricalTransferSummary snapshot() {
+      return new HistoricalTransferSummary(
+          extractedHistoricalTsFileCount.get(),
+          skippedHistoricalTsFileCount.get(),
+          splitHistoricalTsFileCount.get(),
+          unsplitHistoricalTsFileCount.get(),
+          extractedHistoricalDeletionCount.get());
+    }
+  }
+
+  private static final class HistoricalTransferKey {
+
+    private final String pipeName;
+    private final long creationTime;
+    private final int dataRegionId;
+
+    private HistoricalTransferKey(
+        final String pipeName, final long creationTime, final int dataRegionId) {
+      this.pipeName = pipeName;
+      this.creationTime = creationTime;
+      this.dataRegionId = dataRegionId;
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (!(obj instanceof HistoricalTransferKey)) {
+        return false;
+      }
+      final HistoricalTransferKey that = (HistoricalTransferKey) obj;
+      return creationTime == that.creationTime
+          && dataRegionId == that.dataRegionId
+          && Objects.equals(pipeName, that.pipeName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pipeName, creationTime, dataRegionId);
+    }
   }
 }
