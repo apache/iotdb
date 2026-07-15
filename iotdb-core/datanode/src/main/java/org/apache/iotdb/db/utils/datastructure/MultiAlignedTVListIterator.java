@@ -31,6 +31,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -160,7 +161,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
     TimeValuePair currentTvPair =
-        new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+        new TimeValuePair(
+            currentTime, Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
     next();
     return currentTvPair;
   }
@@ -180,7 +182,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
-    return new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+    return new TimeValuePair(
+        currentTime, Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
   }
 
   @Override

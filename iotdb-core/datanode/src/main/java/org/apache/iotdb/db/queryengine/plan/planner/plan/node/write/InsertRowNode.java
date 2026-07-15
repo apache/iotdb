@@ -44,9 +44,9 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -1007,7 +1007,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       return null;
     }
     Object value = values[columnIndex];
-    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+    return new TimeValuePair(
+        time, Type.fromTsDataType(dataTypes[columnIndex]).getTsPrimitiveType(value));
   }
 
   private boolean canComposeTimeValuePair(final int columnIndex) {

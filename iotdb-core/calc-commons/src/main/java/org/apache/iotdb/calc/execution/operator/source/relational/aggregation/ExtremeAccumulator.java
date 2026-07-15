@@ -23,6 +23,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -37,7 +38,7 @@ public class ExtremeAccumulator implements TableAccumulator {
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.extremeResult = TsPrimitiveType.getByType(seriesDataType);
+    this.extremeResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
   }
 
   @Override

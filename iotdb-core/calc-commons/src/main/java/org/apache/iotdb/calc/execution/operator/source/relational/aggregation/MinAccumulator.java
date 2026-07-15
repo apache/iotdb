@@ -24,6 +24,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -42,7 +43,7 @@ public class MinAccumulator implements TableAccumulator {
 
   public MinAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.minResult = TsPrimitiveType.getByType(seriesDataType);
+    this.minResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -50,7 +51,7 @@ public class LastAccumulator implements TableAccumulator {
 
   public LastAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.lastValue = TsPrimitiveType.getByType(seriesDataType);
+    this.lastValue = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
   }
 
   public boolean hasInitResult() {

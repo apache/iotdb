@@ -42,6 +42,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -337,7 +338,7 @@ public abstract class AlignedTVList extends TVList {
         case STRING:
         case OBJECT:
           Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.TEXT, valueT);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.TEXT).getTsPrimitiveType(valueT);
           break;
         case FLOAT:
           float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
@@ -348,17 +349,17 @@ public abstract class AlignedTVList extends TVList {
                   || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
             valueF = MathUtils.roundWithGivenPrecision(valueF, floatPrecision);
           }
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(valueF);
           break;
         case INT32:
         case DATE:
           int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT32, valueI);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(valueI);
           break;
         case INT64:
         case TIMESTAMP:
           long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT64, valueL);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(valueL);
           break;
         case DOUBLE:
           double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
@@ -369,17 +370,17 @@ public abstract class AlignedTVList extends TVList {
                   || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
             valueD = MathUtils.roundWithGivenPrecision(valueD, floatPrecision);
           }
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(valueD);
           break;
         case BOOLEAN:
           boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.BOOLEAN, valueB);
+          vector[columnIndex] = Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(valueB);
           break;
         default:
           throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
       }
     }
-    return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
+    return Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector);
   }
 
   public void extendColumn(TSDataType dataType) {
@@ -1943,7 +1944,7 @@ public abstract class AlignedTVList extends TVList {
       TimeValuePair tvPair =
           new TimeValuePair(
               getTime(getScanOrderIndex(index)),
-              TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+              Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
 
       next();
       return tvPair;
@@ -1959,7 +1960,8 @@ public abstract class AlignedTVList extends TVList {
         vector[columnIndex] = getPrimitiveTypeObject(selectedIndices[columnIndex], columnIndex);
       }
       return new TimeValuePair(
-          getTime(getScanOrderIndex(index)), TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+          getTime(getScanOrderIndex(index)),
+          Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
     }
 
     public TsPrimitiveType getPrimitiveTypeObject(int rowIndex, int columnIndex) {
@@ -1977,38 +1979,38 @@ public abstract class AlignedTVList extends TVList {
       }
       switch (dataTypeList.get(columnIndex)) {
         case BOOLEAN:
-          return TsPrimitiveType.getByType(
-              TSDataType.BOOLEAN, getBooleanByValueIndex(valueIndex, validColumnIndex));
+          return Type.fromTsDataType(TSDataType.BOOLEAN)
+              .getTsPrimitiveType(getBooleanByValueIndex(valueIndex, validColumnIndex));
         case INT32:
-          return TsPrimitiveType.getByType(
-              TSDataType.INT32, getIntByValueIndex(valueIndex, validColumnIndex));
+          return Type.fromTsDataType(TSDataType.INT32)
+              .getTsPrimitiveType(getIntByValueIndex(valueIndex, validColumnIndex));
         case DATE:
-          return TsPrimitiveType.getByType(
-              TSDataType.DATE, getIntByValueIndex(valueIndex, validColumnIndex));
+          return Type.fromTsDataType(TSDataType.DATE)
+              .getTsPrimitiveType(getIntByValueIndex(valueIndex, validColumnIndex));
         case INT64:
         case TIMESTAMP:
-          return TsPrimitiveType.getByType(
-              TSDataType.INT64, getLongByValueIndex(valueIndex, validColumnIndex));
+          return Type.fromTsDataType(TSDataType.INT64)
+              .getTsPrimitiveType(getLongByValueIndex(valueIndex, validColumnIndex));
         case FLOAT:
           float valueF = getFloatByValueIndex(valueIndex, validColumnIndex);
           if (encodingList != null) {
             valueF =
                 roundValueWithGivenPrecision(valueF, floatPrecision, encodingList.get(columnIndex));
           }
-          return TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
+          return Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(valueF);
         case DOUBLE:
           double valueD = getDoubleByValueIndex(valueIndex, validColumnIndex);
           if (encodingList != null) {
             valueD =
                 roundValueWithGivenPrecision(valueD, floatPrecision, encodingList.get(columnIndex));
           }
-          return TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
+          return Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(valueD);
         case TEXT:
         case BLOB:
         case STRING:
         case OBJECT:
-          return TsPrimitiveType.getByType(
-              TSDataType.TEXT, getBinaryByValueIndex(valueIndex, validColumnIndex));
+          return Type.fromTsDataType(TSDataType.TEXT)
+              .getTsPrimitiveType(getBinaryByValueIndex(valueIndex, validColumnIndex));
         default:
           throw new UnSupportedDataTypeException(
               String.format("Data type %s is not supported.", dataTypeList.get(columnIndex)));

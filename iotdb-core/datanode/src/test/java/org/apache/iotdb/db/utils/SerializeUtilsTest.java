@@ -26,6 +26,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.DescReadBatchData;
 import org.apache.tsfile.read.common.DescReadWriteBatchData;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -209,18 +210,24 @@ public class SerializeUtilsTest {
   @Test
   public void serdesTVPairTest() {
     List<TimeValuePair> TVPairs = new ArrayList<>();
-    TimeValuePair p1 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.BOOLEAN, true));
+    TimeValuePair p1 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(true));
     TVPairs.add(p1);
-    TimeValuePair p2 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT32, 1));
+    TimeValuePair p2 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(1));
     TVPairs.add(p2);
-    TimeValuePair p3 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT64, 1L));
+    TimeValuePair p3 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(1L));
     TVPairs.add(p3);
-    TimeValuePair p4 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.FLOAT, 1.0f));
+    TimeValuePair p4 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(1.0f));
     TVPairs.add(p4);
-    TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
+    TimeValuePair p5 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(1.0d));
     TVPairs.add(p5);
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
+        new TimeValuePair(
+            0, Type.fromTsDataType(TSDataType.TEXT).getTsPrimitiveType(BytesUtils.valueOf("a")));
     TVPairs.add(p6);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -237,18 +244,24 @@ public class SerializeUtilsTest {
   @Test
   public void serdesTVPairsTest() {
     List<List<TimeValuePair>> TVPairs = new ArrayList<>();
-    TimeValuePair p1 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.BOOLEAN, true));
+    TimeValuePair p1 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(true));
     TVPairs.add(Collections.singletonList(p1));
-    TimeValuePair p2 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT32, 1));
+    TimeValuePair p2 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(1));
     TVPairs.add(Collections.singletonList(p2));
-    TimeValuePair p3 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT64, 1L));
+    TimeValuePair p3 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(1L));
     TVPairs.add(Collections.singletonList(p3));
-    TimeValuePair p4 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.FLOAT, 1.0f));
+    TimeValuePair p4 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(1.0f));
     TVPairs.add(Collections.singletonList(p4));
-    TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
+    TimeValuePair p5 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(1.0d));
     TVPairs.add(Collections.singletonList(p5));
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
+        new TimeValuePair(
+            0, Type.fromTsDataType(TSDataType.TEXT).getTsPrimitiveType(BytesUtils.valueOf("a")));
     TVPairs.add(Collections.singletonList(p6));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();

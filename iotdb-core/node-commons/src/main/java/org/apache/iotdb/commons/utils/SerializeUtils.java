@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchData.BatchDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -412,7 +413,8 @@ public class SerializeUtils {
       long time = buffer.getLong();
       TimeValuePair pair =
           time != Long.MIN_VALUE
-              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getDouble()))
+              ? new TimeValuePair(
+                  time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getDouble()))
               : new TimeValuePair(time, null);
       ret.add(pair);
     }
@@ -424,7 +426,8 @@ public class SerializeUtils {
       long time = buffer.getLong();
       TimeValuePair pair =
           time != Long.MIN_VALUE
-              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getFloat()))
+              ? new TimeValuePair(
+                  time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getFloat()))
               : new TimeValuePair(time, null);
       ret.add(pair);
     }
@@ -436,7 +439,8 @@ public class SerializeUtils {
       long time = buffer.getLong();
       TimeValuePair pair =
           time != Long.MIN_VALUE
-              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getInt()))
+              ? new TimeValuePair(
+                  time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getInt()))
               : new TimeValuePair(time, null);
       ret.add(pair);
     }
@@ -448,7 +452,8 @@ public class SerializeUtils {
       long time = buffer.getLong();
       TimeValuePair pair =
           time != Long.MIN_VALUE
-              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getLong()))
+              ? new TimeValuePair(
+                  time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getLong()))
               : new TimeValuePair(time, null);
       ret.add(pair);
     }
@@ -460,7 +465,8 @@ public class SerializeUtils {
       long time = buffer.getLong();
       TimeValuePair pair =
           time != Long.MIN_VALUE
-              ? new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1))
+              ? new TimeValuePair(
+                  time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.get() == 1))
               : new TimeValuePair(time, null);
       ret.add(pair);
     }
@@ -475,7 +481,8 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
+        TsPrimitiveType primitiveType =
+            Type.fromTsDataType(dataType).getTsPrimitiveType(new Binary(bytes));
         pair = new TimeValuePair(time, primitiveType);
       } else {
         pair = new TimeValuePair(time, null);
@@ -532,17 +539,22 @@ public class SerializeUtils {
     }
     switch (dataType) {
       case DOUBLE:
-        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getDouble()));
+        return new TimeValuePair(
+            time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getDouble()));
       case FLOAT:
-        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getFloat()));
+        return new TimeValuePair(
+            time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getFloat()));
       case DATE:
       case INT32:
-        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getInt()));
+        return new TimeValuePair(
+            time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getInt()));
       case TIMESTAMP:
       case INT64:
-        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.getLong()));
+        return new TimeValuePair(
+            time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.getLong()));
       case BOOLEAN:
-        return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1));
+        return new TimeValuePair(
+            time, Type.fromTsDataType(dataType).getTsPrimitiveType(buffer.get() == 1));
       case BLOB:
       case OBJECT:
       case STRING:
@@ -550,7 +562,8 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
+        TsPrimitiveType primitiveType =
+            Type.fromTsDataType(dataType).getTsPrimitiveType(new Binary(bytes));
         return new TimeValuePair(time, primitiveType);
       default:
         return null;

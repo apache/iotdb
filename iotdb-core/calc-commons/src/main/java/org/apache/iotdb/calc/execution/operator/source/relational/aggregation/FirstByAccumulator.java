@@ -26,6 +26,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -69,7 +70,7 @@ public class FirstByAccumulator implements TableAccumulator {
     this.xIsTimeColumn = xIsTimeColumn;
     this.yIsTimeColumn = yIsTimeColumn;
 
-    this.xResult = TsPrimitiveType.getByType(xDataType);
+    this.xResult = Type.fromTsDataType(xDataType).getTsPrimitiveType();
     this.canFinishAfterInit = canFinishAfterInit;
   }
 

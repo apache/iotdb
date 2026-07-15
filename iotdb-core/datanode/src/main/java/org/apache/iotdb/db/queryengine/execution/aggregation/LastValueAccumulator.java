@@ -26,6 +26,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -44,7 +45,7 @@ public class LastValueAccumulator implements Accumulator {
 
   public LastValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    lastValue = TsPrimitiveType.getByType(seriesDataType);
+    lastValue = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
   }
 
   // Column should be like: | Time | Value |

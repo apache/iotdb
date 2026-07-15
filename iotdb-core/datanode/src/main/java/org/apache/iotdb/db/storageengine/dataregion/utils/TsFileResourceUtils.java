@@ -47,6 +47,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
@@ -456,11 +457,11 @@ public class TsFileResourceUtils {
           if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
             TsPrimitiveType value;
             value =
-                TsPrimitiveType.getByType(
-                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
-                        ? TSDataType.INT64
-                        : timeseriesMetaData.getTsDataType(),
-                    timeseriesMetaData.getStatistics().getLastValue());
+                Type.fromTsDataType(
+                        timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                            ? TSDataType.INT64
+                            : timeseriesMetaData.getTsDataType())
+                    .getTsPrimitiveType(timeseriesMetaData.getStatistics().getLastValue());
             seriesLastValues.add(
                 new Pair<>(
                     timeseriesMetaData.getMeasurementId(),

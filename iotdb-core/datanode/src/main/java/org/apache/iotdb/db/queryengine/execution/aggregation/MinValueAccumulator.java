@@ -25,6 +25,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -40,7 +41,7 @@ public class MinValueAccumulator implements Accumulator {
 
   public MinValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.minResult = TsPrimitiveType.getByType(seriesDataType);
+    this.minResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
   }
 
   // Column should be like: | Time | Value |

@@ -30,6 +30,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -43,7 +44,6 @@ import static org.apache.iotdb.calc.execution.operator.source.relational.aggrega
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeBinaryValue;
 import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
 import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
-import static org.apache.tsfile.utils.TsPrimitiveType.getByType;
 
 public class GroupedModeAccumulator implements GroupedAccumulator {
 
@@ -395,7 +395,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getBoolean(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBoolean(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -410,7 +411,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getBoolean(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBoolean(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -429,7 +430,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getInt(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getInt(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -444,7 +446,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getInt(position)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getInt(position)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -462,7 +465,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getFloat(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getFloat(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -477,7 +481,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getFloat(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getFloat(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -496,7 +500,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getLong(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getLong(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -511,7 +516,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getLong(position)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getLong(position)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -529,7 +535,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getDouble(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getDouble(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -544,7 +551,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getDouble(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getDouble(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -563,7 +570,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getBinary(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBinary(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -578,7 +586,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getBinary(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBinary(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 

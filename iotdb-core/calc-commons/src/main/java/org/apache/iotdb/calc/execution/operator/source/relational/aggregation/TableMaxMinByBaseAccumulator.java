@@ -27,6 +27,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -59,8 +60,8 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   protected TableMaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-    this.xResult = TsPrimitiveType.getByType(xDataType);
-    this.yExtremeValue = TsPrimitiveType.getByType(yDataType);
+    this.xResult = Type.fromTsDataType(xDataType).getTsPrimitiveType();
+    this.yExtremeValue = Type.fromTsDataType(yDataType).getTsPrimitiveType();
   }
 
   // Column should be like: | x | y |

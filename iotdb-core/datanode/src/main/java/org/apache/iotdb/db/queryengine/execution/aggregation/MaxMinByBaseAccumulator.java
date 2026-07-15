@@ -26,6 +26,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -61,8 +62,8 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   protected MaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-    this.xResult = TsPrimitiveType.getByType(xDataType);
-    this.yExtremeValue = TsPrimitiveType.getByType(yDataType);
+    this.xResult = Type.fromTsDataType(xDataType).getTsPrimitiveType();
+    this.yExtremeValue = Type.fromTsDataType(yDataType).getTsPrimitiveType();
   }
 
   // Column should be like: | Time | x | y |
