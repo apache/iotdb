@@ -111,22 +111,46 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     LOGGER.info(
         ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA);
 
-    // 1. Pull commit progress from all DataNodes
-    final Map<Integer, TPullCommitProgressResp> respMap =
-        env.pullCommitProgressFromDataNodesBestEffort();
+    syncCommitProgress(
+        env, subscriptionInfo.get(), env.pullCommitProgressFromDataNodesBestEffort(), false);
+  }
 
-    // 2. Merge all DataNode responses with existing progress using Math::max
+  public static void syncCommitProgressFromDataNodesRequired(
+      final ConfigNodeProcedureEnv env, final SubscriptionInfo subscriptionInfo)
+      throws SubscriptionException {
+    syncCommitProgress(env, subscriptionInfo, env.pullCommitProgressFromDataNodes(), true);
+  }
+
+  private static void syncCommitProgress(
+      final ConfigNodeProcedureEnv env,
+      final SubscriptionInfo subscriptionInfo,
+      final Map<Integer, TPullCommitProgressResp> respMap,
+      final boolean requireAllDataNodes)
+      throws SubscriptionException {
+    if (requireAllDataNodes) {
+      for (final Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
+        if (!isSuccessfulResponse(entry.getValue())) {
+          throw new SubscriptionException(
+              String.format(
+                  ProcedureMessages
+                      .EXCEPTION_FAILED_TO_PULL_REQUIRED_COMMIT_PROGRESS_FROM_DATANODE_ARG_STATUS_ARG_E08A2450,
+                  entry.getKey(),
+                  Objects.isNull(entry.getValue()) ? null : entry.getValue().getStatus()));
+        }
+      }
+    }
+
     final Map<String, RegionProgress> mergedRegionProgress =
         deserializeRegionProgressMap(
-            subscriptionInfo.get().getCommitProgressKeeper().getAllRegionProgress());
+            subscriptionInfo.getCommitProgressKeeper().getAllRegionProgress());
 
-    for (Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
+    for (final Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
       final TPullCommitProgressResp resp = entry.getValue();
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (!isSuccessfulResponse(resp)) {
         LOGGER.warn(
             ProcedureMessages.LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29,
             entry.getKey(),
-            resp.getStatus());
+            Objects.isNull(resp) ? null : resp.getStatus());
         continue;
       }
       if (resp.isSetCommitRegionProgress()) {
@@ -144,7 +168,6 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
       }
     }
 
-    // 3. Write the merged progress to consensus
     TSStatus response;
     try {
       response =
@@ -161,6 +184,12 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(response.getMessage());
     }
+  }
+
+  private static boolean isSuccessfulResponse(final TPullCommitProgressResp response) {
+    return Objects.nonNull(response)
+        && response.isSetStatus()
+        && response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   @Override

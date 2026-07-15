@@ -612,23 +612,32 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     final List<Pair<String, Pair<File, File>>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
-      final File tsFile = dbTsFile.right.left;
-      final File objectDir = dbTsFile.right.right;
-      doTransfer(pipe2WeightMap, tsFile, null, objectDir, dbTsFile.left);
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(tsFile);
-              if (objectDir != null && objectDir.exists()) {
-                FileUtils.deleteDirectory(objectDir);
-              }
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+    try {
+      for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
+        final File tsFile = dbTsFile.right.left;
+        final File objectDir = dbTsFile.right.right;
+        doTransfer(pipe2WeightMap, tsFile, null, objectDir, dbTsFile.left);
+      }
+    } finally {
+      for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
+        final File tsFile = dbTsFile.right.left;
+        final File objectDir = dbTsFile.right.right;
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                if (tsFile != null && tsFile.exists()) {
+                  FileUtils.delete(tsFile);
+                }
+                if (objectDir != null && objectDir.exists()) {
+                  FileUtils.deleteDirectory(objectDir);
+                }
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+        }
       }
     }
   }

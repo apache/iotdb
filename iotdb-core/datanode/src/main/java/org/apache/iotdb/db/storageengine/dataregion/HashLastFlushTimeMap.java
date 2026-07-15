@@ -152,6 +152,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public void clearFlushedTime() {
     partitionLatestFlushedTime.clear();
+    memCostForEachPartition.clear();
   }
 
   @Override

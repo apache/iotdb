@@ -864,9 +864,19 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
-      ConsumerGroupMeta consumerGroupMeta = plan.getConsumerGroupMeta();
+      final ConsumerGroupMeta consumerGroupMeta = plan.getConsumerGroupMeta();
       if (Objects.nonNull(consumerGroupMeta)) {
-        String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
+        final String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
+        final ConsumerGroupMeta currentConsumerGroupMeta =
+            consumerGroupMetaKeeper.containsConsumerGroupMeta(consumerGroupId)
+                ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId)
+                : null;
+        if (Objects.nonNull(currentConsumerGroupMeta)) {
+          ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
+              .forEach(
+                  topicName ->
+                      commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName));
+        }
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
         if (!consumerGroupMeta.isEmpty()) {
           consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);

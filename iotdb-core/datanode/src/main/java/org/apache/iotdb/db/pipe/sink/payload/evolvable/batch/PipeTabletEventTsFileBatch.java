@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -273,13 +274,30 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     final List<Pair<String, Pair<File, File>>> list = new ArrayList<>();
-    if (!treeModeTsFileBuilder.isEmpty()) {
-      list.addAll(treeModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
+    boolean sealedSuccessfully = false;
+    try {
+      if (!treeModeTsFileBuilder.isEmpty()) {
+        list.addAll(treeModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
+      }
+      if (!tableModeTsFileBuilder.isEmpty()) {
+        list.addAll(tableModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
+      }
+      sealedSuccessfully = true;
+      return list;
+    } finally {
+      if (!sealedSuccessfully) {
+        for (final Pair<String, Pair<File, File>> sealedFile : list) {
+          final File tsFile = sealedFile.right.left;
+          final File objectDir = sealedFile.right.right;
+          if (tsFile != null && tsFile.exists() && !FileUtils.deleteQuietly(tsFile)) {
+            LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFile);
+          }
+          if (objectDir != null && objectDir.exists() && !FileUtils.deleteQuietly(objectDir)) {
+            LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFile);
+          }
+        }
+      }
     }
-    if (!tableModeTsFileBuilder.isEmpty()) {
-      list.addAll(tableModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
-    }
-    return list;
   }
 
   @Override

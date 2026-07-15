@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -76,14 +77,18 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   /** Temp dir per database for Object files; renamed to TSFile-named object dir on seal. */
   private final Map<String, File> dataBase2ObjectTempDir = new HashMap<>();
 
+  private final PipeTableModelTsFileBuilder fallbackBuilder;
+
   public PipeTableModelTsFileBuilderV2(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
+    fallbackBuilder = new PipeTableModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
   public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+    fallbackBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   /**
@@ -131,19 +136,30 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
+    final List<Pair<String, Pair<File, File>>> pairList = new ArrayList<>();
     try {
-      final List<Pair<String, Pair<File, File>>> pairList = new ArrayList<>();
       for (final String dataBase : dataBase2TabletList.keySet()) {
         pairList.addAll(writeTabletsToTsFiles(dataBase));
       }
       return pairList;
-    } catch (final WriteProcessException e) {
+    } catch (final Exception e) {
+      pairList.forEach(pair -> FileUtils.deleteQuietly(pair.right.left));
+      final boolean hasObjectDirectories = !dataBase2ObjectTempDir.isEmpty();
+      dataBase2ObjectTempDir.values().forEach(FileUtils::deleteQuietly);
+      dataBase2ObjectTempDir.clear();
       LOGGER.warn(
           DataNodePipeMessages
               .EXCEPTION_OCCURRED_WHEN_PIPETABLEMODELTSFILEBUILDERV2_WRITING_TABLETS_TO,
           e.getMessage(),
           e);
-      throw e;
+      if (hasObjectDirectories) {
+        // The classic fallback may split one database into multiple TsFiles and cannot safely
+        // associate one Object directory with all generated files.
+        throw e instanceof WriteProcessException
+            ? (WriteProcessException) e
+            : new WriteProcessException(e);
+      }
+      return fallbackBuilder.convertTabletToTsFileWithDBInfo();
     }
   }
 
@@ -157,6 +173,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     super.onSuccess();
     dataBase2TabletList.clear();
     dataBase2ObjectTempDir.clear();
+    fallbackBuilder.onSuccess();
   }
 
   @Override
@@ -164,18 +181,23 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     super.close();
     dataBase2TabletList.clear();
     dataBase2ObjectTempDir.clear();
+    fallbackBuilder.close();
   }
 
   private List<Pair<String, Pair<File, File>>> writeTabletsToTsFiles(final String dataBase)
       throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, Pair<File, File>>> sealedFiles = new ArrayList<>();
-    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(dataBase, memTable, writer);
-      final File tsFile = writer.getFile();
-      final File tempDir = dataBase2ObjectTempDir.get(dataBase);
-      sealedFiles.add(new Pair<>(dataBase, new Pair<>(tsFile, tempDir)));
+    File file = null;
+    try {
+      file = createFile();
+      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+        writeTabletsIntoOneFile(dataBase, memTable, writer);
+        final File tempDir = dataBase2ObjectTempDir.get(dataBase);
+        sealedFiles.add(new Pair<>(dataBase, new Pair<>(writer.getFile(), tempDir)));
+      }
     } catch (final Exception e) {
+      FileUtils.deleteQuietly(file);
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),

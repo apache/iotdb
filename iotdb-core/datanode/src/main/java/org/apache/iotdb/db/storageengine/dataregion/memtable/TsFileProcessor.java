@@ -398,7 +398,13 @@ public class TsFileProcessor {
         }
       }
       long[] alignedMemIncrements = checkAlignedMemCostAndAddToTspInfoForRows(alignedList);
-      long[] nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      final long[] nonAlignedMemIncrements;
+      try {
+        nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      } catch (final WriteProcessException e) {
+        rollbackMemoryInfoIfNeeded(alignedMemIncrements);
+        throw e;
+      }
       memIncrements = new long[3];
       for (int i = 0; i < 3; i++) {
         memIncrements[i] = alignedMemIncrements[i] + nonAlignedMemIncrements[i];
@@ -495,25 +501,29 @@ public class TsFileProcessor {
       throws WriteProcessException {
     long memControlStartTime = System.nanoTime();
     long[] totalMemIncrements = new long[NUM_MEM_TO_ESTIMATE];
-    for (int[] range : rangeList) {
-      int start = range[0];
-      int end = range[1];
-      try {
+    try {
+      for (int[] range : rangeList) {
+        int start = range[0];
+        int end = range[1];
         long[] memIncrements = checkMemCost(insertTabletNode, start, end, results);
         for (int i = 0; i < memIncrements.length; i++) {
           totalMemIncrements[i] += memIncrements[i];
         }
-      } catch (WriteProcessException e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
-        }
-        throw new WriteProcessException(e);
       }
+      return totalMemIncrements;
+    } catch (final WriteProcessException e) {
+      rollbackMemoryInfoIfNeeded(totalMemIncrements);
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      for (final int[] range : rangeList) {
+        for (int i = range[0]; i < range[1]; i++) {
+          results[i] = failureStatus;
+        }
+      }
+      throw e;
+    } finally {
+      // recordScheduleMemoryBlockCost
+      infoForMetrics[1] += System.nanoTime() - memControlStartTime;
     }
-    // recordScheduleMemoryBlockCost
-    infoForMetrics[1] += System.nanoTime() - memControlStartTime;
-
-    return totalMemIncrements;
   }
 
   private long[] checkMemCost(
@@ -545,16 +555,22 @@ public class TsFileProcessor {
     for (Pair<IDeviceID, Integer> iDeviceIDIntegerPair : deviceEndPosList) {
       int splitEnd = iDeviceIDIntegerPair.getRight();
       IDeviceID deviceID = iDeviceIDIntegerPair.getLeft();
-      long[] splitMemIncrements =
-          checkAlignedMemCostAndAddToTspForTablet(
-              deviceID,
-              insertTabletNode.getMeasurements(),
-              insertTabletNode.getDataTypes(),
-              insertTabletNode.getColumns(),
-              insertTabletNode.getColumnCategories(),
-              splitStart,
-              splitEnd,
-              results);
+      final long[] splitMemIncrements;
+      try {
+        splitMemIncrements =
+            checkAlignedMemCostAndAddToTspForTablet(
+                deviceID,
+                insertTabletNode.getMeasurements(),
+                insertTabletNode.getDataTypes(),
+                insertTabletNode.getColumns(),
+                insertTabletNode.getColumnCategories(),
+                splitStart,
+                splitEnd,
+                results);
+      } catch (final WriteProcessException e) {
+        rollbackMemoryInfoIfNeeded(memIncrements);
+        throw e;
+      }
       for (int i = 0; i < NUM_MEM_TO_ESTIMATE; i++) {
         memIncrements[i] += splitMemIncrements[i];
       }
@@ -628,7 +644,8 @@ public class TsFileProcessor {
             tsFileResource);
 
     int pointInserted = 0;
-    for (int[] rangePair : rangeList) {
+    for (int rangeIndex = 0; rangeIndex < rangeList.size(); rangeIndex++) {
+      final int[] rangePair = rangeList.get(rangeIndex);
       int start = rangePair[0];
       int end = rangePair[1];
       try {
@@ -639,11 +656,17 @@ public class TsFileProcessor {
         } else {
           pointInserted += workMemTable.insertTablet(insertTabletNode, start, end);
         }
-      } catch (WriteProcessException e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      } catch (final WriteProcessException e) {
+        final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        for (int failedRangeIndex = rangeIndex;
+            failedRangeIndex < rangeList.size();
+            failedRangeIndex++) {
+          final int[] failedRange = rangeList.get(failedRangeIndex);
+          for (int i = failedRange[0]; i < failedRange[1]; i++) {
+            results[i] = failureStatus;
+          }
         }
-        throw new WriteProcessException(e);
+        throw e;
       }
       for (int i = start; i < end; i++) {
         if (results[i] == null
@@ -1217,6 +1240,15 @@ public class TsFileProcessor {
     SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
+  }
+
+  private void rollbackMemoryInfoIfNeeded(final long[] memIncrements) {
+    for (final long memIncrement : memIncrements) {
+      if (memIncrement != 0) {
+        rollbackMemoryInfo(memIncrements);
+        return;
+      }
+    }
   }
 
   /**

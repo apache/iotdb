@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
@@ -68,9 +69,12 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   /** Single temp dir for tree model Object files; renamed to TSFile object dir on seal. */
   private File treeModelObjectTempDir;
 
+  private final PipeTreeModelTsFileBuilder fallbackBuilder;
+
   public PipeTreeModelTsFileBuilderV2(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
+    fallbackBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
@@ -83,6 +87,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   public void bufferTreeModelTablet(final Tablet tablet, final Boolean isAligned) {
     tabletList.add(tablet);
     isTabletAlignedList.add(isAligned);
+    fallbackBuilder.bufferTreeModelTablet(tablet, isAligned);
   }
 
   /**
@@ -111,13 +116,22 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       throws IOException, WriteProcessException {
     try {
       return writeTabletsToTsFiles();
-    } catch (final WriteProcessException e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           DataNodePipeMessages
               .EXCEPTION_OCCURRED_WHEN_PIPETREEMODELTSFILEBUILDERV2_WRITING_TABLETS_TO,
           e.getMessage(),
           e);
-      throw e;
+      if (treeModelObjectTempDir != null) {
+        FileUtils.deleteQuietly(treeModelObjectTempDir);
+        treeModelObjectTempDir = null;
+        // The classic fallback may split a batch into multiple TsFiles and cannot safely
+        // associate one Object directory with all generated files.
+        throw e instanceof WriteProcessException
+            ? (WriteProcessException) e
+            : new WriteProcessException(e);
+      }
+      return fallbackBuilder.convertTabletToTsFileWithDBInfo();
     }
   }
 
@@ -132,6 +146,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
     tabletList.clear();
     isTabletAlignedList.clear();
     treeModelObjectTempDir = null;
+    fallbackBuilder.onSuccess();
   }
 
   @Override
@@ -140,17 +155,22 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
     treeModelObjectTempDir = null;
     tabletList.clear();
     isTabletAlignedList.clear();
+    fallbackBuilder.close();
   }
 
   private List<Pair<String, Pair<File, File>>> writeTabletsToTsFiles()
       throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, Pair<File, File>>> sealedFiles = new ArrayList<>();
-    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(memTable, writer);
-      final File tsFile = writer.getFile();
-      sealedFiles.add(new Pair<>(null, new Pair<>(tsFile, treeModelObjectTempDir)));
+    File file = null;
+    try {
+      file = createFile();
+      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+        writeTabletsIntoOneFile(memTable, writer);
+        sealedFiles.add(new Pair<>(null, new Pair<>(writer.getFile(), treeModelObjectTempDir)));
+      }
     } catch (final Exception e) {
+      FileUtils.deleteQuietly(file);
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),
@@ -181,14 +201,16 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
         final IMeasurementSchema schema = measurementSchemas[j];
         if (Objects.isNull(schema)) {
-          break;
+          continue;
         }
 
         if (Objects.equals(TSDataType.DATE, schema.getType()) && values[j] instanceof LocalDate[]) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
-            dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            if (Objects.nonNull(dates[k])) {
+              dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            }
           }
           values[j] = dateValues;
         }

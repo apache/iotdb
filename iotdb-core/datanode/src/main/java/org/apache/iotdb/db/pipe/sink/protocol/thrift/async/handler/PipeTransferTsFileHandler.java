@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.PipeTsFileObjectBatchTransfer;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -191,6 +192,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
+      onError(
+          new PipeConnectionException(DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL));
       return;
     }
 
@@ -544,9 +547,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   private void cleanupBatchFiles() throws IOException {
+    objectFileStream.close();
     RetryUtils.retryOnException(
         () -> {
-          FileUtils.delete(tsFile);
+          if (tsFile.exists()) {
+            FileUtils.delete(tsFile);
+          }
           if (objectDir != null && objectDir.exists()) {
             FileUtils.deleteDirectory(objectDir);
           }
@@ -556,9 +562,23 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   @Override
   public void close() {
-    super.close();
-    releaseReadBufferMemoryBlock();
-    objectFileStream.close();
+    try {
+      if (reader != null) {
+        reader.close();
+        reader = null;
+      }
+
+      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+        cleanupBatchFiles();
+      } else {
+        objectFileStream.close();
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
+    } finally {
+      super.close();
+      releaseReadBufferMemoryBlock();
+    }
   }
 
   private void releaseReadBufferMemoryBlock() {

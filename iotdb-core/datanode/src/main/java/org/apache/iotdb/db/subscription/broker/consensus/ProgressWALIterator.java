@@ -134,7 +134,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     return skippedBrokenWalVersionIds.contains(versionId) || isHeaderOnlyWalFile(walFile);
   }
 
-  private boolean isHeaderOnlyWalFile(final File walFile) {
+  static boolean isHeaderOnlyWalFile(final File walFile) {
     return walFile.length() <= HEADER_ONLY_WAL_FILE_BYTES;
   }
 

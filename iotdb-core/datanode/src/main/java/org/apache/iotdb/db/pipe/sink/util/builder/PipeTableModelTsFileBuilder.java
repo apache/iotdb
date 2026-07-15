@@ -83,13 +83,18 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       return new ArrayList<>(0);
     }
     final List<Pair<String, Pair<File, File>>> pairList = new ArrayList<>();
-    for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      for (final Pair<String, File> p :
-          writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey())) {
-        pairList.add(new Pair<>(p.getLeft(), new Pair<>(p.getRight(), null)));
+    try {
+      for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
+        for (final Pair<String, File> pair :
+            writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey())) {
+          pairList.add(new Pair<>(pair.left, new Pair<>(pair.right, null)));
+        }
       }
+      return pairList;
+    } catch (final IOException | RuntimeException e) {
+      pairList.forEach(pair -> FileUtils.deleteQuietly(pair.right.left));
+      throw e;
     }
-    return pairList;
   }
 
   @Override
@@ -153,7 +158,13 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          FileUtils.deleteQuietly(file);
+          throw e;
+        }
       }
 
       try {

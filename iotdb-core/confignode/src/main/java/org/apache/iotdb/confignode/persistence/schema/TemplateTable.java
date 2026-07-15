@@ -262,9 +262,8 @@ public class TemplateTable {
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       // Load snapshot of template
       this.templateMap.clear();
+      this.templateIdMap.clear();
       deserialize(bufferedInputStream);
-      bufferedInputStream.close();
-      fileInputStream.close();
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }
@@ -272,6 +271,13 @@ public class TemplateTable {
 
   @TestOnly
   public void clear() {
-    this.templateMap.clear();
+    templateReadWriteLock.writeLock().lock();
+    try {
+      this.templateMap.clear();
+      this.templateIdMap.clear();
+      this.templateIdGenerator.set(0);
+    } finally {
+      templateReadWriteLock.writeLock().unlock();
+    }
   }
 }

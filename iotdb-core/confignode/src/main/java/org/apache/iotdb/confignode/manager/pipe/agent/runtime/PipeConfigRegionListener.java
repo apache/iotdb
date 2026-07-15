@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -54,6 +55,24 @@ public class PipeConfigRegionListener {
       if (listeningQueueReferenceCount == 0) {
         listeningQueue.close();
       }
+    }
+  }
+
+  public synchronized void reconcileReferences(final Iterable<PipeMeta> pipeMetas)
+      throws IllegalPathException {
+    int referenceCount = 0;
+    for (final PipeMeta pipeMeta : pipeMetas) {
+      if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(
+              pipeMeta.getStaticMeta().getSourceParameters())
+          .isEmpty()) {
+        referenceCount++;
+      }
+    }
+    listeningQueueReferenceCount = referenceCount;
+    if (referenceCount == 0) {
+      listeningQueue.close();
+    } else {
+      listeningQueue.open();
     }
   }
 
