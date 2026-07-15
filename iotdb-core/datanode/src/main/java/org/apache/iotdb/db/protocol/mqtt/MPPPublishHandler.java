@@ -20,6 +20,8 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -144,7 +146,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
               DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
           TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
           statement.setTime(event.getTimestamp());
-          statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
+          statement.setMeasurements(checkMeasurements(event.getMeasurements()));
           if (event.getDataTypes() == null) {
             statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
             statement.setValues(event.getValues().toArray(new Object[0]));
@@ -193,6 +195,10 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       // release the payload of the message
       super.onPublish(msg);
     }
+  }
+
+  static String[] checkMeasurements(List<String> measurements) throws MetadataException {
+    return PathUtils.checkIsLegalSingleMeasurementsAndUpdate(measurements).toArray(new String[0]);
   }
 
   @Override
