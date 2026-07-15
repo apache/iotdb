@@ -659,6 +659,9 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
       "%s. Failed to create timeseries for path %s";
   public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
+  public static final String
+      EXCEPTION_TIMESERIES_ARG_DOES_NOT_EXIST_AND_ITS_DATA_TYPE_CANNOT_BE_INFERRED_FROM_THE_NULL_VALUE_36406D43 =
+          "Timeseries [%s] does not exist and its data type cannot be inferred from the null value";
   public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
       "The source path [%s] of view [%s] does not exist.";
   public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =

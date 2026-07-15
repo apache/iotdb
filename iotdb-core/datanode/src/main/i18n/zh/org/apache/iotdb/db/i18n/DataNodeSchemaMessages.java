@@ -646,6 +646,9 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
       "%s。为路径 %s 创建时间序列失败";
   public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "路径 [%s] 不存在";
+  public static final String
+      EXCEPTION_TIMESERIES_ARG_DOES_NOT_EXIST_AND_ITS_DATA_TYPE_CANNOT_BE_INFERRED_FROM_THE_NULL_VALUE_36406D43 =
+          "时间序列 [%s] 不存在，且无法从 null 值推断其数据类型";
   public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
       "源路径 [%s] 对应视图 [%s] 不存在。";
   public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
