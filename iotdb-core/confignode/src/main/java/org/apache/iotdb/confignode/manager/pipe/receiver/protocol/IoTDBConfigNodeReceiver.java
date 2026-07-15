@@ -194,7 +194,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         if (Objects.nonNull(authResp)) {
           return authResp;
         }
-        final TPipeTransferResp resp;
+        TPipeTransferResp resp;
         final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:

@@ -253,6 +253,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info(DataNodeMiscMessages.STARTING_DATANODE);
     boolean isFirstStart;
     try {
+      IoTDBDescriptor.getInstance().getMemoryConfig().activateAutoResizingBufferMemoryControl();
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
 

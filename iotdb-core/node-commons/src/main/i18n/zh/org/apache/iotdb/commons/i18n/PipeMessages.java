@@ -186,7 +186,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
-      "PipePeriodicalLogMinIntervalSeconds: {}";
+      "LoggerPeriodicalLogMinIntervalSeconds: {}";
   public static final String CONFIG_PIPE_RETRY_LOCALLY_FOR_PARALLEL_OR_USER_CONFLICT =
       "PipeRetryLocallyForParallelOrUserConflict: {}";
   public static final String CONFIG_PIPE_META_REPORT_MAX_LOG_NUM_PER_ROUND =
@@ -198,7 +198,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PIN_MAX_LOG_INTERVAL_ROUNDS =
       "PipeTsFilePinMaxLogIntervalRounds: {}";
   public static final String CONFIG_PIPE_LOGGER_CACHE_MAX_SIZE_IN_BYTES =
-      "PipeLoggerCacheMaxSizeInBytes: {}";
+      "LoggerCacheMaxSizeInBytes: {}";
   public static final String CONFIG_PIPE_MEMORY_MANAGEMENT_ENABLED =
       "PipeMemoryManagementEnabled: {}";
   public static final String CONFIG_PIPE_MEMORY_ALLOCATE_MAX_RETRIES =
@@ -466,6 +466,10 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "启用 SSL 传输时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store 路径和密码必须在同一别名下同时指定：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync 客户端管理器已关闭";
   public static final String REDIRECT_FILE_POSITION = "重定向文件位置到 {}。";
@@ -915,6 +919,5 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
-  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer 已分配 {} 字节。";
 
 }
