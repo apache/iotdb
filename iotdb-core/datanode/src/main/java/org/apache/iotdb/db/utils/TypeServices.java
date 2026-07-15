@@ -26,7 +26,9 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import com.sun.jna.platform.win32.Variant;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
@@ -90,10 +92,25 @@ public class TypeServices {
                 };
           };
 
+  public static final TypeService<Function<Boolean, Type>>
+      PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, OBJECT, STRING ->
+                    ignored -> type;
+                case DATE ->
+                    isDateStoredAsLocalDate ->
+                        isDateStoredAsLocalDate ? type : Type.fromTsDataType(TSDataType.INT32);
+                default ->
+                    ignored -> {
+                      throw new UnSupportedDataTypeException(
+                          DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                    };
+              };
+
   static {
-    VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
-    OPC_DA_VARIANT_TYPE_SERVICE.check();
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
+    PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {

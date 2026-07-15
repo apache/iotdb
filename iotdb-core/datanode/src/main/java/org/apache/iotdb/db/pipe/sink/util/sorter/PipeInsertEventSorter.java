@@ -21,14 +21,14 @@ package org.apache.iotdb.db.pipe.sink.util.sorter;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
-import java.time.LocalDate;
+import java.lang.reflect.Array;
 import java.util.Objects;
 
 public class PipeInsertEventSorter {
@@ -121,84 +121,27 @@ public class PipeInsertEventSorter {
     if (Objects.isNull(valueList)) {
       return null;
     }
-    switch (dataType) {
-      case BOOLEAN:
-        final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] deDuplicatedBoolValues = new boolean[boolValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedBoolValues[i] =
-              boolValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedBoolValues;
-      case INT32:
-        final int[] intValues = (int[]) valueList;
-        final int[] deDuplicatedIntValues = new int[intValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedIntValues[i] =
-              intValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedIntValues;
-      case DATE:
-        // DATE type: Tablet uses LocalDate[], InsertTabletStatement uses int[]
-        if (dataAdapter.isDateStoredAsLocalDate(columnIndex)) {
-          // Tablet: LocalDate[]
-          final LocalDate[] dateValues = (LocalDate[]) valueList;
-          final LocalDate[] deDuplicatedDateValues = new LocalDate[dateValues.length];
-          for (int i = 0; i < deDuplicatedSize; i++) {
-            deDuplicatedDateValues[i] =
-                dateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-          }
-          return deDuplicatedDateValues;
-        } else {
-          // InsertTabletStatement: int[]
-          final int[] intDateValues = (int[]) valueList;
-          final int[] deDuplicatedIntDateValues = new int[intDateValues.length];
-          for (int i = 0; i < deDuplicatedSize; i++) {
-            deDuplicatedIntDateValues[i] =
-                intDateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-          }
-          return deDuplicatedIntDateValues;
-        }
-      case INT64:
-      case TIMESTAMP:
-        final long[] longValues = (long[]) valueList;
-        final long[] deDuplicatedLongValues = new long[longValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedLongValues[i] =
-              longValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedLongValues;
-      case FLOAT:
-        final float[] floatValues = (float[]) valueList;
-        final float[] deDuplicatedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedFloatValues[i] =
-              floatValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedFloatValues;
-      case DOUBLE:
-        final double[] doubleValues = (double[]) valueList;
-        final double[] deDuplicatedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedDoubleValues[i] =
-              doubleValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] deDuplicatedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedBinaryValues[i] =
-              binaryValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
-        }
-        return deDuplicatedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+    final Type type =
+        TypeServices.PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .apply(dataType != TSDataType.DATE || dataAdapter.isDateStoredAsLocalDate(columnIndex));
+    return reorderValueList(valueList, type, originalBitMap, deDuplicatedBitMap);
+  }
+
+  private Object reorderValueList(
+      final Object valueList,
+      final Type type,
+      final BitMap originalBitMap,
+      final BitMap deDuplicatedBitMap) {
+    final Object deDuplicatedValues = type.createArray(Array.getLength(valueList));
+    for (int i = 0; i < deDuplicatedSize; i++) {
+      type.copyArrayElement(
+          valueList,
+          getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap),
+          deDuplicatedValues,
+          i);
     }
+    return deDuplicatedValues;
   }
 
   private int getLastNonnullIndex(
