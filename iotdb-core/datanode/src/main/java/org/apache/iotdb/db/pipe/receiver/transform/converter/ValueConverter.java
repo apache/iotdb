@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.converter;
 
-
 import org.apache.iotdb.db.utils.TypeServices;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;

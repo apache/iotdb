@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.function.Function;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
+import com.sun.jna.platform.win32.Variant;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.type.service.TypeService;
@@ -32,13 +31,17 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.function.Function;
+
 public class TypeServices {
 
   public static final int DEFAULT_DATE =
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
 
-  public static final TypeService<Function<String, Object>>
-      VALUE_PARSER_NO_EXCEPTION_SERVICE =
+  public static final TypeService<Function<String, Object>> VALUE_PARSER_NO_EXCEPTION_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
             case BOOLEAN -> Boolean::parseBoolean;
@@ -51,12 +54,29 @@ public class TypeServices {
             case DATE -> TypeServices::parseDate;
             case BLOB -> TypeServices::parseBlob;
             case STRING -> TypeServices::parseString;
-            default -> throw new UnSupportedDataTypeException(
-                CalcMessages.UNKNOWN_DATATYPE + type);
+            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+          };
+
+  public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> Variant.VT_BOOL;
+            case INT32 -> Variant.VT_I4;
+            case INT64 -> Variant.VT_I8;
+            case DATE, TIMESTAMP -> Variant.VT_DATE;
+            case FLOAT -> Variant.VT_R4;
+            case DOUBLE -> Variant.VT_R8;
+            // Note that "Variant" does not support "VT_BLOB" data, and not all the DA servers
+            // support this, thus we use "VT_BSTR" to substitute.
+            case TEXT, STRING, BLOB, OBJECT -> Variant.VT_BSTR;
+            default ->
+                throw new UnSupportedDataTypeException(
+                    DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
           };
 
   static {
     VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
+    OPC_DA_VARIANT_TYPE_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {

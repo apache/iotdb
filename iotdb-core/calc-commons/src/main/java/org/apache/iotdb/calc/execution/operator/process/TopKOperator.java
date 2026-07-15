@@ -378,7 +378,9 @@ public abstract class TopKOperator implements ProcessOperator {
   private long getMemoryUsageOfOneMergeSortKey() {
     long memory = 0;
     for (TSDataType dataType : dataTypes) {
-      memory += TypeServices.MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.call(Type.fromTsDataType(dataType));
+      memory +=
+          TypeServices.MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.call(
+              Type.fromTsDataType(dataType));
     }
     return memory;
   }

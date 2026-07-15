@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
-import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -254,8 +253,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       return 0;
     }
 
-    return Type.fromTsDataType(dataType).estimateArraySize(16)
-        * segmentCount;
+    return Type.fromTsDataType(dataType).estimateArraySize(16) * segmentCount;
   }
 
   private static long estimateVectorValueMemoryUsageInBytes(

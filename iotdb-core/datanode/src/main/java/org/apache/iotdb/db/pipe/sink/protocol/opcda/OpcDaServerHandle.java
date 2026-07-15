@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.sun.jna.Memory;
@@ -42,6 +43,7 @@ import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -310,31 +312,7 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   private short convertTsDataType2VariantType(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return Variant.VT_BOOL;
-      case INT32:
-        return Variant.VT_I4;
-      case INT64:
-        return Variant.VT_I8;
-      case DATE:
-      case TIMESTAMP:
-        return Variant.VT_DATE;
-      case FLOAT:
-        return Variant.VT_R4;
-      case DOUBLE:
-        return Variant.VT_R8;
-      case TEXT:
-      case STRING:
-      // Note that "Variant" does not support "VT_BLOB" data, and not all the DA server
-      // support this, thus we use "VT_BSTR" to substitute
-      case BLOB:
-      case OBJECT:
-        return Variant.VT_BSTR;
-      default:
-        throw new UnSupportedDataTypeException(
-            DataNodePipeMessages.UNSUPPORTED_DATATYPE + dataType);
-    }
+    return TypeServices.OPC_DA_VARIANT_TYPE_SERVICE.call(Type.fromTsDataType(dataType));
   }
 
   private Variant.VARIANT getTabletObjectValue4Opc(

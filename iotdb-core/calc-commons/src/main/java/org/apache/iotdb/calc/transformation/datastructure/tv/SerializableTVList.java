@@ -32,7 +32,6 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,8 +39,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
-import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SerializableTVList implements SerializableList {
@@ -75,9 +72,10 @@ public class SerializableTVList implements SerializableList {
   protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB) {
     int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     Type type = Type.fromTsDataType(dataType);
-    rowLength += TypeServices.MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.call(type).applyAsInt(
-        SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL
-    );
+    rowLength +=
+        TypeServices.MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE
+            .call(type)
+            .applyAsInt(SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
     rowLength += ReadWriteIOUtils.BIT_LEN;
 
     int capacity = (int) (memoryLimitInMB * MB / 2 / (rowLength));
