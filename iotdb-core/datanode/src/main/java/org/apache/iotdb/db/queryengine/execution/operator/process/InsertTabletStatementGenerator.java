@@ -72,33 +72,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     this.times = new long[rowLimit];
     this.columns = new Object[this.measurements.length];
     for (int i = 0; i < this.measurements.length; i++) {
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          columns[i] = new boolean[rowLimit];
-          break;
-        case INT32:
-        case DATE:
-          columns[i] = new int[rowLimit];
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columns[i] = new long[rowLimit];
-          break;
-        case FLOAT:
-          columns[i] = new float[rowLimit];
-          break;
-        case DOUBLE:
-          columns[i] = new double[rowLimit];
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          columns[i] = new Binary[rowLimit];
-          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes[i]));
+      columns[i] = Type.fromTsDataType(dataTypes[i]).createArray(rowLimit);
+      if (dataTypes[i].isBinary()) {
+        Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
       }
     }
     this.bitMaps = new BitMap[this.measurements.length];

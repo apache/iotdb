@@ -373,35 +373,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
   private void writeIntermediateToStream(
       TSDataType dataType, TsPrimitiveType value, DataOutputStream dataOutputStream)
       throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        dataOutputStream.writeInt(value.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        dataOutputStream.writeLong(value.getLong());
-        break;
-      case FLOAT:
-        dataOutputStream.writeFloat(value.getFloat());
-        break;
-      case DOUBLE:
-        dataOutputStream.writeDouble(value.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        String content = value.getBinary().toString();
-        dataOutputStream.writeInt(content.length());
-        dataOutputStream.writeBytes(content);
-        break;
-      case BOOLEAN:
-        dataOutputStream.writeBoolean(value.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, dataType));
-    }
+    Type.fromTsDataType(dataType).serialize(value, dataOutputStream);
   }
 
   private void updateFromBytesIntermediateInput(byte[] bytes) {
