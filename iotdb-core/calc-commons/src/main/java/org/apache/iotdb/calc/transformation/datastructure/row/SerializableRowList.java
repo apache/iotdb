@@ -171,33 +171,7 @@ public class SerializableRowList implements SerializableList {
 
         // Fill value columns
         for (int i = 0; i < block.length - 1; i++) {
-          switch (dataTypes[i]) {
-            case INT32:
-            case DATE:
-              row[i] = block[i].getInt(offset);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              row[i] = block[i].getLong(offset);
-              break;
-            case FLOAT:
-              row[i] = block[i].getFloat(offset);
-              break;
-            case DOUBLE:
-              row[i] = block[i].getDouble(offset);
-              break;
-            case BOOLEAN:
-              row[i] = block[i].getBoolean(offset);
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-            case OBJECT:
-              row[i] = block[i].getBinary(offset);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(dataTypes[i].toString());
-          }
+          row[i] = Type.fromTsDataType(dataTypes[i]).getObject(block[i], offset);
         }
         // Fill time column
         row[block.length - 1] = block[block.length - 1].getLong(offset);
