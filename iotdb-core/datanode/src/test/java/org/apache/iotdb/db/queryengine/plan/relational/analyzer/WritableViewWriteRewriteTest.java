@@ -423,13 +423,15 @@ public class WritableViewWriteRewriteTest {
                 showSql, ZoneId.systemDefault(), new InternalClientSession("test"));
     final MPPQueryContext showContext =
         new MPPQueryContext(showSql, new QueryId("query_show_device"), sessionInfo, null, null);
-    AnalyzerTest.analyzeStatement(showDevice, metadata, showContext, sqlParser, sessionInfo);
+    final Analysis showAnalysis =
+        AnalyzerTest.analyzeStatement(showDevice, metadata, showContext, sqlParser, sessionInfo);
+    final ShowDevice analyzedShowDevice = (ShowDevice) showAnalysis.getStatement();
 
-    assertEquals(DATABASE, showDevice.getDatabase());
-    assertEquals(SOURCE_TABLE, showDevice.getTableName());
-    assertSourcePredicate(showDevice.getWhere().get());
-    assertEquals(SOURCE_TAG, showDevice.getColumnHeaderList().get(0).getColumnName());
-    assertEquals(VIEW_TAG, showDevice.getOutputColumnHeaderList().get(0).getColumnName());
+    assertEquals(DATABASE, analyzedShowDevice.getDatabase());
+    assertEquals(SOURCE_TABLE, analyzedShowDevice.getTableName());
+    assertSourcePredicate(analyzedShowDevice.getWhere().get());
+    assertEquals(SOURCE_TAG, analyzedShowDevice.getColumnHeaderList().get(0).getColumnName());
+    assertEquals(VIEW_TAG, analyzedShowDevice.getOutputColumnHeaderList().get(0).getColumnName());
 
     final String countSql =
         "count devices from writable_view_db.writable_view "
@@ -440,13 +442,15 @@ public class WritableViewWriteRewriteTest {
                 countSql, ZoneId.systemDefault(), new InternalClientSession("test"));
     final MPPQueryContext countContext =
         new MPPQueryContext(countSql, new QueryId("query_count_device"), sessionInfo, null, null);
-    AnalyzerTest.analyzeStatement(countDevice, metadata, countContext, sqlParser, sessionInfo);
+    final Analysis countAnalysis =
+        AnalyzerTest.analyzeStatement(countDevice, metadata, countContext, sqlParser, sessionInfo);
+    final CountDevice analyzedCountDevice = (CountDevice) countAnalysis.getStatement();
 
-    assertEquals(DATABASE, countDevice.getDatabase());
-    assertEquals(SOURCE_TABLE, countDevice.getTableName());
-    assertSourcePredicate(countDevice.getWhere().get());
-    assertEquals(SOURCE_TAG, countDevice.getColumnHeaderList().get(0).getColumnName());
-    assertEquals(VIEW_TAG, countDevice.getOutputColumnHeaderList().get(0).getColumnName());
+    assertEquals(DATABASE, analyzedCountDevice.getDatabase());
+    assertEquals(SOURCE_TABLE, analyzedCountDevice.getTableName());
+    assertSourcePredicate(analyzedCountDevice.getWhere().get());
+    assertEquals(SOURCE_TAG, analyzedCountDevice.getColumnHeaderList().get(0).getColumnName());
+    assertEquals(VIEW_TAG, analyzedCountDevice.getOutputColumnHeaderList().get(0).getColumnName());
   }
 
   @Test
