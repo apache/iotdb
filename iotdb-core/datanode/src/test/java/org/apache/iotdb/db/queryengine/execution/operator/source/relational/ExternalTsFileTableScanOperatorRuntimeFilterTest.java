@@ -38,7 +38,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -48,16 +47,32 @@ import java.util.Set;
 public class ExternalTsFileTableScanOperatorRuntimeFilterTest {
 
   @Test
-  public void shouldStopScanByRuntimeFilterOnlyOnLastDevice() throws Exception {
+  public void shouldNotStopWhenNonLastDeviceExhausted() throws Exception {
     ExternalTsFileTableScanOperator operator =
         new TestExternalTsFileTableScanOperator(createParameter());
-    QueryDataSource queryDataSource = Mockito.mock(QueryDataSource.class);
-    Mockito.when(queryDataSource.hasValidResource()).thenReturn(false);
-    setQueryDataSource(operator, queryDataSource);
+    QueryDataSource firstDeviceDataSource = Mockito.mock(QueryDataSource.class);
+    Mockito.when(firstDeviceDataSource.hasValidResource()).thenReturn(false);
+    operator.queryDataSource = firstDeviceDataSource;
+    operator.currentDeviceIndex = 0;
+
+    Assert.assertFalse(operator.shouldStopScanByRuntimeFilter());
+  }
+
+  @Test
+  public void shouldUseCurrentDeviceQueryDataSourceOnLastDevice() throws Exception {
+    ExternalTsFileTableScanOperator operator =
+        new TestExternalTsFileTableScanOperator(createParameter());
+    QueryDataSource firstDeviceDataSource = Mockito.mock(QueryDataSource.class);
+    Mockito.when(firstDeviceDataSource.hasValidResource()).thenReturn(false);
+    QueryDataSource lastDeviceDataSource = Mockito.mock(QueryDataSource.class);
+    Mockito.when(lastDeviceDataSource.hasValidResource()).thenReturn(true);
+
+    operator.currentDeviceIndex = 1;
+    operator.queryDataSource = lastDeviceDataSource;
 
     Assert.assertFalse(operator.shouldStopScanByRuntimeFilter());
 
-    operator.currentDeviceIndex = 1;
+    Mockito.when(lastDeviceDataSource.hasValidResource()).thenReturn(false);
     Assert.assertTrue(operator.shouldStopScanByRuntimeFilter());
   }
 
@@ -95,13 +110,6 @@ public class ExternalTsFileTableScanOperatorRuntimeFilterTest {
     IDeviceID deviceID = Mockito.mock(IDeviceID.class);
     Mockito.when(deviceEntry.getDeviceID()).thenReturn(deviceID);
     return deviceEntry;
-  }
-
-  private static void setQueryDataSource(
-      AbstractTableScanOperator operator, QueryDataSource queryDataSource) throws Exception {
-    Field field = AbstractTableScanOperator.class.getDeclaredField("queryDataSource");
-    field.setAccessible(true);
-    field.set(operator, queryDataSource);
   }
 
   private static final class TestExternalTsFileTableScanOperator

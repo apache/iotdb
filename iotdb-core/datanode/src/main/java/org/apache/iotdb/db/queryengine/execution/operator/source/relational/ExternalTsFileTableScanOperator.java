@@ -112,7 +112,8 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       constructAlignedSeriesScanUtil();
-      seriesScanUtil.initQueryDataSource(updateCurrentDeviceQueryDataSource());
+      queryDataSource = updateCurrentDeviceQueryDataSource();
+      seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
           CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }

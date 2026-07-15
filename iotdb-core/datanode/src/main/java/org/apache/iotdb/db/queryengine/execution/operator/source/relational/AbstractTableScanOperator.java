@@ -82,7 +82,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private TsBlock measurementDataBlock;
 
-  private QueryDataSource queryDataSource;
+  protected QueryDataSource queryDataSource;
 
   protected int currentDeviceIndex;
 
@@ -249,9 +249,6 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    if (seriesScanOptions.getTopKRuntimeFilter() != null) {
-      queryDataSource.initRuntimeFilterTracking();
-    }
     if (this.seriesScanUtil != null) {
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
     }
