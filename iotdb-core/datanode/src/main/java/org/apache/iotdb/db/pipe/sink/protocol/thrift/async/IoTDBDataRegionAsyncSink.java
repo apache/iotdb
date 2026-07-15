@@ -64,6 +64,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -249,6 +250,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
+      int transferredFileCount = 0;
       try {
         for (final File sealedFile : sealedFiles) {
           transfer(
@@ -262,8 +264,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   null,
                   false,
                   null));
+          transferredFileCount++;
         }
       } catch (final Exception e) {
+        for (int i = transferredFileCount; i < sealedFiles.size(); i++) {
+          FileUtils.deleteQuietly(sealedFiles.get(i));
+        }
         PipeLogger.log(LOGGER::warn, e, "Failed to transfer tsfile batch (%s).", sealedFiles);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
@@ -421,22 +427,28 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     transferTsFileCounter.incrementAndGet();
-    CompletableFuture<Void> completableFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              AsyncPipeDataTransferServiceClient client = null;
-              try {
-                client = transferTsFileClientManager.borrowClient();
-                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
-              } catch (final Exception ex) {
-                logOnClientException(client, ex);
-                pipeTransferTsFileHandler.onError(ex);
-              } finally {
-                transferTsFileCounter.decrementAndGet();
-              }
-              return null;
-            },
-            transferTsFileClientManager.getExecutor());
+    final CompletableFuture<Void> completableFuture;
+    try {
+      completableFuture =
+          CompletableFuture.supplyAsync(
+              () -> {
+                AsyncPipeDataTransferServiceClient client = null;
+                try {
+                  client = transferTsFileClientManager.borrowClient();
+                  pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
+                } catch (final Exception ex) {
+                  logOnClientException(client, ex);
+                  pipeTransferTsFileHandler.onError(ex);
+                } finally {
+                  transferTsFileCounter.decrementAndGet();
+                }
+                return null;
+              },
+              transferTsFileClientManager.getExecutor());
+    } catch (final RuntimeException e) {
+      transferTsFileCounter.decrementAndGet();
+      throw e;
+    }
 
     if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {

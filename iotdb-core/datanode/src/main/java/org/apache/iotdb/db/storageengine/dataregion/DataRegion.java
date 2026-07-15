@@ -709,7 +709,7 @@ public class DataRegion implements IDataRegionForQuery {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.merge(deviceId, endTime, Math::max);
       }
     }
     if (config.isEnableSeparateData()) {
@@ -1275,6 +1275,10 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
     } catch (WriteProcessRejectException e) {
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      for (int i = start; i < end; i++) {
+        results[i] = failureStatus;
+      }
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
     } catch (WriteProcessException e) {

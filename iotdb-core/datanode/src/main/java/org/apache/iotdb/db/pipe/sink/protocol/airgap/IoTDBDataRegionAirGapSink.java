@@ -256,19 +256,24 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(tsFile);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+    try {
+      for (final File tsFile : sealedFiles) {
+        doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
+      }
+    } finally {
+      for (final File tsFile : sealedFiles) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(tsFile);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+        }
       }
     }
   }

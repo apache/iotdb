@@ -146,6 +146,8 @@ public class TemplatePreSetTable {
     try {
       File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
       if (!snapshotFile.exists()) {
+        // Empty preset tables are represented by the absence of a snapshot file.
+        templatePreSetMap.clear();
         return;
       }
 
