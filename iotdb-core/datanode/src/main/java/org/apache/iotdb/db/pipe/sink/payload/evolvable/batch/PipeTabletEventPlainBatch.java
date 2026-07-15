@@ -29,19 +29,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -262,48 +260,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static Object copyValueList(
       final Object valueList, final TSDataType dataType, final int rowSize) {
-    switch (dataType) {
-      case BOOLEAN:
-        final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] copiedBoolValues = new boolean[rowSize];
-        System.arraycopy(boolValues, 0, copiedBoolValues, 0, rowSize);
-        return copiedBoolValues;
-      case INT32:
-        final int[] intValues = (int[]) valueList;
-        final int[] copiedIntValues = new int[rowSize];
-        System.arraycopy(intValues, 0, copiedIntValues, 0, rowSize);
-        return copiedIntValues;
-      case DATE:
-        final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] copiedDateValues = new LocalDate[rowSize];
-        System.arraycopy(dateValues, 0, copiedDateValues, 0, rowSize);
-        return copiedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        final long[] longValues = (long[]) valueList;
-        final long[] copiedLongValues = new long[rowSize];
-        System.arraycopy(longValues, 0, copiedLongValues, 0, rowSize);
-        return copiedLongValues;
-      case FLOAT:
-        final float[] floatValues = (float[]) valueList;
-        final float[] copiedFloatValues = new float[rowSize];
-        System.arraycopy(floatValues, 0, copiedFloatValues, 0, rowSize);
-        return copiedFloatValues;
-      case DOUBLE:
-        final double[] doubleValues = (double[]) valueList;
-        final double[] copiedDoubleValues = new double[rowSize];
-        System.arraycopy(doubleValues, 0, copiedDoubleValues, 0, rowSize);
-        return copiedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] copiedBinaryValues = new Binary[rowSize];
-        System.arraycopy(binaryValues, 0, copiedBinaryValues, 0, rowSize);
-        return copiedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    final Object copiedValueList = Type.fromTsDataType(dataType).createArray(rowSize);
+    System.arraycopy(valueList, 0, copiedValueList, 0, rowSize);
+    return copiedValueList;
   }
 }
