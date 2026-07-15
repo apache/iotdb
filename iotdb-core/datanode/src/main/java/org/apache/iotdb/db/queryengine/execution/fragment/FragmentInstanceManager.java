@@ -157,7 +157,8 @@ public class FragmentInstanceManager {
                                 instance.getSessionInfo(),
                                 dataRegion,
                                 instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap));
+                                dataNodeQueryContextMap,
+                                instance.isDebug()));
                 context.setHighestPriority(instance.isHighestPriority());
 
                 try {
@@ -259,7 +260,10 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              instance.isDebug()));
               context.setHighestPriority(instance.isHighestPriority());
 
               try {
