@@ -88,7 +88,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
         }
 
         bitMaps[i].unmark(rowCount);
-        processColumn(valueColumn, columns[i], dataTypes[i], typeConvertors[i], lastReadIndex);
+        processColumn(valueColumn, columns[i], typeConvertors[i], lastReadIndex);
       }
 
       writtenCounter.getAndIncrement();

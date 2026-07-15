@@ -139,40 +139,8 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
   public abstract int processTsBlock(TsBlock tsBlock, int lastReadIndex);
 
   protected void processColumn(
-      Column valueColumn,
-      Object columns,
-      TSDataType dataType,
-      Type sourceTypeConvertor,
-      int rowIndex) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        ((int[]) columns)[rowCount] = sourceTypeConvertor.getInt(valueColumn, rowIndex);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        ((long[]) columns)[rowCount] = sourceTypeConvertor.getLong(valueColumn, rowIndex);
-        break;
-      case FLOAT:
-        ((float[]) columns)[rowCount] = sourceTypeConvertor.getFloat(valueColumn, rowIndex);
-        break;
-      case DOUBLE:
-        ((double[]) columns)[rowCount] = sourceTypeConvertor.getDouble(valueColumn, rowIndex);
-        break;
-      case BOOLEAN:
-        ((boolean[]) columns)[rowCount] = sourceTypeConvertor.getBoolean(valueColumn, rowIndex);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) columns)[rowCount] = sourceTypeConvertor.getBinary(valueColumn, rowIndex);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                "data type %s is not supported when convert data at client",
-                valueColumn.getDataType()));
-    }
+      Column valueColumn, Object columns, Type sourceTypeConvertor, int rowIndex) {
+    sourceTypeConvertor.setTo(valueColumn, rowIndex, columns, rowCount);
   }
 
   protected long sizeOf(Object[] arr, Class<?> clazz) {

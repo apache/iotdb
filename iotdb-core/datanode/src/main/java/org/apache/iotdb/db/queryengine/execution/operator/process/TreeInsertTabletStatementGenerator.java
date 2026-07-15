@@ -80,8 +80,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
 
         bitMaps[i].unmark(rowCount);
         writtenCounter.get(measurements[i]).getAndIncrement();
-        processColumn(
-            valueColumn, columns[i], dataTypes[i], typeConvertors[valueColumnIndex], lastReadIndex);
+        processColumn(valueColumn, columns[i], typeConvertors[valueColumnIndex], lastReadIndex);
       }
 
       ++rowCount;
