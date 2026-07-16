@@ -357,8 +357,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
-      FileMetrics.getInstance().deleteTsFile(false, selectedUnsequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(selectedSequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(selectedUnsequenceFiles);
     }
   }
 

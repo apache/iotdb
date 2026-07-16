@@ -226,8 +226,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 .STORAGE_LOG_SETTLE_TASK_DELETES_FULLY_DIRTY_TSFILE_SUCCESSFULLY_18D81225,
             resource.getTsFile().getAbsolutePath());
         if (recoverMemoryStatus) {
-          FileMetrics.getInstance()
-              .deleteTsFile(resource.isSeq(), Collections.singletonList(resource));
+          FileMetrics.getInstance().deleteTsFile(Collections.singletonList(resource));
         }
       } else {
         LOGGER.error(
