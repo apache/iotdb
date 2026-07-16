@@ -367,10 +367,11 @@ public class DataPartitionTableIntegrityCheckProcedure
           localDataPartitionTable = getLocalDataPartitionTable(env, database);
 
       // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
-      if (localDataPartitionTable == null
-          || localDataPartitionTable.isEmpty()
-          || localDataPartitionTable.get(database) == null
-          || localDataPartitionTable.get(database).isEmpty()) {
+      if ((localDataPartitionTable == null
+              || localDataPartitionTable.isEmpty()
+              || localDataPartitionTable.get(database) == null
+              || localDataPartitionTable.get(database).isEmpty())
+          && database.startsWith("root.")) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
             ProcedureMessages
