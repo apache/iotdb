@@ -426,6 +426,10 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 不支持 REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime 过滤器不能存在于值过滤器中。";
+  public static final String VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT =
+      "\"%s\" 无法转换为 [%s]";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "不支持的数据类型 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =

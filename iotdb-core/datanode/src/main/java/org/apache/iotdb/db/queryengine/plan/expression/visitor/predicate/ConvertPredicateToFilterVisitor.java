@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -43,18 +42,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.utils.TypeServices;
 
-import com.google.common.io.BaseEncoding;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.math.NumberUtils;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.math.BigDecimal;
@@ -483,39 +481,14 @@ public class ConvertPredicateToFilterVisitor
   @SuppressWarnings("unchecked")
   public static <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
     try {
-      switch (dataType) {
-        case INT32:
-          return (T) Integer.valueOf(valueString);
-        case INT64:
-        case TIMESTAMP:
-          return (T) Long.valueOf(valueString);
-        case FLOAT:
-          return (T) Float.valueOf(valueString);
-        case DOUBLE:
-          return (T) Double.valueOf(valueString);
-        case BOOLEAN:
-          if (valueString.equalsIgnoreCase("true")) {
-            return (T) Boolean.TRUE;
-          } else if (valueString.equalsIgnoreCase("false")) {
-            return (T) Boolean.FALSE;
-          } else {
-            throw new IllegalArgumentException(
-                String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
-          }
-        case BLOB:
-          return (T) new Binary(BaseEncoding.base16().decode(valueString));
-        case TEXT:
-        case STRING:
-          return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
-        case DATE:
-          return (T) DateTimeUtils.parseDateExpressionToInt(valueString);
-        default:
-          throw new UnsupportedOperationException(
-              String.format("Unsupported data type %s", dataType));
-      }
+      return (T)
+          TypeServices.CONVERT_PREDICATE_VALUE_PARSER_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .apply(valueString);
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-          String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
+          String.format(
+              DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT, valueString, dataType));
     }
   }
 

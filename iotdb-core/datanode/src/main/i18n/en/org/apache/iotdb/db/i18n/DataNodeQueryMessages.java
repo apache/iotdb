@@ -428,6 +428,10 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP does not support REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime filter cannot exist in value filter.";
+  public static final String VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT =
+      "\"%s\" cannot be cast to [%s]";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "Unsupported data type %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =

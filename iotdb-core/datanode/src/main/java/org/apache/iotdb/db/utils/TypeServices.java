@@ -23,7 +23,9 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
+import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -60,6 +62,37 @@ public class TypeServices {
             case STRING -> TypeServices::parseString;
             default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
           };
+
+  public static final TypeService<Function<String, Comparable<?>>>
+      CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> Integer::valueOf;
+                case INT64, TIMESTAMP -> Long::valueOf;
+                case FLOAT -> Float::valueOf;
+                case DOUBLE -> Double::valueOf;
+                case BOOLEAN ->
+                    valueString -> {
+                      if (valueString.equalsIgnoreCase("true")) {
+                        return Boolean.TRUE;
+                      } else if (valueString.equalsIgnoreCase("false")) {
+                        return Boolean.FALSE;
+                      }
+                      throw new IllegalArgumentException(
+                          String.format(
+                              DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
+                              valueString,
+                              type.getTypeEnum()));
+                    };
+                case BLOB -> valueString -> new Binary(BaseEncoding.base16().decode(valueString));
+                case TEXT, STRING ->
+                    valueString -> new Binary(valueString, TSFileConfig.STRING_CHARSET);
+                case DATE -> DateTimeUtils::parseDateExpressionToInt;
+                default ->
+                    throw new UnsupportedOperationException(
+                        String.format(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+              };
 
   public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =
       type ->
