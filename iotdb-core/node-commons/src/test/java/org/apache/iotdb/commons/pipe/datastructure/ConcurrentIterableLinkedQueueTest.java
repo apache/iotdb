@@ -481,4 +481,25 @@ public class ConcurrentIterableLinkedQueueTest {
     Assert.assertTrue(itr.hasNext());
     Assert.assertEquals(Integer.valueOf(5), itr.next());
   }
+
+  @Test(timeout = 60000)
+  public void testSetFirstIndexReplacesEmptyQueueIndexes() {
+    queue.add(1);
+    queue.add(2);
+    queue.clear();
+
+    queue.setFirstIndex(1);
+
+    Assert.assertEquals(1, queue.getFirstIndex());
+    Assert.assertEquals(1, queue.getTailIndex());
+    queue.add(3);
+    Assert.assertEquals(2, queue.getTailIndex());
+
+    try (final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr =
+        queue.iterateFromEarliest()) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(3), itr.next());
+      Assert.assertFalse(itr.hasNext());
+    }
+  }
 }

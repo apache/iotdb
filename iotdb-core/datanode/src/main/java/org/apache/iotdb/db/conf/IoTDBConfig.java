@@ -204,6 +204,8 @@ public class IoTDBConfig {
 
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
+  private volatile long checkDnLeaseStatusIntervalMs = 500;
+
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
@@ -579,6 +581,12 @@ public class IoTDBConfig {
   private int compactionScheduleThreadNum = 4;
 
   private volatile boolean enableTsFileValidation = false;
+
+  /**
+   * Whether to enable the TopK runtime filter optimization for table-model {@code ORDER BY time
+   * LIMIT k} queries. Hot-reloadable; set false to fall back to the original execution path.
+   */
+  private volatile boolean enableTopKRuntimeFilter = true;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -1101,6 +1109,7 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
+  private long regionMigrationFileRemoveSpeedLimitBytesPerSecond = 16 * 1024 * 1024L;
   // Throttle the per-file snapshot-transmission progress log in IoTConsensus to at most once per
   // this interval (ms). A value <= 0 logs every file.
   private long dataRegionIotSnapshotTransmissionProgressLogIntervalMs = 5000L;
@@ -1276,6 +1285,16 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public long getRegionMigrationFileRemoveSpeedLimitBytesPerSecond() {
+    return regionMigrationFileRemoveSpeedLimitBytesPerSecond;
+  }
+
+  public void setRegionMigrationFileRemoveSpeedLimitBytesPerSecond(
+      long regionMigrationFileRemoveSpeedLimitBytesPerSecond) {
+    this.regionMigrationFileRemoveSpeedLimitBytesPerSecond =
+        regionMigrationFileRemoveSpeedLimitBytesPerSecond;
   }
 
   public long getDataRegionIotSnapshotTransmissionProgressLogIntervalMs() {
@@ -2079,6 +2098,14 @@ public class IoTDBConfig {
       return;
     }
     this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public long getCheckDnLeaseStatusIntervalMs() {
+    return checkDnLeaseStatusIntervalMs;
+  }
+
+  public void setCheckDnLeaseStatusIntervalMs(long checkDnLeaseStatusIntervalMs) {
+    this.checkDnLeaseStatusIntervalMs = checkDnLeaseStatusIntervalMs;
   }
 
   public int getDeviceSchemaRequestCacheMaxSize() {
@@ -4395,6 +4422,14 @@ public class IoTDBConfig {
 
   public void setEnableTsFileValidation(boolean enableTsFileValidation) {
     this.enableTsFileValidation = enableTsFileValidation;
+  }
+
+  public boolean isEnableTopKRuntimeFilter() {
+    return enableTopKRuntimeFilter;
+  }
+
+  public void setEnableTopKRuntimeFilter(boolean enableTopKRuntimeFilter) {
+    this.enableTopKRuntimeFilter = enableTopKRuntimeFilter;
   }
 
   public long getInnerCompactionTaskSelectionModsFileThreshold() {

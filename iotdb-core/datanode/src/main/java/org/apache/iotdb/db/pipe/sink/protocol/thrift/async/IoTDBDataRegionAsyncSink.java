@@ -66,10 +66,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,10 +95,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY;
@@ -151,11 +160,23 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     final PipeParameters parameters = validator.getParameters();
 
     validator.validate(
-        args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
+        args ->
+            !((boolean) args[0]
+                || (boolean) args[1]
+                || (boolean) args[2]
+                || (boolean) args[3]
+                || (boolean) args[4]),
         "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
-        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
   }
 
   @Override
@@ -262,6 +283,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
+      int transferredFileCount = 0;
       try {
         for (final Pair<String, File> sealedFile : dbTsFilePairs) {
           transfer(
@@ -275,13 +297,22 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                   null,
                   false,
                   sealedFile.left));
+          transferredFileCount++;
         }
       } catch (final Exception e) {
+        for (int i = transferredFileCount; i < dbTsFilePairs.size(); i++) {
+          final Pair<String, File> untransferredFile = dbTsFilePairs.get(i);
+          if (untransferredFile.right.exists()
+              && !FileUtils.deleteQuietly(untransferredFile.right)) {
+            LOGGER.warn(
+                DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
+          }
+        }
         PipeLogger.log(
             ignored ->
                 LOGGER.warn(DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH, dbTsFilePairs, e),
             e,
-            "Failed to transfer tsfile batch (%s).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH,
             dbTsFilePairs);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
@@ -457,24 +488,30 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     transferTsFileCounter.incrementAndGet();
-    CompletableFuture<Void> completableFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              AsyncPipeDataTransferServiceClient client = null;
-              try {
-                client = transferTsFileClientManager.borrowClient();
-                markHandshakeSucceeded();
-                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
-              } catch (final Exception ex) {
-                markSchedulingDelayIfHandshakeFailed(client);
-                logOnClientException(client, ex);
-                pipeTransferTsFileHandler.onError(ex);
-              } finally {
-                transferTsFileCounter.decrementAndGet();
-              }
-              return null;
-            },
-            transferTsFileClientManager.getExecutor());
+    final CompletableFuture<Void> completableFuture;
+    try {
+      completableFuture =
+          CompletableFuture.supplyAsync(
+              () -> {
+                AsyncPipeDataTransferServiceClient client = null;
+                try {
+                  client = transferTsFileClientManager.borrowClient();
+                  markHandshakeSucceeded();
+                  pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
+                } catch (final Exception ex) {
+                  markSchedulingDelayIfHandshakeFailed(client);
+                  logOnClientException(client, ex);
+                  pipeTransferTsFileHandler.onError(ex);
+                } finally {
+                  transferTsFileCounter.decrementAndGet();
+                }
+                return null;
+              },
+              transferTsFileClientManager.getExecutor());
+    } catch (final RuntimeException e) {
+      transferTsFileCounter.decrementAndGet();
+      throw e;
+    }
 
     if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {
@@ -489,7 +526,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                       pipeTransferTsFileHandler.getTsFile(),
                       e),
               e,
-              "Transfer tsfile event %s asynchronously was interrupted.",
+              DataNodePipeMessages.TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED,
               pipeTransferTsFileHandler.getTsFile());
         }
 
@@ -501,7 +538,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                     pipeTransferTsFileHandler.getTsFile(),
                     e),
             e,
-            "Failed to transfer tsfile event %s asynchronously.",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
             pipeTransferTsFileHandler.getTsFile());
       }
     }
@@ -876,7 +913,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   private static String format(final TEndPoint endPoint) {
-    return Objects.isNull(endPoint) ? null : endPoint.getIp() + ":" + endPoint.getPort();
+    return Objects.isNull(endPoint) ? null : UrlUtils.convertTEndPointIpv4AndIpv6Url(endPoint);
   }
 
   //////////////////////////// Operations for close ////////////////////////////

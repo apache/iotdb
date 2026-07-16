@@ -855,9 +855,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String errorMsg =
           e instanceof InterruptedException
               ? String.format(
-                  "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
+                  DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_CLOSING_TSFILE,
+                  resource.getTsFilePath())
               : String.format(
-                  "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
+                  DataNodePipeMessages.PARSE_TSFILE_ERROR_BECAUSE,
+                  resource.getTsFilePath(),
+                  e.getMessage());
       if (e instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(LOGGER::warn, errorMsg);
       } else {

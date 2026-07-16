@@ -570,7 +570,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   //////////////////////////// queue management ////////////////////////////
 
-  public void bindConsensusPrefetchingQueue(
+  public ConsensusPrefetchingQueue bindConsensusPrefetchingQueue(
       final String topicName,
       final String orderMode,
       final ConsensusGroupId consensusGroupId,
@@ -597,7 +597,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
               topicName,
               consensusGroupId,
               brokerId);
-          return;
+          return existing;
         }
       }
 
@@ -628,6 +628,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           initialRuntimeVersion,
           initialActive,
           queues.size());
+      return consensusQueue;
     }
   }
 

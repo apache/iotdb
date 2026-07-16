@@ -16,48 +16,50 @@
 # under the License.
 #
 
+import ipaddress
 import logging
 import random
-import sys
 import struct
+import sys
 import warnings
+
+from iotdb.utils.SessionDataSet import SessionDataSet
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 from tzlocal import get_localzone_name
 
-from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
 from .thrift.common.ttypes import TEndPoint
 from .thrift.rpc.IClientRPCService import (
     Client,
-    TSCreateTimeseriesReq,
+    TSAppendSchemaTemplateReq,
+    TSCloseSessionReq,
     TSCreateAlignedTimeseriesReq,
+    TSCreateMultiTimeseriesReq,
+    TSCreateSchemaTemplateReq,
+    TSCreateTimeseriesReq,
+    TSDropSchemaTemplateReq,
+    TSExecuteStatementReq,
     TSInsertRecordReq,
+    TSInsertRecordsOfOneDeviceReq,
+    TSInsertRecordsReq,
     TSInsertStringRecordReq,
     TSInsertTabletReq,
-    TSExecuteStatementReq,
-    TSOpenSessionReq,
-    TSCreateMultiTimeseriesReq,
-    TSCloseSessionReq,
     TSInsertTabletsReq,
-    TSInsertRecordsReq,
-    TSInsertRecordsOfOneDeviceReq,
-    TSCreateSchemaTemplateReq,
-    TSDropSchemaTemplateReq,
-    TSAppendSchemaTemplateReq,
+    TSOpenSessionReq,
     TSPruneSchemaTemplateReq,
+    TSQueryTemplateReq,
     TSSetSchemaTemplateReq,
     TSUnsetSchemaTemplateReq,
-    TSQueryTemplateReq,
 )
 from .thrift.rpc.ttypes import (
     TSDeleteDataReq,
-    TSProtocolVersion,
-    TSSetTimeZoneReq,
-    TSRawDataQueryReq,
-    TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
+    TSLastDataQueryReq,
+    TSProtocolVersion,
+    TSRawDataQueryReq,
+    TSSetTimeZoneReq,
 )
 from .tsfile.utils.date_utils import parse_date_to_int
 from .utils import rpc_utils
@@ -65,6 +67,48 @@ from .utils.exception import IoTDBConnectionException, RedirectException
 
 logger = logging.getLogger("IoTDB")
 warnings.simplefilter("always", DeprecationWarning)
+
+
+def _parse_endpoint_url(endpoint_url):
+    if endpoint_url.startswith("["):
+        end_index = endpoint_url.find("]")
+        if end_index <= 1 or end_index + 1 >= len(endpoint_url):
+            raise RuntimeError("invalid node url: {}".format(endpoint_url))
+        if endpoint_url[end_index + 1] != ":":
+            raise RuntimeError("invalid node url: {}".format(endpoint_url))
+        return endpoint_url[1:end_index], _parse_endpoint_port(
+            endpoint_url, endpoint_url[end_index + 2 :]
+        )
+
+    if "[" in endpoint_url or "]" in endpoint_url:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url))
+    split = endpoint_url.rsplit(":", 1)
+    if len(split) != 2:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url))
+    return split[0], _parse_endpoint_port(endpoint_url, split[1])
+
+
+def _parse_endpoint_port(endpoint_url, port):
+    try:
+        return int(port)
+    except ValueError as e:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url)) from e
+
+
+def _is_wildcard_address(host):
+    if host is None:
+        return False
+    normalized_host = host
+    if normalized_host.startswith("[") and normalized_host.endswith("]"):
+        normalized_host = normalized_host[1:-1]
+    if normalized_host == "0.0.0.0":
+        return True
+    if ":" not in normalized_host:
+        return False
+    try:
+        return ipaddress.ip_address(normalized_host).is_unspecified
+    except ValueError:
+        return False
 
 
 class Session(object):
@@ -158,9 +202,9 @@ class Session(object):
         session.__hosts = []
         session.__ports = []
         for node_url in node_urls:
-            split = node_url.split(":")
-            session.__hosts.append(split[0])
-            session.__ports.append(int(split[1]))
+            host, port = _parse_endpoint_url(node_url)
+            session.__hosts.append(host)
+            session.__ports.append(port)
         session.__host = session.__hosts[0]
         session.__port = session.__ports[0]
         session.__default_endpoint = TEndPoint(session.__host, session.__port)
@@ -259,6 +303,7 @@ class Session(object):
     def __get_transport(self, endpoint):
         if self.__use_ssl:
             import ssl
+
             from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
@@ -1986,7 +2031,7 @@ class Session(object):
 
     def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
-            if endpoint.ip == "0.0.0.0":
+            if _is_wildcard_address(endpoint.ip):
                 return 0
             if (
                 device_id not in self.__device_id_to_endpoint

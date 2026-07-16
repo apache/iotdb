@@ -19,7 +19,8 @@
 #
 
 # You can set DataNode memory size, example '2G' or '2048M'
-MEMORY_SIZE=
+# If the MEMORY_SIZE environment variable is already set, its value will be used.
+MEMORY_SIZE=${MEMORY_SIZE:-}
 
 
 # You can put your env variable here
@@ -63,86 +64,6 @@ esac
 
 # whether we allow enable heap dump files
 IOTDB_ALLOW_HEAP_DUMP="true"
-
-calculate_memory_sizes()
-{
-    case "`uname`" in
-        Linux)
-            system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
-            system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
-        ;;
-        FreeBSD)
-            system_memory_in_bytes=`sysctl hw.physmem | awk '{print $2}'`
-            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
-            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
-        ;;
-        SunOS)
-            system_memory_in_mb=`prtconf | awk '/Memory size:/ {print $3}'`
-            system_cpu_cores=`psrinfo | wc -l`
-        ;;
-        Darwin)
-            system_memory_in_bytes=`sysctl hw.memsize | awk '{print $2}'`
-            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
-            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
-        ;;
-        *)
-            # assume reasonable defaults for e.g. a modern desktop or
-            # cheap server
-            system_memory_in_mb="2048"
-            system_cpu_cores="2"
-        ;;
-    esac
-
-    # some systems like the raspberry pi don't report cores, use at least 1
-    if [ "$system_cpu_cores" -lt "1" ]
-    then
-        system_cpu_cores="1"
-    fi
-
-    # suggest using memory, system memory 1 / 2
-    suggest_using_memory_in_mb=`expr $system_memory_in_mb / 2`
-
-    if [ -n "$MEMORY_SIZE" ]
-    then
-        if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ] || [ "${MEMORY_SIZE%"M"}" != "$MEMORY_SIZE" ]
-        then
-          if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ]
-          then
-              memory_size_in_mb=`expr ${MEMORY_SIZE%"G"} "*" 1024`
-          else
-              memory_size_in_mb=`expr ${MEMORY_SIZE%"M"}`
-          fi
-        else
-            echo "Invalid format of MEMORY_SIZE, please use the format like 2048M or 2G"
-            exit 1
-        fi
-    else
-        memory_size_in_mb=$suggest_using_memory_in_mb
-    fi
-
-    # set on heap memory size
-    # when memory_size_in_mb is less than 4 * 1024, we will set on heap memory size to memory_size_in_mb / 4 * 3
-    # when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
-    # when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
-    # when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
-    if [ "$memory_size_in_mb" -lt "4096" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 4 \* 3`
-    elif [ "$memory_size_in_mb" -lt "16384" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 5 \* 4`
-    elif [ "$memory_size_in_mb" -lt "131072" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 8 \* 7`
-    else
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb - 16384`
-    fi
-    off_heap_memory_size_in_mb=`expr $memory_size_in_mb - $on_heap_memory_size_in_mb`
-
-    ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
-    OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
-}
-
 
 # find first dir of dn_data_dirs from properties file
 get_first_data_dir() {
@@ -242,7 +163,8 @@ illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL
 illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
 illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 
-calculate_memory_sizes
+# DataNode: suggest 50% of system memory (1/2), no cap.
+calculate_memory_sizes 1 2 0
 
 # on heap memory size
 #ON_HEAP_MEMORY="2G"

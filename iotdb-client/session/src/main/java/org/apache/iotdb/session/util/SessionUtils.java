@@ -487,8 +487,12 @@ public class SessionUtils {
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl);
-      endPointsList.add(endPoint);
+      try {
+        endPointsList.add(UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl));
+      } catch (NumberFormatException e) {
+        throw new NumberFormatException(
+            SessionMessages.EXCEPTION_NODEURL_INCORRECT_FORMAT_C1463B2C);
+      }
     }
     return endPointsList;
   }

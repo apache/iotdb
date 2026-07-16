@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -38,7 +39,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -464,7 +464,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
-              String.format("Unknown PipeRequestType %s.", rawRequestType));
+              String.format(DataNodePipeMessages.UNKNOWN_PIPEREQUESTTYPE, rawRequestType));
       LOGGER.warn(
           DataNodePipeMessages.RECEIVER_ID_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS,
           receiverId.get(),
@@ -472,8 +472,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
       final String error =
-          String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
-      PipeLogger.log(LOGGER::warn, e, "Receiver id = %s: %s", receiverId.get(), error);
+          String.format(
+              DataNodePipeMessages.EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST,
+              e.getMessage(),
+              req);
+      PipeLogger.log(LOGGER::warn, e, DataNodePipeMessages.RECEIVER_ID, receiverId.get(), error);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -653,7 +656,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         shouldConvertDataTypeOnTypeMismatch,
         validateTsFile || shouldConvertDataTypeOnTypeMismatch,
         null,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        AuthorityChecker.SUPER_USER);
   }
 
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
@@ -828,7 +832,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
+            DataNodePipeMessages.RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
             receiverId.get(),
             StatementType.ALTER_LOGICAL_VIEW.name(),
             username,
@@ -1057,7 +1061,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         if (code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
           PipeLogger.log(
               LOGGER::warn,
-              "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+              DataNodePipeMessages.RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT,
               receiverId.get(),
               statement.getPipeLoggingString(),
               result);
@@ -1080,7 +1084,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Receiver id = %s: Exception encountered while executing statement %s: ",
+          DataNodePipeMessages.RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT,
           receiverId.get(),
           Objects.isNull(statement) ? null : statement.getPipeLoggingString());
     }
@@ -1089,9 +1093,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   static boolean shouldLogStatementException(
       final long receiverId, final Statement statement, final Exception e) {
     // Use the reducer cache as a gate. The actual stack trace is logged only when it passes.
-    return PipePeriodicalLogReducer.log(
+    return LoggerPeriodicalLogReducer.log(
         message -> {},
-        "Receiver id = %s, statement = %s, exception = %s, message = %s",
+        DataNodePipeMessages.RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE,
         receiverId,
         Objects.isNull(statement) ? null : statement.getPipeLoggingString(),
         e.getClass().getName(),
@@ -1149,7 +1153,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
+            DataNodePipeMessages.RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
             receiverId.get(),
             statement.getType().name(),
             username,
@@ -1500,7 +1504,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+            DataNodePipeMessages.RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT,
             receiverId.get(),
             statement,
             result);
@@ -1510,7 +1514,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Receiver id = %s: Exception encountered while executing statement %s: ",
+          DataNodePipeMessages.RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT,
           receiverId.get(),
           statement);
       return new TSStatus(TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR.getStatusCode())

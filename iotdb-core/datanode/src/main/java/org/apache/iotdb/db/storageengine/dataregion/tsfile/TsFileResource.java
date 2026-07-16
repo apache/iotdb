@@ -54,6 +54,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -90,6 +91,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -156,6 +158,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
+
+  private AtomicBoolean isRecordedByMetric = new AtomicBoolean(false);
 
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -257,6 +261,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
+    this.isRecordedByMetric = originTsFileResource.isRecordedByMetric;
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
@@ -321,7 +326,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       return timeIndex;
     }
 
-    return buildDeviceTimeIndex();
+    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /** deserialize from disk */
@@ -1355,6 +1360,18 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return isSeq;
   }
 
+  public boolean isRecordedByMetric() {
+    return isRecordedByMetric.get();
+  }
+
+  public boolean markAsRecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(false, true);
+  }
+
+  public boolean markAsUnrecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(true, false);
+  }
+
   public int compareIndexDegradePriority(TsFileResource tsFileResource) {
     int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
     return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
@@ -1648,6 +1665,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.sharedModFileOffset = this.sharedModFileOffset;
     cloned.compactionModFile = this.compactionModFile;
     cloned.isSeq = this.isSeq;
+    cloned.isRecordedByMetric = this.isRecordedByMetric;
     cloned.tsFileRepairStatus = this.tsFileRepairStatus;
     cloned.settleTsFileCallBack = this.settleTsFileCallBack;
     cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;

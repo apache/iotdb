@@ -85,6 +85,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -4876,10 +4877,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final TableNodeStatus tableNodeStatus) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TFetchTableResp fetchTableResp = configNodeClient.fetchTables(fetchTableMap);
+      final TFetchTableResp fetchTableResp =
+          configNodeClient.fetchTables(fetchTableMap, tableNodeStatus.getStatus());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != fetchTableResp.getStatus().getCode()) {
         LOGGER.warn(DataNodeQueryMessages.FAILED_TO_FETCHTABLES_STATUS_IS, fetchTableResp);
       }

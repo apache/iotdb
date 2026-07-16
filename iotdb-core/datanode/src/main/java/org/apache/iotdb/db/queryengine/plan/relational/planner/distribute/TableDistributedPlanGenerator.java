@@ -435,12 +435,14 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
+    // root TopK is not a runtime filter producer.
+    newTopKNode.setTopKRuntimeFilterSourceId(null);
     for (PlanNode child : childrenNodes) {
       PlanNode newChild;
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), child)) {
         newChild = child;
       } else {
-        newChild =
+        TopKNode regionTopK =
             new TopKNode(
                 queryId.genPlanNodeId(),
                 Collections.singletonList(child),
@@ -448,6 +450,8 @@ public class TableDistributedPlanGenerator
                 node.getCount(),
                 node.getOutputSymbols(),
                 node.isChildrenDataInOrder());
+        regionTopK.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
+        newChild = regionTopK;
       }
       newTopKNode.addChild(newChild);
     }
@@ -779,6 +783,7 @@ public class TableDistributedPlanGenerator
               partition.getPartitionIndex(),
               node.getSchemaFilter());
       splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      splitNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
       result.add(splitNode);
     }
     sortPropertyContext.ifPresent(
@@ -914,6 +919,7 @@ public class TableDistributedPlanGenerator
                         node.isPushLimitToEachDevice(),
                         node.containsNonAlignedDevice());
                 scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
+                scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                 return scanNode;
               });
       deviceTableScanNode.appendDeviceEntry(deviceEntry);
@@ -1000,6 +1006,7 @@ public class TableDistributedPlanGenerator
                           node.isPushLimitToEachDevice(),
                           node.containsNonAlignedDevice());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
+                  scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                   return scanNode;
                 });
         deviceTableScanNode.appendDeviceEntry(deviceEntry);
@@ -1094,6 +1101,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.left = scanNode;
         }
 
@@ -1116,6 +1124,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.right = scanNode;
         }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -638,11 +639,12 @@ public class TableDeviceSchemaCache {
   }
 
   // Only used by table model
-  public void invalidate(final String database, final String tableName) {
+  public void invalidateAndPreDelete(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       // Table cache's invalidate must be guarded by this lock
-      DataNodeTableCache.getInstance().invalid(database, tableName);
+      DataNodeTableCache.getInstance()
+          .preUpdateTable(database, new PreDeleteTsTable(tableName), null);
       dualKeyCache.invalidate(new TableId(database, tableName));
     } finally {
       readWriteLock.writeLock().unlock();

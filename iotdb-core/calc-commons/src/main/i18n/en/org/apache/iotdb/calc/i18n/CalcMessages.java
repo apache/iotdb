@@ -405,6 +405,8 @@ public final class CalcMessages {
   public static final String EXCEPTION_THE_SIZE_OF_READYQUEUE_CANNOT_BE_NEGATIVE_DOT_01D8D0CB = "The size of readyQueue cannot be negative.";
   public static final String EXCEPTION_THE_SIZE_BETWEEN_WHENTRANSFORMERS_AND_THENTRANSFORMERS_NEEDS_TO_BE_SAME_AC796883 = "the size between whenTransformers and thenTransformers needs to be same";
   public static final String EXCEPTION_EXCEED_MAX_CALL_TIMES_OF_GETCOLUMN_69C77C7E = "Exceed max call times of getColumn";
+  public static final String EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208 =
+      "TopK runtime filter requires ORDER BY time on a single INT64 or TIMESTAMP column";
   public static final String EXCEPTION_FILTER_IS_NOT_SUPPORTED_IN_ARG_DOT_FILTER_IS_ARG_DOT_417C4F3C = "Filter is not supported in %s. Filter is %s.";
   public static final String EXCEPTION_NULL_9B41EF67 = "null";
   public static final String EXCEPTION_ARG_MUST_HAVE_JOIN_KEYS_DOT_C24DAB2D = "%s must have join keys.";

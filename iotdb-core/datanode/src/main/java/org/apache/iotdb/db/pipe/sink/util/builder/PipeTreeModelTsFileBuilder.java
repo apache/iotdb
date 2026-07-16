@@ -147,7 +147,13 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          FileUtils.deleteQuietly(file);
+          throw e;
+        }
       }
       try {
         tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList, device2Aligned);
