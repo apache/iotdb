@@ -158,6 +158,13 @@ public class DataNodeTableCache implements ITableCache {
       if (resp.isSetTableInfo()) {
         init(resp.getTableInfo());
       }
+      if (!resp.isSetFenceThresholdMs()) {
+        throw new RuntimeException(DataNodeSchemaMessages.FAILED_TO_GET_FENCE_THRESHOLD_FROM_CN);
+      }
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(resp.getFenceThresholdMs());
+      LOGGER.info(
+          DataNodeSchemaMessages.UPDATED_METADATA_LEASE_FENCE_THRESHOLD,
+          resp.getFenceThresholdMs());
     } catch (final ClientManagerException | TException e) {
       throw new RuntimeException(FAILED_TO_REFRESH_CACHE_FROM_CN, e);
     }

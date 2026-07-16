@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.lease;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,7 +73,7 @@ public class MetadataLeaseManager {
   private final List<MetadataAction> pullMetaList;
 
   private final LongSupplier nanoClock;
-  private final LongSupplier fenceThresholdMs;
+  private volatile long fenceThresholdMs;
 
   private volatile long lastConfigNodeHeartbeatNanos;
 
@@ -95,7 +94,7 @@ public class MetadataLeaseManager {
   private MetadataLeaseManager() {
     this(
         System::nanoTime,
-        () -> CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs(),
+        0,
         defaultClearCacheList(),
         defaultPullMetaList(),
         IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
@@ -117,7 +116,7 @@ public class MetadataLeaseManager {
 
   MetadataLeaseManager(
       final LongSupplier nanoClock,
-      final LongSupplier fenceThresholdMs,
+      final long fenceThresholdMs,
       final List<MetadataAction> clearCacheList,
       final List<MetadataAction> pullMetaList,
       final ExecutorService pullExecutorService,
@@ -251,7 +250,7 @@ public class MetadataLeaseManager {
   }
 
   private boolean hasOutOfLease() {
-    return getMillisSinceLastConfigNodeHeartbeat() > fenceThresholdMs.getAsLong();
+    return getMillisSinceLastConfigNodeHeartbeat() > fenceThresholdMs;
   }
 
   /** Milliseconds elapsed since the last ConfigNode heartbeat was received (never negative). */
@@ -288,6 +287,14 @@ public class MetadataLeaseManager {
     }
   }
 
+  /**
+   * Update the fence threshold from the ConfigNode. Called during startup (from
+   * TRuntimeConfiguration), heartbeat, and lease recovery.
+   */
+  public void updateFenceThresholdMs(final long newValue) {
+    this.fenceThresholdMs = newValue;
+  }
+
   /** Force the lease to appear expired, for tests that exercise fail-closed behavior. */
   @TestOnly
   public void recoveryLeaseForTest(boolean recovery) {
@@ -296,7 +303,7 @@ public class MetadataLeaseManager {
       metadataStateRef.set(MetadataState.NORMAL, 0);
     } else {
       this.lastConfigNodeHeartbeatNanos =
-          nanoClock.getAsLong() - (fenceThresholdMs.getAsLong() + 1_000L) * 1_000_000L;
+          nanoClock.getAsLong() - (fenceThresholdMs + 1_000L) * 1_000_000L;
     }
   }
 

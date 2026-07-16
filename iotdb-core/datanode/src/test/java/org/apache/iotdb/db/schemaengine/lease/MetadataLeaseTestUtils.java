@@ -67,7 +67,7 @@ public final class MetadataLeaseTestUtils {
       final MetadataLeaseManager.MetadataAction pullAction) {
     return new MetadataLeaseManager(
         nowNanos,
-        () -> T_FENCE_MS,
+        T_FENCE_MS,
         Collections.singletonList(clearAction),
         Collections.singletonList(pullAction),
         MoreExecutors.newDirectExecutorService(),

@@ -574,6 +574,8 @@ public final class DataNodeSchemaMessages {
       "commit delete table {}.{} successfully.";
   public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
       "Failed to refresh DataNodeTableCache from ConfigNode";
+  public static final String FAILED_TO_GET_FENCE_THRESHOLD_FROM_CN =
+      "Failed to get fence threshold from ConfigNode during lease recovery";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
@@ -604,6 +606,8 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_PULL_OR_INIT_METADATA = "Failed to pull or init metadata.";
   public static final String METADATA_LEASE_IS_FENCED =
       "Metadata lease is fenced. The local metadata cache is unavailable.";
+  public static final String UPDATED_METADATA_LEASE_FENCE_THRESHOLD =
+      "Updated metadata lease fence threshold to {} ms";
 
   // ======================== ClusterTemplateManager ========================
 
