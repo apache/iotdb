@@ -403,6 +403,20 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
                         String.valueOf(config.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall())))));
+    config.setPipeAsyncSinkRetryMaxDurationMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_async_sink_retry_max_duration_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_retry_max_duration_ms",
+                        String.valueOf(config.getPipeAsyncSinkRetryMaxDurationMs())))));
+    config.setPipeAsyncSinkRetryProbeIntervalMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_async_sink_retry_probe_interval_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_retry_probe_interval_ms",
+                        String.valueOf(config.getPipeAsyncSinkRetryProbeIntervalMs())))));
     config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(

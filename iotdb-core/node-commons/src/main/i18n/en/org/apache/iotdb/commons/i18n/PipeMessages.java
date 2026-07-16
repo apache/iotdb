@@ -145,6 +145,10 @@ public final class PipeMessages {
           "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
+      "PipeAsyncSinkRetryMaxDurationMs: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS =
+      "PipeAsyncSinkRetryProbeIntervalMs: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER =
       "PipeAsyncSinkSelectorNumber: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_CLIENT_NUMBER =

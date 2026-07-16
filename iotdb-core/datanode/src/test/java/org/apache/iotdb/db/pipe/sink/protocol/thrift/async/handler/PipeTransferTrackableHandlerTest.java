@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
@@ -52,16 +53,28 @@ public class PipeTransferTrackableHandlerTest {
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private int originalRequestSliceThresholdBytes;
+  private long originalRetryMaxDurationMs;
+  private long originalRetryProbeIntervalMs;
+  private long originalSinkSubtaskSleepIntervalInitMs;
+  private long originalSinkSubtaskSleepIntervalMaxMs;
 
   @Before
   public void setUp() {
     originalRequestSliceThresholdBytes = commonConfig.getPipeSinkRequestSliceThresholdBytes();
+    originalRetryMaxDurationMs = commonConfig.getPipeAsyncSinkRetryMaxDurationMs();
+    originalRetryProbeIntervalMs = commonConfig.getPipeAsyncSinkRetryProbeIntervalMs();
+    originalSinkSubtaskSleepIntervalInitMs = commonConfig.getPipeSinkSubtaskSleepIntervalInitMs();
+    originalSinkSubtaskSleepIntervalMaxMs = commonConfig.getPipeSinkSubtaskSleepIntervalMaxMs();
     commonConfig.setPipeSinkRequestSliceThresholdBytes(4);
   }
 
   @After
   public void tearDown() {
     commonConfig.setPipeSinkRequestSliceThresholdBytes(originalRequestSliceThresholdBytes);
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(originalRetryMaxDurationMs);
+    commonConfig.setPipeAsyncSinkRetryProbeIntervalMs(originalRetryProbeIntervalMs);
+    commonConfig.setPipeSinkSubtaskSleepIntervalInitMs(originalSinkSubtaskSleepIntervalInitMs);
+    commonConfig.setPipeSinkSubtaskSleepIntervalMaxMs(originalSinkSubtaskSleepIntervalMaxMs);
   }
 
   @Test
@@ -184,6 +197,69 @@ public class PipeTransferTrackableHandlerTest {
     inOrder.verify(sink).waitIfReceiverTemporarilyUnavailable(endPoint);
     inOrder.verify(client).pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
     Mockito.verify(sink).recordReceiverStatus(endPoint, status);
+  }
+
+  @Test
+  public void testClientIsReturnedWhenReceiverProbeIsDelayed() throws Exception {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    final PipeRuntimeSinkNonReportTimeConfigurableException exception =
+        new PipeRuntimeSinkNonReportTimeConfigurableException("probe delayed", Long.MAX_VALUE);
+    Mockito.when(client.getEndPoint()).thenReturn(endPoint);
+    Mockito.doThrow(exception).when(sink).waitIfReceiverTemporarilyUnavailable(endPoint);
+
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
+
+    handler.transfer(client, createReq(1));
+    Assert.assertEquals(1, handler.errorCount);
+    Mockito.verify(client).setShouldReturnSelf(true);
+    Mockito.verify(client).returnSelf(Mockito.any());
+    Mockito.verify(client, Mockito.never())
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+  }
+
+  @Test
+  public void testReceiverRetriesAreSerialized() {
+    commonConfig.setPipeSinkSubtaskSleepIntervalInitMs(40);
+    commonConfig.setPipeSinkSubtaskSleepIntervalMaxMs(40);
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(5000);
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    sink.recordReceiverStatus(endPoint, temporarilyUnavailableStatus());
+
+    final long startTimeInMs = System.currentTimeMillis();
+    sink.waitIfReceiverTemporarilyUnavailable(endPoint);
+    sink.waitIfReceiverTemporarilyUnavailable(endPoint);
+
+    Assert.assertTrue(System.currentTimeMillis() - startTimeInMs >= 60);
+  }
+
+  @Test
+  public void testReceiverRetryFallsBackToSingleProbeAfterMaxDuration() {
+    commonConfig.setPipeAsyncSinkRetryMaxDurationMs(0);
+    commonConfig.setPipeAsyncSinkRetryProbeIntervalMs(1000);
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    sink.recordReceiverStatus(endPoint, temporarilyUnavailableStatus());
+
+    sink.waitIfReceiverTemporarilyUnavailable(endPoint);
+    Assert.assertThrows(
+        PipeRuntimeSinkNonReportTimeConfigurableException.class,
+        () -> sink.waitIfReceiverTemporarilyUnavailable(endPoint));
+    Assert.assertTrue(sink.peekSchedulingDelayMs() > 0);
+
+    sink.recordReceiverStatus(
+        endPoint, new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    sink.waitIfReceiverTemporarilyUnavailable(endPoint);
+  }
+
+  private static TSStatus temporarilyUnavailableStatus() {
+    return new TSStatus()
+        .setCode(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
   }
 
   private static TPipeTransferReq createReq(final int bodySize) {
