@@ -2372,6 +2372,8 @@ public final class DataNodePipeMessages {
       "当前 tablet 格式反序列化中时间戳不完整。";
   public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
       "Receiver {} 暂时不可用，对请求限流 {} ms。状态：{}";
+  public static final String EXCEPTION_RECEIVER_ARG_REMAINED_TEMPORARILY_UNAVAILABLE_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_C515DD97 =
+      "Receiver %s 持续暂时不可用超过 %d ms，暂停常规重试，改为每 %d ms 探测一次。";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "成功传输批量的 schema 事件，batch 大小 {}。";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =
