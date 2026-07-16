@@ -621,32 +621,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       size += Byte.BYTES;
-      switch (dataType) {
-        case BOOLEAN:
-          size += Byte.BYTES;
-          break;
-        case INT32:
-        case DATE:
-          size += Integer.BYTES;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          size += Long.BYTES;
-          break;
-        case FLOAT:
-          size += Float.BYTES;
-          break;
-        case DOUBLE:
-          size += Double.BYTES;
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
+      if (dataType != null) {
+        size += Type.fromTsDataType(dataType).calcTypeSize(values[i]);
       }
     }
 
