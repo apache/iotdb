@@ -624,6 +624,16 @@ public final class DataNodeQueryMessages {
       "请将时间序列数设置为大于 0";
   public static final String CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT =
       "不能为 root 用户设置限流配额。";
+  public static final String EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT_3AAFE275 =
+      "不能为 root 用户设置 USER QUOTA";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292 =
+      "无效的 USER QUOTA 属性：%s";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430 =
+      "无效的 USER QUOTA disk_io 值：%s，期望为正整数 long（单位 bytes/sec）";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF =
+      "无效的 USER QUOTA temp_disk 值：%s，期望为正整数 long（单位 Byte）";
+  public static final String EXCEPTION_SHOW_USER_QUOTA_SUMMARY_OR_DATANODE_NOT_SUPPORTED_YET_B7A3E292 =
+      "暂不支持 SHOW USER QUOTA SUMMARY / ON DATANODE";
   public static final String PLEASE_SET_THE_NUMBER_OF_REQUESTS_GREATER_THAN =
       "请将请求数设置为大于 0";
   public static final String PLEASE_SET_THE_NUMBER_OF_CPU_GREATER_THAN =

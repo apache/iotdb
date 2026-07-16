@@ -32,6 +32,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetUserResourceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
@@ -179,6 +180,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserResourceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -189,6 +191,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResourceQuotaResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -1484,6 +1487,34 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TThrottleQuotaResp getThrottleQuota() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getThrottleQuota(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus setUserResourceQuota(TSetUserResourceQuotaReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.setUserResourceQuota(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TUserResourceQuotaResp showUserResourceQuota(TShowUserResourceQuotaReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showUserResourceQuota(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TUserResourceQuotaResp getUserResourceQuota() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getUserResourceQuota(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus reportUserResourceUsage(
+      int dataNodeId, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot usage)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.reportUserResourceUsage(dataNodeId, usage),
+        status -> !updateConfigNodeLeader(status));
   }
 
   @Override

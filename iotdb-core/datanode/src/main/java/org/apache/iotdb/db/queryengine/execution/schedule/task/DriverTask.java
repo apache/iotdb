@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.queryengine.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.Priority;
+import org.apache.iotdb.db.storageengine.rescon.quotas.QuotaTokenBundle;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -63,6 +64,7 @@ public class DriverTask implements IDIndexedAccessible {
   private boolean reservedInReadyQueue;
 
   private long estimatedMemorySize;
+  private QuotaTokenBundle quotaTokenBundle;
 
   /** Initialize a dummy instance for queryHolder. */
   public DriverTask() {
@@ -106,6 +108,14 @@ public class DriverTask implements IDIndexedAccessible {
 
   public long getEstimatedMemorySize() {
     return driver.getEstimatedMemorySize();
+  }
+
+  public QuotaTokenBundle getQuotaTokenBundle() {
+    return quotaTokenBundle;
+  }
+
+  public void setQuotaTokenBundle(QuotaTokenBundle quotaTokenBundle) {
+    this.quotaTokenBundle = quotaTokenBundle;
   }
 
   @Override

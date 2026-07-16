@@ -564,6 +564,10 @@ public final class ManagerMessages {
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "设置数据库 %s 的空间配额时发生意外错误 ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "设置用户 %s 的限流配额时发生意外错误 ";
+  public static final String LOG_UNEXPECTED_ERROR_SETTING_USER_RESOURCE_QUOTA_91A4C2E8 =
+      "设置用户资源配额时发生意外错误";
+  public static final String LOG_FAILED_TO_AGGREGATE_RUNNING_DATANODE_USAGE_FOR_SHOW_USER_QUOTA_00017902 =
+      "汇总 Running DataNode 用量失败，无法完整展示 SHOW USER QUOTA";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "反序列化 use&role 文件时发生 IOException，类型：{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "反序列化 roleList 时发生 IOException";

@@ -640,6 +640,16 @@ public final class DataNodeQueryMessages {
       "Please set the number of timeseries greater than 0";
   public static final String CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT =
       "Cannot set throttle quota for user root.";
+  public static final String EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT_3AAFE275 =
+      "Cannot set USER QUOTA for user root";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292 =
+      "Invalid USER QUOTA attribute: %s";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430 =
+      "Invalid USER QUOTA disk_io value: %s, expected positive long (bytes/sec)";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF =
+      "Invalid USER QUOTA temp_disk value: %s, expected positive long (bytes)";
+  public static final String EXCEPTION_SHOW_USER_QUOTA_SUMMARY_OR_DATANODE_NOT_SUPPORTED_YET_B7A3E292 =
+      "SHOW USER QUOTA SUMMARY / ON DATANODE is not supported yet";
   public static final String PLEASE_SET_THE_NUMBER_OF_REQUESTS_GREATER_THAN =
       "Please set the number of requests greater than 0";
   public static final String PLEASE_SET_THE_NUMBER_OF_CPU_GREATER_THAN =

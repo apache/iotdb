@@ -118,6 +118,7 @@ public enum CnToDnAsyncRequestType {
   // Quota
   SET_SPACE_QUOTA,
   SET_THROTTLE_QUOTA,
+  SET_USER_RESOURCE_QUOTA,
 
   // Table
   UPDATE_TABLE,

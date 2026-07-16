@@ -93,6 +93,21 @@ public final class StorageEngineMessages {
   public static final String THROTTLE_QUOTA_RESTORED_SUCCESSFULLY = "流量配额限制恢复成功。 ";
   public static final String THROTTLE_QUOTA_RESTORED_FAILED = "流量配额限制恢复失败。 ";
   public static final String INVALID_STATEMENT_TYPE = "无效的语句类型: ";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_EXCEEDED_8B2D4E1A = "用户资源配额超限：%s";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_WAIT_TIMEOUT_6F3A1C2D =
+      "用户资源配额等待超时：%s %s";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_ACQUIRE_INTERRUPTED_31D4116D =
+      "用户资源配额申请被中断：%s";
+  public static final String EXCEPTION_USER_MAX_EXCEEDED_3D400C08 = "超过用户 max";
+  public static final String EXCEPTION_NODE_CAPACITY_EXCEEDED_89601D9A = "超过节点容量";
+  public static final String EXCEPTION_MIN_GAP_RESERVATION_B84C4EE4 = "需为其他用户保留 minGap";
+  public static final String LOG_USER_RESOURCE_QUOTA_UPDATED_3C8F5A7B = "用户 {} 的资源配额已更新";
+  public static final String LOG_USER_RESOURCE_QUOTA_ACQUIRE_REJECTED_F5079ADB =
+      "用户资源配额申请被拒绝：用户 {}，操作 {}，资源 {}，原因：{}";
+  public static final String LOG_FAILED_TO_REPORT_USER_RESOURCE_USAGE_TO_CONFIGNODE_D08BB930 =
+      "向 ConfigNode 上报用户资源用量失败";
+  public static final String LOG_USER_RESOURCE_USAGE_REPORT_STARTED_WITH_INTERVAL_ARG_SECONDS_C3CC4CC2 =
+      "用户资源用量上报已启动，间隔 %s 秒";
 
   // ======================== DataRegion ========================
 

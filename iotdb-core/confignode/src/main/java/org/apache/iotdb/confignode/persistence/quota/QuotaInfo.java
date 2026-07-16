@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.confignode.persistence.quota;
 
+import org.apache.iotdb.common.rpc.thrift.TResourceQuotaRange;
+import org.apache.iotdb.common.rpc.thrift.TResourceType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
+import org.apache.iotdb.common.rpc.thrift.TUserResourceQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.quota.UserResourceQuotaConverter;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.quota.DeleteUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,6 +59,7 @@ public class QuotaInfo implements SnapshotProcessor {
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
   private final Map<String, TSpaceQuota> spaceQuotaUsage;
   private final Map<String, TThrottleQuota> throttleQuotaLimit;
+  private final Map<String, TUserResourceQuota> userResourceQuotaLimit;
 
   private final String snapshotFileName = "quota_info.bin";
 
@@ -61,6 +68,7 @@ public class QuotaInfo implements SnapshotProcessor {
     spaceQuotaLimit = new HashMap<>();
     spaceQuotaUsage = new HashMap<>();
     throttleQuotaLimit = new HashMap<>();
+    userResourceQuotaLimit = new HashMap<>();
   }
 
   public TSStatus setSpaceQuota(SetSpaceQuotaPlan setSpaceQuotaPlan) {
@@ -138,7 +146,123 @@ public class QuotaInfo implements SnapshotProcessor {
       throttleQuotaLimit.put(
           setThrottleQuotaPlan.getUserName(), setThrottleQuotaPlan.getThrottleQuota());
     }
+    syncUserResourceFromThrottle(userName);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus setUserResourceQuota(SetUserResourceQuotaPlan plan) {
+    String userName = plan.getUserName();
+    TUserResourceQuota incoming = plan.getUserResourceQuota();
+    // Seed from legacy throttle so partial USER QUOTA updates do not wipe cpu/mem limits.
+    if (!userResourceQuotaLimit.containsKey(userName) && throttleQuotaLimit.containsKey(userName)) {
+      syncUserResourceFromThrottle(userName);
+    }
+    TUserResourceQuota merged =
+        userResourceQuotaLimit.containsKey(userName)
+            ? mergeUserResourceQuota(userResourceQuotaLimit.get(userName), incoming)
+            : incoming;
+    userResourceQuotaLimit.put(userName, merged);
+    mergeThrottleFromUserResource(userName, merged);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus deleteUserResourceQuota(DeleteUserResourceQuotaPlan plan) {
+    String userName = plan.getUserName();
+    userResourceQuotaLimit.remove(userName);
+    throttleQuotaLimit.remove(userName);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /**
+   * Incrementally sync derived throttle fields from the merged user resource quota. Never replace
+   * the whole throttle entry, otherwise a write-only USER QUOTA update would clear prior cpu/mem.
+   */
+  private void mergeThrottleFromUserResource(String userName, TUserResourceQuota merged) {
+    TThrottleQuota derived =
+        UserResourceQuotaConverter.toThrottleQuota(UserResourceQuotaConverter.fromThrift(merged));
+    TThrottleQuota existing = throttleQuotaLimit.get(userName);
+    if (existing == null) {
+      throttleQuotaLimit.put(userName, derived);
+      return;
+    }
+    if (derived.isSetCpuLimit() && derived.getCpuLimit() > 0) {
+      existing.setCpuLimit(derived.getCpuLimit());
+    }
+    if (derived.isSetMemLimit() && derived.getMemLimit() > 0) {
+      existing.setMemLimit(derived.getMemLimit());
+    }
+    if (derived.isSetThrottleLimit() && !derived.getThrottleLimit().isEmpty()) {
+      if (!existing.isSetThrottleLimit()) {
+        existing.setThrottleLimit(new HashMap<>());
+      }
+      existing.getThrottleLimit().putAll(derived.getThrottleLimit());
+    }
+  }
+
+  private TUserResourceQuota mergeUserResourceQuota(
+      TUserResourceQuota existing, TUserResourceQuota incoming) {
+    if (incoming.isSetReadQuota()) {
+      for (Map.Entry<TResourceType, TResourceQuotaRange> entry :
+          incoming.getReadQuota().entrySet()) {
+        mergeRange(existing, entry.getKey(), entry.getValue(), true);
+      }
+    }
+    if (incoming.isSetWriteQuota()) {
+      for (Map.Entry<TResourceType, TResourceQuotaRange> entry :
+          incoming.getWriteQuota().entrySet()) {
+        mergeRange(existing, entry.getKey(), entry.getValue(), false);
+      }
+    }
+    if (incoming.isSetThrottleLimit()) {
+      if (!existing.isSetThrottleLimit()) {
+        existing.setThrottleLimit(new HashMap<>());
+      }
+      for (Map.Entry<ThrottleType, TTimedQuota> entry : incoming.getThrottleLimit().entrySet()) {
+        existing.getThrottleLimit().put(entry.getKey(), entry.getValue());
+      }
+    }
+    return existing;
+  }
+
+  private void mergeRange(
+      TUserResourceQuota existing, TResourceType type, TResourceQuotaRange incoming, boolean read) {
+    TResourceQuotaRange current =
+        read
+            ? (existing.isSetReadQuota() ? existing.getReadQuota().get(type) : null)
+            : (existing.isSetWriteQuota() ? existing.getWriteQuota().get(type) : null);
+    if (current == null) {
+      current =
+          new TResourceQuotaRange(IoTDBConstant.UNLIMITED_VALUE, IoTDBConstant.UNLIMITED_VALUE);
+    }
+    if (incoming.getMinValue() != IoTDBConstant.UNLIMITED_VALUE) {
+      current.setMinValue(incoming.getMinValue());
+    }
+    if (incoming.getMaxValue() != IoTDBConstant.UNLIMITED_VALUE) {
+      current.setMaxValue(incoming.getMaxValue());
+    }
+    if (read) {
+      if (!existing.isSetReadQuota()) {
+        existing.setReadQuota(new HashMap<>());
+      }
+      existing.getReadQuota().put(type, current);
+    } else {
+      if (!existing.isSetWriteQuota()) {
+        existing.setWriteQuota(new HashMap<>());
+      }
+      existing.getWriteQuota().put(type, current);
+    }
+  }
+
+  private void syncUserResourceFromThrottle(String userName) {
+    TThrottleQuota throttle = throttleQuotaLimit.get(userName);
+    if (throttle == null) {
+      return;
+    }
+    TUserResourceQuota existing =
+        userResourceQuotaLimit.getOrDefault(userName, new TUserResourceQuota());
+    TUserResourceQuota migrated =
+        UserResourceQuotaConverter.toThrift(UserResourceQuotaConverter.fromThrottleQuota(throttle));
+    userResourceQuotaLimit.put(userName, mergeUserResourceQuota(existing, migrated));
   }
 
   public Map<String, TSpaceQuota> getSpaceQuotaLimit() {
@@ -159,6 +283,7 @@ public class QuotaInfo implements SnapshotProcessor {
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
       serializeSpaceQuotaLimit(fileOutputStream);
       serializeThrottleQuotaLimit(fileOutputStream);
+      serializeUserResourceQuotaLimit(fileOutputStream);
       fileOutputStream.getFD().sync();
     } finally {
       spaceQuotaReadWriteLock.writeLock().unlock();
@@ -207,6 +332,11 @@ public class QuotaInfo implements SnapshotProcessor {
       clear();
       deserializeSpaceQuotaLimit(fileInputStream);
       deserializeThrottleQuotaLimit(fileInputStream);
+      if (fileInputStream.available() > 0) {
+        deserializeUserResourceQuotaLimit(fileInputStream);
+      } else {
+        migrateThrottleToUserResourceQuota();
+      }
     } finally {
       spaceQuotaReadWriteLock.writeLock().unlock();
     }
@@ -257,8 +387,97 @@ public class QuotaInfo implements SnapshotProcessor {
     return throttleQuotaLimit;
   }
 
+  public Map<String, TUserResourceQuota> getUserResourceQuotaLimit() {
+    return userResourceQuotaLimit;
+  }
+
+  private void serializeUserResourceQuotaLimit(FileOutputStream fileOutputStream)
+      throws IOException {
+    ReadWriteIOUtils.write(userResourceQuotaLimit.size(), fileOutputStream);
+    for (Map.Entry<String, TUserResourceQuota> entry : userResourceQuotaLimit.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), fileOutputStream);
+      writeUserResourceQuota(entry.getValue(), fileOutputStream);
+    }
+  }
+
+  private void deserializeUserResourceQuotaLimit(FileInputStream fileInputStream)
+      throws IOException {
+    int size = ReadWriteIOUtils.readInt(fileInputStream);
+    while (size > 0) {
+      String userName = ReadWriteIOUtils.readString(fileInputStream);
+      userResourceQuotaLimit.put(userName, readUserResourceQuota(fileInputStream));
+      size--;
+    }
+  }
+
+  private void writeUserResourceQuota(TUserResourceQuota quota, FileOutputStream stream)
+      throws IOException {
+    writeRangeMap(quota.isSetReadQuota() ? quota.getReadQuota() : new HashMap<>(), stream);
+    writeRangeMap(quota.isSetWriteQuota() ? quota.getWriteQuota() : new HashMap<>(), stream);
+    Map<ThrottleType, TTimedQuota> throttleLimit =
+        quota.isSetThrottleLimit() ? quota.getThrottleLimit() : new HashMap<>();
+    ReadWriteIOUtils.write(throttleLimit.size(), stream);
+    for (Map.Entry<ThrottleType, TTimedQuota> entry : throttleLimit.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().name(), stream);
+      ReadWriteIOUtils.write(entry.getValue().getTimeUnit(), stream);
+      ReadWriteIOUtils.write(entry.getValue().getSoftLimit(), stream);
+    }
+  }
+
+  private TUserResourceQuota readUserResourceQuota(FileInputStream stream) throws IOException {
+    TUserResourceQuota quota = new TUserResourceQuota();
+    quota.setReadQuota(readRangeMap(stream));
+    quota.setWriteQuota(readRangeMap(stream));
+    int throttleSize = ReadWriteIOUtils.readInt(stream);
+    Map<ThrottleType, TTimedQuota> throttleLimit = new HashMap<>();
+    while (throttleSize > 0) {
+      ThrottleType type = ThrottleType.valueOf(ReadWriteIOUtils.readString(stream));
+      long timeUnit = ReadWriteIOUtils.readLong(stream);
+      long softLimit = ReadWriteIOUtils.readLong(stream);
+      throttleLimit.put(type, new TTimedQuota(timeUnit, softLimit));
+      throttleSize--;
+    }
+    quota.setThrottleLimit(throttleLimit);
+    return quota;
+  }
+
+  private void writeRangeMap(
+      Map<TResourceType, TResourceQuotaRange> rangeMap, FileOutputStream stream)
+      throws IOException {
+    ReadWriteIOUtils.write(rangeMap.size(), stream);
+    for (Map.Entry<TResourceType, TResourceQuotaRange> entry : rangeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().name(), stream);
+      ReadWriteIOUtils.write(entry.getValue().getMinValue(), stream);
+      ReadWriteIOUtils.write(entry.getValue().getMaxValue(), stream);
+    }
+  }
+
+  private Map<TResourceType, TResourceQuotaRange> readRangeMap(FileInputStream stream)
+      throws IOException {
+    int size = ReadWriteIOUtils.readInt(stream);
+    Map<TResourceType, TResourceQuotaRange> map = new HashMap<>();
+    while (size > 0) {
+      TResourceType type = TResourceType.valueOf(ReadWriteIOUtils.readString(stream));
+      long min = ReadWriteIOUtils.readLong(stream);
+      long max = ReadWriteIOUtils.readLong(stream);
+      map.put(type, new TResourceQuotaRange(min, max));
+      size--;
+    }
+    return map;
+  }
+
+  private void migrateThrottleToUserResourceQuota() {
+    for (Map.Entry<String, TThrottleQuota> entry : throttleQuotaLimit.entrySet()) {
+      userResourceQuotaLimit.put(
+          entry.getKey(),
+          UserResourceQuotaConverter.toThrift(
+              UserResourceQuotaConverter.fromThrottleQuota(entry.getValue())));
+    }
+  }
+
   public void clear() {
     spaceQuotaLimit.clear();
     throttleQuotaLimit.clear();
+    userResourceQuotaLimit.clear();
   }
 }

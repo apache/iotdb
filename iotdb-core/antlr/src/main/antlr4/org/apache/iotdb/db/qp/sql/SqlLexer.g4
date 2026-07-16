@@ -907,6 +907,10 @@ SUBSTRING
     : S U B S T R I N G
     ;
 
+SUMMARY
+    : S U M M A R Y
+    ;
+
 SYSTEM
     : S Y S T E M
     ;

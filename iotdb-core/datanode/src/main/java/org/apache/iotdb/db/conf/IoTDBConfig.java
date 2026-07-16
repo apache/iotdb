@@ -1210,6 +1210,15 @@ public class IoTDBConfig {
   /** Resource control */
   private boolean quotaEnable = false;
 
+  private int dnQuotaCpuSlots = Math.max(4, Runtime.getRuntime().availableProcessors());
+  private long dnQuotaMemoryBytes = Runtime.getRuntime().maxMemory();
+
+  /**
+   * Node capacity for user TEMP_DISK quota (temporary disk occupancy), in bytes. Default is
+   * computed at startup as min(100GiB, totalDataDirSpace/10) unless overridden.
+   */
+  private long dnQuotaTempDiskBytes = -1L;
+
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
    * interval of time. 2. AverageIntervalRateLimiter : This limiter will refill resources at every
@@ -4335,6 +4344,59 @@ public class IoTDBConfig {
 
   public void setQuotaEnable(boolean quotaEnable) {
     this.quotaEnable = quotaEnable;
+  }
+
+  public int getDnQuotaCpuSlots() {
+    return dnQuotaCpuSlots;
+  }
+
+  public void setDnQuotaCpuSlots(int dnQuotaCpuSlots) {
+    this.dnQuotaCpuSlots = dnQuotaCpuSlots;
+  }
+
+  public long getDnQuotaMemoryBytes() {
+    return dnQuotaMemoryBytes;
+  }
+
+  public void setDnQuotaMemoryBytes(long dnQuotaMemoryBytes) {
+    this.dnQuotaMemoryBytes = dnQuotaMemoryBytes;
+  }
+
+  public long getDnQuotaTempDiskBytes() {
+    if (dnQuotaTempDiskBytes < 0) {
+      dnQuotaTempDiskBytes = computeDefaultTempDiskBytes();
+    }
+    return dnQuotaTempDiskBytes;
+  }
+
+  public void setDnQuotaTempDiskBytes(long dnQuotaTempDiskBytes) {
+    this.dnQuotaTempDiskBytes = dnQuotaTempDiskBytes;
+  }
+
+  /** Default: min(100GiB, sum(dataDirs totalSpace) / 10). */
+  public long computeDefaultTempDiskBytes() {
+    final long hundredGiB = 100L * 1024 * 1024 * 1024;
+    long totalSpace = 0L;
+    try {
+      String[] dirs = getDataDirs();
+      if (dirs != null) {
+        for (String dir : dirs) {
+          if (dir == null) {
+            continue;
+          }
+          long space = new java.io.File(dir).getTotalSpace();
+          if (space > 0) {
+            totalSpace += space;
+          }
+        }
+      }
+    } catch (Exception ignore) {
+      // fall through to hundredGiB
+    }
+    if (totalSpace <= 0) {
+      return hundredGiB;
+    }
+    return Math.min(hundredGiB, totalSpace / 10);
   }
 
   public String getRateLimiterType() {

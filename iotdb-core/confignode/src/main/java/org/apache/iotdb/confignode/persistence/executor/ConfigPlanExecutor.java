@@ -108,8 +108,10 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.DeleteUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -681,6 +683,10 @@ public class ConfigPlanExecutor {
         return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
       case setThrottleQuota:
         return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
+      case setUserResourceQuota:
+        return quotaInfo.setUserResourceQuota((SetUserResourceQuotaPlan) physicalPlan);
+      case deleteUserResourceQuota:
+        return quotaInfo.deleteUserResourceQuota((DeleteUserResourceQuotaPlan) physicalPlan);
       case CreatePipeSinkV1:
       case DropPipeV1:
       case DropPipeSinkV1:
