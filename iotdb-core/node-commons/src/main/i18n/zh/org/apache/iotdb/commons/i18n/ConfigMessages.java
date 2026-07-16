@@ -91,6 +91,10 @@ public final class ConfigMessages {
   public static final String LOG_PIPEASYNCSINKFORCEDRETRYTABLETEVENTQUEUESIZE_SET_ARG_8FDA7023 = "pipeAsyncSinkForcedRetryTabletEventQueueSize 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKFORCEDRETRYTOTALEVENTQUEUESIZE_SET_ARG_92D6EACB = "pipeAsyncSinkForcedRetryTotalEventQueueSize 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKMAXRETRYEXECUTIONTIMEMSPERCALL_SET_ARG_77E7B216 = "pipeAsyncSinkMaxRetryExecutionTimeMsPerCall 已设置为 {}。";
+  public static final String LOG_PIPEASYNCSINKRETRYMAXDURATIONMS_IS_SET_TO_ARG_5058C99F =
+      "pipeAsyncSinkRetryMaxDurationMs 已设置为 {}。";
+  public static final String LOG_PIPEASYNCSINKRETRYPROBEINTERVALMS_IS_SET_TO_ARG_A1E9AF45 =
+      "pipeAsyncSinkRetryProbeIntervalMs 已设置为 {}。";
   public static final String LOG_PIPEASYNCSINKSELECTORNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_EEB9793C = "pipeAsyncSinkSelectorNumber 应大于 0，配置保持不变。";
   public static final String LOG_PIPEASYNCSINKMAXCLIENTNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_11EF47BF = "pipeAsyncSinkMaxClientNumber 应大于 0，配置保持不变。";
   public static final String LOG_PIPEASYNCSINKMAXTSFILECLIENTNUMBER_SHOULD_GREATER_THAN_0_CONFIGURING_IT_NOT_CHANGE_AC812FE2 = "pipeAsyncSinkMaxTsFileClientNumber 应大于 0，配置保持不变。";
