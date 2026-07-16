@@ -63,6 +63,7 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -106,6 +107,7 @@ public class SeriesScanUtil implements Accountable {
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
   private final TSDataType dataType;
+  private final Type typeInterface;
 
   // inner class of SeriesReader for order purpose
   protected final TimeOrderUtils orderUtils;
@@ -163,6 +165,7 @@ public class SeriesScanUtil implements Accountable {
     this.seriesPath = seriesPath;
     this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
+    this.typeInterface = Type.fromTsDataType(dataType);
 
     this.scanOptions = scanOptions;
     this.paginationController = scanOptions.getPaginationController();
@@ -1650,51 +1653,18 @@ public class SeriesScanUtil implements Accountable {
 
   private void addTimeValuePairToResult(TimeValuePair timeValuePair, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(timeValuePair.getTimestamp());
-    switch (dataType) {
-      case BOOLEAN:
-        builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
-        break;
-      case INT32:
-      case DATE:
-        builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
-        break;
-      case FLOAT:
-        builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
-        break;
-      case DOUBLE:
-        builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        if (timeValuePair.getValue().getDataType() == TSDataType.DATE) {
-          builder
-              .getColumnBuilder(0)
-              .writeBinary(
-                  new Binary(
-                      TSDataType.getDateStringValue(timeValuePair.getValue().getInt()),
-                      StandardCharsets.UTF_8));
+    TsPrimitiveType primitiveType = timeValuePair.getValue();
+    if (dataType == TSDataType.VECTOR) {
+      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+      for (int i = 0; i < values.length; i++) {
+        if (values[i] == null) {
+          builder.getColumnBuilder(i).appendNull();
         } else {
-          builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+          builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
         }
-        break;
-      case VECTOR:
-        TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-        for (int i = 0; i < values.length; i++) {
-          if (values[i] == null) {
-            builder.getColumnBuilder(i).appendNull();
-          } else {
-            builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    } else {
+      builder.getColumnBuilder(0).writeTsPrimitiveType(primitiveType);
     }
     builder.declarePosition();
   }
