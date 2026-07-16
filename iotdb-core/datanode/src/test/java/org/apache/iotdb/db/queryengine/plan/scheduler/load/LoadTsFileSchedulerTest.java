@@ -142,6 +142,8 @@ public class LoadTsFileSchedulerTest {
         dataManagerConstructor.newInstance(
             mock(LoadTsFileScheduler.class), mock(LoadSingleTsFileNode.class), memoryBlock);
 
+    // Simulate data buffered before split or routing aborts. clear() is the last chance to return
+    // this accounting to the shared LOAD memory block.
     final long cachedMemorySize = 128L;
     memoryBlock.addMemoryUsage(cachedMemorySize);
     final Field dataSizeField = dataManagerClass.getDeclaredField("dataSize");

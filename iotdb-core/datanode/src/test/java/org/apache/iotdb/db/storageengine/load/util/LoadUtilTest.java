@@ -59,6 +59,8 @@ public class LoadUtilTest {
   public void testTransferFilesKeepsCompanionsTogetherAndDeletesSourcesAfterHandoff()
       throws Exception {
     final List<File> sourceFiles = createTsFileAndCompanions();
+    // Existing same-named files represent a previous handoff. A new group must be isolated rather
+    // than independently renaming the TsFile and companions in this shared target directory.
     for (final File sourceFile : sourceFiles) {
       Files.write(
           new File(targetDir, sourceFile.getName()).toPath(),
@@ -86,6 +88,8 @@ public class LoadUtilTest {
   @Test
   public void testTransferFailureDoesNotDeleteSources() throws Exception {
     final List<File> sourceFiles = createTsFileAndCompanions();
+    // A regular file cannot contain the temporary transfer directory, forcing handoff to fail
+    // before ownership of any source file can be released.
     final File invalidTargetDir = new File(tempDir, "target-file");
     Assert.assertTrue(invalidTargetDir.createNewFile());
 

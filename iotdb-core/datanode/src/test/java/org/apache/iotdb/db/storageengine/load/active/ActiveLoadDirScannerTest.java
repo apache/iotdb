@@ -80,6 +80,8 @@ public class ActiveLoadDirScannerTest {
 
   @Test
   public void testScanDeduplicatesTsFileAndCompanionFiles() throws Exception {
+    // The recursive scanner sees all four paths, but every companion maps back to the same TsFile.
+    // Enqueuing each path separately used to consume queue capacity and schedule duplicate loads.
     final File tsFile = createCompletedTsFile(pendingDir, "1-0-0-0.tsfile");
     Assert.assertTrue(
         new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).createNewFile());
@@ -106,6 +108,8 @@ public class ActiveLoadDirScannerTest {
 
   @Test
   public void testAttributeAndTransferDirectoriesDoNotImplyTableModel() throws Exception {
+    // Async tree loads add attribute and per-handoff transfer directories below pending. These are
+    // internal directories, not table database names inferred from a user-created subdirectory.
     final Map<String, String> attributes =
         ActiveLoadPathHelper.buildAttributes(null, 2, false, false, null, false, "test-user");
     final File attributeDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);

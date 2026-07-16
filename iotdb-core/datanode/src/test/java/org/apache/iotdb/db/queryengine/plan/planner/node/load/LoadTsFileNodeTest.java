@@ -97,6 +97,8 @@ public class LoadTsFileNodeTest {
   public void testCleanContinuesAfterOneFileCannotBeDeleted() throws Exception {
     final File tempDir = Files.createTempDirectory("load-node-clean").toFile();
     try {
+      // A non-empty directory at the TsFile path makes that deletion fail deterministically. The
+      // companion cleanup must still continue instead of sharing the same try-catch block.
       final File tsFile = new File(tempDir, "1-0-0-0.tsfile");
       Assert.assertTrue(tsFile.mkdirs());
       Assert.assertTrue(new File(tsFile, "non-empty").createNewFile());

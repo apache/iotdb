@@ -119,6 +119,8 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertTrue(pendingQueue.enqueue(tsFilePath, tempDir.getAbsolutePath(), false, false));
     Assert.assertTrue(loader.isFilePendingOrLoading(new File(tsFilePath)));
 
+    // A loader restart reuses this queue. Stale pending membership otherwise makes the scanner
+    // believe the on-disk TsFile is already scheduled and it will never enqueue it again.
     loader.stop();
 
     Assert.assertFalse(loader.isFilePendingOrLoading(new File(tsFilePath)));
