@@ -108,21 +108,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .map(file -> new File(LoadUtil.getTsFilePath(file.getAbsolutePath())))
+              .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
-              .map(file -> LoadUtil.getTsFilePath(file.getAbsolutePath()))
-              .filter(this::isTsFileCompleted)
+              .filter(file -> isTsFileCompleted(file.getAbsolutePath()))
               .limit(currentAllowedPendingSize)
               .forEach(
-                  filePath -> {
-                    final File tsFile = new File(filePath);
+                  tsFile -> {
                     final Map<String, String> attributes =
                         ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
 
                     final File parentFile = tsFile.getParentFile();
                     final boolean isTableModel =
                         ActiveLoadPathHelper.containsDatabaseName(attributes)
-                            || (parentFile != null
+                            || (attributes.isEmpty()
+                                && parentFile != null
                                 && !Objects.equals(
                                     parentFile.getAbsoluteFile(),
                                     listeningDirFile.getAbsoluteFile()));
