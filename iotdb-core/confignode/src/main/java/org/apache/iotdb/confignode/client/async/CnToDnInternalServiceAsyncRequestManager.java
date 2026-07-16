@@ -311,6 +311,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.fetchSchemaBlackList(
                 (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_PARTITION_CACHE,
+        (req, client, handler) ->
+            client.invalidatePartitionCache(
+                (TInvalidateCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.INVALIDATE_SCHEMA_CACHE,
         (req, client, handler) ->
             client.invalidateSchemaCache(
@@ -442,7 +447,7 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
+        CnToDnAsyncRequestType.PRE_DELETE_TABLE,
         (req, client, handler) ->
             client.invalidateTableCache(
                 (TInvalidateTableCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
@@ -542,9 +547,13 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      CnToDnAsyncRequestType CnToDnAsyncRequestType, AsyncDataNodeInternalServiceClient client) {
+      CnToDnAsyncRequestType CnToDnAsyncRequestType,
+      AsyncDataNodeInternalServiceClient client,
+      Long timeoutInMs) {
     if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (timeoutInMs != null) {
+      client.setTimeoutTemporarily(timeoutInMs);
     }
   }
 

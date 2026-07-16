@@ -190,7 +190,8 @@ public class OpcUaSink implements PipeConnector {
       validator.validate(
           CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
           String.format(
-              "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or %s must be %s.",
+              DataNodePipeMessages
+                  .OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY,
               CONNECTOR_OPC_UA_MODEL_KEY,
               SINK_OPC_UA_MODEL_KEY,
               CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),

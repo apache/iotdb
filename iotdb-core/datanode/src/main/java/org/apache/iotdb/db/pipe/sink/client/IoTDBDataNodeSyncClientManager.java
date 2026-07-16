@@ -49,6 +49,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -65,6 +67,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         useSSL,
         trustStorePath,
         trustStorePwd,
+        keyStorePath,
+        keyStorePwd,
         useLeaderCache,
         loadBalanceStrategy,
         userEntity,

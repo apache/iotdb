@@ -88,6 +88,7 @@ public class ExternalTsFileQueryResource {
   private final String tableName;
   private final List<String> tsFilePaths;
   private final Map<Symbol, ColumnSchema> tableColumnSchema;
+  private final long deviceMetadataInfoSwapThreshold;
   private final List<TsFileResource> sharedTsFileResources;
   private final List<DeviceEntry> sharedDeviceEntries = new ArrayList<>();
   private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
@@ -105,7 +106,8 @@ public class ExternalTsFileQueryResource {
       Path tempRoot,
       String tableName,
       List<String> tsFilePaths,
-      Map<Symbol, ColumnSchema> tableColumnSchema) {
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      long deviceMetadataInfoSwapThreshold) {
     this.queryContext = requireNonNull(queryContext, "queryContext is null");
     this.queryId = queryContext.getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
@@ -115,6 +117,7 @@ public class ExternalTsFileQueryResource {
     this.tableName = tableName;
     this.tsFilePaths = requireNonNull(tsFilePaths, "tsFilePaths");
     this.tableColumnSchema = tableColumnSchema;
+    this.deviceMetadataInfoSwapThreshold = deviceMetadataInfoSwapThreshold;
     this.sharedTsFileResources = createTsFileResources(this.tsFilePaths);
     for (String tsFilePath : tsFilePaths) {
       FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
@@ -280,7 +283,6 @@ public class ExternalTsFileQueryResource {
 
   public class DeviceTaskPartition {
 
-    private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
     private static final long MEMORY_RESERVE_BATCH_SIZE_IN_BYTES = 1024 * 1024;
 
     private final int partitionIndex;
@@ -341,7 +343,8 @@ public class ExternalTsFileQueryResource {
     }
 
     private boolean shouldFlush() {
-      if (getPendingMemoryBytes() >= DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES) {
+      if (getPendingMemoryBytes()
+          >= ExternalTsFileQueryResource.this.deviceMetadataInfoSwapThreshold) {
         return true;
       }
       if (unreservedBytes < MEMORY_RESERVE_BATCH_SIZE_IN_BYTES) {

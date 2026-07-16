@@ -80,6 +80,8 @@ public final class StorageEngineMessages {
   public static final String INTERRUPTED_WAITING_THREAD_POOL_EXIT = "等待 {} 线程池退出时被中断。 ";
   public static final String BUFFERED_ARRAY_SIZE_THRESHOLD = "BufferedArraySizeThreshold 为 {}";
   public static final String CURRENT_SG_COST = "当前存储组内存开销为 {}";
+  public static final String DIRECT_BUFFER_MEMORY_ALLOCATION_FAILED =
+      "DirectBuffer 总分配内存将达到 %d，超过内存限制：%d";
   public static final String FORCE_DEGRADE_TSFILE_RESOURCE = "强制降级 TsFile 资源 {}";
   public static final String CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL = "无法继续降级时间索引，所有时间索引已为文件级别。";
   public static final String DEGRADE_TSFILE_RESOURCE = "降级 TsFile 资源 {}";
@@ -536,11 +538,14 @@ public final class StorageEngineMessages {
   public static final String FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER = "统计 Active 监听目录文件数量失败。";
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active 加载指标收集定期任务已注册";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "数据库名称不能为空。";
+  public static final String USER_NAME_MUST_NOT_BE_EMPTY = "用户名不能为空。";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "执行 Active 加载定期任务时发生错误。";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active 加载定期任务执行器已成功启动。";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";
   public static final String ACTIVE_LOAD_TEMPORARILY_UNAVAILABLE =
       "拒绝自动加载 TsFile {} (isGeneratedByPipe = {})，原因是系统暂时不可用，将稍后重试。状态: {}";
+  public static final String USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST =
+      "Active 加载路径中的用户不存在";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "将文件 {} 移动到失败目录时发生错误。";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
 

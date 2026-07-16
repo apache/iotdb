@@ -34,6 +34,9 @@ public final class RestMessages {
   public static final String SQL_SHOULD_NOT_BE_NULL = "sql should not be null";
   public static final String ROW_LIMIT_SHOULD_BE_POSITIVE = "row_limit should be positive";
   public static final String ROW_LIMIT_CAMEL_SHOULD_BE_POSITIVE = "rowLimit should be positive";
+  public static final String
+      MESSAGE_DATASET_ROW_SIZE_EXCEEDED_THE_GIVEN_MAX_ROW_SIZE_ARG_7A3F6452 =
+          "Dataset row size exceeded the given max row size (%d)";
   public static final String PREFIX_PATHS_NOT_NULL = "prefix_paths should not be null";
   public static final String TIMESTAMPS_NOT_NULL = "timestamps should not be null";
   public static final String IS_ALIGNED_NOT_NULL = "is_aligned should not be null";

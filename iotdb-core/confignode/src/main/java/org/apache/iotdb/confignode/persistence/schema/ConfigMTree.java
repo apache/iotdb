@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -754,6 +755,16 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.PRE_DELETE);
   }
 
+  public void rollbackPreDeleteTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      return;
+    }
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    tableNode.setStatus(TableNodeStatus.USING);
+  }
+
   public void dropTable(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
@@ -845,19 +856,25 @@ public class ConfigMTree {
   }
 
   public Map<String, TsTable> getSpecificTablesUnderSpecificDatabase(
-      final PartialPath databasePath, final Set<String> tables) throws MetadataException {
+      final PartialPath databasePath,
+      final Set<String> tables,
+      final Set<TableNodeStatus> statusSet)
+      throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
     final Map<String, TsTable> result = new HashMap<>();
-    tables.forEach(
-        table -> {
-          final IConfigMNode child = databaseNode.getChildren().get(table);
-          if (child instanceof ConfigTableNode
-              && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING)) {
-            result.put(table, ((ConfigTableNode) child).getTable());
-          } else {
-            result.put(table, null);
-          }
-        });
+    for (final String tableName : tables) {
+      final IConfigMNode child = databaseNode.getChildren().get(tableName);
+      if (child instanceof ConfigTableNode
+          && statusSet.contains(((ConfigTableNode) child).getStatus())) {
+        TsTable table =
+            ((ConfigTableNode) child).getStatus() == TableNodeStatus.PRE_DELETE
+                ? new PreDeleteTsTable(tableName)
+                : ((ConfigTableNode) child).getTable();
+        result.put(tableName, table);
+      } else {
+        result.put(tableName, null);
+      }
+    }
     return result;
   }
 
@@ -893,7 +910,12 @@ public class ConfigMTree {
                 }));
   }
 
-  public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
+  public Map<String, List<TsTable>> getAllSpecialStatusTables(TableNodeStatus tableNodeStatus)
+      throws MetadataException {
+    if (TableNodeStatus.PRE_CREATE != tableNodeStatus
+        && TableNodeStatus.PRE_DELETE != tableNodeStatus) {
+      throw new SemanticException("Invalid table status " + tableNodeStatus);
+    }
     final Map<String, List<TsTable>> result = new HashMap<>();
     final List<PartialPath> databaseList = getAllDatabasePaths(true);
     for (final PartialPath databasePath : databaseList) {
@@ -902,7 +924,7 @@ public class ConfigMTree {
       for (final IConfigMNode child : databaseNode.getChildren().values()) {
         if (child instanceof ConfigTableNode) {
           final ConfigTableNode tableNode = (ConfigTableNode) child;
-          if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
+          if (!tableNode.getStatus().equals(tableNodeStatus)) {
             continue;
           }
           result.computeIfAbsent(database, k -> new ArrayList<>()).add(tableNode.getTable());

@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.confignode.manager.pipe.resource;
 
-import org.apache.iotdb.commons.memory.IMemoryBlock;
-import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.pipe.resource.memory.PipeConfigNodeMemoryManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.ref.PipeConfigNodePhantomReferenceManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 
 public class PipeConfigNodeResourceManager {
 
   private final PipeSnapshotResourceManager pipeSnapshotResourceManager;
-  private final IMemoryBlock pipeLogReducerMemoryBlock;
+  private final PipeConfigNodeMemoryManager pipeMemoryManager;
   private final PipeLogManager pipeLogManager;
   private final PipePhantomReferenceManager pipePhantomReferenceManager;
 
@@ -40,9 +38,8 @@ public class PipeConfigNodeResourceManager {
         .pipeSnapshotResourceManager;
   }
 
-  public static IMemoryBlock logReducerMemory() {
-    return PipeConfigNodeResourceManager.PipeResourceManagerHolder.INSTANCE
-        .pipeLogReducerMemoryBlock;
+  public static PipeConfigNodeMemoryManager memory() {
+    return PipeConfigNodeResourceManager.PipeResourceManagerHolder.INSTANCE.pipeMemoryManager;
   }
 
   public static PipeLogManager log() {
@@ -57,11 +54,7 @@ public class PipeConfigNodeResourceManager {
 
   private PipeConfigNodeResourceManager() {
     pipeSnapshotResourceManager = new PipeConfigNodeSnapshotResourceManager();
-    pipeLogReducerMemoryBlock =
-        ConfigNodeDescriptor.getInstance()
-            .getMemoryConfig()
-            .getPipeMemoryManager()
-            .exactAllocate("PipePeriodicalLogReducer", MemoryBlockType.DYNAMIC);
+    pipeMemoryManager = new PipeConfigNodeMemoryManager();
     pipeLogManager = new PipeLogManager();
     pipePhantomReferenceManager = new PipeConfigNodePhantomReferenceManager();
   }

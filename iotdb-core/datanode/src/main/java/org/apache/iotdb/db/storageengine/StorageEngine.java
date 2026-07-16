@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -49,6 +50,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -260,11 +262,7 @@ public class StorageEngine implements IService {
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
-                LOGGER.error(
-                    StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
-                    sgName,
-                    dataRegionId.getId(),
-                    e);
+                handleDataRegionRecoverFailure(sgName, dataRegionId, e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
@@ -276,6 +274,17 @@ public class StorageEngine implements IService {
             };
         futures.add(cachedThreadPool.submit(recoverDataRegionTask));
       }
+    }
+  }
+
+  void handleDataRegionRecoverFailure(
+      String sgName, DataRegionId dataRegionId, DataRegionException e) throws DataRegionException {
+    LOGGER.error("Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+    WALRecoverManager.getInstance()
+        .getAllDataRegionScannedLatch()
+        .countDownWithException(e.getMessage());
+    if (e instanceof DirectBufferMemoryAllocationException) {
+      throw e;
     }
   }
 
@@ -841,12 +850,8 @@ public class StorageEngine implements IService {
                       dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
                       region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
               if (regionSnapshotDir.exists()) {
-                try {
-                  FileUtils.deleteDirectory(regionSnapshotDir);
-                } catch (IOException e) {
-                  LOGGER.error(
-                      StorageEngineMessages.FAILED_TO_DELETE_SNAPSHOT_DIR, regionSnapshotDir, e);
-                }
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectoryWithRateLimiter(
+                    regionSnapshotDir, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
               }
             }
             break;
