@@ -82,6 +82,9 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected Optional<QualifiedObjectName> originalWritableViewName;
 
+  // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
+  @Nullable protected String topKRuntimeFilterSourceId;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -182,21 +185,24 @@ public class DeviceTableScanNode extends TableScanNode {
 
   @Override
   public DeviceTableScanNode clone() {
-    return new DeviceTableScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        originalWritableViewName);
+    DeviceTableScanNode cloned =
+        new DeviceTableScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            originalWritableViewName);
+    cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return cloned;
   }
 
   protected static void serializeMemberVariables(
@@ -231,6 +237,8 @@ public class DeviceTableScanNode extends TableScanNode {
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, byteBuffer);
   }
 
   protected static void serializeMemberVariables(
@@ -266,6 +274,8 @@ public class DeviceTableScanNode extends TableScanNode {
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, stream);
   }
 
   protected static void deserializeMemberVariables(
@@ -304,6 +314,8 @@ public class DeviceTableScanNode extends TableScanNode {
       originalWritableViewName = Optional.empty();
     }
     node.originalWritableViewName = originalWritableViewName;
+
+    node.topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
@@ -390,6 +402,15 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setOriginalWritableViewName(Optional<QualifiedObjectName> originalWritableViewName) {
     this.originalWritableViewName = originalWritableViewName;
+  }
+
+  @Nullable
+  public String getTopKRuntimeFilterSourceId() {
+    return topKRuntimeFilterSourceId;
+  }
+
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
+    this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 
   public String toString() {

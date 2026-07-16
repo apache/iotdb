@@ -781,6 +781,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
 
+    conf.setEnableTopKRuntimeFilter(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topk_runtime_filter", String.valueOf(conf.isEnableTopKRuntimeFilter()))));
+
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -2589,6 +2594,13 @@ public class IoTDBDescriptor {
                   "enable_tsfile_validation",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_tsfile_validation"))));
+
+      conf.setEnableTopKRuntimeFilter(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_topk_runtime_filter",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "enable_topk_runtime_filter"))));
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();

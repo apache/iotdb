@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.planner;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AssignUniqueIdOperator;
@@ -888,6 +889,7 @@ public abstract class TableOperatorGenerator<
   public Operator visitTopK(TopKNode node, C context) {
     CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableTopKOperator.class.getSimpleName());
+    TopKRuntimeFilter topKRuntimeFilter = registerRuntimeFilter(context, node);
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
@@ -903,6 +905,25 @@ public abstract class TableOperatorGenerator<
         sortItemIndexList,
         sortItemDataTypeList,
         context.getTableTypeProvider());
+    if (topKRuntimeFilter != null) {
+      checkArgument(
+          sortItemsCount == 1,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      TSDataType sortType = sortItemDataTypeList.get(0);
+      checkArgument(
+          sortType == TSDataType.INT64 || sortType == TSDataType.TIMESTAMP,
+          CalcMessages.EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208);
+      return new TableTopKOperator(
+          operatorContext,
+          children,
+          dataTypes,
+          getComparatorForTable(
+              node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+          (int) node.getCount(),
+          node.isChildrenDataInOrder(),
+          topKRuntimeFilter,
+          sortItemIndexList.get(0));
+    }
     return new TableTopKOperator(
         operatorContext,
         children,
@@ -911,6 +932,10 @@ public abstract class TableOperatorGenerator<
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
         (int) node.getCount(),
         node.isChildrenDataInOrder());
+  }
+
+  protected TopKRuntimeFilter registerRuntimeFilter(C context, TopKNode node) {
+    return null;
   }
 
   protected List<TSDataType> getOutputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
