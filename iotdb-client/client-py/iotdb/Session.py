@@ -179,7 +179,7 @@ class Session(object):
                     self.__default_connection = self.init_connection(
                         self.__default_endpoint
                     )
-                except Exception as e:
+                except IoTDBConnectionException as e:
                     if not self.reconnect():
                         if str(e).startswith("Could not connect to any of"):
                             error_msg = (
@@ -240,9 +240,12 @@ class Session(object):
             session_id = open_resp.sessionId
             statement_id = client.requestStatementId(session_id)
 
-        except Exception as e:
+        except TTransport.TTransportException as e:
             transport.close()
             raise IoTDBConnectionException(e) from None
+        except Exception:
+            transport.close()
+            raise
 
         if self.__zone_id is not None:
             request = TSSetTimeZoneReq(session_id, self.__zone_id)
