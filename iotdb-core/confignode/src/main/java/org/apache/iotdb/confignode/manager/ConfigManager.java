@@ -3308,9 +3308,7 @@ public class ConfigManager implements IManager {
     }
     return new TDataNodeLeaseRecoveryResp()
         .setStatus(RpcUtils.SUCCESS_STATUS)
-        .setTableInfo(clusterSchemaManager.getAllTableInfoForDataNodeActivation())
-        .setFenceThresholdMs(
-            ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs());
+        .setTableInfo(clusterSchemaManager.getAllTableInfoForDataNodeActivation());
   }
 
   @Override
