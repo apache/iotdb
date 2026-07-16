@@ -446,33 +446,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(values[i].toString(), buffer);
       } else {
         ReadWriteIOUtils.write(dataType, buffer);
-        switch (dataType) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values[i], buffer);
-            break;
-          case INT32:
-          case DATE:
-            ReadWriteIOUtils.write((Integer) values[i], buffer);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            ReadWriteIOUtils.write((Long) values[i], buffer);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values[i], buffer);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values[i], buffer);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            ReadWriteIOUtils.write((Binary) values[i], buffer);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-        }
+        Type.fromTsDataType(dataType).serializeValue(values[i], buffer);
       }
     }
   }
