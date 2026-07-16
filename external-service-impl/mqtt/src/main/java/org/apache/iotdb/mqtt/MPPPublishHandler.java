@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -270,7 +269,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
       TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
       statement.setTime(event.getTimestamp());
-      statement.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(event.getMeasurements()).toArray(new String[0]));
+      statement.setMeasurements(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(event.getMeasurements())
+              .toArray(new String[0]));
       if (event.getDataTypes() == null) {
         statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
         statement.setValues(event.getValues().toArray(new Object[0]));
