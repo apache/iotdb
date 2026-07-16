@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -39,9 +41,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 public class PipeSinkSubtaskTest {
@@ -218,6 +224,46 @@ public class PipeSinkSubtaskTest {
     } finally {
       releaseClose.countDown();
       CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+    }
+  }
+
+  @Test
+  public void testHeartbeatPreservesReceiverProbeDelayException() throws Exception {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    when(pendingQueue.waitedPoll()).thenReturn(new PipeHeartbeatEvent("1", false));
+    doThrow(new PipeRuntimeSinkNonReportTimeConfigurableException("probe delayed", Long.MAX_VALUE))
+        .when(connector)
+        .transfer(any(Event.class));
+
+    final PipeSinkSubtask subtask =
+        new PipeSinkSubtask(
+            "PipeSinkSubtaskTest",
+            System.currentTimeMillis(),
+            "data_test",
+            0,
+            pendingQueue,
+            connector);
+
+    try {
+      Assert.assertTrue(subtask.executeOnce());
+      verify(connector, never()).handshake();
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
     }
   }
 

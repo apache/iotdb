@@ -282,6 +282,8 @@ public class CommonConfig {
   private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
   private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
   private long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = 500;
+  private long pipeAsyncSinkRetryMaxDurationMs = 60 * 1000L;
+  private long pipeAsyncSinkRetryProbeIntervalMs = 30 * 1000L;
   private int pipeAsyncSinkSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncSinkMaxClientNumber =
@@ -1173,6 +1175,31 @@ public class CommonConfig {
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
     return pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
+  }
+
+  public void setPipeAsyncSinkRetryMaxDurationMs(long pipeAsyncSinkRetryMaxDurationMs) {
+    if (this.pipeAsyncSinkRetryMaxDurationMs == pipeAsyncSinkRetryMaxDurationMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryMaxDurationMs = pipeAsyncSinkRetryMaxDurationMs;
+    logger.info("pipeAsyncSinkRetryMaxDurationMs is set to {}.", pipeAsyncSinkRetryMaxDurationMs);
+  }
+
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return pipeAsyncSinkRetryMaxDurationMs;
+  }
+
+  public void setPipeAsyncSinkRetryProbeIntervalMs(long pipeAsyncSinkRetryProbeIntervalMs) {
+    if (this.pipeAsyncSinkRetryProbeIntervalMs == pipeAsyncSinkRetryProbeIntervalMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryProbeIntervalMs = Math.max(1, pipeAsyncSinkRetryProbeIntervalMs);
+    logger.info(
+        "pipeAsyncSinkRetryProbeIntervalMs is set to {}.", this.pipeAsyncSinkRetryProbeIntervalMs);
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return pipeAsyncSinkRetryProbeIntervalMs;
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
