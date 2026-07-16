@@ -171,34 +171,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     }
     long bytes = 0L;
     for (int i = 0; i < columns.length; i++) {
-      switch (dataTypes[i]) {
-        case INT32:
-        case DATE:
-          bytes += RamUsageEstimator.sizeOf((int[]) columns[i]);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          bytes += RamUsageEstimator.sizeOf((long[]) columns[i]);
-          break;
-        case FLOAT:
-          bytes += RamUsageEstimator.sizeOf((float[]) columns[i]);
-          break;
-        case DOUBLE:
-          bytes += RamUsageEstimator.sizeOf((double[]) columns[i]);
-          break;
-        case BOOLEAN:
-          bytes += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          bytes += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  "data type %s is not supported when convert data at client", dataTypes[i]));
-      }
+      bytes += Type.fromTsDataType(dataTypes[i]).estimateArraySize(columns[i]);
     }
     return bytes;
   }
