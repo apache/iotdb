@@ -175,7 +175,11 @@ final class PipeRenamedSeriesSourceParameterResolver {
     }
 
     final List<String> patterns = PipeSourceTreePatternUtils.splitPatternList(value);
-    if (isInclusion && containsFullTreePattern(patterns)) {
+    if (isInclusion
+        && (containsFullTreePattern(patterns)
+            || (isDefaultPrefixPatternKey(key)
+                && !isIoTDBFormat
+                && containsDefaultPrefixFullTreePattern(patterns)))) {
       return;
     }
 
@@ -427,7 +431,11 @@ final class PipeRenamedSeriesSourceParameterResolver {
   private static List<String> getSchemaFetchPatterns(
       final String pattern, final boolean isIoTDBFormat) {
     final List<String> patterns = new ArrayList<>();
-    patterns.add(pattern);
+    // root is a valid prefix pattern, but not a MeasurementPath. Its descendant pattern covers all
+    // measurement paths and avoids passing the root node to the schema fetcher.
+    if (!IoTDBConstant.PATH_ROOT.equals(pattern)) {
+      patterns.add(pattern);
+    }
     if (!isIoTDBFormat && !hasWildcard(pattern)) {
       patterns.add(
           pattern + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
@@ -466,6 +474,19 @@ final class PipeRenamedSeriesSourceParameterResolver {
       }
     }
     return false;
+  }
+
+  private static boolean containsDefaultPrefixFullTreePattern(final List<String> patterns) {
+    for (final String pattern : patterns) {
+      if (IoTDBConstant.PATH_ROOT.equals(pattern.trim())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isDefaultPrefixPatternKey(final String key) {
+    return SOURCE_PATTERN_KEY.equals(key) || EXTRACTOR_PATTERN_KEY.equals(key);
   }
 
   private static List<MeasurementPath> fetchMeasurementPaths(

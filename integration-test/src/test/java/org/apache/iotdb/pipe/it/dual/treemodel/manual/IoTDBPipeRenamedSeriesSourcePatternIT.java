@@ -59,6 +59,8 @@ public class IoTDBPipeRenamedSeriesSourcePatternIT {
       Arrays.asList(
           "pipe_path",
           "pipe_pattern",
+          "pipe_root_pattern",
+          "pipe_root_wildcard_prefix_pattern",
           "pipe_iotdb_pattern",
           "pipe_inclusion",
           "pipe_path_exclusion",
@@ -222,6 +224,80 @@ public class IoTDBPipeRenamedSeriesSourcePatternIT {
       assertInternalSourcePatternHidden("pipe_pattern");
       dropPipe("pipe_pattern");
 
+    } finally {
+      cleanTestResources();
+    }
+  }
+
+  /**
+   * Verifies that the default prefix-format root pattern remains accepted by both CREATE PIPE and
+   * ALTER PIPE when renamed-series source resolution is enabled.
+   */
+  @Test
+  public void testRootSourcePatternInDefaultPrefixFormat() throws Exception {
+    try {
+      final String device = "root.db_root_pattern.d1";
+      setupMatrixSchema(device);
+
+      insertData(
+          device, Arrays.asList("s1_alias", "s2_alias", "s3_normal"), 2200, BATCH_POINT_COUNT);
+      createFlexiblePipe(
+          "pipe_root_pattern",
+          "source.pattern",
+          "root",
+          "source.inclusion",
+          "data.insert",
+          "source.history.enable",
+          "true");
+      assertDataCount(device + ".s1_physical", 2200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s2_physical", 2200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s3_normal", 2200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+
+      alterPipeSource("pipe_root_pattern", "source.pattern", "root");
+      insertData(
+          device, Arrays.asList("s1_alias", "s2_alias", "s3_normal"), 12200, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s1_physical", 12200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s2_physical", 12200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s3_normal", 12200, BATCH_POINT_COUNT, BATCH_POINT_COUNT);
+      assertInternalSourcePatternHidden("pipe_root_pattern");
+      dropPipe("pipe_root_pattern");
+    } finally {
+      cleanTestResources();
+    }
+  }
+
+  /**
+   * Verifies that {@code root.**} remains a literal prefix in the default prefix format. It must
+   * not partially capture renamed or normal series; an IoTDB pattern format is required for
+   * wildcard matching.
+   */
+  @Test
+  public void testRootWildcardSourcePatternInDefaultPrefixFormat() throws Exception {
+    try {
+      final String device = "root.db_root_wildcard_prefix_pattern.d1";
+      setupMatrixSchema(device);
+
+      insertData(
+          device, Arrays.asList("s1_alias", "s2_alias", "s3_normal"), 2300, BATCH_POINT_COUNT);
+      createFlexiblePipe(
+          "pipe_root_wildcard_prefix_pattern",
+          "source.pattern",
+          "root.**",
+          "source.inclusion",
+          "data.insert",
+          "source.history.enable",
+          "true");
+      assertDataCount(device + ".s1_physical", 2300, BATCH_POINT_COUNT, 0);
+      assertDataCount(device + ".s2_physical", 2300, BATCH_POINT_COUNT, 0);
+      assertDataCount(device + ".s3_normal", 2300, BATCH_POINT_COUNT, 0);
+
+      insertData(
+          device, Arrays.asList("s1_alias", "s2_alias", "s3_normal"), 12300, BATCH_POINT_COUNT);
+      assertDataCount(device + ".s1_physical", 12300, BATCH_POINT_COUNT, 0);
+      assertDataCount(device + ".s2_physical", 12300, BATCH_POINT_COUNT, 0);
+      assertDataCount(device + ".s3_normal", 12300, BATCH_POINT_COUNT, 0);
+      assertInternalSourcePatternHidden("pipe_root_wildcard_prefix_pattern");
+      dropPipe("pipe_root_wildcard_prefix_pattern");
     } finally {
       cleanTestResources();
     }

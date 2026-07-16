@@ -59,11 +59,24 @@ public class PipeRenamedSeriesSourceParameterResolverTest {
   @Test
   public void testDefaultPrefixFormatFetchesExactAndDescendants() throws Exception {
     Assert.assertEquals(
+        Collections.singletonList("root.**"), getSchemaFetchPatterns("root", false));
+    Assert.assertEquals(
         Arrays.asList("root.db.d1", "root.db.d1.**"), getSchemaFetchPatterns("root.db.d1", false));
     Assert.assertEquals(
         Collections.singletonList("root.db.d1.*"), getSchemaFetchPatterns("root.db.d1.*", false));
     Assert.assertEquals(
         Collections.singletonList("root.db.d1"), getSchemaFetchPatterns("root.db.d1", true));
+  }
+
+  @Test
+  public void testDefaultPrefixRootIsFullTreePattern() throws Exception {
+    Assert.assertTrue(containsDefaultPrefixFullTreePattern(Collections.singletonList("root")));
+    Assert.assertTrue(
+        containsDefaultPrefixFullTreePattern(Arrays.asList("root.db", "root", "root.d1")));
+    Assert.assertFalse(containsDefaultPrefixFullTreePattern(Collections.singletonList("root.**")));
+    Assert.assertTrue(isDefaultPrefixPatternKey("source.pattern"));
+    Assert.assertTrue(isDefaultPrefixPatternKey("extractor.pattern"));
+    Assert.assertFalse(isDefaultPrefixPatternKey("source.pattern.inclusion"));
   }
 
   private static boolean hasWildcard(final String pattern) throws Exception {
@@ -82,5 +95,22 @@ public class PipeRenamedSeriesSourceParameterResolverTest {
             "getSchemaFetchPatterns", String.class, boolean.class);
     method.setAccessible(true);
     return (List<String>) method.invoke(null, pattern, isIoTDBFormat);
+  }
+
+  private static boolean containsDefaultPrefixFullTreePattern(final List<String> patterns)
+      throws Exception {
+    final Method method =
+        PipeRenamedSeriesSourceParameterResolver.class.getDeclaredMethod(
+            "containsDefaultPrefixFullTreePattern", List.class);
+    method.setAccessible(true);
+    return (boolean) method.invoke(null, patterns);
+  }
+
+  private static boolean isDefaultPrefixPatternKey(final String key) throws Exception {
+    final Method method =
+        PipeRenamedSeriesSourceParameterResolver.class.getDeclaredMethod(
+            "isDefaultPrefixPatternKey", String.class);
+    method.setAccessible(true);
+    return (boolean) method.invoke(null, key);
   }
 }
