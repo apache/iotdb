@@ -82,7 +82,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
-  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
 
   public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
     return parameters.getBooleanOrDefault(

@@ -33,20 +33,20 @@ import java.util.Map;
 public class PipeSinkSubtaskManagerTest {
 
   @Test
-  public void testGenerateAttributeSortedStringAddsRegionPrefixAndIgnoresRestartFlag() {
+  public void testGenerateAttributeSortedStringUsesSerializeByRegionAndIgnoresRestartFlag() {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put("z", "1");
     attributes.put("a", "2");
     attributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
 
     Assert.assertEquals(
-        "data_region_-1_{a=2, z=1}",
+        "data_{a=2, z=1}",
         PipeSinkSubtaskManager.generateAttributeSortedString(
             new PipeParameters(new HashMap<>(attributes)), -1));
 
-    attributes.put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, Boolean.FALSE.toString());
+    attributes.put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, Boolean.TRUE.toString());
     Assert.assertEquals(
-        "data_{a=2, connector.serialize-by-region=false, z=1}",
+        "data_region_-1_{a=2, connector.serialize-by-region=true, z=1}",
         PipeSinkSubtaskManager.generateAttributeSortedString(
             new PipeParameters(new HashMap<>(attributes)), -1));
   }
