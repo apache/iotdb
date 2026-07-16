@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
@@ -41,6 +42,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
+
+  private final Set<IoTDBDataRegionSource> dataRegionSources =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   // Calculate from schema region extractors directly for it requires less computation
   private final Set<IoTDBSchemaRegionSource> schemaRegionSources =
@@ -105,6 +109,10 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
+            + dataRegionSources.stream()
+                .map(IoTDBDataRegionSource::getHistoricalTsFileInsertionEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
             + schemaRegionSources.stream()
                 .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
@@ -185,6 +193,10 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
+
+  void register(final IoTDBDataRegionSource source) {
+    dataRegionSources.add(source);
+  }
 
   void register(final IoTDBSchemaRegionSource source) {
     schemaRegionSources.add(source);
