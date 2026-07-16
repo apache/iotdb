@@ -262,8 +262,7 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
         .deleteTsFile(
             resources.stream().filter(TsFileResource::isSeq).collect(Collectors.toList()));
     FileMetrics.getInstance()
-        .deleteTsFile(
-            resources.stream().filter(f -> !f.isSeq()).collect(Collectors.toList()));
+        .deleteTsFile(resources.stream().filter(f -> !f.isSeq()).collect(Collectors.toList()));
   }
 
   private void unloadAndDeleteSourceFiles() {
