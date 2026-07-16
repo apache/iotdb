@@ -73,7 +73,7 @@ public class MetadataLeaseManager {
   private final List<MetadataAction> pullMetaList;
 
   private final LongSupplier nanoClock;
-  private volatile long fenceThresholdMs;
+  private volatile long fenceThresholdMs = 20000;
 
   private volatile long lastConfigNodeHeartbeatNanos;
 
@@ -94,7 +94,6 @@ public class MetadataLeaseManager {
   private MetadataLeaseManager() {
     this(
         System::nanoTime,
-        0,
         defaultClearCacheList(),
         defaultPullMetaList(),
         IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
@@ -116,14 +115,12 @@ public class MetadataLeaseManager {
 
   MetadataLeaseManager(
       final LongSupplier nanoClock,
-      final long fenceThresholdMs,
       final List<MetadataAction> clearCacheList,
       final List<MetadataAction> pullMetaList,
       final ExecutorService pullExecutorService,
       final long checkDnLeaseStatusIntervalMs,
       final ScheduledExecutorService checkLeaseStatusExecutor) {
     this.nanoClock = nanoClock;
-    this.fenceThresholdMs = fenceThresholdMs;
     this.clearCacheList = new ArrayList<>(clearCacheList);
     this.pullMetaList = new ArrayList<>(pullMetaList);
     // Startup registration performs a full re-sync, so treat construction time as a fresh contact.
