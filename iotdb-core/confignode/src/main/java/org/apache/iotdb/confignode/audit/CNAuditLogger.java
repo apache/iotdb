@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -95,12 +96,12 @@ public class CNAuditLogger extends AbstractAuditLogger {
                   CONF.getConfigNodeId())
               .setLogTimestamp(nextLogTimestamp());
       RetryAuditLogTask task = new RetryAuditLogTask(req);
-      TDataNodeLocation regionLeader = getAuditRegionLeader(task);
-      if (regionLeader == null) {
+      Optional<TDataNodeLocation> regionLeader = getAuditRegionLeader(task);
+      if (!regionLeader.isPresent()) {
         enqueueRetryLast(task);
         return;
       }
-      writeAuditLog(task, regionLeader);
+      writeAuditLog(task, regionLeader.get());
     } catch (Exception e) {
       logger.warn("Failed to write ConfigNode audit log because", e);
     }
@@ -124,22 +125,22 @@ public class CNAuditLogger extends AbstractAuditLogger {
     return auditReplicaSets.get(0).getRegionId();
   }
 
-  private TDataNodeLocation getAuditRegionLeader(TConsensusGroupId regionId) {
+  private Optional<TDataNodeLocation> getAuditRegionLeader(TConsensusGroupId regionId) {
     // use ConfigManager.getLoadManager().getLoadCache().getRegionLeaderMap() to get regionLeaderId
-    TDataNodeLocation regionLeader = configManager.getRegionLeaderLocation(regionId);
-    if (regionLeader == null || regionLeader.getInternalEndPoint() == null) {
+    Optional<TDataNodeLocation> regionLeader = configManager.getRegionLeaderLocation(regionId);
+    if (!regionLeader.isPresent() || regionLeader.get().getInternalEndPoint() == null) {
       logger.warn("Audit region leader for {} is not ready yet.", regionId);
-      return null;
+      return Optional.empty();
     }
     return regionLeader;
   }
 
-  private TDataNodeLocation getAuditRegionLeader(RetryAuditLogTask task) {
+  private Optional<TDataNodeLocation> getAuditRegionLeader(RetryAuditLogTask task) {
     if (task.regionId == null) {
       task.regionId = getAuditRegionId();
     }
     if (task.regionId == null) {
-      return null;
+      return Optional.empty();
     }
     return getAuditRegionLeader(task.regionId);
   }
@@ -161,19 +162,20 @@ public class CNAuditLogger extends AbstractAuditLogger {
   }
 
   private boolean retryWriteAuditLog(RetryAuditLogTask task) throws InterruptedException {
-    TDataNodeLocation regionLeader = getAuditRegionLeader(task);
-    if (regionLeader == null) {
+    Optional<TDataNodeLocation> regionLeader = getAuditRegionLeader(task);
+    if (!regionLeader.isPresent()) {
       return false;
     }
+    TDataNodeLocation regionLeaderLocation = regionLeader.get();
     CountDownLatch countDownLatch = new CountDownLatch(1);
     AtomicBoolean isSucceed = new AtomicBoolean(false);
     boolean dispatched =
         AsyncDataNodeHeartbeatClientPool.getInstance()
             .writeAuditLog(
-                regionLeader.getInternalEndPoint(),
+                regionLeaderLocation.getInternalEndPoint(),
                 task.req,
                 new DataNodeWriteAuditLogHandler(
-                    regionLeader.getDataNodeId(),
+                    regionLeaderLocation.getDataNodeId(),
                     countDownLatch::countDown,
                     () -> {
                       isSucceed.set(true);
@@ -185,7 +187,7 @@ public class CNAuditLogger extends AbstractAuditLogger {
     if (!countDownLatch.await(RETRY_REQUEST_TIMEOUT_IN_MS, TimeUnit.MILLISECONDS)) {
       logger.warn(
           "Timed out retrying ConfigNode audit log to DataNode {} after {} ms",
-          regionLeader.getDataNodeId(),
+          regionLeaderLocation.getDataNodeId(),
           RETRY_REQUEST_TIMEOUT_IN_MS);
       return false;
     }

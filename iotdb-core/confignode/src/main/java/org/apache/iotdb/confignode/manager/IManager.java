@@ -177,6 +177,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -497,7 +498,13 @@ public interface IManager {
 
   ExternalServiceManager getExternalServiceManager();
 
-  TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId);
+  /**
+   * Get the registered DataNode location of a RegionGroup leader.
+   *
+   * @param regionId the specified RegionGroup
+   * @return the leader location, or empty if the leader is not available or not registered
+   */
+  Optional<TDataNodeLocation> getRegionLeaderLocation(TConsensusGroupId regionId);
 
   /**
    * Operate Permission.
