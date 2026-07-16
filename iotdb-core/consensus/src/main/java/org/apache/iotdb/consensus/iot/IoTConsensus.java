@@ -368,17 +368,12 @@ public class IoTConsensus implements IConsensus {
       }
     }
 
-    AtomicBoolean exist = new AtomicBoolean(false);
-    stateMachineMap.computeIfPresent(
-        groupId,
-        (k, v) -> {
-          exist.set(true);
-          v.stop();
-          return null;
-        });
-    if (!exist.get()) {
+    IoTConsensusServerImpl impl = stateMachineMap.remove(groupId);
+    if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
+    impl.cleanupReceivedSnapshots();
+    impl.stop();
     FileUtils.deleteFileOrDirectoryWithRateLimiter(
         new File(buildPeerDir(storageDir, groupId)),
         RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);

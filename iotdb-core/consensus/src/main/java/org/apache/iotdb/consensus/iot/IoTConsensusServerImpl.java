@@ -108,6 +108,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
@@ -141,6 +142,10 @@ public class IoTConsensusServerImpl {
    */
   private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>>
       snapshotReceiveFolderMap = new ConcurrentHashMap<>();
+
+  // Fragment writes and snapshot loads may run concurrently, while cleanup must wait for both.
+  private final ReentrantReadWriteLock snapshotLock = new ReentrantReadWriteLock();
+  private volatile boolean acceptingSnapshots = true;
 
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
@@ -475,7 +480,12 @@ public class IoTConsensusServerImpl {
   public void receiveSnapshotFragment(
       String snapshotId, String originalFilePath, ByteBuffer fileChunk, long fileOffset)
       throws ConsensusGroupModifyPeerException {
+    snapshotLock.readLock().lock();
     try {
+      if (!acceptingSnapshots) {
+        throw new ConsensusGroupModifyPeerException(
+            String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId));
+      }
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
       File existingFile = getExistingSnapshotFile(targetFilePath);
       if (existingFile != null) {
@@ -515,6 +525,8 @@ public class IoTConsensusServerImpl {
     } catch (DiskSpaceInsufficientException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    } finally {
+      snapshotLock.readLock().unlock();
     }
   }
 
@@ -576,6 +588,7 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean loadSnapshot(String snapshotId) {
+    snapshotLock.readLock().lock();
     // Snapshot fragments are spread across the receive folders by the FolderManager (a DataRegion,
     // for example, uses one receive folder per local data dir), so a given snapshot only exists
     // under the folders that actually received fragments. Collect exactly those folders and hand
@@ -591,6 +604,9 @@ public class IoTConsensusServerImpl {
     // contains it. That is a legitimate (no-op) load, not a failure, so an absent snapshot must not
     // be reported as failure here.
     try {
+      if (!acceptingSnapshots) {
+        return false;
+      }
       List<File> snapshotDirs = new ArrayList<>();
       for (String dir : recvFolderManager.getFolders()) {
         File snapshotDir = getSnapshotPath(dir, snapshotId);
@@ -605,6 +621,7 @@ public class IoTConsensusServerImpl {
     } finally {
       // Receiving is finished for this snapshot; drop its receive-folder mapping.
       snapshotReceiveFolderMap.remove(snapshotId);
+      snapshotLock.readLock().unlock();
     }
   }
 
@@ -1251,6 +1268,16 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
+    snapshotLock.writeLock().lock();
+    try {
+      cleanupSnapshotWithoutLock(snapshotId);
+    } finally {
+      snapshotLock.writeLock().unlock();
+    }
+  }
+
+  private void cleanupSnapshotWithoutLock(String snapshotId)
+      throws ConsensusGroupModifyPeerException {
     snapshotReceiveFolderMap.remove(snapshotId);
     List<String> allDirs = new ArrayList<>(Collections.singletonList(storageDir));
     allDirs.addAll(recvFolderManager.getFolders());
@@ -1265,6 +1292,32 @@ public class IoTConsensusServerImpl {
       } else {
         logger.info(IoTConsensusMessages.FILE_NOT_EXIST, snapshotDir);
       }
+    }
+  }
+
+  /** Deletes every received snapshot directory belonging to this consensus group. */
+  public void cleanupReceivedSnapshots() {
+    snapshotLock.writeLock().lock();
+    try {
+      acceptingSnapshots = false;
+      String snapshotPrefix = SNAPSHOT_DIR_NAME + "_" + thisNode.getGroupId().getId() + "_";
+      for (String folder : recvFolderManager.getFolders()) {
+        File[] snapshotDirs =
+            new File(folder).listFiles((dir, name) -> name.startsWith(snapshotPrefix));
+        if (snapshotDirs == null) {
+          continue;
+        }
+        for (File snapshotDir : snapshotDirs) {
+          try {
+            FileUtils.deleteDirectory(snapshotDir);
+          } catch (IOException e) {
+            logger.warn(IoTConsensusMessages.CLEANUP_LOCAL_SNAPSHOT_FAIL, snapshotDir.getName(), e);
+          }
+        }
+      }
+      snapshotReceiveFolderMap.clear();
+    } finally {
+      snapshotLock.writeLock().unlock();
     }
   }
 

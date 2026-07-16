@@ -21,14 +21,17 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
@@ -44,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -68,6 +72,7 @@ public class StabilityTest {
           "target" + File.separator + "1-3");
 
   private IoTConsensus consensusImpl;
+  private double originalDiskSpaceWarningThreshold;
 
   private final int basePort = 6667;
 
@@ -95,6 +100,9 @@ public class StabilityTest {
 
   @Before
   public void setUp() throws Exception {
+    originalDiskSpaceWarningThreshold =
+        CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
+    JVMCommonUtils.setDiskSpaceWarningThreshold(0.0);
     FileUtils.deleteFully(storageDir);
     constructConsensus();
   }
@@ -103,6 +111,7 @@ public class StabilityTest {
   public void tearDown() throws IOException {
     consensusImpl.stop();
     FileUtils.deleteFully(storageDir);
+    JVMCommonUtils.setDiskSpaceWarningThreshold(originalDiskSpaceWarningThreshold);
   }
 
   @Test
@@ -309,6 +318,60 @@ public class StabilityTest {
       } else {
         LOGGER.error("Failed because", e);
         Assert.fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void resetPeerListShouldCleanReceivedSnapshots() throws Exception {
+    for (String recvSnapshotDir : recvSnapshotDirs) {
+      FileUtils.deleteFully(new File(recvSnapshotDir));
+    }
+
+    Peer localPeer = new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort));
+    consensusImpl.createLocalPeer(dataRegionId, Collections.singletonList(localPeer));
+
+    String snapshotId =
+        IoTConsensusServerImpl.SNAPSHOT_DIR_NAME + "_" + dataRegionId.getId() + "_received";
+    IoTConsensusServerImpl removedImpl = consensusImpl.getImpl(dataRegionId);
+
+    List<File> receivedSnapshotDirs = new ArrayList<>();
+    File unrelatedSnapshotDir = null;
+    try {
+      for (String recvSnapshotDir : recvSnapshotDirs) {
+        File snapshotRoot = new File(recvSnapshotDir, IoTConsensusServerImpl.SNAPSHOT_DIR_NAME);
+        File receivedSnapshotDir = new File(snapshotRoot, snapshotId);
+        Assert.assertTrue(receivedSnapshotDir.isDirectory() || receivedSnapshotDir.mkdirs());
+        File fragment = new File(receivedSnapshotDir, "fragment");
+        Assert.assertTrue(fragment.exists() || fragment.createNewFile());
+        receivedSnapshotDirs.add(receivedSnapshotDir);
+      }
+
+      unrelatedSnapshotDir = new File(recvSnapshotDirs.get(0), "snapshot/snapshot_10_keep");
+      Assert.assertTrue(unrelatedSnapshotDir.mkdirs());
+
+      consensusImpl.resetPeerList(dataRegionId, Collections.emptyList());
+
+      Assert.assertNull(consensusImpl.getImpl(dataRegionId));
+      for (File receivedSnapshotDir : receivedSnapshotDirs) {
+        Assert.assertFalse(receivedSnapshotDir.exists());
+      }
+      Assert.assertTrue(unrelatedSnapshotDir.exists());
+
+      Assert.assertThrows(
+          ConsensusGroupModifyPeerException.class,
+          () ->
+              removedImpl.receiveSnapshotFragment(
+                  snapshotId,
+                  snapshotId + File.separator + "late-fragment",
+                  ByteBuffer.wrap(new byte[] {1}),
+                  0));
+      for (File receivedSnapshotDir : receivedSnapshotDirs) {
+        Assert.assertFalse(receivedSnapshotDir.exists());
+      }
+    } finally {
+      for (String recvSnapshotDir : recvSnapshotDirs) {
+        FileUtils.deleteFully(new File(recvSnapshotDir));
       }
     }
   }
