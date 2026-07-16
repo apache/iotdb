@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -54,9 +55,10 @@ public class TierManagerTest {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private String[][] originalTierDataDirs;
   private TierManager tierManager;
+  private File sequenceFile;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     originalTierDataDirs = config.getTierDataDirs();
     String[] dataDirs = new String[DATA_DIR_NUM];
     for (int i = 0; i < DATA_DIR_NUM; i++) {
@@ -65,6 +67,9 @@ public class TierManagerTest {
     config.setTierDataDirs(new String[][] {dataDirs});
     tierManager = TierManager.getInstance();
     tierManager.resetFolders();
+    sequenceFile =
+        new File(dataDirs[0], IoTDBConstant.SEQUENCE_FOLDER_NAME + File.separator + "test.tsfile");
+    assertTrue(sequenceFile.createNewFile());
   }
 
   @After
@@ -87,7 +92,14 @@ public class TierManagerTest {
               int tiersNum = tierManager.getTiersNum();
               assertTrue(tiersNum > 0);
               return tiersNum;
-            });
+            },
+            () -> assertFoldersAvailable(tierManager.getAllFilesFolders()),
+            () -> assertFoldersAvailable(tierManager.getAllLocalFilesFolders()),
+            () -> assertFoldersAvailable(tierManager.getAllSequenceFileFolders()),
+            () -> assertFoldersAvailable(tierManager.getAllLocalSequenceFileFolders()),
+            () -> assertFoldersAvailable(tierManager.getAllUnSequenceFileFolders()),
+            () -> assertFoldersAvailable(tierManager.getAllLocalUnSequenceFileFolders()),
+            () -> tierManager.getFileTierLevel(sequenceFile));
     ExecutorService executorService = Executors.newFixedThreadPool(folderAccessors.size() + 1);
     CountDownLatch startLatch = new CountDownLatch(1);
     AtomicBoolean resetting = new AtomicBoolean(true);
@@ -135,5 +147,10 @@ public class TierManagerTest {
       executorService.shutdownNow();
       assertTrue(executorService.awaitTermination(10, TimeUnit.SECONDS));
     }
+  }
+
+  private List<String> assertFoldersAvailable(List<String> folders) {
+    assertTrue(folders.size() >= DATA_DIR_NUM);
+    return folders;
   }
 }
