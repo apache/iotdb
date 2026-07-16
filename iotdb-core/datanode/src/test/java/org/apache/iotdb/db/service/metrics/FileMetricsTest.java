@@ -19,10 +19,17 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Map;
 
 public class FileMetricsTest {
@@ -35,6 +42,8 @@ public class FileMetricsTest {
   private static final long OBJECT_FILE_SIZE = 40L;
   private static final long OBJECT_ONLY_SIZE = 60L;
 
+  @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
   @After
   public void tearDown() {
     FileMetrics.getInstance().deleteRegion(DATABASE, REGION_WITH_TSFILE);
@@ -42,9 +51,15 @@ public class FileMetricsTest {
   }
 
   @Test
-  public void testRegionSizeMaps() {
-    FileMetrics.getInstance()
-        .addTsFile(DATABASE, REGION_WITH_TSFILE, TSFILE_SIZE, true, TSFILE_NAME);
+  public void testRegionSizeMaps() throws IOException {
+    File regionDir = temporaryFolder.newFolder(DATABASE, REGION_WITH_TSFILE, "0");
+    File tsFile = new File(regionDir, TSFILE_NAME);
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(tsFile, "rw")) {
+      randomAccessFile.setLength(TSFILE_SIZE);
+    }
+    TsFileResource tsFileResource = new TsFileResource(tsFile);
+    tsFileResource.setSeq(true);
+    FileMetrics.getInstance().addTsFile(tsFileResource);
     FileMetrics.getInstance()
         .increaseObjectFileSize(DATABASE, REGION_WITH_TSFILE, OBJECT_FILE_SIZE);
     FileMetrics.getInstance()
