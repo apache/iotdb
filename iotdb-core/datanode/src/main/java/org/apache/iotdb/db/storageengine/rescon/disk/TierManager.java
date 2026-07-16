@@ -62,15 +62,15 @@ public class TierManager {
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
-  private final List<FolderManager> seqTiers = new ArrayList<>();
+  private volatile List<FolderManager> seqTiers = new ArrayList<>();
 
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
-  private final List<FolderManager> unSeqTiers = new ArrayList<>();
+  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
 
-  private final List<FolderManager> objectTiers = new ArrayList<>();
+  private volatile List<FolderManager> objectTiers = new ArrayList<>();
 
   /** seq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
@@ -95,6 +95,13 @@ public class TierManager {
   }
 
   public synchronized void initFolders() {
+    initFolders(seqTiers, unSeqTiers, objectTiers);
+  }
+
+  private void initFolders(
+      List<FolderManager> seqTiers,
+      List<FolderManager> unSeqTiers,
+      List<FolderManager> objectTiers) {
     directoryStrategyType =
         DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
@@ -204,13 +211,16 @@ public class TierManager {
 
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    seqTiers.clear();
-    unSeqTiers.clear();
-    objectTiers.clear();
+    List<FolderManager> newSeqTiers = new ArrayList<>();
+    List<FolderManager> newUnSeqTiers = new ArrayList<>();
+    List<FolderManager> newObjectTiers = new ArrayList<>();
     seqDir2TierLevel.clear();
     unSeqDir2TierLevel.clear();
 
-    initFolders();
+    initFolders(newSeqTiers, newUnSeqTiers, newObjectTiers);
+    seqTiers = newSeqTiers;
+    unSeqTiers = newUnSeqTiers;
+    objectTiers = newObjectTiers;
     long endTime = System.currentTimeMillis();
     logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }
