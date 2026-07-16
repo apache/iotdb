@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
@@ -40,6 +42,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class TypeServices {
@@ -61,6 +64,21 @@ public class TypeServices {
             case BLOB -> TypeServices::parseBlob;
             case STRING -> TypeServices::parseString;
             default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+          };
+
+  public static final TypeService<BiConsumer<Object, IWALByteBufferView>> WAL_VALUE_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> (value, buffer) -> WALWriteUtils.write((Boolean) value, buffer);
+            case INT32, DATE -> (value, buffer) -> WALWriteUtils.write((Integer) value, buffer);
+            case INT64, TIMESTAMP -> (value, buffer) -> WALWriteUtils.write((Long) value, buffer);
+            case FLOAT -> (value, buffer) -> WALWriteUtils.write((Float) value, buffer);
+            case DOUBLE -> (value, buffer) -> WALWriteUtils.write((Double) value, buffer);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (value, buffer) -> WALWriteUtils.write((Binary) value, buffer);
+            default ->
+                throw new UnSupportedDataTypeException(
+                    DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
           };
 
   public static final TypeService<Function<String, Comparable<?>>>

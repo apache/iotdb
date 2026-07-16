@@ -40,12 +40,12 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -656,33 +656,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       WALWriteUtils.write(dataType, buffer);
-      switch (dataType) {
-        case BOOLEAN:
-          WALWriteUtils.write((Boolean) values[i], buffer);
-          break;
-        case INT32:
-        case DATE:
-          WALWriteUtils.write((Integer) values[i], buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          WALWriteUtils.write((Long) values[i], buffer);
-          break;
-        case FLOAT:
-          WALWriteUtils.write((Float) values[i], buffer);
-          break;
-        case DOUBLE:
-          WALWriteUtils.write((Double) values[i], buffer);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          WALWriteUtils.write((Binary) values[i], buffer);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-      }
+      TypeServices.WAL_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(dataType))
+          .accept(values[i], buffer);
     }
   }
 
