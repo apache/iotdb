@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -53,16 +54,19 @@ public class IoTDBTableDDLHAIT {
   private final String tableName = "table_ddl_ha";
   private final String createdAfterDownTableName = "table_ddl_ha_created_after_down";
 
+  private final String sourceTableName = "SOURCE_TABLE";
+
   private static void initCluster() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setMetadataLeaseFenceMs(20000)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(3);
+        .setDataReplicationFactor(2);
+
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setMetadataLeaseFenceMs(20000);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
@@ -83,6 +87,14 @@ public class IoTDBTableDDLHAIT {
     statement.execute("CREATE TABLE TABLE1 (dev STRING TAG, s1 INT32 FIELD)");
     statement.execute(
         "INSERT INTO TABLE1 (time, dev, s1) VALUES(1, 'dev01', 1), (2, 'dev02', 2), (3, 'dev03', 3)");
+
+    // ready for the drop database
+    statement.execute(
+        "CREATE TABLE " + sourceTableName + " (dev STRING TAG, s1 INT32 FIELD, s4 INT32 FIELD)");
+    statement.execute(
+        "INSERT INTO "
+            + sourceTableName
+            + " (time, dev, s1) VALUES(1, 'dev01', 1), (2, 'dev02', 2), (3, 'dev03', 3)");
   }
 
   @Test
@@ -93,7 +105,11 @@ public class IoTDBTableDDLHAIT {
       final DataNodeWrapper victimDataNode = EnvFactory.getEnv().getDataNodeWrapper(2);
       try (final Connection connection =
               EnvFactory.getEnv()
-                  .getConnection(liveDataNode, "root", "root", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection(
+                      liveDataNode,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         preTableData(statement, databaseName, tableName);
 
@@ -103,6 +119,7 @@ public class IoTDBTableDDLHAIT {
         Assert.assertFalse("victim DataNode should be stopped", victimDataNode.isAlive());
 
         executeSpecificSql(databaseName, tableName, statement, createdAfterDownTableName);
+        testDropDeviceForTreeModel(statement);
       }
     } finally {
       cleanCluster();
@@ -119,14 +136,22 @@ public class IoTDBTableDDLHAIT {
       // Prepare data first so the table exists on all DataNodes.
       try (final Connection connection =
               EnvFactory.getEnv()
-                  .getConnection(liveDataNode, "root", "root", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection(
+                      liveDataNode,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         preTableData(statement, databaseName, tableName);
 
         // try to set the DN to readOnly status
         try (final Connection victimConn =
                 EnvFactory.getEnv()
-                    .getConnection(victimDataNode, "root", "root", BaseEnv.TABLE_SQL_DIALECT);
+                    .getConnection(
+                        victimDataNode,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD,
+                        BaseEnv.TABLE_SQL_DIALECT);
             final Statement victimStmt = victimConn.createStatement()) {
 
           victimStmt.execute("SET SYSTEM TO READONLY ON LOCAL");
@@ -217,6 +242,28 @@ public class IoTDBTableDDLHAIT {
         "DROP DATABASE must succeed with one DataNode down");
   }
 
+  private void testDropDeviceForTreeModel(Statement statement) throws Exception {
+    final String treeDevicePath = "root.db" + ".dev01";
+    LOGGER.info("8. start to test high availability of deleting tree model device procedure");
+    statement.execute("SET SQL_DIALECT=tree");
+    assertStatementEffect(
+        statement,
+        "INSERT INTO " + treeDevicePath + "(s1, s2, s3) VALUES(1, 2, 3)",
+        () ->
+            timeSeriesExists(statement, treeDevicePath + ".s1")
+                && timeSeriesExists(statement, treeDevicePath + ".s2")
+                && timeSeriesExists(statement, treeDevicePath + ".s3"),
+        "Tree model device data must be writable with one DataNode down");
+    assertStatementEffect(
+        statement,
+        "DELETE TIMESERIES " + treeDevicePath + ".**",
+        () ->
+            !timeSeriesExists(statement, treeDevicePath + ".s1")
+                && !timeSeriesExists(statement, treeDevicePath + ".s2")
+                && !timeSeriesExists(statement, treeDevicePath + ".s3"),
+        "DELETE TIMESERIES must delete the tree model device with one DataNode down");
+  }
+
   private void assertStatementEffect(
       final Statement statement,
       final String sql,
@@ -252,6 +299,12 @@ public class IoTDBTableDDLHAIT {
       }
     }
     return false;
+  }
+
+  private boolean timeSeriesExists(final Statement statement, final String path) throws Exception {
+    try (final ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES " + path)) {
+      return resultSet.next();
+    }
   }
 
   private boolean tableHasTtl(final Statement statement, final String tableName, final String ttl)

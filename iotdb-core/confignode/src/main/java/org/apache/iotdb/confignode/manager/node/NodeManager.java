@@ -303,6 +303,8 @@ public class NodeManager {
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
           runtimeConfiguration.setAuditConfig(getAuditConfig());
           runtimeConfiguration.setSuperUserName(getPermissionManager().getUserName(0));
+          runtimeConfiguration.setFenceThresholdMs(
+              ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs());
           return runtimeConfiguration;
         } catch (AuthException e) {
           // This will never reach, definitely

@@ -2292,6 +2292,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req) throws TException {
     TDataNodeHeartbeatResp resp = new TDataNodeHeartbeatResp();
 
+    // Update the fence threshold if the ConfigNode has sent a new value,
+    // then renew the metadata lease based on the latest threshold.
+    if (req.isSetFenceThresholdMs()) {
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(req.getFenceThresholdMs());
+    }
+
     // Renew the metadata lease: receiving a ConfigNode heartbeat means this DataNode is still in
     // contact with the cluster and may keep trusting its ConfigNode-pushed metadata caches.
     MetadataLeaseManager.getInstance().triggerCheckWithHeartBeat();
