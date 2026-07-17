@@ -61,6 +61,8 @@ public final class ProcedureMessages {
       "AlterPipeProcedureV2: rollbackFromValidateTask({})";
   public static final String ALTERPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS =
       "AlterPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})";
+  public static final String FAILED_TO_CHECK_WHETHER_PIPE_SHOULD_COLLECT_REGION =
+      "检查 pipe 是否应收集 region {}、数据库 {} 失败，默认将收集该 region。";
   public static final String ALTERTABLECOLUMNDATATYPE_COSTS_MS =
       "AlterTableColumnDataType-{}.{}-{} costs {}ms";
   public static final String ALTERTIMESERIESDATATYPE_COSTS_MS =
@@ -935,10 +937,15 @@ public final class ProcedureMessages {
   public static final String SUCCESSFULLY_STOPPED_AINODE = "成功停止 AINode {}";
   public static final String TABLE_ALREADY_EXISTS = "表 '%s.%s' 已存在。";
   public static final String TABLE_NOT_EXISTS = "表 '%s.%s' 不存在。";
+  public static final String TABLE_DOES_NOT_EXIST = "表 '%s.%s' 不存在";
   public static final String TARGET_DEVICE_TEMPLATE_IS_NOT_ACTIVATED_ON_ANY_PATH_MATCHED =
       "目标设备模板未在匹配给定路径模式的任何路径上激活";
   public static final String TASK_CANNOT_GET_TASK_REPORT_FROM_DATANODE_LAST_REPORT_TIME =
       "{} 任务 {} 无法从 DataNode {} 获取任务报告，上次报告时间为 {} 之前";
+  public static final String THE_RENAMING_FOR_BASE_TABLE_COLUMN_IS_CURRENTLY =
+      "目前不支持重命名基础表的列";
+  public static final String THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED =
+      "目前不支持重命名基础表";
   public static final String THE_UPDATED_TABLE_HAS_THE_SAME_PROPERTIES_WITH_THE_ORIGINAL =
       "更新后的表与原表属性相同。跳过该 procedure。";
   public static final String
@@ -1126,6 +1133,67 @@ public final class ProcedureMessages {
 
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =
       "在共识层执行写入 API 失败，原因：";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE =
+      "跳过可写视图 {}.{} 的 schema cascade，因为源表 {}.{} 不存在。";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+      "跳过可写视图 {}.{} 的 schema cascade，因为源表 {}.{} 不存在：{}";
+  public static final String SOURCE_TABLE_DO_NOT_EXIST_AND_ALTER_IS_NOT_ALLOWED =
+      "源表 %s.%s 不存在，不允许修改可写视图，请手动删除该可写视图";
+  public static final String SOURCE_TABLE_IS_IN_PRE_DELETE_AND_ALTER_IS_NOT_ALLOWED =
+      "源表 %s.%s 处于预删除状态，不允许修改可写视图，请手动删除该源表";
+  public static final String
+      LOG_SKIP_SCHEMA_CASCADE_FOR_DROPPING_WRITABLE_VIEW_ARG_ARG_BECAUSE_ITS_COLUMNS_DO_NOT_COVER_ALL_COLUMNS_IN_SOURCE_TABLE_ARG_ARG_1067BF72 =
+          "跳过删除可写视图 {}.{} 的 schema cascade，因为其列未覆盖源表 {}.{} 中的所有列。";
+  public static final String TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION =
+      "表 '%s.%s' 不是可写视图，请检查实现";
+  public static final String SET_WRITABLE_VIEW_PROPERTIES = "设置可写视图属性";
+  public static final String RENAME_WRITABLE_VIEW = "重命名可写视图";
+  public static final String RENAME_WRITABLE_VIEW_COLUMN = "重命名可写视图列";
+  public static final String DROP_WRITABLE_VIEW = "删除可写视图";
+  public static final String DROP_WRITABLE_VIEW_COLUMN = "删除可写视图列";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_DATA_TYPE_PROCEDURE =
+      "修改可写视图列数据类型 procedure";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_ON = "在 %s.%s 上修改可写视图列：%s";
+  public static final String UNKNOWN_COLUMNS = "未知列";
+  public static final String WRITABLE_VIEW_ADD_COLUMN_UNSUPPORTED_TREE_VIEW_FROM =
+      "可写视图 ADD COLUMN 不支持树视图 FROM 语法。请改用 source AS view 语法。";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST_CANNOT_INFER_SCHEMA =
+      "源列 '%s.%s.%s' 不存在，可写视图列 '%s' 无法推断其 schema";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_EXIST_WHEN_SCHEMA_CASCADE_FALSE =
+      "当 schema_cascade=false 时，可写视图列 '%s' 必须已存在于源表 '%s.%s' 中";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST_CANNOT_INFER_SOURCE_COLUMN =
+      "源表 '%s.%s' 不存在，可写视图列 '%s' 无法从源列 '%s' 推断 schema";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_MATCH_SOURCE_COLUMN =
+      "可写视图列 '%s' 的类别和数据类型必须与源列 '%s.%s.%s' 匹配";
+  public static final String VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN =
+      "视图列 %s 和 %s 不能来自同一个源列 %s";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST = "源表 '%s.%s' 不存在。";
+  public static final String SOURCE_TABLE_IS_NOT_BASE_TABLE = "源表 '%s.%s' 不是基础表。";
+  public static final String WRITABLE_VIEW_CANNOT_MAP_MULTIPLE_COLUMNS_FROM_SOURCE_COLUMN =
+      "可写视图不能将多个视图列映射到同一个源列 %s";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST = "源列 '%s.%s.%s' 不存在。";
+  public static final String ALTER_COLUMN_DATA_TYPE_REQUIRES_SCHEMA_CASCADE_TRUE =
+      "ALTER COLUMN DATA TYPE 要求 schema_cascade=true";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_SCHEMA_CASCADE =
+      "可写视图的源表同步仅支持 schema cascade";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_WRITABLE_VIEW_RECEIVER =
+      "可写视图的 Alter/Drop 同步仅支持接收端为可写视图";
+  public static final String WRITABLE_VIEW_SCHEMA_CASCADE_PROPERTY_ONLY_FOR_WRITABLE_VIEW =
+      "属性 'schema_cascade' 只能为可写视图设置";
+  public static final String
+      SKIP_ROLLBACK_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+          "跳过可写视图 {}.{} 的 schema cascade 回滚，因为源表 {}.{} 不存在：{}";
+  public static final String FAILED_TO_DROP_WRITABLE_VIEW_SOURCE_COLUMN_CATEGORY_MISMATCH =
+      "删除列失败，因为源列 %s.%s.%s 的类别为 %s，而视图列 %s.%s.%s 的类别为 %s。";
+  public static final String UNEXPECTED_PLAN_CARRIES_ORIGINAL_TABLE_METADATA_FOR_DROP_COLUMN =
+      "非预期 plan %s 携带了用于删除列 %s.%s.%s 的原始表元数据。";
+  public static final String EXPECTED_WRITABLE_VIEW_WHEN_ROLLING_BACK_COLUMN_MAPPINGS =
+      "回滚 plan %s 在 %s.%s 上的列映射时，预期目标为可写视图。";
+  public static final String UNEXPECTED_PLAN_ROLL_BACK_WRITABLE_VIEW_COLUMN_MAPPINGS =
+      "非预期 plan %s 尝试回滚 %s.%s 的可写视图列映射。";
+  public static final String DEFENSIVE_ASSERTION_STACK_TRACE = "防御性断言堆栈跟踪";
+  public static final String UNKNOWN_TIMECHO_WRITABLE_VIEW_PHYSICAL_PLAN_CONFIG_TYPE =
+      "未知的 Timecho 可写视图 PhysicalPlan configPhysicalPlanType：%s";
 
   private ProcedureMessages() {}
 
