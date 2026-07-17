@@ -1128,44 +1128,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < columns.length; i++) {
       final TSDataType dataType = getDataType(i);
       if (dataType != null) {
-        switch (dataType) {
-          case INT32:
-          case DATE:
-            if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
-              return false;
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
-              return false;
-            }
-            break;
-          case FLOAT:
-            if (!Arrays.equals((float[]) this.columns[i], (float[]) columns[i])) {
-              return false;
-            }
-            break;
-          case DOUBLE:
-            if (!Arrays.equals((double[]) this.columns[i], (double[]) columns[i])) {
-              return false;
-            }
-            break;
-          case BOOLEAN:
-            if (!Arrays.equals((boolean[]) this.columns[i], (boolean[]) columns[i])) {
-              return false;
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
-              return false;
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+        if (!Type.fromTsDataType(dataType).arrayEquals(this.columns[i], columns[i], rowCount)) {
+          return false;
         }
       } else if (!Objects.equals(this.columns[i], columns[i])) {
         return false;
