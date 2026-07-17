@@ -73,6 +73,7 @@ public class IoTDBIPv6ExternalServiceIT {
 
   @BeforeClass
   public static void setUp() {
+    EnvFactory.getEnv().setIsExternalServiceRelatedTest(true);
     IPv6TestUtils.assumeIPv6LoopbackAvailable();
     previousTestNodeAddress = IPv6TestUtils.setTestNodeAddressToIPv6Loopback();
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setEnableRestService(true);
