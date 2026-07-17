@@ -67,7 +67,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBIPv6ExternalServiceIT {
 
   private static final String USER = "root";
-  private static final String PASSWORD = "root";
+  private static final String PASSWORD = "TimechoDB@2021";
 
   private static String previousTestNodeAddress;
 
