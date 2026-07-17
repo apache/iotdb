@@ -379,6 +379,21 @@ public class WALNodeTest {
                     + File.separator
                     + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .exists());
+    walNode.setSubscriptionRetainedMinVersionId(0);
+    walNode.deleteOutdatedFiles();
+    assertTrue(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
+    assertTrue(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .exists());
+    walNode.setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
     walNode.deleteOutdatedFiles();
     assertFalse(
         new File(

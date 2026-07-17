@@ -1996,7 +1996,12 @@ public class DataRegion implements IDataRegionForQuery {
   private InsertRowsNode createGroupedInsertRowsNode(
       final InsertRowsNode sourceInsertRowsNode, final InsertRowNode firstInsertRowNode) {
     final InsertRowsNode groupedInsertRowsNode = sourceInsertRowsNode.emptyClone();
-    initializeGroupedInsertRowsNode(groupedInsertRowsNode, firstInsertRowNode);
+    initializeGroupedInsertRowsNode(
+        groupedInsertRowsNode,
+        firstInsertRowNode,
+        sourceInsertRowsNode.getPhysicalTime(),
+        sourceInsertRowsNode.getNodeId(),
+        sourceInsertRowsNode.getSyncIndex());
     return groupedInsertRowsNode;
   }
 
@@ -2005,13 +2010,25 @@ public class DataRegion implements IDataRegionForQuery {
       final InsertRowNode firstInsertRowNode) {
     final InsertRowsNode groupedInsertRowsNode =
         new InsertRowsNode(sourceInsertRowsNode.getPlanNodeId());
-    initializeGroupedInsertRowsNode(groupedInsertRowsNode, firstInsertRowNode);
+    initializeGroupedInsertRowsNode(
+        groupedInsertRowsNode,
+        firstInsertRowNode,
+        sourceInsertRowsNode.getPhysicalTime(),
+        sourceInsertRowsNode.getNodeId(),
+        sourceInsertRowsNode.getSyncIndex());
     return groupedInsertRowsNode;
   }
 
   private void initializeGroupedInsertRowsNode(
-      final InsertRowsNode groupedInsertRowsNode, final InsertRowNode firstInsertRowNode) {
+      final InsertRowsNode groupedInsertRowsNode,
+      final InsertRowNode firstInsertRowNode,
+      final long physicalTime,
+      final int nodeId,
+      final long syncIndex) {
     groupedInsertRowsNode.setSearchIndex(firstInsertRowNode.getSearchIndex());
+    groupedInsertRowsNode.setPhysicalTime(physicalTime);
+    groupedInsertRowsNode.setNodeId(nodeId);
+    groupedInsertRowsNode.setSyncIndex(syncIndex);
     groupedInsertRowsNode.setAligned(firstInsertRowNode.isAligned());
     if (firstInsertRowNode.isGeneratedByPipe()) {
       groupedInsertRowsNode.markAsGeneratedByPipe();
@@ -3180,7 +3197,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
     final long startTime = node.getDeleteStartTime();
     final long endTime = node.getDeleteEndTime();
-    final long searchIndex = node.getSearchIndex();
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -3194,8 +3210,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       // write log to impacted working TsFileProcessors
-      List<WALFlushListener> walListeners =
-          logDeletionInWAL(startTime, endTime, searchIndex, pattern);
+      List<WALFlushListener> walListeners = logDeletionInWAL(node, pattern);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -3375,7 +3390,6 @@ public class DataRegion implements IDataRegionForQuery {
       throws IOException {
     final long startTime = node.getDeleteStartTime();
     final long endTime = node.getDeleteEndTime();
-    final long searchIndex = node.getSearchIndex();
     logger.info(
         StorageEngineMessages
             .STORAGE_LOG_WILL_DELETE_DATA_FILES_DIRECTLY_FOR_DELETING_DATA_BETWEEN_289DD3BF,
@@ -3392,8 +3406,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
-      List<WALFlushListener> walListeners =
-          logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
+      List<WALFlushListener> walListeners = logDeletionInWAL(node, pathToDelete);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -3472,22 +3485,36 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<WALFlushListener> logDeletionInWAL(
-      long startTime, long endTime, long searchIndex, MeasurementPath path) {
+      DeleteDataNode templateDeleteDataNode, MeasurementPath path) {
     if (config.getWalMode() == WALMode.DISABLE) {
       return Collections.emptyList();
     }
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     DeleteDataNode deleteDataNode =
-        new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(path),
+            templateDeleteDataNode.getDeleteStartTime(),
+            templateDeleteDataNode.getDeleteEndTime());
+    deleteDataNode
+        .setSearchIndex(templateDeleteDataNode.getSearchIndex())
+        .setPhysicalTime(templateDeleteDataNode.getPhysicalTime())
+        .setNodeId(templateDeleteDataNode.getNodeId())
+        .setSyncIndex(templateDeleteDataNode.getSyncIndex());
     for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(
+          templateDeleteDataNode.getDeleteStartTime(),
+          templateDeleteDataNode.getDeleteEndTime(),
+          entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
     for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(
+          templateDeleteDataNode.getDeleteStartTime(),
+          templateDeleteDataNode.getDeleteEndTime(),
+          entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }

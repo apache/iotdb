@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -101,6 +102,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1165,6 +1167,69 @@ public class DataRegionTest {
   @Test
   public void testInsertRowsOfOneDeviceTypeRetryKeepsSuccessfulFragments() throws Exception {
     assertInsertRowsTypeRetryKeepsSuccessfulFragments(true);
+  }
+
+  @Test
+  public void testRelationalInsertRowsGroupingPreservesConsensusWriterMetadata() throws Exception {
+    assertInsertRowsGroupingPreservesConsensusWriterMetadata(false);
+  }
+
+  @Test
+  public void testInsertRowsOfOneDeviceGroupingPreservesConsensusWriterMetadata() throws Exception {
+    assertInsertRowsGroupingPreservesConsensusWriterMetadata(true);
+  }
+
+  private void assertInsertRowsGroupingPreservesConsensusWriterMetadata(final boolean oneDevice)
+      throws Exception {
+    final String devicePath =
+        oneDevice ? "root.consensus_metadata_one_device" : "root.consensus_metadata_table";
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, devicePath);
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.when(processor.shouldFlush()).thenReturn(false);
+    Mockito.when(processor.isSequence()).thenReturn(true);
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final List<Integer> indexList = Collections.singletonList(0);
+    final TSRecord record = new TSRecord(devicePath, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "1"));
+    final List<InsertRowNode> rows =
+        Collections.singletonList(buildInsertRowNodeByTSRecord(record));
+    final long searchIndex = 17L;
+    final long physicalTime = 1_234_567L;
+    final int nodeId = 7;
+    final long syncIndex = 13L;
+
+    try {
+      if (oneDevice) {
+        final InsertRowsOfOneDeviceNode insertRowsNode =
+            new InsertRowsOfOneDeviceNode(new PlanNodeId(""), indexList, rows);
+        insertRowsNode.setTargetPath(new PartialPath(devicePath));
+        insertRowsNode.setSearchIndex(searchIndex);
+        insertRowsNode.setPhysicalTime(physicalTime);
+        insertRowsNode.setNodeId(nodeId);
+        insertRowsNode.setSyncIndex(syncIndex);
+        dataRegion1.insert(insertRowsNode);
+      } else {
+        final RelationalInsertRowsNode insertRowsNode =
+            new RelationalInsertRowsNode(new PlanNodeId(""), indexList, rows);
+        insertRowsNode.setSearchIndex(searchIndex);
+        insertRowsNode.setPhysicalTime(physicalTime);
+        insertRowsNode.setNodeId(nodeId);
+        insertRowsNode.setSyncIndex(syncIndex);
+        dataRegion1.insert(insertRowsNode);
+      }
+
+      final ArgumentCaptor<InsertRowsNode> groupedNodeCaptor =
+          ArgumentCaptor.forClass(InsertRowsNode.class);
+      Mockito.verify(processor).insertRows(groupedNodeCaptor.capture(), any(long[].class));
+      final InsertRowsNode groupedNode = groupedNodeCaptor.getValue();
+      Assert.assertEquals(searchIndex, groupedNode.getSearchIndex());
+      Assert.assertEquals(physicalTime, groupedNode.getPhysicalTime());
+      Assert.assertEquals(nodeId, groupedNode.getNodeId());
+      Assert.assertEquals(syncIndex, groupedNode.getSyncIndex());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
   }
 
   private void assertInsertRowsTypeRetryKeepsSuccessfulFragments(final boolean oneDevice)
