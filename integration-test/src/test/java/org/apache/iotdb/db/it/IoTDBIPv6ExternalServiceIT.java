@@ -25,8 +25,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.IPv6TestUtils;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.ExternalServiceImplClusterIT;
+import org.apache.iotdb.itbase.category.ExternalServiceImplLocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.UrlUtils;
 
@@ -63,7 +63,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({ExternalServiceImplLocalStandaloneIT.class, ExternalServiceImplClusterIT.class})
 public class IoTDBIPv6ExternalServiceIT {
 
   private static final String USER = "root";
