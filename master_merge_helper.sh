@@ -37,7 +37,7 @@ function setup_env() {
  if [ -z "${HAS_MASTER_IOTDB}" ]
  then
   echo "Create branch ${IoTDB_COMMIT_BRANCH}"
-  git remote add iotdb https://gitlab-eco.timecho.com/mirrors/iotdb.git
+  git remote add iotdb git@gitlab-eco.timecho.com:r-d/hybrid-db/iotdb.git
   git fetch --quiet iotdb ${IoTDB_BASE_BRANCH}
   git checkout --quiet FETCH_HEAD
   git checkout -b ${IoTDB_COMMIT_BRANCH}
