@@ -82,7 +82,7 @@ public class TypeServices {
                     Comparator.comparing(
                         sortKey ->
                             type.getBoolean(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            default ->
+            case ROW, UNKNOWN, VECTOR ->
                 throw new IllegalArgumentException(
                     String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
           };
@@ -94,7 +94,9 @@ public class TypeServices {
             case INT32, FLOAT, DATE -> 4;
             case INT64, DOUBLE, TIMESTAMP -> 8;
             case TEXT, STRING, BLOB, OBJECT -> 16;
-            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                    .setChecked(true);
           };
 
   public static final TypeService<IntUnaryOperator>
@@ -109,7 +111,8 @@ public class TypeServices {
                 case TEXT, BLOB, STRING, OBJECT ->
                     byteArrayLength ->
                         MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
-                default -> throw new UnSupportedDataTypeException(type.toString());
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(type.toString()).setChecked(true);
               };
 
   public static final TypeService<Function<TsPrimitiveType, Object>>
@@ -125,10 +128,11 @@ public class TypeServices {
                           ? Binary.EMPTY_VALUE
                           : binary;
                     };
-                default ->
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
                     primitiveType -> {
                       throw new UnSupportedDataTypeException(
-                          CalcMessages.UNSUPPORTED_DATA_TYPE + primitiveType.getDataType());
+                              CalcMessages.UNSUPPORTED_DATA_TYPE + primitiveType.getDataType())
+                          .setChecked(true);
                     };
               };
 
@@ -142,8 +146,9 @@ public class TypeServices {
                 case FLOAT -> DefaultEncodingProvider::getDefaultFloatEncoding;
                 case DOUBLE -> DefaultEncodingProvider::getDefaultDoubleEncoding;
                 case STRING, BLOB, OBJECT, TEXT -> DefaultEncodingProvider::getDefaultTextEncoding;
-                default ->
-                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                        .setChecked(true);
               };
 
   public static final TypeService<DefaultValueWriter> DEFAULT_VALUE_WRITER_SERVICE =
@@ -167,9 +172,10 @@ public class TypeServices {
             case TEXT, STRING, BLOB, OBJECT ->
                 (partition, channel, index, builder) ->
                     builder.writeBinary(partition.getBinary(channel, index));
-            default ->
+            case ROW, UNKNOWN, VECTOR ->
                 throw new UnSupportedDataTypeException(
-                    "Unsupported default value's data type in Lag: " + type);
+                        CalcMessages.UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG + type)
+                    .setChecked(true);
           };
 
   public static final TypeService<IntermediateValueWriter> INTERMEDIATE_VALUE_WRITER_SERVICE =
@@ -199,7 +205,9 @@ public class TypeServices {
                 (accumulator, isX, index, bytes, offset) ->
                     (isX ? accumulator.getXBooleanValues() : accumulator.getYBooleanValues())
                         .toBytes(index, bytes, offset);
-            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                    .setChecked(true);
           };
 
   public static final TypeService<IntermediateValueInitializer>
@@ -254,8 +262,9 @@ public class TypeServices {
                         accumulator.setYBooleanValues(new BooleanBigArray());
                       }
                     };
-                default ->
-                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                        .setChecked(true);
               };
 
   static {

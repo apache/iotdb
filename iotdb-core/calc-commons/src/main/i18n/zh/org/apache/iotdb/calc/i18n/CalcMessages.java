@@ -126,6 +126,8 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COLUMN_TRANSFORMER = "不支持的 ColumnTransformer";
   public static final String UNSUPPORTED_COMPARISON_OPERATOR = "不支持的比较运算符：";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
+  public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
+      "Lag 中不支持的默认值数据类型：";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "不支持的数据类型：";
   public static final String UNSUPPORTED_FRAME_BOUND_TYPE = "不支持的帧边界类型：";
   public static final String UNSUPPORTED_FUNCTION_KIND = "不支持的函数类型：";

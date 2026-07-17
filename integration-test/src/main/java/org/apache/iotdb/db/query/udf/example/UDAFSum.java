@@ -48,8 +48,9 @@ public class UDAFSum implements UDAF {
             default ->
                 (column, index) -> {
                   throw new UnSupportedDataTypeException(
-                      String.format(
-                          "Unsupported data type in aggregation AVG : %s", type.getTypeEnum()));
+                          String.format(
+                              "Unsupported data type in aggregation AVG : %s", type.getTypeEnum()))
+                      .setChecked(false);
                 };
           };
 

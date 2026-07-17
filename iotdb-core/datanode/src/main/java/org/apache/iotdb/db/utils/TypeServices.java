@@ -63,7 +63,9 @@ public class TypeServices {
             case DATE -> TypeServices::parseDate;
             case BLOB -> TypeServices::parseBlob;
             case STRING -> TypeServices::parseString;
-            default -> throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type);
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                    .setChecked(true);
           };
 
   public static final TypeService<BiConsumer<Object, IWALByteBufferView>> WAL_VALUE_WRITER_SERVICE =
@@ -76,9 +78,10 @@ public class TypeServices {
             case DOUBLE -> (value, buffer) -> WALWriteUtils.write((Double) value, buffer);
             case TEXT, BLOB, STRING, OBJECT ->
                 (value, buffer) -> WALWriteUtils.write((Binary) value, buffer);
-            default ->
+            case ROW, UNKNOWN, VECTOR ->
                 throw new UnSupportedDataTypeException(
-                    DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
           };
 
   public static final TypeService<Function<String, Comparable<?>>>
@@ -106,7 +109,7 @@ public class TypeServices {
                 case TEXT, STRING ->
                     valueString -> new Binary(valueString, TSFileConfig.STRING_CHARSET);
                 case DATE -> DateTimeUtils::parseDateExpressionToInt;
-                default ->
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
                     throw new UnsupportedOperationException(
                         String.format(
                             DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
@@ -124,9 +127,10 @@ public class TypeServices {
             // Note that "Variant" does not support "VT_BLOB" data, and not all the DA servers
             // support this, thus we use "VT_BSTR" to substitute.
             case TEXT, STRING, BLOB, OBJECT -> Variant.VT_BSTR;
-            default ->
+            case ROW, UNKNOWN, VECTOR ->
                 throw new UnSupportedDataTypeException(
-                    DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
+                        DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum())
+                    .setChecked(true);
           };
 
   public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
@@ -136,7 +140,7 @@ public class TypeServices {
             case DATE ->
                 value -> ((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toString();
             case TIMESTAMP -> value -> DateTimeUtils.convertLongToDate((long) value);
-            default ->
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
                 value -> {
                   throw new PipeRuntimeNonCriticalException(
                       DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
@@ -152,10 +156,11 @@ public class TypeServices {
                 case DATE ->
                     isDateStoredAsLocalDate ->
                         isDateStoredAsLocalDate ? type : Type.fromTsDataType(TSDataType.INT32);
-                default ->
+                case ROW, UNKNOWN, VECTOR ->
                     ignored -> {
                       throw new UnSupportedDataTypeException(
-                          DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                              DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                          .setChecked(true);
                     };
               };
 

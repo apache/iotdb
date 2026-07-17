@@ -133,6 +133,8 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COMPARISON_OPERATOR =
       "Unsupported comparison operator: ";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
+  public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
+      "Unsupported default value's data type in Lag: ";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "unsupported data type: ";
   public static final String UNSUPPORTED_FRAME_BOUND_TYPE = "Unsupported frame bound type: ";
   public static final String UNSUPPORTED_FUNCTION_KIND = "Unsupported function kind: ";
