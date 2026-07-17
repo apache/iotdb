@@ -418,8 +418,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           || forSplit && !hasColumnForSplit(i)) {
         continue;
       }
-      values[i] = Type.fromTsDataType(dataTypes[i]).
-          createArray(rowSize);
+      values[i] = Type.fromTsDataType(dataTypes[i]).createArray(rowSize);
     }
     return values;
   }
@@ -689,55 +688,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
       throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], stream);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], stream);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], stream);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], stream);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
-        }
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            ReadWriteIOUtils.write(binaryValues[j], stream);
-          } else {
-            ReadWriteIOUtils.write(0, stream);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+    Type.fromTsDataType(dataType).serializeArray(column, rowCount, stream);
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
