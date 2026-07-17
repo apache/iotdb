@@ -56,13 +56,10 @@ import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -82,8 +79,6 @@ import java.util.Objects;
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
-  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
-
   protected long[] times; // times should be sorted. It is done in the session API.
 
   protected BitMap[] bitMaps;
@@ -1221,43 +1216,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {
-    TsPrimitiveType value;
-    switch (dataTypes[measurementIndex]) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsInt(intValues[rowIndex]);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsLong(longValues[rowIndex]);
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsFloat(floatValues[rowIndex]);
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsDouble(doubleValues[rowIndex]);
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBoolean(boolValues[rowIndex]);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBinary(binaryValues[rowIndex]);
-        break;
-      case OBJECT:
-        return null;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
+    final TSDataType dataType = dataTypes[measurementIndex];
+    if (dataType == TSDataType.OBJECT) {
+      return null;
     }
-    return new TimeValuePair(times[rowIndex], value);
+    return new TimeValuePair(
+        times[rowIndex],
+        Type.fromTsDataType(dataType)
+            .getValueAsTsPrimitiveType(columns[measurementIndex], rowIndex));
   }
 
   public IDeviceID getDeviceID(int rowIdx) {
