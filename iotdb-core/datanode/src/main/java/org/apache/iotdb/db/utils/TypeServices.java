@@ -84,6 +84,61 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<WALColumnWriter> WAL_ARRAY_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (column, buffer, start, end) -> {
+                  int[] values = (int[]) column;
+                  for (int i = start; i < end; i++) {
+                    buffer.putInt(values[i]);
+                  }
+                };
+            case INT64, TIMESTAMP ->
+                (column, buffer, start, end) -> {
+                  long[] values = (long[]) column;
+                  for (int i = start; i < end; i++) {
+                    buffer.putLong(values[i]);
+                  }
+                };
+            case FLOAT ->
+                (column, buffer, start, end) -> {
+                  float[] values = (float[]) column;
+                  for (int i = start; i < end; i++) {
+                    buffer.putFloat(values[i]);
+                  }
+                };
+            case DOUBLE ->
+                (column, buffer, start, end) -> {
+                  double[] values = (double[]) column;
+                  for (int i = start; i < end; i++) {
+                    buffer.putDouble(values[i]);
+                  }
+                };
+            case BOOLEAN ->
+                (column, buffer, start, end) -> {
+                  boolean[] values = (boolean[]) column;
+                  for (int i = start; i < end; i++) {
+                    buffer.put((byte) (values[i] ? 1 : 0));
+                  }
+                };
+            case TEXT, BLOB, STRING, OBJECT ->
+                (column, buffer, start, end) -> {
+                  Binary[] values = (Binary[]) column;
+                  for (int i = start; i < end; i++) {
+                    if (values[i] != null && values[i].getValues() != null) {
+                      WALWriteUtils.write(values[i], buffer);
+                    } else {
+                      buffer.putInt(0);
+                    }
+                  }
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
   public static final TypeService<Function<String, Comparable<?>>>
       CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
           type ->
@@ -261,5 +316,10 @@ public class TypeServices {
     } catch (final Exception e) {
       return DEFAULT_DATE;
     }
+  }
+
+  @FunctionalInterface
+  public interface WALColumnWriter {
+    void write(Object column, IWALByteBufferView buffer, int start, int end);
   }
 }

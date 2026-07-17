@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -1001,57 +1002,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void serializeColumn(
-      TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putInt(intValues[j]);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putLong(longValues[j]);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putFloat(floatValues[j]);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putDouble(doubleValues[j]);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.put(BytesUtils.boolToByte(boolValues[j]));
-        }
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            buffer.putInt(binaryValues[j].getLength());
-            buffer.put(binaryValues[j].getValues());
-          } else {
-            buffer.putInt(0);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+      TSDataType dataType, Object array, IWALByteBufferView buffer, int start, int end) {
+    TypeServices.WAL_ARRAY_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(array, buffer, start, end);
   }
 
   /** Deserialize from wal */
