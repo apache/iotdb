@@ -54,6 +54,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -417,31 +418,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           || forSplit && !hasColumnForSplit(i)) {
         continue;
       }
-      switch (dataTypes[i]) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          values[i] = new Binary[rowSize];
-          break;
-        case FLOAT:
-          values[i] = new float[rowSize];
-          break;
-        case INT32:
-        case DATE:
-          values[i] = new int[rowSize];
-          break;
-        case TIMESTAMP:
-        case INT64:
-          values[i] = new long[rowSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[rowSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[rowSize];
-          break;
-      }
+      values[i] = Type.fromTsDataType(dataTypes[i]).
+          createArray(rowSize);
     }
     return values;
   }
@@ -706,55 +684,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], buffer);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], buffer);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], buffer);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], buffer);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), buffer);
-        }
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            ReadWriteIOUtils.write(binaryValues[j], buffer);
-          } else {
-            ReadWriteIOUtils.write(0, buffer);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+    Type.fromTsDataType(dataType).serializeArray(column, rowCount, buffer);
   }
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
