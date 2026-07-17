@@ -432,6 +432,8 @@ public final class DataNodeQueryMessages {
       "\"%s\" cannot be cast to [%s]";
   public static final String UNSUPPORTED_DATA_TYPE_FMT =
       "Unsupported data type %s";
+  public static final String TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT =
+      "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =

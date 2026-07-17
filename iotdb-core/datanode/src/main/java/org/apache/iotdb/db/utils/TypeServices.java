@@ -20,7 +20,16 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -164,6 +173,27 @@ public class TypeServices {
                 case TEXT, STRING ->
                     valueString -> new Binary(valueString, TSFileConfig.STRING_CHARSET);
                 case DATE -> DateTimeUtils::parseDateExpressionToInt;
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    throw new UnsupportedOperationException(
+                        String.format(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+              };
+
+  public static final TypeService<Function<Literal, Comparable<?>>>
+      RELATIONAL_CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> value -> Integer.valueOf((int) getLongValue(value));
+                case DATE -> value -> Integer.valueOf(((GenericLiteral) value).getValue());
+                case INT64 -> value -> Long.valueOf(getLongValue(value));
+                case TIMESTAMP -> TypeServices::getTimestampValue;
+                case FLOAT -> value -> Float.valueOf((float) getDoubleValue(value));
+                case DOUBLE -> value -> Double.valueOf(getDoubleValue(value));
+                case BOOLEAN -> value -> Boolean.valueOf(((BooleanLiteral) value).getValue());
+                case TEXT, STRING ->
+                    value ->
+                        new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET);
+                case BLOB -> value -> new Binary(((BinaryLiteral) value).getValue());
                 case OBJECT, ROW, UNKNOWN, VECTOR ->
                     throw new UnsupportedOperationException(
                         String.format(
@@ -316,6 +346,36 @@ public class TypeServices {
     } catch (final Exception e) {
       return DEFAULT_DATE;
     }
+  }
+
+  private static long getLongValue(final Literal value) {
+    return ((LongLiteral) value).getParsedValue();
+  }
+
+  private static double getDoubleValue(final Literal value) {
+    if (value instanceof DoubleLiteral) {
+      return ((DoubleLiteral) value).getValue();
+    } else if (value instanceof LongLiteral) {
+      return ((LongLiteral) value).getParsedValue();
+    } else if (value instanceof FloatLiteral) {
+      return ((FloatLiteral) value).getValue();
+    }
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.EXPRESSION_SHOULD_BE_NUMERIC_ACTUAL_IS + value);
+  }
+
+  private static Long getTimestampValue(final Literal value) {
+    if (value instanceof LongLiteral) {
+      return ((LongLiteral) value).getParsedValue();
+    } else if (value instanceof DoubleLiteral) {
+      return (long) ((DoubleLiteral) value).getValue();
+    } else if (value instanceof GenericLiteral) {
+      return Long.valueOf(((GenericLiteral) value).getValue());
+    }
+    throw new SemanticException(
+        String.format(
+            DataNodeQueryMessages.TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT,
+            value.getClass().getSimpleName()));
   }
 
   @FunctionalInterface
