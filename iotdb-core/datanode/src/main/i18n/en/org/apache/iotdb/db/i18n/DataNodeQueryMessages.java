@@ -924,6 +924,8 @@ public final class DataNodeQueryMessages {
       "Unexpected expression: ";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "Failed to Fetch Subquery Result.";
+  public static final String UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT =
+      "Unsupported data type for scalar subquery result: %s";
 
   // --- Plan / Relational / Planner / Iterative ---
 

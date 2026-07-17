@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -198,6 +199,29 @@ public class TypeServices {
                     throw new UnsupportedOperationException(
                         String.format(
                             DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+              };
+
+  public static final TypeService<Function<Column, Literal>>
+      UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    column -> new LongLiteral(Long.toString(type.getInt(column, 0)));
+                case INT64, TIMESTAMP ->
+                    column -> new LongLiteral(Long.toString(type.getLong(column, 0)));
+                case FLOAT -> column -> new FloatLiteral(type.getFloat(column, 0));
+                case DOUBLE ->
+                    column -> new DoubleLiteral(Double.toString(type.getDouble(column, 0)));
+                case BOOLEAN ->
+                    column -> new BooleanLiteral(Boolean.toString(type.getBoolean(column, 0)));
+                case BLOB -> column -> new BinaryLiteral(type.getBinary(column, 0).toString());
+                case TEXT, STRING ->
+                    column -> new StringLiteral(type.getBinary(column, 0).toString());
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    throw new IllegalArgumentException(
+                        String.format(
+                            DataNodeQueryMessages.UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT,
+                            type.getTypeEnum()));
               };
 
   public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =

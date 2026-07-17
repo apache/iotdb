@@ -922,6 +922,8 @@ public final class DataNodeQueryMessages {
       "意外的表达式：";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "获取子查询结果失败。";
+  public static final String UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT =
+      "标量子查询结果的数据类型不受支持：%s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
