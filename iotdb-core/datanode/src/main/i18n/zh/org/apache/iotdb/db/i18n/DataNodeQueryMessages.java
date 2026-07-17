@@ -1295,6 +1295,8 @@ public final class DataNodeQueryMessages {
       "获取 UDF 访问策略时发生错误";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils 不应被实例化。";
+  public static final String INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY =
+      "状态窗口策略的数据类型无效。";
 
   // --- Execution / Exchange (additional) ---
 

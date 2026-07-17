@@ -1297,6 +1297,8 @@ public final class DataNodeQueryMessages {
       "Error occurred during getting UDF access strategy";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
+  public static final String INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY =
+      "The data type of the state window strategy is not valid.";
 
   // --- Execution / Exchange (additional) ---
 

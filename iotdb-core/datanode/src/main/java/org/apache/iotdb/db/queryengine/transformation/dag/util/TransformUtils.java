@@ -29,7 +29,6 @@ import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 
 import java.util.Objects;
 
@@ -62,79 +61,8 @@ public class TransformUtils {
 
   public static boolean splitWindowForStateWindow(
       TSDataType dataType, ValueRecorder valueRecorder, double delta, Column values, int index) {
-    boolean res;
-    switch (dataType) {
-      case INT32:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordInt(values.getInt(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getInt(index) - valueRecorder.getInt()) > delta;
-        if (res) {
-          valueRecorder.recordInt(values.getInt(index));
-        }
-        break;
-      case INT64:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordLong(values.getLong(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getLong(index) - valueRecorder.getLong()) > delta;
-        if (res) {
-          valueRecorder.recordLong(values.getLong(index));
-        }
-        break;
-      case FLOAT:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordFloat(values.getFloat(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getFloat(index) - valueRecorder.getFloat()) > delta;
-        if (res) {
-          valueRecorder.recordFloat(values.getFloat(index));
-        }
-        break;
-      case DOUBLE:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordDouble(values.getDouble(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getDouble(index) - valueRecorder.getDouble()) > delta;
-        if (res) {
-          valueRecorder.recordDouble(values.getDouble(index));
-        }
-        break;
-      case BOOLEAN:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordBoolean(values.getBoolean(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = values.getBoolean(index) != valueRecorder.getBoolean();
-        if (res) {
-          valueRecorder.recordBoolean(values.getBoolean(index));
-        }
-        break;
-      case TEXT:
-        if (!valueRecorder.hasRecorded()) {
-          Binary binary = values.getBinary(index - 1);
-          valueRecorder.recordString(binary.toString());
-          valueRecorder.setRecorded(true);
-        }
-        String str = values.getBinary(index).toString();
-        res = !str.equals(valueRecorder.getString());
-        if (res) {
-          valueRecorder.recordString(str);
-        }
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      default:
-        throw new UnsupportedOperationException(
-            "The data type of the state window strategy is not valid.");
-    }
-    return res;
+    return TypeServices.STATE_WINDOW_SPLITTER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .split(valueRecorder, delta, values, index);
   }
 }

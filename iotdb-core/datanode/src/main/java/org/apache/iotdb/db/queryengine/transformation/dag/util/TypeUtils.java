@@ -20,66 +20,24 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
-import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
-import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
-import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 public class TypeUtils {
   public static ColumnBuilder initColumnBuilder(TSDataType type, int count) {
-    switch (type) {
-      case INT32:
-        return new IntColumnBuilder(null, count, TSDataType.INT32);
-      case DATE:
-        return new IntColumnBuilder(null, count, TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return new LongColumnBuilder(null, count);
-      case FLOAT:
-        return new FloatColumnBuilder(null, count);
-      case DOUBLE:
-        return new DoubleColumnBuilder(null, count);
-      case BOOLEAN:
-        return new BooleanColumnBuilder(null, count);
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        return new BinaryColumnBuilder(null, count);
-      default:
-        throw new UnSupportedDataTypeException(
-            "Do not support create ColumnBuilder with data type " + type);
-    }
+    return TypeServices.TRANSFORMATION_COLUMN_BUILDER_SERVICE
+        .call(Type.fromTsDataType(type))
+        .apply(count);
   }
 
   public static double castValueToDouble(Column column, TSDataType type, int index)
       throws QueryProcessException {
-    switch (type) {
-      case INT32:
-      case DATE:
-        return column.getInt(index);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(index);
-      case FLOAT:
-        return column.getFloat(index);
-      case DOUBLE:
-        return column.getDouble(index);
-      case BOOLEAN:
-        return column.getBoolean(index) ? 1 : 0;
-      case BLOB:
-      case STRING:
-      case TEXT:
-      default:
-        throw new QueryProcessException(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type);
-    }
+    return TypeServices.TRANSFORMATION_VALUE_TO_DOUBLE_SERVICE
+        .call(Type.fromTsDataType(type))
+        .convert(column, index);
   }
 }

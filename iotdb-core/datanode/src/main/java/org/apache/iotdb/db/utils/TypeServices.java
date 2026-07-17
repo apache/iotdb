@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
@@ -55,6 +57,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 public class TypeServices {
 
@@ -74,6 +77,133 @@ public class TypeServices {
                 throw new UnSupportedDataTypeException(
                         DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
                     .setChecked(true);
+          };
+
+  public static final TypeService<IntFunction<ColumnBuilder>>
+      TRANSFORMATION_COLUMN_BUILDER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN,
+                    INT32,
+                    DATE,
+                    INT64,
+                    TIMESTAMP,
+                    FLOAT,
+                    DOUBLE,
+                    TEXT,
+                    BLOB,
+                    STRING,
+                    OBJECT ->
+                    type::createColumnBuilder;
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(
+                            String.format(
+                                DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT,
+                                type.getTypeEnum()))
+                        .setChecked(true);
+              };
+
+  public static final TypeService<ColumnToDoubleConverter> TRANSFORMATION_VALUE_TO_DOUBLE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE -> type::getInt;
+            case INT64, TIMESTAMP -> type::getLong;
+            case FLOAT -> type::getFloat;
+            case DOUBLE -> type::getDouble;
+            case BOOLEAN -> (column, index) -> type.getBoolean(column, index) ? 1 : 0;
+            case TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (column, index) -> {
+                  throw new QueryProcessException(
+                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                };
+          };
+
+  public static final TypeService<StateWindowSplitter> STATE_WINDOW_SPLITTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordInt(type.getInt(values, index - 1));
+                    valueRecorder.setRecorded(true);
+                  }
+                  final boolean split =
+                      Math.abs(type.getInt(values, index) - valueRecorder.getInt()) > delta;
+                  if (split) {
+                    valueRecorder.recordInt(type.getInt(values, index));
+                  }
+                  return split;
+                };
+            case INT64 ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordLong(type.getLong(values, index - 1));
+                    valueRecorder.setRecorded(true);
+                  }
+                  final boolean split =
+                      Math.abs(type.getLong(values, index) - valueRecorder.getLong()) > delta;
+                  if (split) {
+                    valueRecorder.recordLong(type.getLong(values, index));
+                  }
+                  return split;
+                };
+            case FLOAT ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordFloat(type.getFloat(values, index - 1));
+                    valueRecorder.setRecorded(true);
+                  }
+                  final boolean split =
+                      Math.abs(type.getFloat(values, index) - valueRecorder.getFloat()) > delta;
+                  if (split) {
+                    valueRecorder.recordFloat(type.getFloat(values, index));
+                  }
+                  return split;
+                };
+            case DOUBLE ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordDouble(type.getDouble(values, index - 1));
+                    valueRecorder.setRecorded(true);
+                  }
+                  final boolean split =
+                      Math.abs(type.getDouble(values, index) - valueRecorder.getDouble()) > delta;
+                  if (split) {
+                    valueRecorder.recordDouble(type.getDouble(values, index));
+                  }
+                  return split;
+                };
+            case BOOLEAN ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordBoolean(type.getBoolean(values, index - 1));
+                    valueRecorder.setRecorded(true);
+                  }
+                  final boolean split =
+                      type.getBoolean(values, index) != valueRecorder.getBoolean();
+                  if (split) {
+                    valueRecorder.recordBoolean(type.getBoolean(values, index));
+                  }
+                  return split;
+                };
+            case TEXT ->
+                (valueRecorder, delta, values, index) -> {
+                  if (!valueRecorder.hasRecorded()) {
+                    valueRecorder.recordString(type.getBinary(values, index - 1).toString());
+                    valueRecorder.setRecorded(true);
+                  }
+                  final String value = type.getBinary(values, index).toString();
+                  final boolean split = !value.equals(valueRecorder.getString());
+                  if (split) {
+                    valueRecorder.recordString(value);
+                  }
+                  return split;
+                };
+            case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (valueRecorder, delta, values, index) -> {
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY);
+                };
           };
 
   public static final TypeService<Function<String, Object>> VALUE_PARSER_NO_EXCEPTION_SERVICE =
@@ -416,6 +546,16 @@ public class TypeServices {
         String.format(
             DataNodeQueryMessages.TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT,
             value.getClass().getSimpleName()));
+  }
+
+  @FunctionalInterface
+  public interface ColumnToDoubleConverter {
+    double convert(Column column, int index) throws QueryProcessException;
+  }
+
+  @FunctionalInterface
+  public interface StateWindowSplitter {
+    boolean split(ValueRecorder valueRecorder, double delta, Column values, int index);
   }
 
   @FunctionalInterface
