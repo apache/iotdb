@@ -52,12 +52,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -78,8 +78,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
-
-  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   /**
    * Get the instance size of InsertTabletStatement for memory calculation.
@@ -159,29 +157,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           .map(binary -> Objects.nonNull(binary) ? binary : Binary.EMPTY_VALUE)
           .toArray(Binary[]::new);
     } else if (input == null) {
-      switch (type) {
-        case BOOLEAN:
-          return new boolean[rowCount];
-        case INT32:
-        case DATE:
-          return new int[rowCount];
-        case INT64:
-        case TIMESTAMP:
-          return new long[rowCount];
-        case FLOAT:
-          return new float[rowCount];
-        case DOUBLE:
-          return new double[rowCount];
-        case TEXT:
-        case BLOB:
-        case STRING:
-          final Binary[] result = new Binary[rowCount];
-          Arrays.fill(result, Binary.EMPTY_VALUE);
-          return result;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", type));
+      final Object result = Type.fromTsDataType(type).createArray(rowCount);
+      if (result instanceof Binary[]) {
+        Arrays.fill((Binary[]) result, Binary.EMPTY_VALUE);
       }
+      return result;
     }
 
     return input;
@@ -477,41 +457,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         || columns[index] == null) {
       return null;
     }
-    Object value;
-    switch (dataTypes[index]) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) columns[index];
-        value = intValues[0];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) columns[index];
-        value = longValues[0];
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) columns[index];
-        value = floatValues[0];
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) columns[index];
-        value = doubleValues[0];
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) columns[index];
-        value = boolValues[0];
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        Binary[] binaryValues = (Binary[]) columns[index];
-        value = binaryValues[0];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataTypes[index]));
-    }
-    return value;
+    return Type.fromTsDataType(dataTypes[index]).getValue(columns[index], 0);
   }
 
   @Override

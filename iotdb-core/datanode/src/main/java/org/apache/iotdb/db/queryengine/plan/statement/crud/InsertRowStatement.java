@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
@@ -50,6 +49,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -161,33 +161,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-        case DATE:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new QueryProcessException(
-              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
-      }
+      Type.fromTsDataType(dataTypes[i]).deserialize(values, i, buffer);
     }
   }
 
