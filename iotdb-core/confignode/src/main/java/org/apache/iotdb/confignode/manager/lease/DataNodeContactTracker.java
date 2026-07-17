@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.lease;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import java.util.Collection;
 import java.util.Map;
@@ -50,6 +50,8 @@ public class DataNodeContactTracker {
 
   private final Map<Integer, Long> lastSuccessfulResponseNanos = new ConcurrentHashMap<>();
 
+  private final Map<Integer, Long> lastSentFenceThresholdMs = new ConcurrentHashMap<>();
+
   private DataNodeContactTracker() {
     this(System::nanoTime);
   }
@@ -61,6 +63,7 @@ public class DataNodeContactTracker {
   /** Record that a successful heartbeat response from the DataNode was just received. */
   public void recordSuccessfulResponse(final int dataNodeId) {
     lastSuccessfulResponseNanos.put(dataNodeId, nanoClock.getAsLong());
+    lastSentFenceThresholdMs.put(dataNodeId, getCurrentFenceThresholdMs());
   }
 
   /**
@@ -79,7 +82,7 @@ public class DataNodeContactTracker {
 
   public boolean isDataNodeFenced(final int dataNodeId) {
     return getMillisSinceLastSuccessfulResponse(dataNodeId)
-        > (CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs()
+        > (ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs()
             + DEFAULT_PROCEED_MARGIN_MS);
   }
 
@@ -92,10 +95,26 @@ public class DataNodeContactTracker {
     for (final Integer dataNodeId : registeredDataNodeIds) {
       lastSuccessfulResponseNanos.put(dataNodeId, now);
     }
+    lastSentFenceThresholdMs.clear();
   }
 
   public void removeDataNode(final int dataNodeId) {
     lastSuccessfulResponseNanos.remove(dataNodeId);
+    lastSentFenceThresholdMs.remove(dataNodeId);
+  }
+
+  /** The current fence threshold value from the ConfigNode's own configuration. */
+  public long getCurrentFenceThresholdMs() {
+    return ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs();
+  }
+
+  /**
+   * Returns true if this DataNode has already received the current (confirmed by a successful
+   * heartbeat response sent after that value was loaded).
+   */
+  public boolean hasDeliveredCurrentFenceThreshold(final int dataNodeId) {
+    final Long lastSent = lastSentFenceThresholdMs.get(dataNodeId);
+    return lastSent != null && lastSent == getCurrentFenceThresholdMs();
   }
 
   public static DataNodeContactTracker getInstance() {

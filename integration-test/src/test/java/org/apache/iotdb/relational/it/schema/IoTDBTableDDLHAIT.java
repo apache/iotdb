@@ -63,12 +63,13 @@ public class IoTDBTableDDLHAIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setMetadataLeaseFenceMs(20000)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
+
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setMetadataLeaseFenceMs(20000);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
@@ -238,7 +239,7 @@ public class IoTDBTableDDLHAIT {
 
     // writable view tests
     writableViewRelated(statement);
-    LOGGER.info("18. start to test high availability of dropping database procedure");
+    LOGGER.info("17. start to test high availability of dropping database procedure");
     assertStatementEffect(
         statement,
         "DROP DATABASE " + databaseName,
@@ -501,7 +502,7 @@ public class IoTDBTableDDLHAIT {
                 && columnExists(statement, sourceTableName, "s4"),
         "Dropping a writable view with incomplete source-column coverage must keep the source table");
 
-    LOGGER.info("17. start to test high availability of dropping same writable view procedure");
+    LOGGER.info("16. start to test high availability of dropping same writable view procedure");
     assertStatementEffect(
         statement,
         "DROP VIEW " + sameWritableViewName,

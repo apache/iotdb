@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.lease;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.DataNodeState;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.Verdict;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -76,7 +76,7 @@ public class ClusterCachePropagator {
         registeredDataNodes,
         nodeId -> DataNodeContactTracker.getInstance().getMillisSinceLastSuccessfulResponse(nodeId),
         () ->
-            CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs()
+            ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs()
                 + DEFAULT_PROCEED_MARGIN_MS,
         System::nanoTime,
         Thread::sleep);

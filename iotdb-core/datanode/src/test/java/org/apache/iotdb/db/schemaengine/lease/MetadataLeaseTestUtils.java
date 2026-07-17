@@ -65,13 +65,15 @@ public final class MetadataLeaseTestUtils {
       final LongSupplier nowNanos,
       final MetadataLeaseManager.MetadataAction clearAction,
       final MetadataLeaseManager.MetadataAction pullAction) {
-    return new MetadataLeaseManager(
-        nowNanos,
-        () -> T_FENCE_MS,
-        Collections.singletonList(clearAction),
-        Collections.singletonList(pullAction),
-        MoreExecutors.newDirectExecutorService(),
-        500L,
-        null);
+    final MetadataLeaseManager manager =
+        new MetadataLeaseManager(
+            nowNanos,
+            Collections.singletonList(clearAction),
+            Collections.singletonList(pullAction),
+            MoreExecutors.newDirectExecutorService(),
+            500L,
+            null);
+    manager.updateFenceThresholdMs(T_FENCE_MS);
+    return manager;
   }
 }
