@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -59,6 +60,21 @@ public class TypeServices {
 
   public static final int DEFAULT_DATE =
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
+
+  public static final TypeService<Function<Object, Column>> CONSTANT_COLUMN_BUILDER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT ->
+                value -> {
+                  final ColumnBuilder builder = type.createColumnBuilder(1);
+                  type.writeObject(builder, value);
+                  return builder.build();
+                };
+            case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
 
   public static final TypeService<Function<String, Object>> VALUE_PARSER_NO_EXCEPTION_SERVICE =
       type ->

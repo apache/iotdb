@@ -24,20 +24,14 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public class TransformUtils {
 
@@ -54,31 +48,13 @@ public class TransformUtils {
           CommonUtils.parseValue(constantOperand.getDataType(), constantOperand.getValueString());
       if (value == null) {
         throw new UnsupportedOperationException(
-            "Invalid constant operand: " + constantOperand.getExpressionString());
+            DataNodeQueryMessages.UNSUPPORTED_CONSTANT_OPERAND
+                + constantOperand.getExpressionString());
       }
 
-      switch (constantOperand.getDataType()) {
-        case INT32:
-          return new IntColumn(1, Optional.empty(), new int[] {(int) value});
-        case INT64:
-          return new LongColumn(1, Optional.empty(), new long[] {(long) value});
-        case FLOAT:
-          return new FloatColumn(1, Optional.empty(), new float[] {(float) value});
-        case DOUBLE:
-          return new DoubleColumn(1, Optional.empty(), new double[] {(double) value});
-        case TEXT:
-          return new BinaryColumn(1, Optional.empty(), new Binary[] {(Binary) value});
-        case BOOLEAN:
-          return new BooleanColumn(1, Optional.empty(), new boolean[] {(boolean) value});
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodeQueryMessages.UNSUPPORTED_TYPE + constantOperand.getDataType());
-      }
+      return TypeServices.CONSTANT_COLUMN_BUILDER_SERVICE
+          .call(Type.fromTsDataType(constantOperand.getDataType()))
+          .apply(value);
     } catch (QueryProcessException e) {
       throw new UnsupportedOperationException(e);
     }
