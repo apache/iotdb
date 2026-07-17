@@ -80,7 +80,7 @@ public class IoTDBIPv6ClientIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + dataNode.getIpAndPortString(),
                 System.getProperty("User", "root"),
-                System.getProperty("Password", "root"));
+                System.getProperty("Password", "TimechoDB@2021"));
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ipv6_client");
       statement.execute("CREATE TIMESERIES root.ipv6_client.d1.s1 INT64");
