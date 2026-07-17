@@ -131,7 +131,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           }
         }
         for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
-          try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+          try (final PublicBAOS byteArrayOutputStream =
+                  new PublicBAOS(calculateTabletSerializedSize(tabletPair.getRight()));
               final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
             tabletPair.getRight().serialize(outputStream);
             ReadWriteIOUtils.write(true, outputStream);
@@ -192,9 +193,11 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
-        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final Tablet tablet = pipeRawTabletInsertionEvent.convertToTablet();
+        try (final PublicBAOS byteArrayOutputStream =
+                new PublicBAOS(calculateTabletSerializedSize(tablet));
             final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-          pipeRawTabletInsertionEvent.convertToTablet().serialize(outputStream);
+          tablet.serialize(outputStream);
           ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
           buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
         }
@@ -232,6 +235,10 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static long calculateTabletSizeInBytes(final Tablet tablet) {
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
+  }
+
+  private static int calculateTabletSerializedSize(final Tablet tablet) {
+    return tablet.serializedSize() + Byte.BYTES;
   }
 
   static boolean mayAppendTablet(final Tablet target, final Tablet source) {

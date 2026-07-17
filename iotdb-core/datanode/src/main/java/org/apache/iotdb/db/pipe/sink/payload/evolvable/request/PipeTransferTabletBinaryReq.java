@@ -102,12 +102,16 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS(Byte.BYTES + Short.BYTES);
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY.getType(), outputStream);
       return BytesUtils.concatByteArray(byteArrayOutputStream.toByteArray(), byteBuffer.array());
     }
+  }
+
+  static int calculateSerializedSize(final ByteBuffer byteBuffer) {
+    return Byte.BYTES + Short.BYTES + byteBuffer.limit();
   }
 
   /////////////////////////////// Object ///////////////////////////////

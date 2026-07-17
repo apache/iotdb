@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -186,7 +187,10 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     batchReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(
+                calculateSerializedSize(
+                    insertNodeBuffers, tabletBuffers, insertNodeDataBases, tabletDataBases));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       // Binary buffer, for rolling upgrade
       ReadWriteIOUtils.write(0, outputStream);
@@ -210,6 +214,27 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     return batchReq;
+  }
+
+  static int calculateSerializedSize(
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers,
+      final List<String> insertNodeDataBases,
+      final List<String> tabletDataBases) {
+    int size = Integer.BYTES * 3;
+    for (int i = 0; i < insertNodeBuffers.size(); i++) {
+      size += insertNodeBuffers.get(i).limit();
+      size += serializedStringSize(insertNodeDataBases.get(i));
+    }
+    for (int i = 0; i < tabletBuffers.size(); i++) {
+      size += tabletBuffers.get(i).limit();
+      size += serializedStringSize(tabletDataBases.get(i));
+    }
+    return size;
+  }
+
+  private static int serializedStringSize(final String value) {
+    return Integer.BYTES + (value == null ? 0 : value.getBytes(TSFileConfig.STRING_CHARSET).length);
   }
 
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(

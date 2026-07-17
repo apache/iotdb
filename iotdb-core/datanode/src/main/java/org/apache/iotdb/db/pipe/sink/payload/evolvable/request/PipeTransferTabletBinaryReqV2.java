@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -119,7 +120,8 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(byteBuffer, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
       outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
@@ -151,7 +153,8 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
 
   public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer, final String dataBaseName)
       throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(byteBuffer, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType(), outputStream);
@@ -160,6 +163,18 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  private static int serializedStringSize(final String value) {
+    return Integer.BYTES + (value == null ? 0 : value.getBytes(TSFileConfig.STRING_CHARSET).length);
+  }
+
+  static int calculateSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
+    return Integer.BYTES + byteBuffer.limit() + serializedStringSize(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
+    return Byte.BYTES + Short.BYTES + calculateSerializedSize(byteBuffer, dataBaseName);
   }
 
   /////////////////////////////// Object ///////////////////////////////
