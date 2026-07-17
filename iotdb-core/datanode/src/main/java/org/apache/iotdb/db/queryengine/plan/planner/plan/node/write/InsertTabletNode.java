@@ -827,36 +827,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
-    int size = 0;
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        size += Integer.BYTES * (end - start);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        size += Long.BYTES * (end - start);
-        break;
-      case FLOAT:
-        size += Float.BYTES * (end - start);
-        break;
-      case DOUBLE:
-        size += Double.BYTES * (end - start);
-        break;
-      case BOOLEAN:
-        size += Byte.BYTES * (end - start);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
-          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
-        }
-        break;
-    }
-    return size;
+    return Type.fromTsDataType(dataType).serializedSize(column, start, end);
   }
 
   /**
