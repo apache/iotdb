@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,6 +32,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
@@ -68,8 +70,14 @@ public class IoTDBTableMetaLeaseIT {
     EnvFactory.getEnv().shutdownDataNode(0);
     dataNodeWrapper.clearLogContent();
     EnvFactory.getEnv().startDataNode(0);
-    assertTrue(
-        "DN restart log should contain updated fence threshold",
-        dataNodeWrapper.logContains(EXPECTED_LOG));
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    "DN restart log should contain updated fence threshold",
+                    dataNodeWrapper.logContains(EXPECTED_LOG)));
+    ;
   }
 }
