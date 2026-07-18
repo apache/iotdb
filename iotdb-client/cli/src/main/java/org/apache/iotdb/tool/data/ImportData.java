@@ -525,8 +525,7 @@ public class ImportData extends AbstractDataTool {
   private static void importFromSingleFile(Session session, File file) {
     if (file.getName().endsWith(Constants.CSV_SUFFIXS)
         || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
-      try {
-        CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+      try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
