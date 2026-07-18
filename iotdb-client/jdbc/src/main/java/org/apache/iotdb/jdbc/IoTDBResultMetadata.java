@@ -83,6 +83,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }) // ignore Cognitive Complexity of methods should not be too high
   @Override
   public String getCatalogName(int column) throws SQLException {
+    checkColumnIndex(column);
     String systemSchmea = "_system_schmea";
     String system = "_system";
     String systemUser = "_system_user";
@@ -92,9 +93,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     String systemNull = "";
     String columnName = columnInfoList.get(column - 1);
     List<String> listColumns = columnInfoList;
-    if (column < 1 || column > columnInfoList.size()) {
-      throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
-    }
     if ("SHOW".equals(operationType)) {
       if ("count".equals(listColumns.get(0))) {
         return systemDatabase;
