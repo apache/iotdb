@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -810,6 +811,11 @@ public class InsertNodeMemoryEstimator {
     if (oversized) {
       REUSABLE_DEDUPLICATED_OBJECTS.remove();
     }
+  }
+
+  @TestOnly
+  static void clearReusableDeduplicatedObjectsForTest() {
+    REUSABLE_DEDUPLICATED_OBJECTS.remove();
   }
 
   private static boolean shouldCountObject(
