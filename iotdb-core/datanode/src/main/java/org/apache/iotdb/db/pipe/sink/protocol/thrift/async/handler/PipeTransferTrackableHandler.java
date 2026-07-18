@@ -109,7 +109,7 @@ public abstract class PipeTransferTrackableHandler
       return false;
     }
     try {
-      sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+      sink.waitIfReceiverRetryIsBackedOff(client.getEndPoint());
     } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
       returnClientToPool(client);
       onError(e);
@@ -299,7 +299,7 @@ public abstract class PipeTransferTrackableHandler
 
     try {
       client.setShouldReturnSelf(shouldReturnSelf);
-      sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+      sink.waitIfReceiverRetryIsBackedOff(client.getEndPoint());
       if (returnFalseIfSinkIsClosed(client)) {
         return;
       }
