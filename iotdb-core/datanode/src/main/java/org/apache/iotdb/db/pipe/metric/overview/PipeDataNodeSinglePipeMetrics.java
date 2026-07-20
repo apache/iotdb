@@ -198,11 +198,13 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public void register(final IoTDBDataRegionSource extractor) {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
-    remainingEventAndTimeOperatorMap.computeIfAbsent(
-        pipeID,
-        k ->
-            new PipeDataNodeRemainingEventAndTimeOperator(
-                extractor.getPipeName(), extractor.getCreationTime()));
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeDataNodeRemainingEventAndTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
+        .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
