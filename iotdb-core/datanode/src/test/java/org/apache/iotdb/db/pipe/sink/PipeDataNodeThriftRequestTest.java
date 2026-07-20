@@ -360,6 +360,22 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqSkipsStringInterningForSingleRawTablet()
+      throws IOException {
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(
+            PipeTransferTabletBatchReq.toTPipeTransferReq(
+                Collections.emptyList(),
+                Collections.singletonList(
+                    serializeTablet(
+                        createSingleValueTablet(new String("s1"), new String("s1")), false))));
+
+    final Tablet tablet = deserializedReq.getTabletReqs().get(0).getTablet();
+    Assert.assertEquals(tablet.deviceId, tablet.getSchemas().get(0).getMeasurementId());
+    Assert.assertNotSame(tablet.deviceId, tablet.getSchemas().get(0).getMeasurementId());
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqInternsRepeatedMeasurementNames() throws IOException {
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
     tabletBuffers.add(

@@ -190,7 +190,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertTabletNode(final InsertTabletNode node) {
-    return sizeOfInsertTabletNode(node, newDeduplicatedObjectSet());
+    return sizeOfInsertTabletNode(node, null);
   }
 
   private static long sizeOfInsertTabletNode(
@@ -205,7 +205,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertRowNode(final InsertRowNode node) {
-    return sizeOfInsertRowNode(node, newDeduplicatedObjectSet());
+    return sizeOfInsertRowNode(node, null);
   }
 
   private static long sizeOfInsertRowNode(
@@ -217,7 +217,8 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertRowsNode(final InsertRowsNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
+    final Set<Object> deduplicatedObjects =
+        newDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
     long size = INSERT_ROWS_NODE_SIZE;
     size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
@@ -227,7 +228,8 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
+    final Set<Object> deduplicatedObjects =
+        newDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
     long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
     size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
@@ -237,7 +239,8 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
-    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
+    final Set<Object> deduplicatedObjects =
+        newDeduplicatedObjectSetIfNeeded(node.getInsertTabletNodeList());
     long size = INSERT_MULTI_TABLETS_NODE_SIZE;
     size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
@@ -714,6 +717,10 @@ public class InsertNodeMemoryEstimator {
 
   private static Set<Object> newDeduplicatedObjectSet() {
     return Collections.newSetFromMap(new IdentityHashMap<>());
+  }
+
+  private static Set<Object> newDeduplicatedObjectSetIfNeeded(final List<?> children) {
+    return children != null && children.size() > 1 ? newDeduplicatedObjectSet() : null;
   }
 
   private static boolean shouldCountObject(

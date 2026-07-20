@@ -145,10 +145,19 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     updateTimestamp();
     try {
       if (noMoreState() || isFailed()) {
-        return null;
+        return new Procedure[0];
       }
 
       TState state = getCurrentState();
+      if (state == null) {
+        LOG.warn(
+            "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}",
+            getProcId(),
+            this);
+        stateFlow = Flow.NO_MORE_STATE;
+        setStateDeserialized(false);
+        return new Procedure[0];
+      }
 
       // init for the first execution
       if (states.isEmpty()) {
@@ -168,7 +177,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         subProcList.clear();
         return subProcedures;
       }
-      return (isWaiting() || isFailed() || noMoreState()) ? null : new Procedure[] {this};
+      return (isWaiting() || isFailed() || noMoreState())
+          ? new Procedure[0]
+          : new Procedure[] {this};
     } finally {
       updateTimestamp();
     }

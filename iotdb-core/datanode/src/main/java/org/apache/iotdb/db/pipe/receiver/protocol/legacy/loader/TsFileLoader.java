@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -36,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.time.ZoneId;
 
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
@@ -52,14 +50,15 @@ public class TsFileLoader implements ILoader {
   }
 
   @Override
-  public void load() {
+  public void load(final SessionInfo sessionInfo) {
     try {
       LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
-      statement.setAutoCreateDatabase(false);
+      statement.setAutoCreateDatabase(
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
 
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -67,12 +66,13 @@ public class TsFileLoader implements ILoader {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
+                  sessionInfo,
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  statement.isDebug());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
         LOGGER.error("Load TsFile result status : {}.", result.status);

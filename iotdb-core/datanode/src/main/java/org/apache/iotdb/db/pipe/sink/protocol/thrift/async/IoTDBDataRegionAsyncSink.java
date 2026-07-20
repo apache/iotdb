@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -64,6 +65,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -84,7 +86,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE;
@@ -249,6 +250,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
+      int transferredFileCount = 0;
       try {
         for (final File sealedFile : sealedFiles) {
           transfer(
@@ -262,8 +264,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   null,
                   false,
                   null));
+          transferredFileCount++;
         }
       } catch (final Exception e) {
+        for (int i = transferredFileCount; i < sealedFiles.size(); i++) {
+          FileUtils.deleteQuietly(sealedFiles.get(i));
+        }
         PipeLogger.log(LOGGER::warn, e, "Failed to transfer tsfile batch (%s).", sealedFiles);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
@@ -421,22 +427,28 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     transferTsFileCounter.incrementAndGet();
-    CompletableFuture<Void> completableFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              AsyncPipeDataTransferServiceClient client = null;
-              try {
-                client = transferTsFileClientManager.borrowClient();
-                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
-              } catch (final Exception ex) {
-                logOnClientException(client, ex);
-                pipeTransferTsFileHandler.onError(ex);
-              } finally {
-                transferTsFileCounter.decrementAndGet();
-              }
-              return null;
-            },
-            transferTsFileClientManager.getExecutor());
+    final CompletableFuture<Void> completableFuture;
+    try {
+      completableFuture =
+          CompletableFuture.supplyAsync(
+              () -> {
+                AsyncPipeDataTransferServiceClient client = null;
+                try {
+                  client = transferTsFileClientManager.borrowClient();
+                  pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
+                } catch (final Exception ex) {
+                  logOnClientException(client, ex);
+                  pipeTransferTsFileHandler.onError(ex);
+                } finally {
+                  transferTsFileCounter.decrementAndGet();
+                }
+                return null;
+              },
+              transferTsFileClientManager.getExecutor());
+    } catch (final RuntimeException e) {
+      transferTsFileCounter.decrementAndGet();
+      throw e;
+    }
 
     if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {
@@ -527,6 +539,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary(final boolean forced) {
+    throwIfReceiverProbeIsDelayed();
+
     if ((retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty())
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
@@ -587,6 +601,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
           LOGGER.debug("Polled event {} from retry queue.", polledEvent);
         }
       }
+
+      throwIfReceiverProbeIsDelayed();
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
       if (System.currentTimeMillis() - retryStartTime
@@ -735,19 +751,56 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       return;
     }
 
-    while (!isClosed.get()) {
-      final long waitTimeInMs = backoff.getRemainingWaitTimeInMs();
-      if (waitTimeInMs <= 0) {
-        return;
+    while (!isClosed.get() && backoff.isActive()) {
+      if (backoff.isRetryMaxDurationExceeded()) {
+        final long probeDelayInMs = backoff.tryAcquireProbeAndGetDelayInMs();
+        if (probeDelayInMs <= 0) {
+          return;
+        }
+        throw createReceiverProbeDelayException(endPointKey, backoff);
       }
 
-      try {
-        Thread.sleep(waitTimeInMs);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return;
+      final long retryTimeInMs = backoff.reserveNextRetryTimeInMs();
+      while (!isClosed.get() && backoff.isActive()) {
+        if (backoff.isRetryMaxDurationExceeded()) {
+          break;
+        }
+
+        final long waitTimeInMs = retryTimeInMs - System.currentTimeMillis();
+        if (waitTimeInMs <= 0) {
+          return;
+        }
+
+        try {
+          Thread.sleep(Math.min(waitTimeInMs, 1000L));
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return;
+        }
       }
     }
+  }
+
+  private void throwIfReceiverProbeIsDelayed() {
+    for (final Map.Entry<String, ReceiverTemporaryUnavailableBackoff> entry :
+        receiverBackoffMap.entrySet()) {
+      final long probeDelayInMs = entry.getValue().getRemainingProbeDelayInMs();
+      if (probeDelayInMs <= 0) {
+        continue;
+      }
+
+      throw createReceiverProbeDelayException(entry.getKey(), entry.getValue());
+    }
+  }
+
+  private static PipeRuntimeSinkNonReportTimeConfigurableException
+      createReceiverProbeDelayException(
+          final String endPointKey, final ReceiverTemporaryUnavailableBackoff backoff) {
+    return new PipeRuntimeSinkNonReportTimeConfigurableException(
+        String.format(
+            "Receiver %s remained temporarily unavailable for more than %d ms, pause regular retries and probe every %d ms.",
+            endPointKey, backoff.getRetryMaxDurationInMs(), backoff.getRetryProbeIntervalInMs()),
+        Long.MAX_VALUE);
   }
 
   public void recordReceiverStatus(final TEndPoint endPoint, final TSStatus status) {
@@ -769,10 +822,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             status);
       }
     } else if (isSuccess(status)) {
-      final ReceiverTemporaryUnavailableBackoff backoff = receiverBackoffMap.get(endPointKey);
-      if (Objects.nonNull(backoff) && backoff.getRemainingWaitTimeInMs() <= 0) {
-        receiverBackoffMap.remove(endPointKey, backoff);
-      }
+      receiverBackoffMap.computeIfPresent(
+          endPointKey,
+          (key, backoff) -> {
+            if (!backoff.shouldResetOnSuccess()) {
+              return backoff;
+            }
+            backoff.markAvailable();
+            return null;
+          });
     }
   }
 
@@ -982,23 +1040,90 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
     private final long maxBackoffTimeInMs =
         Math.max(0, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs());
-    private final AtomicLong currentBackoffTimeInMs =
-        new AtomicLong(
-            Math.min(
-                Math.max(1, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
-                maxBackoffTimeInMs));
-    private final AtomicLong nextAvailableTimeInMs = new AtomicLong(0);
+    private final long initialBackoffTimeInMs =
+        Math.min(
+            Math.max(1, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
+            maxBackoffTimeInMs);
+    private final long retryMaxDurationInMs =
+        PipeConfig.getInstance().getPipeAsyncSinkRetryMaxDurationMs();
+    private final long retryProbeIntervalInMs =
+        Math.max(1, PipeConfig.getInstance().getPipeAsyncSinkRetryProbeIntervalMs());
 
-    private long markTemporarilyUnavailable() {
-      final long backoffTimeInMs = currentBackoffTimeInMs.get();
-      nextAvailableTimeInMs.updateAndGet(
-          current -> Math.max(current, System.currentTimeMillis() + backoffTimeInMs));
-      currentBackoffTimeInMs.updateAndGet(this::getNextBackoffTimeInMs);
+    private boolean active = false;
+    private long firstUnavailableTimeInMs = 0;
+    private long currentBackoffTimeInMs = initialBackoffTimeInMs;
+    private long failureBackoffUntilInMs = 0;
+    private long nextReservedRetryTimeInMs = 0;
+    private long nextProbeTimeInMs = 0;
+
+    private synchronized long markTemporarilyUnavailable() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      if (!active) {
+        active = true;
+        firstUnavailableTimeInMs = currentTimeInMs;
+        currentBackoffTimeInMs = initialBackoffTimeInMs;
+        failureBackoffUntilInMs = 0;
+        nextReservedRetryTimeInMs = 0;
+        nextProbeTimeInMs = 0;
+      }
+
+      final long backoffTimeInMs = currentBackoffTimeInMs;
+      failureBackoffUntilInMs =
+          Math.max(failureBackoffUntilInMs, safeAdd(currentTimeInMs, backoffTimeInMs));
+      nextReservedRetryTimeInMs = Math.max(nextReservedRetryTimeInMs, failureBackoffUntilInMs);
+      currentBackoffTimeInMs = getNextBackoffTimeInMs(currentBackoffTimeInMs);
       return backoffTimeInMs;
     }
 
-    private long getRemainingWaitTimeInMs() {
-      return nextAvailableTimeInMs.get() - System.currentTimeMillis();
+    private synchronized boolean isActive() {
+      return active;
+    }
+
+    private synchronized boolean isRetryMaxDurationExceeded() {
+      return active
+          && retryMaxDurationInMs >= 0
+          && System.currentTimeMillis() - firstUnavailableTimeInMs >= retryMaxDurationInMs;
+    }
+
+    private synchronized long reserveNextRetryTimeInMs() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      final long retryTimeInMs =
+          Math.max(currentTimeInMs, Math.max(failureBackoffUntilInMs, nextReservedRetryTimeInMs));
+      nextReservedRetryTimeInMs = safeAdd(retryTimeInMs, currentBackoffTimeInMs);
+      return retryTimeInMs;
+    }
+
+    private synchronized long tryAcquireProbeAndGetDelayInMs() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      if (currentTimeInMs >= nextProbeTimeInMs) {
+        nextProbeTimeInMs = safeAdd(currentTimeInMs, retryProbeIntervalInMs);
+        return 0;
+      }
+      return nextProbeTimeInMs - currentTimeInMs;
+    }
+
+    private synchronized long getRemainingProbeDelayInMs() {
+      return isRetryMaxDurationExceeded()
+          ? Math.max(0, nextProbeTimeInMs - System.currentTimeMillis())
+          : 0;
+    }
+
+    private synchronized boolean shouldResetOnSuccess() {
+      return active
+          && (isRetryMaxDurationExceeded()
+              || failureBackoffUntilInMs - System.currentTimeMillis() <= 0);
+    }
+
+    private synchronized void markAvailable() {
+      active = false;
+    }
+
+    private long getRetryMaxDurationInMs() {
+      return retryMaxDurationInMs;
+    }
+
+    private long getRetryProbeIntervalInMs() {
+      return retryProbeIntervalInMs;
     }
 
     private long getNextBackoffTimeInMs(final long currentBackoffTimeInMs) {
@@ -1008,6 +1133,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       return currentBackoffTimeInMs >= maxBackoffTimeInMs - currentBackoffTimeInMs
           ? maxBackoffTimeInMs
           : currentBackoffTimeInMs << 1;
+    }
+
+    private static long safeAdd(final long left, final long right) {
+      return left >= Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
     }
   }
 }

@@ -84,7 +84,7 @@ public class LoadTsFileDispatcherImplTest {
             null,
             0,
             null,
-            false,
+            0,
             false);
     final TConsensusGroupId consensusGroupId = new DataRegionId(1).convertToTConsensusGroupId();
     instance.setExecutorAndHost(

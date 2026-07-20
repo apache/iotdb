@@ -20,16 +20,25 @@
 package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.protocol.rest.handler.QueryRowLimitUtils;
 import org.apache.iotdb.db.protocol.rest.v2.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.v2.model.PrefixPathList;
+import org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.read.TimeValuePair;
 
 import javax.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class FastLastHandler {
 
@@ -59,8 +68,7 @@ public class FastLastHandler {
         .build();
   }
 
-  public static void setupTargetDataSet(
-      org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet dataSet) {
+  public static void setupTargetDataSet(QueryDataSet dataSet) {
     dataSet.addExpressionsItem("Timeseries");
     dataSet.addExpressionsItem("Value");
     dataSet.addExpressionsItem("DataType");
@@ -69,5 +77,52 @@ public class FastLastHandler {
     dataSet.addDataTypesItem("TEXT");
     dataSet.setValues(new ArrayList<>());
     dataSet.setTimestamps(new ArrayList<>());
+  }
+
+  /**
+   * Builds the fastLastQuery response directly from cached last values. The number of materialized
+   * entries is capped by {@code actualRowSizeLimit}; once exceeded an "exceeded max row size"
+   * response is returned instead of materializing the whole cache into heap.
+   *
+   * @param resultMap last values keyed by device/measurement, as filled by the schema cache
+   * @param actualRowSizeLimit hard cap on the number of returned rows
+   */
+  public static Response fillLastValueDataSet(
+      Map<PartialPath, Map<String, TimeValuePair>> resultMap, int actualRowSizeLimit) {
+    QueryDataSet targetDataSet = new QueryDataSet();
+    setupTargetDataSet(targetDataSet);
+    List<Object> timeseries = new ArrayList<>();
+    List<Object> valueList = new ArrayList<>();
+    List<Object> dataTypeList = new ArrayList<>();
+    int fetched = 0;
+
+    for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
+        resultMap.entrySet()) {
+      final String deviceWithSeparator =
+          device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
+      for (Map.Entry<String, TimeValuePair> measurementEntry :
+          device2MeasurementLastEntry.getValue().entrySet()) {
+        final TimeValuePair tvPair = measurementEntry.getValue();
+        if (tvPair == null
+            || tvPair == DeviceLastCache.EMPTY_TIME_VALUE_PAIR
+            || tvPair.getValue() == null) {
+          continue;
+        }
+        if (QueryRowLimitUtils.exceedsLimit(fetched, 1, actualRowSizeLimit)) {
+          return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+        }
+        valueList.add(tvPair.getValue().getStringValue());
+        dataTypeList.add(tvPair.getValue().getDataType().name());
+        targetDataSet.addTimestampsItem(tvPair.getTimestamp());
+        timeseries.add(deviceWithSeparator + measurementEntry.getKey());
+        fetched++;
+      }
+    }
+    if (!timeseries.isEmpty()) {
+      targetDataSet.addValuesItem(timeseries);
+      targetDataSet.addValuesItem(valueList);
+      targetDataSet.addValuesItem(dataTypeList);
+    }
+    return Response.ok().entity(targetDataSet).build();
   }
 }

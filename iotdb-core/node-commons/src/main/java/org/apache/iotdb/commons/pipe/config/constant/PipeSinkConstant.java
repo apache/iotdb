@@ -71,7 +71,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
-  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
 
   public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
     return parameters.getBooleanOrDefault(
@@ -359,6 +359,9 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
   public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
+  public static final String CONNECTOR_USE_EVENT_USER_NAME_KEY = "connector.use-event-user-name";
+  public static final String SINK_USE_EVENT_USER_NAME_KEY = "sink.use-event-user-name";
+  public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
 
   private PipeSinkConstant() {
     throw new IllegalStateException("Utility class");

@@ -229,7 +229,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    if (isGeneratedByPipe) {
+      LOGGER.debug("Load - Analysis Stage: all tsfiles have been analyzed.");
+    } else {
+      LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    }
 
     if (reconstructStatementIfMiniFileConverted()) {
       // All mini tsfiles are converted to tablets, so the analysis is finished.
@@ -287,22 +291,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
         }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
+        logAnalyzeProgress(i + 1, tsfileNum);
         continue;
       }
 
       final long startTime = System.nanoTime();
       try {
         analyzeSingleTsFile(tsFile, i);
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
+        logAnalyzeProgress(i + 1, tsfileNum);
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
@@ -337,6 +333,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     return true;
+  }
+
+  private void logAnalyzeProgress(final int analyzedTsFileNum, final int totalTsFileNum) {
+    if (isGeneratedByPipe && !LOGGER.isDebugEnabled()) {
+      return;
+    }
+    if (!isGeneratedByPipe && !LOGGER.isInfoEnabled()) {
+      return;
+    }
+
+    final String progress = String.format("%.3f", analyzedTsFileNum * 100.00 / totalTsFileNum);
+    if (isGeneratedByPipe) {
+      LOGGER.debug(
+          "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+          analyzedTsFileNum, totalTsFileNum, progress);
+    } else {
+      LOGGER.info(
+          "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+          analyzedTsFileNum, totalTsFileNum, progress);
+    }
   }
 
   private void analyzeSingleTsFile(final File tsFile, int index) throws Exception {

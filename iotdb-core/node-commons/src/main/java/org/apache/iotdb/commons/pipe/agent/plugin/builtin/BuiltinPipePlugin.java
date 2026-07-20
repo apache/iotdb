@@ -126,6 +126,16 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
+  // used to distinguish between builtin and external sources
+  public static final Set<String> BUILTIN_SOURCES =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  DO_NOTHING_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_EXTRACTOR.getPipePluginName().toLowerCase(),
+                  DO_NOTHING_SOURCE.getPipePluginName().toLowerCase(),
+                  IOTDB_SOURCE.getPipePluginName().toLowerCase())));
+
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
           new HashSet<>(
