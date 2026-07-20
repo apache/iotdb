@@ -57,6 +57,7 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.BufferedTsFileInput;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
@@ -156,11 +157,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader =
-          new TsFileSequenceReader(
-              tsFile.getAbsolutePath(),
-              !currentModifications.isEmpty(),
-              !currentModifications.isEmpty());
+      tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
@@ -191,6 +188,35 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         false,
         sourceEvent,
         isWithMod);
+  }
+
+  private static TsFileSequenceReader createTsFileSequenceReader(
+      final File tsFile, final boolean hasModifications) throws IOException {
+    if (hasModifications) {
+      return new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
+    }
+
+    final BufferedTsFileInput input = new BufferedTsFileInput(tsFile.toPath());
+    try {
+      final ByteBuffer versionBuffer = ByteBuffer.allocate(Byte.BYTES);
+      if (input.read(versionBuffer, TSFileConfig.MAGIC_STRING.getBytes().length) == Byte.BYTES) {
+        versionBuffer.flip();
+        if (versionBuffer.get() == TSFileConfig.VERSION_NUMBER) {
+          return new TsFileSequenceReader(input, false);
+        }
+      }
+    } catch (final IOException | RuntimeException | Error e) {
+      try {
+        input.close();
+      } catch (final IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
+    }
+
+    // The TsFileInput constructor does not initialize the compatibility deserializer.
+    input.close();
+    return new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
   }
 
   @Override
