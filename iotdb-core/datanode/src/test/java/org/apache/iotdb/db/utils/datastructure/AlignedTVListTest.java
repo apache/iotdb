@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ArrayUtils;
@@ -27,7 +30,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class AlignedTVListTest {
 
@@ -140,6 +146,51 @@ public class AlignedTVListTest {
             "[null, null, null, null, null]", tvList.getAlignedValue((int) i).toString());
       }
     }
+  }
+
+  @Test
+  public void testBitmapIsAllocatedLazilyWithCompactBackingArray() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    Object[] values = new Object[] {1L, 1L};
+    for (int i = 0; i < ARRAY_SIZE * 2 + 1; i++) {
+      tvList.putAlignedValue(i, values);
+    }
+
+    Assert.assertNull(tvList.getBitMaps());
+    tvList.putAlignedValue(ARRAY_SIZE * 2 + 1L, new Object[] {null, 1L});
+
+    List<BitMap> firstColumnBitMaps = tvList.getBitMaps().get(0);
+    Assert.assertEquals(3, firstColumnBitMaps.size());
+    Assert.assertNull(firstColumnBitMaps.get(0));
+    Assert.assertNull(firstColumnBitMaps.get(1));
+    Assert.assertNotNull(firstColumnBitMaps.get(2));
+    Assert.assertEquals(
+        BitMap.getSizeOfBytes(ARRAY_SIZE), firstColumnBitMaps.get(2).getByteArray().length);
+    Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
+    Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
+  }
+
+  @Test
+  public void testEmptyInputBitmapsDoNotMaterializeMemTableBitmaps() {
+    AlignedTVList tvList = AlignedTVList.newAlignedList(List.of(TSDataType.INT64));
+    long[] times = new long[ARRAY_SIZE];
+    long[][] values = new long[1][ARRAY_SIZE];
+    BitMap[] bitMaps = new BitMap[] {new BitMap(ARRAY_SIZE)};
+    TSStatus[] results = new TSStatus[ARRAY_SIZE];
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      times[i] = i;
+      values[0][i] = i;
+    }
+
+    tvList.putAlignedValues(times, values, bitMaps, 0, ARRAY_SIZE, results);
+
+    Assert.assertNull(tvList.getBitMaps());
+
+    Arrays.fill(results, new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    tvList.putAlignedValues(times, values, bitMaps, 0, ARRAY_SIZE, results);
+
+    Assert.assertNull(tvList.getBitMaps());
   }
 
   @Test
