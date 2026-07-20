@@ -352,6 +352,22 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testInsertTabletsWithoutRedirectIgnoresRowRedirectStatus()
+      throws IoTDBConnectionException, StatementExecutionException, TException {
+    final TSStatus first = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+    first.setRedirectNode(new TEndPoint("127.0.0.2", 6667));
+    final TSStatus second = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+    second.setRedirectNode(new TEndPoint("127.0.0.3", 6667));
+    final TSStatus status = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+    status.setSubStatus(Arrays.asList(first, second));
+    Mockito.when(client.insertTablets(any())).thenReturn(status);
+
+    sessionConnection.insertTabletsWithoutRedirect(new TSInsertTabletsReq());
+
+    Mockito.verify(client).insertTablets(any(TSInsertTabletsReq.class));
+  }
+
+  @Test
   public void testDeleteEmptyTimeseries()
       throws IoTDBConnectionException, StatementExecutionException, TException {
     sessionConnection.deleteTimeseries(Collections.emptyList());

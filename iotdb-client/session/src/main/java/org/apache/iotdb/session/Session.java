@@ -2874,15 +2874,25 @@ public class Session implements ISession {
    */
   public void insertRelationalTablets(List<Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (tablets.isEmpty()) {
+      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
+    }
+    final List<Tablet> nonEmptyTablets = new ArrayList<>(tablets.size());
+    for (final Tablet tablet : tablets) {
+      if (tablet.getRowSize() > 0) {
+        nonEmptyTablets.add(tablet);
+      }
+    }
+    if (nonEmptyTablets.isEmpty()) {
+      return;
+    }
+    tablets = nonEmptyTablets;
     final boolean recordMergeTabletsCost = enableMergeTablets;
     long mergeTabletsCost = 0;
     if (enableMergeTablets) {
       final long mergeTabletsStartTime = System.nanoTime();
       tablets = mergeRelationalTablets(tablets);
       mergeTabletsCost = System.nanoTime() - mergeTabletsStartTime;
-    }
-    if (tablets.isEmpty()) {
-      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
     }
     final long insertTabletsStartTime = System.nanoTime();
     if (enableRedirection) {
@@ -2893,10 +2903,7 @@ public class Session implements ISession {
       for (Tablet tablet : tablets) {
         request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
       }
-      try {
-        getDefaultSessionConnection().insertTablets(request);
-      } catch (RedirectException ignored) {
-      }
+      getDefaultSessionConnection().insertTabletsWithoutRedirect(request);
     }
     if (recordMergeTabletsCost) {
       recordMergeTabletsCost(mergeTabletsCost, System.nanoTime() - insertTabletsStartTime);
