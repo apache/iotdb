@@ -30,8 +30,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -79,28 +81,34 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testConcurrentAddAndRemove() throws InterruptedException {
+  public void testConcurrentAddAndRemove() throws Exception {
     final int numberOfAdds = 500;
     final ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    // Thread 1 adds elements to the queue
-    executor.submit(
-        () -> {
-          for (int i = 0; i < numberOfAdds; i++) {
-            queue.add(i);
-          }
-        });
+    try {
+      // Thread 1 adds elements to the queue
+      final Future<?> addFuture =
+          executor.submit(
+              () -> {
+                for (int i = 0; i < numberOfAdds; i++) {
+                  queue.add(i);
+                }
+              });
 
-    // Thread 2 removes elements before a certain index
-    executor.submit(
-        () -> {
-          for (int i = 0; i < numberOfAdds; i += 10) {
-            queue.tryRemoveBefore(i);
-          }
-        });
+      // Thread 2 removes elements before a certain index
+      final Future<?> removeFuture =
+          executor.submit(
+              () -> {
+                for (int i = 0; i < numberOfAdds; i += 10) {
+                  queue.tryRemoveBefore(i);
+                }
+              });
 
-    executor.shutdown();
-    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+      addFuture.get(10, TimeUnit.SECONDS);
+      removeFuture.get(10, TimeUnit.SECONDS);
+    } finally {
+      shutdownExecutor(executor);
+    }
 
     // Validate the state of the queue
     // The actual state depends on the timing of add and remove operations
@@ -109,34 +117,48 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testIterateFromEmptyQueue() {
+  public void testIterateFromEmptyQueue() throws Exception {
     final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
-
-    final AtomicInteger value = new AtomicInteger(-1);
-    new Thread(() -> value.set(itr.next())).start();
-    queue.add(3);
-    Awaitility.await().untilAsserted(() -> Assert.assertEquals(3, value.get()));
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<Integer> valueFuture =
+          executor.submit(
+              () -> {
+                return itr.next();
+              });
+      queue.add(3);
+      Assert.assertEquals(Integer.valueOf(3), valueFuture.get(10, TimeUnit.SECONDS));
+    } finally {
+      shutdownExecutor(executor);
+    }
   }
 
   @Test(timeout = 60000)
-  public void testContinuousEmptyNext() throws InterruptedException {
+  public void testContinuousEmptyNext() throws Exception {
     final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
-    final AtomicInteger consumedValue = new AtomicInteger(0);
-    new Thread(
-            () -> {
-              while (true) {
-                Integer value = itr.next(0);
-                if (value != null) {
-                  consumedValue.set(value);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch emptyRead = new CountDownLatch(1);
+    try {
+      final Future<Integer> consumedValueFuture =
+          executor.submit(
+              () -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                  final Integer value = itr.next(0);
+                  if (value != null) {
+                    return value;
+                  }
+                  emptyRead.countDown();
                 }
-              }
-            })
-        .start();
-    Thread.sleep(6000);
-    queue.add(1);
-    Awaitility.await()
-        .atMost(100, TimeUnit.SECONDS)
-        .untilAsserted(() -> Assert.assertEquals(1, consumedValue.get()));
+                return null;
+              });
+
+      Assert.assertTrue(emptyRead.await(10, TimeUnit.SECONDS));
+      queue.add(1);
+      Assert.assertEquals(Integer.valueOf(1), consumedValueFuture.get(10, TimeUnit.SECONDS));
+    } finally {
+      itr.close();
+      shutdownExecutor(executor);
+    }
   }
 
   @Test(timeout = 60000)
@@ -180,7 +202,7 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testIntegratedOperations() {
+  public void testIntegratedOperations() throws Exception {
     queue.add(1);
     queue.add(2);
     Assert.assertEquals(1, queue.tryRemoveBefore(1));
@@ -192,10 +214,18 @@ public class ConcurrentIterableLinkedQueueTest {
 
     final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it2 = queue.iterateFromLatest();
     Assert.assertEquals(2, it2.getNextIndex());
-    final AtomicInteger value = new AtomicInteger(-1);
-    new Thread(() -> value.set(it2.next())).start();
-    queue.add(3);
-    Awaitility.await().untilAsserted(() -> Assert.assertEquals(3, value.get()));
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<Integer> valueFuture =
+          executor.submit(
+              () -> {
+                return it2.next();
+              });
+      queue.add(3);
+      Assert.assertEquals(Integer.valueOf(3), valueFuture.get(10, TimeUnit.SECONDS));
+    } finally {
+      shutdownExecutor(executor);
+    }
 
     Assert.assertEquals(1, it.seek(Integer.MIN_VALUE));
     Assert.assertEquals(2, (int) it.next());
@@ -288,37 +318,37 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testConcurrentExceptionHandling() throws InterruptedException {
+  public void testConcurrentExceptionHandling() throws Exception {
     final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch iteratorCreated = new CountDownLatch(1);
+    try {
+      final Future<Boolean> clearFuture =
+          executor.submit(
+              () -> {
+                queue.add(1);
+                if (!iteratorCreated.await(10, TimeUnit.SECONDS)) {
+                  return false;
+                }
+                queue.clear();
+                return true;
+              });
 
-    executor.submit(
-        () -> {
-          queue.add(1);
-          try {
-            Thread.sleep(500); // Wait for the iterator to start
-          } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-          }
-          queue.clear();
-        });
+      final Future<?> iteratorFuture =
+          executor.submit(
+              () -> {
+                final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr =
+                    queue.iterateFromEarliest();
+                iteratorCreated.countDown();
+                while (itr.hasNext()) {
+                  itr.next();
+                }
+              });
 
-    final AtomicBoolean caughtException = new AtomicBoolean(false);
-    executor.submit(
-        () -> {
-          try {
-            final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr =
-                queue.iterateFromEarliest();
-            while (itr.hasNext()) {
-              itr.next();
-            }
-          } catch (Exception e) {
-            caughtException.set(true);
-          }
-        });
-
-    executor.shutdown();
-    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
-    Assert.assertFalse(caughtException.get());
+      Assert.assertTrue(clearFuture.get(10, TimeUnit.SECONDS));
+      iteratorFuture.get(10, TimeUnit.SECONDS);
+    } finally {
+      shutdownExecutor(executor);
+    }
   }
 
   @Test(timeout = 60000)
@@ -337,17 +367,21 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testMultiThreadedConsistency() throws InterruptedException {
+  public void testMultiThreadedConsistency() throws Exception {
     final int numberOfElements = 1000;
     final ExecutorService executor = Executors.newFixedThreadPool(10);
-
-    for (int i = 0; i < numberOfElements; i++) {
-      int finalI = i;
-      executor.submit(() -> queue.add(finalI));
+    final List<Future<?>> addFutures = new ArrayList<>(numberOfElements);
+    try {
+      for (int i = 0; i < numberOfElements; i++) {
+        int finalI = i;
+        addFutures.add(executor.submit(() -> queue.add(finalI)));
+      }
+      for (final Future<?> addFuture : addFutures) {
+        addFuture.get(10, TimeUnit.SECONDS);
+      }
+    } finally {
+      shutdownExecutor(executor);
     }
-
-    executor.shutdown();
-    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
 
     final ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFromEarliest();
     final HashSet<Integer> elements = new HashSet<>();
@@ -388,27 +422,32 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void testIteratorConcurrentAccess() throws InterruptedException {
+  public void testIteratorConcurrentAccess() throws Exception {
     for (int i = 0; i < 100; i++) {
       queue.add(i);
     }
 
     final ExecutorService executor = Executors.newFixedThreadPool(10);
     final AtomicInteger count = new AtomicInteger(0);
-
-    for (int i = 0; i < 10; i++) {
-      executor.submit(
-          () -> {
-            ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
-            while (itr.hasNext()) {
-              itr.next();
-              count.incrementAndGet();
-            }
-          });
+    final List<Future<?>> iteratorFutures = new ArrayList<>(10);
+    try {
+      for (int i = 0; i < 10; i++) {
+        iteratorFutures.add(
+            executor.submit(
+                () -> {
+                  ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+                  while (itr.hasNext()) {
+                    itr.next();
+                    count.incrementAndGet();
+                  }
+                }));
+      }
+      for (final Future<?> iteratorFuture : iteratorFutures) {
+        iteratorFuture.get(10, TimeUnit.SECONDS);
+      }
+    } finally {
+      shutdownExecutor(executor);
     }
-
-    executor.shutdown();
-    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
     Assert.assertEquals(1000, count.get()); // 100 elements iterated by 10 threads
   }
 
@@ -501,5 +540,10 @@ public class ConcurrentIterableLinkedQueueTest {
       Assert.assertEquals(Integer.valueOf(3), itr.next());
       Assert.assertFalse(itr.hasNext());
     }
+  }
+
+  private static void shutdownExecutor(final ExecutorService executor) throws InterruptedException {
+    executor.shutdownNow();
+    Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
   }
 }
