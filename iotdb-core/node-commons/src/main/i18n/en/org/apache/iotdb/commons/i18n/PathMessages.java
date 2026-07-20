@@ -49,4 +49,10 @@ public final class PathMessages {
       "Only accept MeasurementPath and AlignedPath.";
 
   private PathMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_NODES_LENGTH_MEASUREMENTPATH_SHOULD_ALWAYS_GREATER_THAN_2_CURRENT_39B913AE = "nodes.length for MeasurementPath should always be greater than 2, current is: ";
+  public static final String EXCEPTION_WILDCARDS_NOT_ALLOWED_PREFIX_PATH_948C42D1 = "Wildcards are not allowed in the prefix path: ";
+
 }

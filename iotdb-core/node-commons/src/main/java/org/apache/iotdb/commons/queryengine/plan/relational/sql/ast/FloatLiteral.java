@@ -40,7 +40,8 @@ public class FloatLiteral extends Literal {
 
   public FloatLiteral(String value) {
     super(null);
-    this.value = Float.parseFloat(requireNonNull(value, "value is null"));
+    this.value =
+        Float.parseFloat(requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF));
   }
 
   public FloatLiteral(float value) {

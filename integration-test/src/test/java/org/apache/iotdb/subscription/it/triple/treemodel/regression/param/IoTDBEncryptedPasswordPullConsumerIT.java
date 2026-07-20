@@ -152,6 +152,7 @@ public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTr
         .encryptedPassword(encryptedPassword)
         .consumerId("consumer_" + consumerGroupId)
         .consumerGroupId(consumerGroupId)
+        .autoCommit(false)
         .buildPullConsumer();
   }
 

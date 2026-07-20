@@ -71,6 +71,11 @@ public class OperatorContext extends CommonOperatorContext {
     return getInstanceContext().getSessionInfo();
   }
 
+  public boolean isHighestPriority() {
+    FragmentInstanceContext instanceContext = getInstanceContext();
+    return instanceContext != null && instanceContext.isHighestPriority();
+  }
+
   @Override
   public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
     if (driverContext != null && driverContext.getFragmentInstanceContext() != null) {

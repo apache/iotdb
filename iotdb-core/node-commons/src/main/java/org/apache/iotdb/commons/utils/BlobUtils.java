@@ -36,7 +36,7 @@ public class BlobUtils {
       CharMatcher.inRange('A', 'F').or(CharMatcher.inRange('0', '9')).precomputed();
 
   public static byte[] parseBlobString(String value) {
-    requireNonNull(value, "value is null");
+    requireNonNull(value, UtilMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     if (value.length() < 3 || !value.startsWith("X'") || !value.endsWith("'")) {
       throw new IllegalArgumentException(UtilMessages.BLOB_MUST_BE_HEX_STRING);
     }

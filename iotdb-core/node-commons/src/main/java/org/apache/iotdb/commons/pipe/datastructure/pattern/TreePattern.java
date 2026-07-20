@@ -23,8 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -665,7 +664,9 @@ public abstract class TreePattern {
           break;
         default:
           LOGGER.info(
-              "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
+              PipeMessages
+                  .LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC,
+              patternFormat);
           patterns =
               parseMultiplePatterns(
                   pattern, p -> new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, p));
@@ -770,19 +771,7 @@ public abstract class TreePattern {
   }
 
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
-    return sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
-        || sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
-            sourceParameters
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+    return VisibilityUtils.isTreeModelDataAllowToBeCaptured(sourceParameters);
   }
 
   /**

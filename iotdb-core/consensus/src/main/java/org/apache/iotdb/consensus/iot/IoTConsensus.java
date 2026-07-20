@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -343,7 +344,10 @@ public class IoTConsensus implements IConsensus {
       try {
         callback.accept(groupId, stateMachineMap.get(groupId));
       } catch (final Exception e) {
-        logger.warn("onNewPeerCreated callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,
+            groupId,
+            e);
       }
     }
   }
@@ -359,7 +363,8 @@ public class IoTConsensus implements IConsensus {
       try {
         removeCallback.accept(groupId);
       } catch (final Exception e) {
-        logger.warn("onPeerRemoved callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF, groupId, e);
       }
     }
 
@@ -374,7 +379,9 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    FileUtils.deleteFileOrDirectoryWithRateLimiter(
+        new File(buildPeerDir(storageDir, groupId)),
+        RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 

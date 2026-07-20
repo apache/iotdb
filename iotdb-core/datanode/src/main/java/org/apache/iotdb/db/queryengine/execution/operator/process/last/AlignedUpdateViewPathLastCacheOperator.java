@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
@@ -55,7 +56,9 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
         needUpdateCache,
         needUpdateNullEntry,
         deviceInMultiRegion);
-    checkArgument(outputPaths != null, "outputPaths shouldn't be null");
+    checkArgument(
+        outputPaths != null,
+        DataNodeQueryMessages.EXCEPTION_OUTPUTPATHS_SHOULDN_QUOTE_T_BE_NULL_BF3F5FB4);
     this.outputPaths = outputPaths;
   }
 

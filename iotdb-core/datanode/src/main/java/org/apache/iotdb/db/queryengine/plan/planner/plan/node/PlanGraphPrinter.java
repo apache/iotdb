@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -697,6 +698,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       boxValue.add(
           String.format(
               "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
+      String topKRuntimeFilterSourceId = deviceTableScanNode.getTopKRuntimeFilterSourceId();
+      if (topKRuntimeFilterSourceId != null) {
+        boxValue.add(String.format("TOPN OPT: %s", topKRuntimeFilterSourceId));
+      }
     }
 
     boxValue.add(
@@ -1048,6 +1053,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     boxValue.add(String.format("Count: %s", node.getCount()));
+    if (node.getTopKRuntimeFilterSourceId() != null) {
+      boxValue.add("TOPN OPT");
+    }
     return render(node, boxValue, context);
   }
 
@@ -1418,7 +1426,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
-        Validate.isTrue(!childBoxString.isEmpty(), "Lines of box string should be greater than 0");
+        Validate.isTrue(
+            !childBoxString.isEmpty(),
+            DataNodeQueryMessages.EXCEPTION_LINES_OF_BOX_STRING_SHOULD_BE_GREATER_THAN_0_5DB8C047);
         childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;
