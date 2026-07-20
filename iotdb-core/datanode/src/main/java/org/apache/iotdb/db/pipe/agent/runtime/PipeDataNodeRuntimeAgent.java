@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -38,7 +39,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -70,6 +72,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
       new PipePeriodicalPhantomReferenceCleaner();
 
+  private PipeMemoryBlock pipeLogReducerMemoryBlock;
+
   //////////////////////////// System Service Interface ////////////////////////////
 
   public synchronized void preparePipeResources(
@@ -85,7 +89,23 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     IoTDBPipePattern.setDevicePathGetter(CompactionPathUtils::getPath);
     IoTDBPipePattern.setMeasurementPathGetter(CompactionPathUtils::getPath);
-    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
+    initLoggerPeriodicalLogReducer();
+  }
+
+  private void initLoggerPeriodicalLogReducer() {
+    if (pipeLogReducerMemoryBlock == null) {
+      pipeLogReducerMemoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+    }
+
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(
+        targetSizeInBytes -> {
+          PipeDataNodeResourceManager.memory()
+              .resize(pipeLogReducerMemoryBlock, Math.max(0, targetSizeInBytes), false);
+          return pipeLogReducerMemoryBlock.getMemoryUsageInBytes();
+        });
+    PipeLogger.setLogger(LoggerPeriodicalLogReducer::log);
   }
 
   @Override

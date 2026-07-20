@@ -69,6 +69,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   protected long firstEventProcessingTime = Long.MIN_VALUE;
 
   // limit in buffer size
+  protected final long maxBatchSizeInBytes;
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
 
@@ -90,33 +91,12 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     this.consensusGroupId = consensusGroupId;
     this.thisDataNodeId = thisDataNodeId;
 
-    final long requestMaxBatchSizeInBytes =
+    maxBatchSizeInBytes =
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
 
-    allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(requestMaxBatchSizeInBytes)
-            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 0))
-            .setShrinkCallback(
-                (oldMemory, newMemory) ->
-                    LOGGER.info(
-                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
-            .setExpandMethod(
-                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
-            .setExpandCallback(
-                (oldMemory, newMemory) ->
-                    LOGGER.info(
-                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
-
-    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
-      LOGGER.info(
-          "PipeConsensusTransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
-              + "memory restriction",
-          requestMaxBatchSizeInBytes,
-          getMaxBatchSizeInBytes());
-    }
+    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(0);
   }
 
   /**
@@ -131,27 +111,74 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       return false;
     }
 
-    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+    final long requestCommitId = enrichedEvent.getCommitId();
 
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      events.add(event);
-      requestCommitIds.add(requestCommitId);
-      final int bufferSize = buildTabletInsertionBuffer(event);
-
-      ((EnrichedEvent) event)
-          .increaseReferenceCount(PipeConsensusTransferBatchReqBuilder.class.getName());
-
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
+      if (!enrichedEvent.increaseReferenceCount(
+          PipeConsensusTransferBatchReqBuilder.class.getName())) {
+        LOGGER.warn("Cannot increase reference count for event {}, ignore it.", event);
+        return shouldEmit();
       }
 
-      totalBufferSize += bufferSize;
+      final int previousEventsSize = events.size();
+      final int previousRequestCommitIdsSize = requestCommitIds.size();
+      final int previousBatchReqsSize = batchReqs.size();
+      try {
+        events.add(event);
+        requestCommitIds.add(requestCommitId);
+        final int bufferSize = buildTabletInsertionBuffer(event);
+        increaseTotalBufferSizeAndUpdateMemoryBlock(bufferSize);
+
+        if (firstEventProcessingTime == Long.MIN_VALUE) {
+          firstEventProcessingTime = System.currentTimeMillis();
+        }
+      } catch (final Exception e) {
+        rollbackTo(previousEventsSize, previousRequestCommitIdsSize, previousBatchReqsSize);
+        if (events.isEmpty()) {
+          resetMemoryUsage();
+        }
+        enrichedEvent.decreaseReferenceCount(
+            PipeConsensusTransferBatchReqBuilder.class.getName(), false);
+        throw e;
+      }
     }
 
-    return totalBufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+    return shouldEmit();
+  }
+
+  private boolean shouldEmit() {
+    return !events.isEmpty()
+        && (totalBufferSize >= getMaxBatchSizeInBytes()
+            || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs);
+  }
+
+  private void increaseTotalBufferSizeAndUpdateMemoryBlock(final long bufferSize) {
+    if (bufferSize <= 0) {
+      return;
+    }
+
+    final long newTotalBufferSize =
+        Math.min(totalBufferSize + bufferSize, getMaxBatchSizeInBytes());
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
+    totalBufferSize = newTotalBufferSize;
+  }
+
+  private void rollbackTo(
+      final int previousEventsSize,
+      final int previousRequestCommitIdsSize,
+      final int previousBatchReqsSize) {
+    events.subList(previousEventsSize, events.size()).clear();
+    requestCommitIds.subList(previousRequestCommitIdsSize, requestCommitIds.size()).clear();
+    batchReqs.subList(previousBatchReqsSize, batchReqs.size()).clear();
+  }
+
+  private void resetMemoryUsage() {
+    firstEventProcessingTime = Long.MIN_VALUE;
+    totalBufferSize = 0;
+    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, 0);
   }
 
   public synchronized void onSuccess() {
@@ -160,9 +187,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     events.clear();
     requestCommitIds.clear();
 
-    firstEventProcessingTime = Long.MIN_VALUE;
-
-    totalBufferSize = 0;
+    resetMemoryUsage();
   }
 
   public PipeConsensusTabletBatchReq toTPipeConsensusBatchTransferReq() throws IOException {
@@ -170,7 +195,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   }
 
   protected long getMaxBatchSizeInBytes() {
-    return allocatedMemoryBlock.getMemoryUsageInBytes();
+    return maxBatchSizeInBytes;
   }
 
   public boolean isEmpty() {
@@ -213,6 +238,9 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
         ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
       }
     }
+    batchReqs.clear();
+    events.clear();
+    requestCommitIds.clear();
     allocatedMemoryBlock.close();
   }
 }

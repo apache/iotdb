@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
@@ -73,7 +74,12 @@ public class PipeStatementDataTypeConvertExecutionVisitor
     try {
       return Optional.of(statementExecutor.execute(statement));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to execute statement after data type conversion.", e);
+      if (LOGGER.isWarnEnabled()) {
+        PipeLogger.log(
+            LOGGER::warn,
+            "Pipe: Failed to execute statement after data type conversion. Exception type: %s.",
+            e.getClass().getName());
+      }
       return Optional.empty();
     }
   }

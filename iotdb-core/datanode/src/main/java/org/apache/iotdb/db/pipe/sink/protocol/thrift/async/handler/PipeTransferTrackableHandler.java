@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -92,7 +93,7 @@ public abstract class PipeTransferTrackableHandler
    * @param client the client used for data transfer
    * @param req the request containing transfer details
    * @return {@code true} if the transfer was initiated successfully, {@code false} if the connector
-   *     is closed
+   *     is closed or the receiver probe is delayed
    * @throws TException if an error occurs during the transfer
    */
   protected boolean tryTransfer(
@@ -106,7 +107,13 @@ public abstract class PipeTransferTrackableHandler
     if (returnFalseIfSinkIsClosed(client)) {
       return false;
     }
-    sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+    try {
+      sink.waitIfReceiverTemporarilyUnavailable(client.getEndPoint());
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      returnClientToPool(client);
+      onError(e);
+      return false;
+    }
     if (returnFalseIfSinkIsClosed(client)) {
       return false;
     }
@@ -134,6 +141,21 @@ public abstract class PipeTransferTrackableHandler
         });
     this.client = null;
     return true;
+  }
+
+  private void returnClientToPool(final AsyncPipeDataTransferServiceClient client) {
+    client.setShouldReturnSelf(true);
+    client.returnSelf(
+        e -> {
+          if (e instanceof IllegalStateException) {
+            PipeLogger.log(
+                LOGGER::info,
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
+    this.client = null;
   }
 
   /**
@@ -276,6 +298,9 @@ public abstract class PipeTransferTrackableHandler
         return;
       }
       client.pipeTransfer(originalReq, this);
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      returnClientToPool(client);
+      PipeTransferTrackableHandler.this.onError(e);
     } catch (final Exception e) {
       PipeTransferTrackableHandler.this.onError(e);
     }

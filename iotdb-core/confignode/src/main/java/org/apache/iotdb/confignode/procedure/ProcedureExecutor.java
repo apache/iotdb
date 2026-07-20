@@ -289,7 +289,6 @@ public class ProcedureExecutor<Env> {
     if (interalProcedure == null) {
       return;
     }
-    interalProcedure.setState(ProcedureState.WAITING_TIMEOUT);
     timeoutExecutor.add(interalProcedure);
   }
 

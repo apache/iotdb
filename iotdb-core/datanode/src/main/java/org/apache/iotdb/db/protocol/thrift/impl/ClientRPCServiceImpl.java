@@ -115,6 +115,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -336,7 +338,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 partitionFetcher,
                 schemaFetcher,
                 req.getTimeout(),
-                true);
+                true,
+                s.isDebug());
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -432,7 +435,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -523,7 +527,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -613,7 +618,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1061,7 +1067,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1512,6 +1519,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);
@@ -1661,7 +1671,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     partitionFetcher,
                     schemaFetcher,
                     config.getQueryTimeoutThreshold(),
-                    false);
+                    false,
+                    s.isDebug());
           }
           results.add(result.status);
         } catch (Exception e) {
@@ -2517,7 +2528,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold(),
-              true);
+              true,
+              statement.isDebug());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -2771,7 +2783,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()));
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
@@ -2809,17 +2824,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
-    return SubscriptionAgent.receiver().handle(req);
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInPipeSubscribeResp();
+      }
+
+      return SubscriptionAgent.receiver().handle(req);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSBackupConfigurationResp(getNotLoggedInStatus());
+      }
+
+      return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
-    return SESSION_MANAGER.getAllConnectionInfo();
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSConnectionInfoResp(Collections.emptyList());
+      }
+
+      return SESSION_MANAGER.getAllConnectionInfo();
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TPipeSubscribeResp getNotLoggedInPipeSubscribeResp() {
+    return new TPipeSubscribeResp(
+        getNotLoggedInStatus(),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   @Override
@@ -2947,6 +2996,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     ExecutionResult result = null;
     final List<? extends Statement> subStatements = statement.getSubStatements();
     final int totalSubStatements = subStatements.size();
+    boolean debug = statement.isDebug();
 
     LOGGER.info(
         "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
@@ -2971,7 +3021,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               timeoutMs,
-              userQuery);
+              userQuery,
+              debug);
 
       // Exit early if any sub-statement execution fails
       if (result != null

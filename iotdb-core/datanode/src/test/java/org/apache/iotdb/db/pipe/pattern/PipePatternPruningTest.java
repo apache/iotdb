@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBPipePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -148,9 +150,61 @@ public class PipePatternPruningTest {
               }
             });
 
-    final PipePattern result = PipePattern.parsePipePatternFromSourceParametersInternal(params);
+    final PipePattern result = PipePattern.parsePipePatternFromSourceParameters(params);
 
     Assert.assertTrue(result instanceof UnionIoTDBPipePattern);
     Assert.assertEquals("root.sg.d1,root.sg.d2", result.getPattern());
+  }
+
+  @Test
+  public void testPatternAndPatternInclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.sg.A");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.sg.B");
+              }
+            });
+
+    final PipePattern result = PipePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertTrue(result instanceof UnionPipePattern);
+    Assert.assertEquals("root.sg.A,root.sg.B", result.getPattern());
+  }
+
+  @Test
+  public void testPathAndPathInclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1");
+                put(PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY, "root.sg.d2,root.sg.d3");
+              }
+            });
+
+    final PipePattern result = PipePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertTrue(result instanceof UnionIoTDBPipePattern);
+    Assert.assertEquals("root.sg.d1,root.sg.d2,root.sg.d3", result.getPattern());
+  }
+
+  @Test
+  public void testPathInclusionWithPathExclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.SOURCE_PATH_INCLUSION_KEY, "root.sg.**");
+                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.d1,root.sg.d2");
+              }
+            });
+
+    final PipePattern result = PipePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertTrue(result instanceof WithExclusionIoTDBPipePattern);
+    Assert.assertEquals(
+        "INCLUSION(root.sg.**), EXCLUSION(root.sg.d1,root.sg.d2)", result.getPattern());
   }
 }

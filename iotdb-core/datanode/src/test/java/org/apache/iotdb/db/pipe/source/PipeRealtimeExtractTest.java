@@ -26,8 +26,11 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
@@ -71,6 +74,7 @@ import java.util.function.Function;
 public class PipeRealtimeExtractTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeExtractTest.class);
+  private static final String TEST_REFERENCE_HOLDER = PipeRealtimeExtractTest.class.getName();
 
   private final String dataRegion1 = "1";
   private final String dataRegion2 = "2";
@@ -317,6 +321,37 @@ public class PipeRealtimeExtractTest {
     }
   }
 
+  @Test
+  public void testProgressReportExtractionReleasesDroppedEvents() {
+    final TestRealtimeDataRegionSource source = new TestRealtimeDataRegionSource();
+
+    final PipeRealtimeEvent heartbeatEvent =
+        PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+    heartbeatEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractHeartbeatForTest(heartbeatEvent);
+    Assert.assertEquals(1, heartbeatEvent.getEvent().getReferenceCount());
+
+    final PipeRealtimeEvent progressEvent = createProgressReportRealtimeEvent();
+    progressEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractProgressReportEventForTest(progressEvent);
+
+    Assert.assertEquals(0, heartbeatEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, progressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, source.getEventCount());
+
+    final PipeRealtimeEvent mergedProgressEvent = createProgressReportRealtimeEvent();
+    mergedProgressEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER);
+    source.extractProgressReportEventForTest(mergedProgressEvent);
+
+    Assert.assertEquals(0, mergedProgressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, progressEvent.getEvent().getReferenceCount());
+    Assert.assertEquals(1, source.getEventCount());
+
+    final Event queuedEvent = source.pollForTest();
+    Assert.assertSame(progressEvent, queuedEvent);
+    ((EnrichedEvent) queuedEvent).clearReferenceCount(TEST_REFERENCE_HOLDER);
+  }
+
   private Future<?> write2DataRegion(
       final int writeNum, final String dataRegionId, final int startNum) {
     final File dataRegionDir =
@@ -399,6 +434,47 @@ public class PipeRealtimeExtractTest {
             Assert.assertEquals(expectNum, eventNum);
           }
         });
+  }
+
+  private PipeRealtimeEvent createProgressReportRealtimeEvent() {
+    final ProgressReportEvent progressReportEvent = new ProgressReportEvent(null, 0, null);
+    progressReportEvent.bindProgressIndex(MinimumProgressIndex.INSTANCE);
+    return PipeRealtimeEventFactory.createRealtimeEvent(progressReportEvent);
+  }
+
+  private static class TestRealtimeDataRegionSource extends PipeRealtimeDataRegionSource {
+
+    private void extractHeartbeatForTest(final PipeRealtimeEvent event) {
+      extractHeartbeat(event);
+    }
+
+    private void extractProgressReportEventForTest(final PipeRealtimeEvent event) {
+      extractProgressReportEvent(event);
+    }
+
+    private Event pollForTest() {
+      return pendingQueue.directPoll();
+    }
+
+    @Override
+    protected void doExtract(final PipeRealtimeEvent event) {
+      // Not needed in this reference-counting unit test.
+    }
+
+    @Override
+    public Event supply() {
+      return pendingQueue.directPoll();
+    }
+
+    @Override
+    public boolean isNeedListenToTsFile() {
+      return false;
+    }
+
+    @Override
+    public boolean isNeedListenToInsertNode() {
+      return false;
+    }
   }
 
   private static class NoTsFileRealtimeDataRegionSource extends PipeRealtimeDataRegionSource {

@@ -143,8 +143,11 @@ public class QueryExecutionMetricSet implements IMetricSet {
   // region query aggregation
   public static final String AGGREGATION_FROM_RAW_DATA = "aggregation_from_raw_data";
   public static final String AGGREGATION_FROM_STATISTICS = "aggregation_from_statistics";
+  public static final String AGGREGATION_OPERATOR_FROM_RAW_DATA =
+      "aggregation_operator_from_raw_data";
   private Timer aggregationFromRawDataTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer aggregationFromStatisticsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer aggregationOperatorFromRawDataTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private void bindQueryAggregation(AbstractMetricService metricService) {
     aggregationFromRawDataTimer =
@@ -156,12 +159,19 @@ public class QueryExecutionMetricSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.FROM.toString(),
             "statistics");
+    aggregationOperatorFromRawDataTimer =
+        metricService.getOrCreateTimer(
+            Metric.AGGREGATION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.FROM.toString(),
+            "raw_data_operator");
   }
 
   private void unbindQueryAggregation(AbstractMetricService metricService) {
     aggregationFromRawDataTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     aggregationFromStatisticsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList("raw_data", "statistics")
+    aggregationOperatorFromRawDataTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    Arrays.asList("raw_data", "statistics", "raw_data_operator")
         .forEach(
             from ->
                 metricService.remove(
@@ -212,6 +222,9 @@ public class QueryExecutionMetricSet implements IMetricSet {
         break;
       case AGGREGATION_FROM_STATISTICS:
         aggregationFromStatisticsTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
+        break;
+      case AGGREGATION_OPERATOR_FROM_RAW_DATA:
+        aggregationOperatorFromRawDataTimer.update(costTimeInNanos, TimeUnit.NANOSECONDS);
         break;
       default:
         break;

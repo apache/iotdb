@@ -563,7 +563,9 @@ rest_service_port=18080
 # Datatype: boolean
 enable_swagger=false
 
-# the default row limit to a REST query response when the rowSize parameter is not given in request
+# The maximum row limit for REST and Grafana query responses.
+# The request rowLimit/row_limit value cannot exceed this limit.
+# A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
 # effectiveMode: restart
 # Datatype: int
 rest_query_default_row_size_limit=10000
@@ -729,6 +731,12 @@ disk_space_warning_threshold=0.05
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
+
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
 
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1

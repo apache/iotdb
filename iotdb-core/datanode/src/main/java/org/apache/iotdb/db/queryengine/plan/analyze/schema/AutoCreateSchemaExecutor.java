@@ -95,6 +95,7 @@ class AutoCreateSchemaExecutor {
         context == null || context.getQueryType().equals(QueryType.WRITE)
             ? config.getQueryTimeoutThreshold()
             : context.getTimeOut(),
+        false,
         false);
   }
 

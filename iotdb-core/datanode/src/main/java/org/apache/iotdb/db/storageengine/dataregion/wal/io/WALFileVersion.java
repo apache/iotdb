@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.utils.IOUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -63,7 +65,7 @@ public enum WALFileVersion {
           continue;
         }
         ByteBuffer buffer = ByteBuffer.allocate(version.versionBytes.length);
-        channel.read(buffer);
+        IOUtils.readFully(channel, buffer);
         buffer.flip();
         String versionString = new String(buffer.array(), StandardCharsets.UTF_8);
         if (version.versionString.equals(versionString)) {
