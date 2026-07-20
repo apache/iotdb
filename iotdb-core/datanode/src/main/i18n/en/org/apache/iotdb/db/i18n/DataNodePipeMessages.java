@@ -2541,10 +2541,10 @@ public final class DataNodePipeMessages {
       "Incomplete column values in current tablet format deserialization.";
   public static final String EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461 =
       "Incomplete timestamps in current tablet format deserialization.";
-  public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
-      "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}";
-  public static final String EXCEPTION_RECEIVER_ARG_REMAINED_TEMPORARILY_UNAVAILABLE_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_C515DD97 =
-      "Receiver %s remained temporarily unavailable for more than %d ms, pause regular retries and probe every %d ms.";
+  public static final String MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6 =
+      "Receiver {} requires a retry, throttle requests for {} ms. Status: {}";
+  public static final String EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2 =
+      "Receiver %s has required retries for more than %d ms, pause regular retries and probe every %d ms.";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "Successfully transferred batched schema events, batch size {}.";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =
