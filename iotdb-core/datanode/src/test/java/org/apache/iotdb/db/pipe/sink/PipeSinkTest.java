@@ -115,6 +115,199 @@ public class PipeSinkTest {
   }
 
   @Test
+  public void testIoTDBThriftSyncSslSinkAcceptsMutualSslParameters() {
+    try (final IoTDBDataRegionSyncSink connector = new IoTDBDataRegionSyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.SINK_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName());
+                      put(PipeSinkConstant.SINK_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.SINK_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftSyncSslConnectorAcceptsConnectorMutualSslAliases() {
+    try (final IoTDBDataRegionSyncSink connector = new IoTDBDataRegionSyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftSyncSslSinkRejectsIncompleteKeyStoreParameters() {
+    try (final IoTDBDataRegionSyncSink connector = new IoTDBDataRegionSyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.SINK_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName());
+                      put(PipeSinkConstant.SINK_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.SINK_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftSyncSslSinkRejectsCrossAliasTrustStoreParameters() {
+    try (final IoTDBDataRegionSyncSink connector = new IoTDBDataRegionSyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftSyncSslSinkRejectsCrossAliasKeyStoreParameters() {
+    try (final IoTDBDataRegionSyncSink connector = new IoTDBDataRegionSyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.SINK_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName());
+                      put(PipeSinkConstant.SINK_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.SINK_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftAsyncSinkRejectsSslKeyStoreParameters() {
+    try (final IoTDBDataRegionAsyncSink connector = new IoTDBDataRegionAsyncSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("Only 'iotdb-thrift-ssl-sink' supports SSL"));
+    }
+  }
+
+  @Test
+  public void testIoTDBLegacyPipeSinkAcceptsConnectorMutualSslAliases() {
+    try (final IoTDBLegacyPipeSink connector = new IoTDBLegacyPipeSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY, Boolean.TRUE.toString());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testIoTDBLegacyPipeSinkRejectsCrossAliasSslParameters() {
+    try (final IoTDBLegacyPipeSink connector = new IoTDBLegacyPipeSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY, Boolean.TRUE.toString());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains(PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+    }
+  }
+
+  @Test
   public void testAsyncSinkDropDoesNotRequeueDroppedPipeEvents() throws Exception {
     try (final IoTDBDataRegionAsyncSink connector = new IoTDBDataRegionAsyncSink()) {
       final PipeParameters parameters =

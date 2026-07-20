@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -97,12 +98,62 @@ public class SubscriptionTopicAgent {
 
   private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
     final String topicName = metaFromCoordinator.getTopicName();
-    TopicMeta.validateOwnerProgression(
-        topicMetaKeeper.getTopicMeta(topicName), metaFromCoordinator);
+    final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName);
+    TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
     topicMetaKeeper.removeTopicMeta(topicName);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+    if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
+      SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
+    } else if (!metaFromCoordinator.getConfig().isTableTopic()) {
+      // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
+      // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
+      SubscriptionAgent.broker().dropColumnFilter(topicName);
+    }
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(topicName, metaFromCoordinator.getConfig().getOrderMode());
+  }
+
+  static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
+    if (Objects.isNull(newMeta) || !newMeta.getConfig().isTableTopic()) {
+      return false;
+    }
+    if (Objects.isNull(oldMeta) || !oldMeta.getConfig().isTableTopic()) {
+      return true;
+    }
+
+    final TopicConfig oldConfig = oldMeta.getConfig();
+    final TopicConfig newConfig = newMeta.getConfig();
+    return !Objects.equals(
+            normalizeColumnFilterBindingValue(oldConfig.getColumnFilter()),
+            normalizeColumnFilterBindingValue(newConfig.getColumnFilter()))
+        || !Objects.equals(
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
+        || !Objects.equals(
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
+  }
+
+  private static String getAttributeIgnoreCase(
+      final TopicConfig topicConfig, final String key, final String defaultValue) {
+    return topicConfig.getAttribute().entrySet().stream()
+        .filter(entry -> key.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(defaultValue);
+  }
+
+  private static String normalizeColumnFilterBindingValue(final String value) {
+    return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
@@ -151,6 +202,7 @@ public class SubscriptionTopicAgent {
 
   private void handleDropTopicInternal(final String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
+    SubscriptionAgent.broker().dropColumnFilter(topicName);
   }
 
   public boolean isTopicExisted(final String topicName) {

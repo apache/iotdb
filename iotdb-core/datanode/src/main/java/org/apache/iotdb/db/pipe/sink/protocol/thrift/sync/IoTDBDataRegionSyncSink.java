@@ -351,18 +351,23 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
-      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(dbTsFile.right);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+    try {
+      for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+        doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
+      }
+    } finally {
+      for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(dbTsFile.right);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+        }
       }
     }
   }

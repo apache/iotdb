@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -91,17 +93,22 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
+    // Proceed once every unreachable DataNode is provably self-fenced instead of hard-failing the
+    // DDL: a fenced DataNode fails closed on its now-stale table cache and resyncs on lease
+    // recovery, so it cannot serve dirty schema. Only fail if an unacked DataNode is not provably
+    // fenced (it may still be serving clients).
+    final TUpdateTableReq req = SchemaUtils.buildPreUpdateTableReq(database, table, oldName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
               new MetadataException(
@@ -140,18 +147,21 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
   protected void rollbackPreRelease(
       final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(
-            database, table.getTableName(), env.getConfigManager(), tableName);
+    // A down DataNode must not block rollback either: proceed past provably-fenced DataNodes (which
+    // resync on recovery) and only fail on an unacked DataNode that is not provably fenced.
+    final TUpdateTableReq req =
+        SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), tableName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE,
           getActionMessage(),
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
               new MetadataException(

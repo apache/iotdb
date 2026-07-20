@@ -50,9 +50,19 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
+  public static final String CONNECTOR_IOTDB_SSL_ENABLE_KEY = "connector.ssl.enable";
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY =
+      "connector.ssl.trust-store-path";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY =
+      "connector.ssl.trust-store-pwd";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY = "sink.ssl.trust-store-pwd";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY =
+      "connector.ssl.key-store-path";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PATH_KEY = "sink.ssl.key-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY = "connector.ssl.key-store-pwd";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PWD_KEY = "sink.ssl.key-store-pwd";
 
   public static final String CONNECTOR_IOTDB_PARALLEL_TASKS_KEY = "connector.parallel.tasks";
   public static final String SINK_IOTDB_PARALLEL_TASKS_KEY = "sink.parallel.tasks";
@@ -72,7 +82,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
-  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
 
   public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
     return parameters.getBooleanOrDefault(

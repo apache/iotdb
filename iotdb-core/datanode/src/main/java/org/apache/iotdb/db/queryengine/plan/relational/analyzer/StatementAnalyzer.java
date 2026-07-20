@@ -5400,20 +5400,29 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node, context);
+      // SQL SHOW DEVICES statements retain their parser-owned AST and therefore need an isolated
+      // analysis copy. Schema fetching also uses ShowDevice internally, but that form has already
+      // been populated with tag, fuzzy, partition, and attribute filters; those fields are the
+      // input of the internal request rather than derived state and must not be discarded.
+      final ShowDevice workingNode =
+          Objects.nonNull(node.getTable()) ? node.copyForAnalysis() : node;
+      analysis.setStatement(workingNode);
+      analyzeQueryDevice(workingNode, context);
       // TODO: use real scope when parameter in offset and limit is supported
-      if (Objects.nonNull(node.getOffset())) {
-        analyzeOffset(node.getOffset(), null);
+      if (Objects.nonNull(workingNode.getOffset())) {
+        analyzeOffset(workingNode.getOffset(), null);
       }
-      if (Objects.nonNull(node.getLimit())) {
-        analyzeLimit(node.getLimit(), null);
+      if (Objects.nonNull(workingNode.getLimit())) {
+        analyzeLimit(workingNode.getLimit(), null);
       }
       return null;
     }
 
     @Override
     public Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
-      analyzeQueryDevice(node, context);
+      final CountDevice workingNode = node.copyForAnalysis();
+      analysis.setStatement(workingNode);
+      analyzeQueryDevice(workingNode, context);
       return null;
     }
 

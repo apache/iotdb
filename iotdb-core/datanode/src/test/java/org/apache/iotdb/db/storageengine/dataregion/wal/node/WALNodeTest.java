@@ -366,6 +366,10 @@ public class WALNodeTest {
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(databasePath, dataRegionId), tsFilePath);
     Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed());
+    // Wait for the sync task to finish rolling the WAL writer before checking the file names.
+    for (WALFlushListener walFlushListener : walFlushListeners) {
+      assertEquals(WALFlushListener.Status.SUCCESS, walFlushListener.waitForResult());
+    }
     // check existence of _0-0-0.wal file and _1-0-1.wal file
     assertTrue(
         new File(

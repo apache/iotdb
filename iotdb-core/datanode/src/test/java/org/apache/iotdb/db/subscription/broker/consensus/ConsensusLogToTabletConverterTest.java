@@ -28,12 +28,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -41,8 +44,9 @@ import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
-import java.util.regex.Pattern;
 
 public class ConsensusLogToTabletConverterTest {
 
@@ -66,7 +70,7 @@ public class ConsensusLogToTabletConverterTest {
 
   @Test
   public void testConvertRelationalInsertRowNodeWithMultipleMatchedColumns() {
-    final ConsensusLogToTabletConverter converter = createConverter("(id1|m1)");
+    final ConsensusLogToTabletConverter converter = createConverter("id1", "m1");
 
     final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertRowNode(9));
 
@@ -107,13 +111,28 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
-  public void testConvertRelationalInsertTabletNodeSkipsNullMatchedFieldColumn() {
+  public void testConvertRelationalInsertTabletNodeKeepsNullMatchedFieldColumn() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 
     final RelationalInsertTabletNode node = StatementTestUtils.genInsertTabletNode(3, 10);
     node.getColumns()[2] = null;
+    final BitMap[] bitMaps = new BitMap[] {null, null, new BitMap(3)};
+    bitMaps[2].mark(0);
+    bitMaps[2].mark(1);
+    bitMaps[2].mark(2);
+    node.setBitMaps(bitMaps);
 
-    Assert.assertTrue(converter.convert(node).isEmpty());
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(2, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("m1", tablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertNull(tablet.getValues()[1]);
+    Assert.assertTrue(tablet.getBitMaps()[1].isMarked(0));
+    Assert.assertTrue(tablet.getBitMaps()[1].isMarked(1));
+    Assert.assertTrue(tablet.getBitMaps()[1].isMarked(2));
   }
 
   @Test
@@ -134,6 +153,31 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletNodeSkipsMalformedColumns()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createConverter("id1");
+    final RelationalInsertTabletNode node =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("malformed"),
+            new PartialPath(new String[] {StatementTestUtils.tableName()}),
+            true,
+            new String[] {"id1", "m1"},
+            new TSDataType[] {TSDataType.STRING},
+            new long[] {1L},
+            null,
+            new Object[] {new Binary[] {new Binary("id:1".getBytes(StandardCharsets.UTF_8))}},
+            1,
+            StatementTestUtils.genColumnCategories());
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(1, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+  }
+
+  @Test
   public void testConvertRelationalInsertRowNodeKeepsTagColumnsForMatchedField() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 
@@ -148,6 +192,23 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(1));
     Assert.assertEquals("id:11", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
     Assert.assertEquals(11.0, ((double[]) tablet.getValues()[1])[0], 0.0);
+  }
+
+  @Test
+  public void testConvertRelationalInsertRowNodeKeepsNullMatchedFieldWithBitmap() {
+    final ConsensusLogToTabletConverter converter = createConverter("m1");
+    final RelationalInsertRowNode node = StatementTestUtils.genInsertRowNode(12);
+    node.getValues()[2] = null;
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(2, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("m1", tablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("id:12", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
+    Assert.assertTrue(tablet.getBitMaps()[1].isMarked(0));
   }
 
   @Test
@@ -235,11 +296,11 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertArrayEquals(new int[] {1, 2}, (int[]) tablet.getValues()[0]);
   }
 
-  private static ConsensusLogToTabletConverter createConverter(final String columnPattern) {
+  private static ConsensusLogToTabletConverter createConverter(final String... selectedColumns) {
     return new ConsensusLogToTabletConverter(
         null,
         new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
-        Pattern.compile(columnPattern),
+        ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList(selectedColumns))),
         DATABASE_NAME);
   }
 

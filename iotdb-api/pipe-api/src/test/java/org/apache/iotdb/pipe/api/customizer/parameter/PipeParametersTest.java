@@ -91,4 +91,16 @@ public class PipeParametersTest {
     Assert.assertFalse(parametersString.contains("secret"));
     Assert.assertFalse(parametersString.contains("credential"));
   }
+
+  @Test
+  public void valueHiderShouldHideSslKeyStorePassword() {
+    Assert.assertEquals(
+        "******", PipeParameters.ValueHider.hide("sink.ssl.key-store-pwd", "secret"));
+    Assert.assertEquals(
+        "******", PipeParameters.ValueHider.hide("connector.ssl.key-store-pwd", "secret"));
+    Assert.assertEquals("******", PipeParameters.ValueHider.hide("ssl.key-store-pwd", "secret"));
+    Assert.assertEquals(
+        "******", PipeParameters.ValueHider.hide("connector.ssl.trust-store-pwd", "secret"));
+    Assert.assertEquals("secret", PipeParameters.ValueHider.hide("ssl.key-store-path", "secret"));
+  }
 }
