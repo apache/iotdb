@@ -345,18 +345,26 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected int serializedAttributesSize() {
-    return PlanNodeType.BYTES + pipeSubSerializedSize();
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
   }
 
-  /** Returns the exact size of the row fields written during Pipe serialization. */
-  protected int pipeSubSerializedSize() {
+  /**
+   * Returns the exact number of bytes written by the row serializer.
+   *
+   * @return the serialized row field size
+   */
+  protected int serializedSubAttributesSize() {
     return Long.BYTES
         + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath())
-        + pipeMeasurementsAndValuesSerializedSize();
+        + serializedMeasurementsAndValuesSize();
   }
 
-  /** Returns the exact size of measurement and value fields written during Pipe serialization. */
-  protected int pipeMeasurementsAndValuesSerializedSize() {
+  /**
+   * Returns the exact number of bytes written by the measurement and value serializer.
+   *
+   * @return the serialized measurement and value size
+   */
+  protected int serializedMeasurementsAndValuesSize() {
     int size = Integer.BYTES + Byte.BYTES;
 
     for (int i = 0; measurements != null && i < measurements.length; i++) {
@@ -373,13 +381,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       if (!shouldSerializeMeasurement(i)) {
         continue;
       }
-      size += pipeValueSerializedSize(i);
+      size += serializedValueSize(i);
     }
 
     return size + Byte.BYTES + Byte.BYTES;
   }
 
-  private int pipeValueSerializedSize(final int index) {
+  private int serializedValueSize(final int index) {
     final TSDataType dataType = getDataTypeIfPresent(index);
     if (values[index] == null) {
       return Byte.BYTES + (dataType == null ? 0 : Byte.BYTES);
@@ -389,27 +397,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       return Byte.BYTES + ReadWriteIOUtils.sizeToWrite(values[index].toString());
     }
 
-    switch (dataType) {
-      case BOOLEAN:
-        return Byte.BYTES + Byte.BYTES;
-      case INT32:
-      case DATE:
-        return Byte.BYTES + Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return Byte.BYTES + Long.BYTES;
-      case FLOAT:
-        return Byte.BYTES + Float.BYTES;
-      case DOUBLE:
-        return Byte.BYTES + Double.BYTES;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        return Byte.BYTES + ReadWriteIOUtils.sizeToWrite((Binary) values[index]);
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
-    }
+    return Byte.BYTES
+        + switch (dataType) {
+          case BOOLEAN -> Byte.BYTES;
+          case INT32, DATE -> Integer.BYTES;
+          case INT64, TIMESTAMP -> Long.BYTES;
+          case FLOAT -> Float.BYTES;
+          case DOUBLE -> Double.BYTES;
+          case TEXT, STRING, BLOB, OBJECT -> ReadWriteIOUtils.sizeToWrite((Binary) values[index]);
+          case VECTOR, UNKNOWN ->
+              throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
+        };
   }
 
   void subSerialize(ByteBuffer buffer) {

@@ -40,6 +40,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -58,58 +59,101 @@ public class PipeTransferSerializationSizeTest {
   public void testTabletRequestLengths() throws Exception {
     final Tablet tablet = createTablet();
     final String database = "pipe_db";
-    Assert.assertEquals(
-        PipeTransferTabletRawReq.calculateSerializedSize(tablet),
-        PipeTransferTabletRawReq.toTPipeTransferReq(tablet, false).getBody().length);
-    Assert.assertEquals(
-        PipeTransferTabletRawReqV2.calculateSerializedSize(tablet, database),
-        PipeTransferTabletRawReqV2.toTPipeTransferReq(tablet, false, database).getBody().length);
+    final PipeTransferTabletRawReq rawReq =
+        PipeTransferTabletRawReq.toTPipeTransferReq(tablet, false);
+    assertSerializedBodySize(PipeTransferTabletRawReq.calculateSerializedSize(tablet), rawReq.body);
+    final PipeTransferTabletRawReqV2 rawReqV2 =
+        PipeTransferTabletRawReqV2.toTPipeTransferReq(tablet, false, database);
+    assertSerializedBodySize(
+        PipeTransferTabletRawReqV2.calculateSerializedSize(tablet, database), rawReqV2.body);
     Assert.assertEquals(
         PipeTransferTabletRawReq.calculateAirGapSerializedSize(tablet),
         PipeTransferTabletRawReq.toTPipeTransferBytes(tablet, false).length);
+    Assert.assertEquals(
+        PipeTransferTabletRawReqV2.calculateAirGapSerializedSize(tablet, database),
+        PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, false, database).length);
   }
 
   @Test
   public void testBinaryRequestLengths() throws Exception {
-    final ByteBuffer payload = ByteBuffer.wrap(new byte[] {1, 2, 3, 4});
-    final String database = "pipe_db";
-    Assert.assertEquals(
-        PipeTransferTabletBinaryReqV2.calculateSerializedSize(payload, database),
-        PipeTransferTabletBinaryReqV2.toTPipeTransferReq(payload, database).getBody().length);
+    final ByteBuffer payload = createByteBufferWithOffsetAndPosition();
+    final byte[] expectedPayload = getRemainingBytes(payload);
+    final String database = "pipe_db_\u6d4b\u8bd5";
+    final PipeTransferTabletBinaryReqV2 binaryReqV2 =
+        PipeTransferTabletBinaryReqV2.toTPipeTransferReq(payload, database);
+    assertSerializedBodySize(
+        PipeTransferTabletBinaryReqV2.calculateSerializedSize(payload, database), binaryReqV2.body);
+    final ByteBuffer thriftBody = binaryReqV2.body.duplicate();
+    Assert.assertEquals(expectedPayload.length, ReadWriteIOUtils.readInt(thriftBody));
+    assertNextBytes(thriftBody, expectedPayload);
+    Assert.assertEquals(database, ReadWriteIOUtils.readString(thriftBody));
+    Assert.assertFalse(thriftBody.hasRemaining());
+
+    final byte[] airGapV2Bytes =
+        PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(payload, database);
     Assert.assertEquals(
         PipeTransferTabletBinaryReqV2.calculateAirGapSerializedSize(payload, database),
-        PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(payload, database).length);
+        airGapV2Bytes.length);
+    final ByteBuffer airGapV2Body = ByteBuffer.wrap(airGapV2Bytes);
+    airGapV2Body.position(Byte.BYTES + Short.BYTES);
+    Assert.assertEquals(expectedPayload.length, ReadWriteIOUtils.readInt(airGapV2Body));
+    assertNextBytes(airGapV2Body, expectedPayload);
+    Assert.assertEquals(database, ReadWriteIOUtils.readString(airGapV2Body));
+    Assert.assertFalse(airGapV2Body.hasRemaining());
+
+    final byte[] airGapV1Bytes = PipeTransferTabletBinaryReq.toTPipeTransferBytes(payload);
     Assert.assertEquals(
-        PipeTransferTabletBinaryReq.calculateSerializedSize(payload),
-        PipeTransferTabletBinaryReq.toTPipeTransferBytes(payload).length);
+        PipeTransferTabletBinaryReq.calculateSerializedSize(payload), airGapV1Bytes.length);
+    final ByteBuffer airGapV1Body = ByteBuffer.wrap(airGapV1Bytes);
+    airGapV1Body.position(Byte.BYTES + Short.BYTES);
+    assertNextBytes(airGapV1Body, expectedPayload);
+    Assert.assertFalse(airGapV1Body.hasRemaining());
   }
 
   @Test
   public void testBatchRequestLengths() throws Exception {
-    final ByteBuffer insertNode = ByteBuffer.wrap(new byte[] {1, 2});
-    final ByteBuffer tablet = ByteBuffer.wrap(new byte[] {3, 4, 5});
-    Assert.assertEquals(
+    final ByteBuffer insertNode = createByteBufferWithOffsetAndPosition();
+    final ByteBuffer tablet = createByteBufferWithOffsetAndPosition();
+    final byte[] expectedInsertNode = getRemainingBytes(insertNode);
+    final byte[] expectedTablet = getRemainingBytes(tablet);
+    final PipeTransferTabletBatchReq batchReq =
+        PipeTransferTabletBatchReq.toTPipeTransferReq(
+            Collections.singletonList(insertNode), Collections.singletonList(tablet));
+    assertSerializedBodySize(
         PipeTransferTabletBatchReq.calculateSerializedSize(
             Collections.singletonList(insertNode), Collections.singletonList(tablet)),
-        PipeTransferTabletBatchReq.toTPipeTransferReq(
-                Collections.singletonList(insertNode), Collections.singletonList(tablet))
-            .getBody()
-            .length);
+        batchReq.body);
+    final ByteBuffer batchBody = batchReq.body.duplicate();
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(batchBody));
+    Assert.assertEquals(1, ReadWriteIOUtils.readInt(batchBody));
+    assertNextBytes(batchBody, expectedInsertNode);
+    Assert.assertEquals(1, ReadWriteIOUtils.readInt(batchBody));
+    assertNextBytes(batchBody, expectedTablet);
+    Assert.assertFalse(batchBody.hasRemaining());
 
-    final String database = "db";
-    Assert.assertEquals(
+    final String database = "db_\u6d4b\u8bd5";
+    final PipeTransferTabletBatchReqV2 batchReqV2 =
+        PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+            Collections.singletonList(insertNode),
+            Collections.singletonList(tablet),
+            Collections.singletonList(database),
+            Collections.singletonList(database));
+    assertSerializedBodySize(
         PipeTransferTabletBatchReqV2.calculateSerializedSize(
             Collections.singletonList(insertNode),
             Collections.singletonList(tablet),
             Collections.singletonList(database),
             Collections.singletonList(database)),
-        PipeTransferTabletBatchReqV2.toTPipeTransferReq(
-                Collections.singletonList(insertNode),
-                Collections.singletonList(tablet),
-                Collections.singletonList(database),
-                Collections.singletonList(database))
-            .getBody()
-            .length);
+        batchReqV2.body);
+    final ByteBuffer batchV2Body = batchReqV2.body.duplicate();
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(batchV2Body));
+    Assert.assertEquals(1, ReadWriteIOUtils.readInt(batchV2Body));
+    assertNextBytes(batchV2Body, expectedInsertNode);
+    Assert.assertEquals(database, ReadWriteIOUtils.readString(batchV2Body));
+    Assert.assertEquals(1, ReadWriteIOUtils.readInt(batchV2Body));
+    assertNextBytes(batchV2Body, expectedTablet);
+    Assert.assertEquals(database, ReadWriteIOUtils.readString(batchV2Body));
+    Assert.assertFalse(batchV2Body.hasRemaining());
   }
 
   @Test
@@ -184,26 +228,27 @@ public class PipeTransferSerializationSizeTest {
     final ByteBuffer serializedInsertNode = insertNode.serializeToByteBuffer();
     Assert.assertEquals(insertNode.serializeToByteBufferSize(), serializedInsertNode.capacity());
     Assert.assertEquals(insertNode.serializeToByteBufferSize(), serializedInsertNode.remaining());
-    Assert.assertEquals(
-        PipeTransferTabletInsertNodeReq.calculateSerializedSize(insertNode),
-        PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode).getBody().length);
+    final PipeTransferTabletInsertNodeReq insertNodeReq =
+        PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode);
+    assertSerializedBodySize(
+        PipeTransferTabletInsertNodeReq.calculateSerializedSize(insertNode), insertNodeReq.body);
     Assert.assertEquals(
         PipeTransferTabletInsertNodeReq.calculateAirGapSerializedSize(insertNode),
         PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode).length);
-    Assert.assertEquals(
+    final PipeTransferTabletInsertNodeReqV2 insertNodeReqV2 =
+        PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode, databaseName);
+    assertSerializedBodySize(
         PipeTransferTabletInsertNodeReqV2.calculateSerializedSize(insertNode, databaseName),
-        PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode, databaseName)
-            .getBody()
-            .length);
+        insertNodeReqV2.body);
     Assert.assertEquals(
         PipeTransferTabletInsertNodeReqV2.calculateAirGapSerializedSize(insertNode, databaseName),
         PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(insertNode, databaseName).length);
-    Assert.assertEquals(
-        IoTConsensusV2TabletInsertNodeReq.calculateSerializedSize(insertNode),
+    final IoTConsensusV2TabletInsertNodeReq iotConsensusReq =
         IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-                insertNode, null, null, MinimumProgressIndex.INSTANCE, 0)
-            .getBody()
-            .length);
+            insertNode, null, null, MinimumProgressIndex.INSTANCE, 0);
+    assertSerializedBodySize(
+        IoTConsensusV2TabletInsertNodeReq.calculateSerializedSize(insertNode),
+        iotConsensusReq.body);
   }
 
   private static List<Integer> indexes(final int size) {
@@ -443,6 +488,33 @@ public class PipeTransferSerializationSizeTest {
     Arrays.fill(categories, TsTableColumnCategory.FIELD);
     categories[0] = TsTableColumnCategory.TAG;
     return categories;
+  }
+
+  private static ByteBuffer createByteBufferWithOffsetAndPosition() {
+    final ByteBuffer source = ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5});
+    source.position(1);
+    final ByteBuffer buffer = source.slice();
+    buffer.position(1);
+    buffer.limit(4);
+    return buffer;
+  }
+
+  private static byte[] getRemainingBytes(final ByteBuffer buffer) {
+    final ByteBuffer duplicate = buffer.duplicate();
+    final byte[] bytes = new byte[duplicate.remaining()];
+    duplicate.get(bytes);
+    return bytes;
+  }
+
+  private static void assertSerializedBodySize(final int expectedSize, final ByteBuffer body) {
+    Assert.assertEquals(expectedSize, body.remaining());
+    Assert.assertEquals(expectedSize, body.capacity());
+  }
+
+  private static void assertNextBytes(final ByteBuffer buffer, final byte[] expectedBytes) {
+    final byte[] actualBytes = new byte[expectedBytes.length];
+    buffer.get(actualBytes);
+    Assert.assertArrayEquals(expectedBytes, actualBytes);
   }
 
   private static Tablet createTablet() {

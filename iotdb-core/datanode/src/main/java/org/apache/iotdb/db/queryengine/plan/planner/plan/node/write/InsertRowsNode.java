@@ -279,7 +279,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   protected int serializedAttributesSize() {
     int size = PlanNodeType.BYTES + Integer.BYTES;
     for (InsertRowNode node : insertRowNodeList) {
-      size += node.pipeSubSerializedSize();
+      size += node.serializedSubAttributesSize();
     }
     return size + insertRowNodeIndexList.size() * Integer.BYTES;
   }

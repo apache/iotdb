@@ -281,7 +281,11 @@ public abstract class InsertNode extends SearchNode {
         DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
   }
 
-  /** Returns the exact size of the buffer produced by {@link #serializeToByteBuffer()}. */
+  /**
+   * Returns the exact number of bytes written by {@link #serializeToByteBuffer()}.
+   *
+   * @return the serialized buffer size
+   */
   public final int serializeToByteBufferSize() {
     // InsertNode has no children, so PlanNode.serialize only writes the child count here.
     return serializedAttributesSize() + serializedPlanNodeIdSize() + Integer.BYTES;
@@ -298,10 +302,18 @@ public abstract class InsertNode extends SearchNode {
     }
   }
 
-  /** Returns the exact size of the attributes written by {@link #serializeToByteBuffer()}. */
+  /**
+   * Returns the exact number of bytes written by the attribute serializer.
+   *
+   * @return the serialized attribute size
+   */
   protected abstract int serializedAttributesSize();
 
-  /** Returns the exact size of the plan node id written after the attributes. */
+  /**
+   * Returns the exact number of bytes written by the plan node id serializer.
+   *
+   * @return the serialized plan node id size
+   */
   protected int serializedPlanNodeIdSize() {
     return ReadWriteIOUtils.sizeToWrite(getPlanNodeId().getId());
   }

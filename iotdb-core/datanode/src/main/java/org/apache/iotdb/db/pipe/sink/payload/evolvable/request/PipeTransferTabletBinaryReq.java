@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -102,16 +101,21 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS(Byte.BYTES + Short.BYTES);
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(byteBuffer));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY.getType(), outputStream);
-      return BytesUtils.concatByteArray(byteArrayOutputStream.toByteArray(), byteBuffer.array());
+      outputStream.write(
+          byteBuffer.array(),
+          byteBuffer.arrayOffset() + byteBuffer.position(),
+          byteBuffer.remaining());
+      return byteArrayOutputStream.toByteArray();
     }
   }
 
   static int calculateSerializedSize(final ByteBuffer byteBuffer) {
-    return Byte.BYTES + Short.BYTES + byteBuffer.limit();
+    return Byte.BYTES + Short.BYTES + byteBuffer.remaining();
   }
 
   /////////////////////////////// Object ///////////////////////////////

@@ -238,8 +238,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
-  protected int pipeSubSerializedSize() {
-    return super.pipeSubSerializedSize() + getValidMeasurementNumber() * Byte.BYTES;
+  protected int serializedSubAttributesSize() {
+    return super.serializedSubAttributesSize() + getValidMeasurementNumber() * Byte.BYTES;
   }
 
   @Override

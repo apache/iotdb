@@ -222,13 +222,12 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // IoTConsensusV2 will transfer binary data to TIoTConsensusV2TransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-    final int serializedSize =
-        IoTConsensusV2TabletInsertNodeReq.calculateSerializedSize(insertNode);
-    batchReqs.add(
+    final IoTConsensusV2TabletInsertNodeReq request =
         IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
+            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId);
+    batchReqs.add(request);
 
-    return serializedSize;
+    return request.body.remaining();
   }
 
   @Override

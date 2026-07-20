@@ -36,7 +36,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
@@ -86,14 +85,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
-    try (final PublicBAOS byteArrayOutputStream =
-            new PublicBAOS(calculateSerializedSize(insertNode));
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      insertNode.serialize(outputStream);
-      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+    req.body = insertNode.serializeToByteBuffer();
 
     return req;
   }

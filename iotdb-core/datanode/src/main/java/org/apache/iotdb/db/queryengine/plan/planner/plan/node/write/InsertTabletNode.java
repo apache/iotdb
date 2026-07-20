@@ -569,21 +569,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected int serializedAttributesSize() {
-    return PlanNodeType.BYTES + baseSubSerializedSizeForPipe();
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
   }
 
   /**
-   * Returns the exact size written by {@link #subSerialize(DataOutputStream)}.
+   * Returns the exact number of bytes written by {@link #subSerialize(DataOutputStream)}.
    *
    * <p>This deliberately excludes the plan-node type, id, and children. {@link
    * InsertMultiTabletsNode} embeds tablet nodes by calling {@code subSerialize}, rather than their
    * complete plan-node serialization.
+   *
+   * @return the serialized tablet field size
    */
-  final int baseSubSerializedSizeForPipe() {
+  final int serializedSubAttributesSize() {
     int size = ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
 
-    size += Integer.BYTES;
-    size += Byte.BYTES;
+    size += Integer.BYTES; // valid measurement count
+    size += Byte.BYTES; // whether measurement schemas are serialized
     for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -600,16 +602,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
 
-    size += Integer.BYTES;
-    size += rowCount * Long.BYTES;
+    size += Integer.BYTES; // row count
+    size += rowCount * Long.BYTES; // timestamps
 
-    size += Byte.BYTES;
+    size += Byte.BYTES; // whether bitmaps are serialized
     if (bitMaps != null) {
       for (int i = 0; measurements != null && i < measurements.length; i++) {
         if (!shouldSerializeMeasurement(i)) {
           continue;
         }
-        size += Byte.BYTES;
+        size += Byte.BYTES; // whether the current measurement has a bitmap
         if (getBitMapIfPresent(i) != null) {
           size += BitMap.getSizeOfBytes(rowCount);
         }
@@ -618,44 +620,34 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     for (int i = 0; columns != null && i < columns.length; i++) {
       if (shouldSerializeMeasurement(i)) {
-        size += columnSerializedSizeForPipe(dataTypes[i], columns[i]);
+        size += serializedColumnSize(dataTypes[i], columns[i]);
       }
     }
 
-    return size + Byte.BYTES;
+    return size + Byte.BYTES; // isAligned
   }
 
-  private int columnSerializedSizeForPipe(final TSDataType dataType, final Object column) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return rowCount * Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return rowCount * Long.BYTES;
-      case FLOAT:
-        return rowCount * Float.BYTES;
-      case DOUBLE:
-        return rowCount * Double.BYTES;
-      case BOOLEAN:
-        return rowCount * Byte.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        int size = 0;
-        final Binary[] binaryValues = (Binary[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          final Binary binary = binaryValues[i];
-          size +=
-              binary == null || binary.getValues() == null
-                  ? Integer.BYTES
-                  : Integer.BYTES + binary.getValues().length;
-        }
-        return size;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+  private int serializedColumnSize(final TSDataType dataType, final Object column) {
+    return switch (dataType) {
+      case BOOLEAN -> rowCount * Byte.BYTES;
+      case INT32, DATE -> rowCount * Integer.BYTES;
+      case INT64, TIMESTAMP -> rowCount * Long.BYTES;
+      case FLOAT -> rowCount * Float.BYTES;
+      case DOUBLE -> rowCount * Double.BYTES;
+      case TEXT, BLOB, STRING, OBJECT -> serializedBinaryColumnSize((Binary[]) column);
+      case VECTOR, UNKNOWN ->
+          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    };
+  }
+
+  private int serializedBinaryColumnSize(final Binary[] binaryValues) {
+    int size = 0;
+    for (int i = 0; i < rowCount; i++) {
+      final Binary binary = binaryValues[i];
+      final byte[] values = binary == null ? null : binary.getValues();
+      size += values == null ? Integer.BYTES : Integer.BYTES + values.length;
     }
+    return size;
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */

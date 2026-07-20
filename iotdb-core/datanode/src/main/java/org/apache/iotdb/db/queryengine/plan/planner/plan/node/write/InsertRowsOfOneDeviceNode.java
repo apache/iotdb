@@ -331,7 +331,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     int size =
         PlanNodeType.BYTES + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath()) + Integer.BYTES;
     for (InsertRowNode node : insertRowNodeList) {
-      size += Long.BYTES + node.pipeMeasurementsAndValuesSerializedSize();
+      size += Long.BYTES + node.serializedMeasurementsAndValuesSize();
     }
     return size + insertRowNodeIndexList.size() * Integer.BYTES;
   }

@@ -284,7 +284,7 @@ public class InsertMultiTabletsNode extends InsertNode {
   protected int serializedAttributesSize() {
     int size = PlanNodeType.BYTES + Integer.BYTES;
     for (final InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      size += insertTabletNode.baseSubSerializedSizeForPipe();
+      size += insertTabletNode.serializedSubAttributesSize();
     }
     return size + parentInsertTabletNodeIndexList.size() * Integer.BYTES;
   }

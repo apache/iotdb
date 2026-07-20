@@ -46,6 +46,11 @@ import java.util.Objects;
 
 public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
+  private static final int BATCH_REQUEST_COUNT_SERIALIZED_SIZE =
+      Integer.BYTES // legacy binary request count
+          + Integer.BYTES // insert node request count
+          + Integer.BYTES; // raw tablet request count
+
   private final transient List<PipeTransferTabletBinaryReq> binaryReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletRawReq> tabletReqs = new ArrayList<>();
@@ -135,14 +140,22 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       // Binary buffer, for rolling upgrade
       ReadWriteIOUtils.write(0, outputStream);
 
+      // Insert-node and raw-tablet serializations are self-delimiting, so their lengths are not
+      // written separately.
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
-        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
+        outputStream.write(
+            insertNodeBuffer.array(),
+            insertNodeBuffer.arrayOffset() + insertNodeBuffer.position(),
+            insertNodeBuffer.remaining());
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
       for (final ByteBuffer tabletBuffer : tabletBuffers) {
-        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
+        outputStream.write(
+            tabletBuffer.array(),
+            tabletBuffer.arrayOffset() + tabletBuffer.position(),
+            tabletBuffer.remaining());
       }
 
       batchReq.body =
@@ -154,9 +167,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
   static int calculateSerializedSize(
       final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers) {
-    return Integer.BYTES * 3
-        + insertNodeBuffers.stream().mapToInt(ByteBuffer::limit).sum()
-        + tabletBuffers.stream().mapToInt(ByteBuffer::limit).sum();
+    return BATCH_REQUEST_COUNT_SERIALIZED_SIZE
+        + insertNodeBuffers.stream().mapToInt(ByteBuffer::remaining).sum()
+        + tabletBuffers.stream().mapToInt(ByteBuffer::remaining).sum();
   }
 
   public static PipeTransferTabletBatchReq fromTPipeTransferReq(

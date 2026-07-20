@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -123,8 +122,11 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
     try (final PublicBAOS byteArrayOutputStream =
             new PublicBAOS(calculateSerializedSize(byteBuffer, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
-      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(byteBuffer.remaining(), outputStream);
+      outputStream.write(
+          byteBuffer.array(),
+          byteBuffer.arrayOffset() + byteBuffer.position(),
+          byteBuffer.remaining());
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -158,19 +160,18 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType(), outputStream);
-      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
-      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(byteBuffer.remaining(), outputStream);
+      outputStream.write(
+          byteBuffer.array(),
+          byteBuffer.arrayOffset() + byteBuffer.position(),
+          byteBuffer.remaining());
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }
 
-  private static int serializedStringSize(final String value) {
-    return Integer.BYTES + (value == null ? 0 : value.getBytes(TSFileConfig.STRING_CHARSET).length);
-  }
-
   static int calculateSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
-    return Integer.BYTES + byteBuffer.limit() + serializedStringSize(dataBaseName);
+    return Integer.BYTES + byteBuffer.remaining() + ReadWriteIOUtils.sizeToWrite(dataBaseName);
   }
 
   static int calculateAirGapSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
