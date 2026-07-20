@@ -33,7 +33,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class LoadUtilTest {
 
@@ -56,33 +58,40 @@ public class LoadUtilTest {
   }
 
   @Test
-  public void testTransferFilesKeepsCompanionsTogetherAndDeletesSourcesAfterHandoff()
+  public void testTransferFilesKeepsSameNamedGroupsIsolatedAndDeletesSourcesAfterHandoff()
       throws Exception {
     final List<File> sourceFiles = createTsFileAndCompanions();
-    // Existing same-named files represent a previous handoff. A new group must be isolated rather
-    // than independently renaming the TsFile and companions in this shared target directory.
+    LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true);
+
     for (final File sourceFile : sourceFiles) {
       Files.write(
-          new File(targetDir, sourceFile.getName()).toPath(),
-          "existing".getBytes(StandardCharsets.UTF_8));
+          sourceFile.toPath(), ("second-" + sourceFile.getName()).getBytes(StandardCharsets.UTF_8));
     }
-
     LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true);
 
     final File[] transferDirs = targetDir.listFiles(File::isDirectory);
     Assert.assertNotNull(transferDirs);
-    Assert.assertEquals(1, transferDirs.length);
+    Assert.assertEquals(2, transferDirs.length);
     for (final File sourceFile : sourceFiles) {
       Assert.assertFalse(sourceFile.exists());
-      final File transferredFile = new File(transferDirs[0], sourceFile.getName());
-      Assert.assertTrue(transferredFile.exists());
-      Assert.assertArrayEquals(
-          sourceFile.getName().getBytes(StandardCharsets.UTF_8),
-          Files.readAllBytes(transferredFile.toPath()));
-      Assert.assertArrayEquals(
-          "existing".getBytes(StandardCharsets.UTF_8),
-          Files.readAllBytes(new File(targetDir, sourceFile.getName()).toPath()));
     }
+
+    final Set<String> transferredPrefixes = new HashSet<>();
+    for (final File transferDir : transferDirs) {
+      final File tsFile = new File(transferDir, "1-0-0-0.tsfile");
+      final String tsFileContent =
+          new String(Files.readAllBytes(tsFile.toPath()), StandardCharsets.UTF_8);
+      final String prefix = tsFileContent.startsWith("second-") ? "second-" : "";
+      transferredPrefixes.add(prefix);
+      for (final File sourceFile : sourceFiles) {
+        final File transferredFile = new File(transferDir, sourceFile.getName());
+        Assert.assertTrue(transferredFile.exists());
+        Assert.assertArrayEquals(
+            (prefix + sourceFile.getName()).getBytes(StandardCharsets.UTF_8),
+            Files.readAllBytes(transferredFile.toPath()));
+      }
+    }
+    Assert.assertEquals(new HashSet<>(Arrays.asList("", "second-")), transferredPrefixes);
   }
 
   @Test
