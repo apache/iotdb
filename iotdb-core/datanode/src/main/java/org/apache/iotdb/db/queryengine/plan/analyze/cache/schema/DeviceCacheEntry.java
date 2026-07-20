@@ -26,6 +26,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Map;
@@ -115,14 +116,31 @@ public class DeviceCacheEntry {
 
   int tryUpdateLastCache(
       final String[] measurements, final TimeValuePair[] timeValuePairs, boolean invalidateNull) {
+    return tryUpdateLastCache(measurements, null, timeValuePairs, invalidateNull);
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs,
+      boolean invalidateNull) {
     final DeviceLastCache cache = lastCache.get();
     final int result =
-        Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs, invalidateNull) : 0;
+        Objects.nonNull(cache)
+            ? cache.tryUpdate(measurements, measurementSchemas, timeValuePairs, invalidateNull)
+            : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
   int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
     return tryUpdateLastCache(measurements, timeValuePairs, false);
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    return tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs, false);
   }
 
   int invalidateLastCache(final String measurement) {

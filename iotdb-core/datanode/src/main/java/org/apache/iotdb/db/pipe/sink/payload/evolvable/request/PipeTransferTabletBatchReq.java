@@ -130,20 +130,21 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   public static PipeTransferTabletBatchReq fromTPipeTransferReq(
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
-    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Binary req, for rolling upgrading
     ReadWriteIOUtils.readInt(transferReq.body);
 
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int insertNodeCount = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < insertNodeCount; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int rawTabletCount = ReadWriteIOUtils.readInt(transferReq.body);
+    final TabletStringInternPool tabletStringInternPool =
+        rawTabletCount > 1 ? new TabletStringInternPool() : null;
+    for (int i = 0; i < rawTabletCount; ++i) {
       batchReq.tabletReqs.add(
           PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body, tabletStringInternPool));
     }

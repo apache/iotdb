@@ -187,7 +187,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     StopPipeProcedureV2 that = (StopPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
         && isStoppedByRuntimeExceptionBeforeStop == that.isStoppedByRuntimeExceptionBeforeStop
         && pipeName.equals(that.pipeName);

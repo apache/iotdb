@@ -63,7 +63,7 @@ public class MemAlignedChunkLoaderTest {
   public void testMemAlignedChunkLoader() throws IOException {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    QueryContext ctx = new QueryContext();
+    QueryContext ctx = new QueryContext(false);
     MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(ctx, chunk);
 
     try {

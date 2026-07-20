@@ -170,7 +170,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       if (measurementSchemas[index] == null) {
         markFailedMeasurement(
             index,
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
+            createPathNotExistException(
+                devicePath.concatNode(measurements[index]).getFullPath(), dataTypes[index]));
       } else if ((dataTypes[index] != measurementSchemas[index].getType()
           && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
         markFailedMeasurement(
@@ -186,7 +187,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     } else {
       // if not enable partial insert, throw the exception directly
       if (measurementSchemas[index] == null) {
-        throw new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath());
+        throw createPathNotExistException(
+            devicePath.concatNode(measurements[index]).getFullPath(), dataTypes[index]);
       } else if ((dataTypes[index] != measurementSchemas[index].getType()
           && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
         throw new DataTypeMismatchException(
@@ -198,6 +200,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             getFirstValueOfIndex(index));
       }
     }
+  }
+
+  protected PathNotExistException createPathNotExistException(
+      String fullPath, TSDataType dataType) {
+    return dataType == null
+        ? PathNotExistException.forNullValue(fullPath)
+        : new PathNotExistException(fullPath);
   }
 
   protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);

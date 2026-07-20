@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.utils.MmapUtil;
 
@@ -85,7 +86,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (version == WALFileVersion.V2) {
         // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
-        channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
+        IOUtils.readFully(
+            channel, magicStringBuffer, channel.size() - version.getVersionBytes().length);
         magicStringBuffer.flip();
         if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)
             || !new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
@@ -105,7 +107,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         }
         // Old version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
-        channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
+        IOUtils.readFully(
+            channel, magicStringBuffer, channel.size() - version.getVersionBytes().length);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
             .equals(version.getVersionString())) {
@@ -117,7 +120,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         }
       }
       // Read the metadata size
-      channel.read(metadataSizeBuf, position);
+      IOUtils.readFully(channel, metadataSizeBuf, position);
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
       endOffset = channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize;
@@ -237,9 +240,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       compressedBuffer.clear();
       // limit the buffer to prevent it from reading too much byte than expected
       compressedBuffer.limit(segmentInfo.dataInDiskSize);
-      if (readWALBufferFromChannel(compressedBuffer) != segmentInfo.dataInDiskSize) {
-        throw new IOException("Unexpected end of file");
-      }
+      readWALBufferFullyFromChannel(compressedBuffer);
       compressedBuffer.flip();
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
       uncompressWALBuffer(compressedBuffer, dataBuffer, unCompressor);
@@ -255,9 +256,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       // limit the buffer to prevent it from reading too much byte than expected
       dataBuffer.limit(segmentInfo.dataInDiskSize);
 
-      if (readWALBufferFromChannel(dataBuffer) != segmentInfo.dataInDiskSize) {
-        throw new IOException("Unexpected end of file");
-      }
+      readWALBufferFullyFromChannel(dataBuffer);
     }
     dataBuffer.flip();
   }
@@ -301,7 +300,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
       if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
         compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-        readWALBufferFromChannel(compressedBuffer);
+        readWALBufferFullyFromChannel(compressedBuffer);
         compressedBuffer.flip();
         IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
@@ -310,7 +309,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         compressedBuffer = null;
       } else {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-        readWALBufferFromChannel(dataBuffer);
+        readWALBufferFullyFromChannel(dataBuffer);
         dataBuffer.flip();
       }
 
@@ -349,7 +348,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private SegmentInfo getNextSegmentInfo() throws IOException {
     segmentHeaderWithoutCompressedSizeBuffer.clear();
-    channel.read(segmentHeaderWithoutCompressedSizeBuffer);
+    readWALBufferFullyFromChannel(segmentHeaderWithoutCompressedSizeBuffer);
     segmentHeaderWithoutCompressedSizeBuffer.flip();
     SegmentInfo info = new SegmentInfo();
     info.compressionType =
@@ -357,7 +356,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     info.dataInDiskSize = segmentHeaderWithoutCompressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
       compressedSizeBuffer.clear();
-      readWALBufferFromChannel(compressedSizeBuffer);
+      readWALBufferFullyFromChannel(compressedSizeBuffer);
       compressedSizeBuffer.flip();
       info.uncompressedSize = compressedSizeBuffer.getInt();
     } else {
@@ -371,6 +370,13 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     int size = channel.read(buffer);
     WritingMetrics.getInstance().recordWALRead(size, System.nanoTime() - startTime);
     return size;
+  }
+
+  private void readWALBufferFullyFromChannel(ByteBuffer buffer) throws IOException {
+    long startTime = System.nanoTime();
+    int size = buffer.remaining();
+    IOUtils.readFully(channel, buffer);
+    WritingMetrics.getInstance().recordWALRead(size, System.nanoTime() - startTime);
   }
 
   private void uncompressWALBuffer(

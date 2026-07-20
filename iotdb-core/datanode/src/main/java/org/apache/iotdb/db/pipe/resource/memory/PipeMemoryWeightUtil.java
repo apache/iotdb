@@ -179,6 +179,14 @@ public class PipeMemoryWeightUtil {
       return new Pair<>(1, 0);
     }
 
+    final int configuredTabletRowSize =
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize();
+    final boolean hasTabletRowSizeLimit = configuredTabletRowSize > 0;
+    final double inputSizeLimit =
+        hasTabletRowSizeLimit && inputNum > 0
+            ? 100 + inputNum * (double) rowBytesUsed * 1.2
+            : Integer.MAX_VALUE;
+
     // Calculate row number according to the max size of a pipe tablet. "100" is the estimated size
     // of other data structures in a pipe tablet.
     // "*8" converts bytes to bits, because the bitmap size is 1 bit per schema.
@@ -186,17 +194,15 @@ public class PipeMemoryWeightUtil {
         (int)
             Math.min(
                 IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
-                Math.min(Integer.MAX_VALUE, 100 + inputNum * (double) rowBytesUsed * 1.2));
+                Math.min(Integer.MAX_VALUE, inputSizeLimit));
 
     int rowNumber = 8 * (sizeLimit - 100) / (8 * rowBytesUsed + schemaCount);
     rowNumber = Math.max(1, rowNumber);
 
-    if ( // This means the row number is larger than the max row count of a pipe tablet
-    rowNumber > PipeConfig.getInstance().getPipeDataStructureTabletRowSize()) {
+    // This means the row number is larger than the max row count of a pipe tablet.
+    if (hasTabletRowSizeLimit && rowNumber > configuredTabletRowSize) {
       // Bound the row number, the memory cost is rowSize * rowNumber
-      return new Pair<>(
-          PipeConfig.getInstance().getPipeDataStructureTabletRowSize(),
-          rowBytesUsed * PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+      return new Pair<>(configuredTabletRowSize, rowBytesUsed * configuredTabletRowSize);
     } else {
       return new Pair<>(rowNumber, sizeLimit);
     }

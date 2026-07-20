@@ -143,7 +143,7 @@ public class DeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
+                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
   }
 

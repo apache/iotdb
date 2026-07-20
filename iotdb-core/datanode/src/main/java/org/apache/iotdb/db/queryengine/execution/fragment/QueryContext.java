@@ -60,7 +60,7 @@ public class QueryContext {
 
   protected long queryId;
 
-  private boolean debug;
+  private final boolean debug;
 
   private long startTime;
   private long timeout;
@@ -72,10 +72,12 @@ public class QueryContext {
   // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();
 
-  public QueryContext() {}
+  public QueryContext(boolean debug) {
+    this.debug = debug;
+  }
 
-  public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), 0);
+  public QueryContext(long queryId, boolean debug) {
+    this(queryId, debug, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */

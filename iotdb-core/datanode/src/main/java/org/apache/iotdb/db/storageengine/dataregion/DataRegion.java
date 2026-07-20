@@ -709,7 +709,7 @@ public class DataRegion implements IDataRegionForQuery {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.merge(deviceId, endTime, Math::max);
       }
     }
     if (config.isEnableSeparateData()) {
@@ -1275,6 +1275,10 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
     } catch (WriteProcessRejectException e) {
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      for (int i = start; i < end; i++) {
+        results[i] = failureStatus;
+      }
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
     } catch (WriteProcessException e) {
@@ -3244,10 +3248,17 @@ public class DataRegion implements IDataRegionForQuery {
               0);
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
-        logger.info(
-            "TsFile {} must be renamed to {} for loading into the unsequence list.",
-            tsfileToBeInserted.getName(),
-            newFileName);
+        if (isGeneratedByPipe) {
+          logger.debug(
+              "TsFile {} must be renamed to {} for loading into the unsequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+        } else {
+          logger.info(
+              "TsFile {} must be renamed to {} for loading into the unsequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+        }
         newTsFileResource.setFile(
             fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
       }
@@ -3282,7 +3293,11 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
-      logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      if (isGeneratedByPipe) {
+        logger.debug("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      } else {
+        logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
+      }
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to database processor {} because the disk space is insufficient.",
@@ -3451,10 +3466,17 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
-    logger.info(
-        "Load tsfile in unsequence list, move file from {} to {}",
-        tsFileToLoad.getAbsolutePath(),
-        targetFile.getAbsolutePath());
+    if (isGeneratedByPipe) {
+      logger.debug(
+          "Load tsfile in unsequence list, move file from {} to {}",
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    } else {
+      logger.info(
+          "Load tsfile in unsequence list, move file from {} to {}",
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    }
 
     LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
 

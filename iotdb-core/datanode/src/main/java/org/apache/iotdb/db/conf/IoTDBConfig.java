@@ -1158,6 +1158,8 @@ public class IoTDBConfig {
 
   private long loadTsFileTabletConversionBatchMemorySizeInBytes = 4096 * 1024;
 
+  private int loadTsFileTabletConversionThreadCount = 5;
+
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
@@ -4141,6 +4143,14 @@ public class IoTDBConfig {
         loadTsFileTabletConversionBatchMemorySizeInBytes;
   }
 
+  public int getLoadTsFileTabletConversionThreadCount() {
+    return loadTsFileTabletConversionThreadCount;
+  }
+
+  public void setLoadTsFileTabletConversionThreadCount(int loadTsFileTabletConversionThreadCount) {
+    this.loadTsFileTabletConversionThreadCount = loadTsFileTabletConversionThreadCount;
+  }
+
   public long getLoadChunkMetadataMemorySizeInBytes() {
     return loadChunkMetadataMemorySizeInBytes;
   }
@@ -4259,7 +4269,17 @@ public class IoTDBConfig {
   }
 
   public String getLoadActiveListeningPipeDir() {
-    return loadActiveListeningPipeDir;
+    return loadActiveListeningPipeDir == null || Objects.equals(loadActiveListeningPipeDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.PIPE_FOLDER_NAME
+        : loadActiveListeningPipeDir;
+  }
+
+  public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
+    this.loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
   }
 
   public String[] getLoadActiveListeningDirs() {

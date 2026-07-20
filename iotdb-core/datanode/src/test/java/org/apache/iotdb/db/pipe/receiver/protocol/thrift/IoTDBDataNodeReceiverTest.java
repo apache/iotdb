@@ -111,6 +111,18 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testTreeSchemaSnapshotDatabaseIsFilteredByPattern() {
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.ln"));
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.**", true, "root.db"));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", true, "root.db"));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldLoadTreeSchemaSnapshotDatabase("root.ln.**", false, "root.ln"));
+  }
+
+  @Test
   public void testLoadTsFileSyncStatementVerifiesSchemaWhenConvertingType() throws Exception {
     final Path tsFile = Files.createTempFile("pipe-load-convert-verify-schema", ".tsfile");
     try {

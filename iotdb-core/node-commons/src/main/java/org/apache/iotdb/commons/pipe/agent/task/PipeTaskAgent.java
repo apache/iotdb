@@ -163,7 +163,16 @@ public abstract class PipeTaskAgent {
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       final PipeMeta pipeMetaFromCoordinator) {
-    acquireWriteLock();
+    final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
     } finally {
@@ -302,6 +311,8 @@ public abstract class PipeTaskAgent {
       }
     }
 
+    syncRuntimeExceptionClearTime(runtimeMetaFromCoordinator, runtimeMetaInAgent);
+
     // 2. Handle pipe runtime meta status changes
     final PipeStatus statusFromCoordinator = runtimeMetaFromCoordinator.getStatus().get();
     final PipeStatus statusInAgent = runtimeMetaInAgent.getStatus().get();
@@ -342,12 +353,26 @@ public abstract class PipeTaskAgent {
     }
   }
 
+  private void syncRuntimeExceptionClearTime(
+      final PipeRuntimeMeta runtimeMetaFromCoordinator, final PipeRuntimeMeta runtimeMetaInAgent) {
+    runtimeMetaInAgent.setExceptionsClearTime(runtimeMetaFromCoordinator.getExceptionsClearTime());
+    runtimeMetaInAgent.clearExceptionMessagesBefore(runtimeMetaInAgent.getExceptionsClearTime());
+  }
+
   protected abstract void thawRate(final String pipeName, final long creationTime);
 
   protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleDropPipeInternal(pipeName);
     } finally {
@@ -502,11 +527,7 @@ public abstract class PipeTaskAgent {
     final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromCoordinator.getStaticMeta().getCreationTime();
 
-    calculateMemoryUsage(
-        pipeMetaFromCoordinator.getStaticMeta(),
-        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
-        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
-        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
+    calculateMemoryUsage(pipeMetaFromCoordinator);
 
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
@@ -544,8 +565,22 @@ public abstract class PipeTaskAgent {
 
     pipeMetaKeeper.addPipeMeta(pipeName, pipeMetaFromCoordinator);
 
+    pipeMetaFromCoordinator
+        .getRuntimeMeta()
+        .clearExceptionMessagesBefore(
+            pipeMetaFromCoordinator.getRuntimeMeta().getExceptionsClearTime());
+
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;
+  }
+
+  protected void calculateMemoryUsage(final PipeMeta pipeMetaFromCoordinator)
+      throws IllegalPathException {
+    calculateMemoryUsage(
+        pipeMetaFromCoordinator.getStaticMeta(),
+        pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters(),
+        pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters());
   }
 
   protected void calculateMemoryUsage(
