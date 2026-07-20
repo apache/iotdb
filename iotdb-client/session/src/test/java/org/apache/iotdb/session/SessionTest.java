@@ -1369,6 +1369,57 @@ public class SessionTest {
   }
 
   @Test
+  public void testInsertRelationalTabletsWithRedirectionDisabledIgnoresRedirect() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "s1");
+    final Tablet tablet =
+        new Tablet(
+            "table1",
+            measurements,
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            2);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("tag1", 0, "d1");
+    tablet.addValue("s1", 0, 11L);
+    tablet.addTimestamp(1, 2L);
+    tablet.addValue("tag1", 1, "d2");
+    tablet.addValue("s1", 1, 22L);
+    Whitebox.setInternalState(session, "enableRedirection", false);
+
+    ((Session) session).insertRelationalTablets(Collections.singletonList(tablet));
+
+    Mockito.verify(sessionConnection).insertTabletsWithoutRedirect(any(TSInsertTabletsReq.class));
+    Mockito.verify(sessionConnection, Mockito.never()).insertTablets(any(TSInsertTabletsReq.class));
+    Mockito.verify(sessionConnection, Mockito.never())
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+  }
+
+  @Test
+  public void testInsertRelationalTabletsIgnoresAllEmptyTablets() throws Exception {
+    final Tablet first =
+        new Tablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    final Tablet second =
+        new Tablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+
+    ((Session) session).insertRelationalTablets(Arrays.asList(first, second));
+
+    Mockito.verify(sessionConnection, Mockito.never())
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+    Mockito.verify(sessionConnection, Mockito.never()).insertTablets(any(TSInsertTabletsReq.class));
+  }
+
+  @Test
   public void testSplitRelationalTabletAllocatesOncePerEndpoint() throws Exception {
     final int rowCount = 1000;
     final List<String> measurements = Arrays.asList("tag1", "s1");
