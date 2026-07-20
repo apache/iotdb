@@ -725,8 +725,10 @@ public class TsFileProcessor {
       }
       // Here currentChunkPointNum >= 1
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
         memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+        for (TSDataType dataType : dataTypesInTVList) {
+          memTableIncrement += AlignedTVList.valueListArrayMemCost(dataType);
+        }
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
@@ -810,13 +812,13 @@ public class TsFileProcessor {
         int addingPointNum = addingPointNumInfo.right;
         // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-          if (alignedMemChunk != null) {
-            dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
-          }
           dataTypesInTVList.addAll(addingPointNumInfo.left.values());
           memTableIncrement +=
               alignedMemChunk != null
                   ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
+                      + dataTypesInTVList.stream()
+                          .mapToLong(AlignedTVList::valueListArrayMemCost)
+                          .sum()
                   : AlignedTVList.alignedTvListArrayMemCost(
                       dataTypesInTVList.toArray(new TSDataType[0]));
         }
@@ -983,9 +985,11 @@ public class TsFileProcessor {
       }
       if (acquireArray != 0) {
         // memory of extending the TVList
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
         memIncrements[0] +=
             acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+        for (TSDataType dataType : dataTypesInTVList) {
+          memIncrements[0] += acquireArray * AlignedTVList.valueListArrayMemCost(dataType);
+        }
       }
     }
   }
