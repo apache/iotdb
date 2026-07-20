@@ -28,8 +28,42 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableDeviceLastCacheTest {
+
+  @Test
+  public void testLazyUpdateOnlyComposesCachedMeasurements() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidate(null, null, new String[] {"s1"}, false);
+    final AtomicInteger composedValueCount = new AtomicInteger();
+
+    cache.tryUpdate(
+        new String[] {"s1", "s2"},
+        null,
+        new LastCacheUpdateSource() {
+          @Override
+          public long getLastCacheTimestamp() {
+            return 1L;
+          }
+
+          @Override
+          public boolean hasLastCacheValue(final int index) {
+            return true;
+          }
+
+          @Override
+          public TimeValuePair getLastCacheValue(final int index) {
+            composedValueCount.incrementAndGet();
+            return new TimeValuePair(1L, new TsPrimitiveType.TsInt(index + 1));
+          }
+        });
+
+    Assert.assertEquals(1, composedValueCount.get());
+    Assert.assertEquals(
+        new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), cache.getTimeValuePair("s1"));
+    Assert.assertNull(cache.getTimeValuePair("s2"));
+  }
 
   @Test
   public void testKnownNullTimePreservesHistoricalValueAndClearsOnNewerValue() {

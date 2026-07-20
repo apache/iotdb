@@ -437,6 +437,17 @@ public class TreeDeviceSchemaCacheManager {
         false);
   }
 
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    tableDeviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
+  }
+
   /**
    * Update the {@link TableDeviceLastCache} on query in tree model.
    *

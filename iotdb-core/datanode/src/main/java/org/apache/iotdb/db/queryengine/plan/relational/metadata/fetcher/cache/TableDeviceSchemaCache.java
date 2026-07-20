@@ -305,6 +305,20 @@ public class TableDeviceSchemaCache {
         false);
   }
 
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final LastCacheUpdateSource updateSource) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        false);
+  }
+
   /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
    * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
@@ -457,7 +471,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
         deviceID,
-        new TableDeviceCacheEntry(),
+        Objects.isNull(timeValuePairs) ? new TableDeviceCacheEntry() : null,
         initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
@@ -473,6 +487,26 @@ public class TableDeviceSchemaCache {
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  void updateLastCache(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
+
+    dualKeyCache.update(
+        new TableId(null, deviceID.getTableName()),
+        deviceID,
+        null,
+        entry ->
+            entry.setMeasurementSchema(database2Use, isAligned, measurements, measurementSchemas)
+                + entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        false);
   }
 
   public boolean getLastCache(
