@@ -238,6 +238,11 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
+  protected int pipeSubSerializedSize() {
+    return super.pipeSubSerializedSize() + getValidMeasurementNumber() * Byte.BYTES;
+  }
+
+  @Override
   protected void subSerialize(IWALByteBufferView buffer) {
     super.subSerialize(buffer);
     for (int i = 0; measurements != null && i < measurements.length; i++) {

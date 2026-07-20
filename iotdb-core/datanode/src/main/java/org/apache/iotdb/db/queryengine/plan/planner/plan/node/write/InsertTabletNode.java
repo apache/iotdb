@@ -567,6 +567,97 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + baseSubSerializedSizeForPipe();
+  }
+
+  /**
+   * Returns the exact size written by {@link #subSerialize(DataOutputStream)}.
+   *
+   * <p>This deliberately excludes the plan-node type, id, and children. {@link
+   * InsertMultiTabletsNode} embeds tablet nodes by calling {@code subSerialize}, rather than their
+   * complete plan-node serialization.
+   */
+  final int baseSubSerializedSizeForPipe() {
+    int size = ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+
+    size += Integer.BYTES;
+    size += Byte.BYTES;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += TSDataType.getSerializedSize();
+      }
+    }
+
+    size += Integer.BYTES;
+    size += rowCount * Long.BYTES;
+
+    size += Byte.BYTES;
+    if (bitMaps != null) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (!shouldSerializeMeasurement(i)) {
+          continue;
+        }
+        size += Byte.BYTES;
+        if (getBitMapIfPresent(i) != null) {
+          size += BitMap.getSizeOfBytes(rowCount);
+        }
+      }
+    }
+
+    for (int i = 0; columns != null && i < columns.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += columnSerializedSizeForPipe(dataTypes[i], columns[i]);
+      }
+    }
+
+    return size + Byte.BYTES;
+  }
+
+  private int columnSerializedSizeForPipe(final TSDataType dataType, final Object column) {
+    switch (dataType) {
+      case INT32:
+      case DATE:
+        return rowCount * Integer.BYTES;
+      case INT64:
+      case TIMESTAMP:
+        return rowCount * Long.BYTES;
+      case FLOAT:
+        return rowCount * Float.BYTES;
+      case DOUBLE:
+        return rowCount * Double.BYTES;
+      case BOOLEAN:
+        return rowCount * Byte.BYTES;
+      case TEXT:
+      case BLOB:
+      case STRING:
+      case OBJECT:
+        int size = 0;
+        final Binary[] binaryValues = (Binary[]) column;
+        for (int i = 0; i < rowCount; i++) {
+          final Binary binary = binaryValues[i];
+          size +=
+              binary == null || binary.getValues() == null
+                  ? Integer.BYTES
+                  : Integer.BYTES + binary.getValues().length;
+        }
+        return size;
+      default:
+        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
     ReadWriteIOUtils.write(getValidMeasurementNumber(), buffer);

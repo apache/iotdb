@@ -276,6 +276,15 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  protected int serializedAttributesSize() {
+    int size = PlanNodeType.BYTES + Integer.BYTES;
+    for (InsertRowNode node : insertRowNodeList) {
+      size += node.pipeSubSerializedSize();
+    }
+    return size + insertRowNodeIndexList.size() * Integer.BYTES;
+  }
+
+  @Override
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
     insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByPipe);

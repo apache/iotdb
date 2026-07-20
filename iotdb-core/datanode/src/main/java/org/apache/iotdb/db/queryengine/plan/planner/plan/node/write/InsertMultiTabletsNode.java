@@ -281,6 +281,15 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  protected int serializedAttributesSize() {
+    int size = PlanNodeType.BYTES + Integer.BYTES;
+    for (final InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      size += insertTabletNode.baseSubSerializedSizeForPipe();
+    }
+    return size + parentInsertTabletNodeIndexList.size() * Integer.BYTES;
+  }
+
+  @Override
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
     insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByPipe);

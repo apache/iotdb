@@ -31,12 +31,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
@@ -86,7 +86,14 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
-    req.body = insertNode.serializeToByteBuffer();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(insertNode));
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      insertNode.serialize(outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
 
     return req;
   }
@@ -106,13 +113,26 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(final InsertNode insertNode) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(insertNode));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
+      insertNode.serialize(outputStream);
+      return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final InsertNode insertNode) {
+    return insertNode.serializeToByteBufferSize();
+  }
+
+  static int calculateAirGapSerializedSize(final InsertNode insertNode) {
+    return calculateAirGapSerializedSize(calculateSerializedSize(insertNode));
+  }
+
+  protected static int calculateAirGapSerializedSize(final int bodySize) {
+    return Byte.BYTES + Short.BYTES + bodySize;
   }
 
   /////////////////////////////// Object ///////////////////////////////
