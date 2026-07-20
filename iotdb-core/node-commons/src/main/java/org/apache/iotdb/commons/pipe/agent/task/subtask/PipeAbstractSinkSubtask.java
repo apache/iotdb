@@ -186,9 +186,9 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   private boolean onPipeConnectionException(final Throwable throwable) {
     PipeLogger.log(
         LOGGER::warn,
-        throwable,
         PipeMessages.PIPE_CONNECTION_EXCEPTION_RETRYING,
-        outputPipeSink.getClass().getName());
+        outputPipeSink.getClass().getName(),
+        ErrorHandlingCommonUtils.getRootCause(throwable).toString());
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
@@ -200,12 +200,13 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         break;
       } catch (final Exception e) {
         retry++;
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             PipeMessages.HANDSHAKE_FAILED_RETRYING,
             outputPipeSink.getClass().getName(),
             retry,
             MAX_RETRY_TIMES,
-            e);
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
         try {
           sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {
