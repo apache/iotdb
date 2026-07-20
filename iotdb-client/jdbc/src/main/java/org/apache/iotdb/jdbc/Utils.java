@@ -60,13 +60,27 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       int authorityEnd = findAuthorityEnd(subURL);
       String authority = subURL.substring(0, authorityEnd);
-      int portSeparatorIndex = authority.lastIndexOf(COLON);
+      int portSeparatorIndex = -1;
+      if (authority.startsWith("[")) {
+        int endIndex = authority.indexOf("]");
+        if (endIndex > 1
+            && endIndex + 1 < authority.length()
+            && COLON.equals(authority.substring(endIndex + 1, endIndex + 2))) {
+          host = authority.substring(1, endIndex);
+          portSeparatorIndex = endIndex + 1;
+        }
+      } else if (!authority.contains("[") && !authority.contains("]")) {
+        portSeparatorIndex = authority.lastIndexOf(COLON);
+        if (portSeparatorIndex > 0) {
+          host = authority.substring(0, portSeparatorIndex);
+        }
+      }
       if (portSeparatorIndex <= 0 || portSeparatorIndex == authority.length() - 1) {
         throw new IoTDBURLException(
-            "Error url format, url should be jdbc:iotdb://anything:port/[database] or jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2, current url is "
+            JdbcMessages
+                    .EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB
                 + url);
       }
-      host = authority.substring(0, portSeparatorIndex);
       params.setHost(host);
       String portText = authority.substring(portSeparatorIndex + 1);
       // parse port

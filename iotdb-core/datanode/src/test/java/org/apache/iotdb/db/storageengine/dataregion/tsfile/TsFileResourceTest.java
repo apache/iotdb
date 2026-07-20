@@ -93,7 +93,7 @@ public class TsFileResourceTest {
     if (file.exists()) {
       FileUtils.delete(file);
     }
-    File resourceFile = new File(file.getName() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFile = new File(file.getPath() + TsFileResource.RESOURCE_SUFFIX);
     if (resourceFile.exists()) {
       FileUtils.delete(resourceFile);
     }
@@ -108,7 +108,22 @@ public class TsFileResourceTest {
   }
 
   @Test
-  public void testDegradeAndFileTimeIndex() {
+  public void testSerializeDegradedTimeIndex() throws IOException {
+    tsFileResource.serialize();
+    tsFileResource.degradeTimeIndex();
+
+    tsFileResource.serialize();
+
+    TsFileResource derTsFileResource = new TsFileResource(file);
+    derTsFileResource.deserialize();
+    Assert.assertEquals(
+        ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, derTsFileResource.getTimeIndexType());
+    Assert.assertEquals(deviceToIndex.keySet(), derTsFileResource.getDevices());
+  }
+
+  @Test
+  public void testDegradeAndFileTimeIndex() throws IOException {
+    tsFileResource.serialize();
     Assert.assertEquals(ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     tsFileResource.degradeTimeIndex();
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());

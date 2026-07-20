@@ -74,7 +74,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
-public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
+public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
@@ -88,7 +88,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
-  private final ExecutorService executor;
+  private ExecutorService executor;
   private final boolean isGeneratedByPipe;
 
   public LoadTsFileDispatcherImpl(
@@ -97,9 +97,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
-    this.executor =
-        IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
     this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
+  private synchronized ExecutorService getOrCreateExecutor() {
+    if (executor == null || executor.isShutdown()) {
+      executor =
+          IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
+    }
+    return executor;
   }
 
   public void setUuid(String uuid) {
@@ -109,24 +115,28 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   @Override
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
-    return executor.submit(
-        () -> {
-          for (FragmentInstance instance : instances) {
-            try (SetThreadName threadName =
-                new SetThreadName(
-                    "load-dispatcher" + "-" + instance.getId().getFullId() + "-" + uuid)) {
-              dispatchOneInstance(instance);
-            } catch (FragmentInstanceDispatchException e) {
-              return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Exception t) {
-              LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
-              return new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
-            }
-          }
-          return new FragInstanceDispatchResult(true);
-        });
+    return getOrCreateExecutor()
+        .submit(
+            () -> {
+              for (FragmentInstance instance : instances) {
+                try (SetThreadName threadName =
+                    new SetThreadName(
+                        "load-dispatcher" + "-" + instance.getId().getFullId() + "-" + uuid)) {
+                  dispatchOneInstance(instance);
+                } catch (FragmentInstanceDispatchException e) {
+                  return new FragInstanceDispatchResult(e.getFailureStatus());
+                } catch (Exception t) {
+                  LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
+                  return new FragInstanceDispatchResult(
+                      RpcUtils.getStatus(
+                          TSStatusCode.INTERNAL_SERVER_ERROR,
+                          String.format(
+                              DataNodeQueryMessages.MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800,
+                              t.getMessage())));
+                }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -152,7 +162,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    if (isGeneratedByPipe) {
+      LOGGER.debug(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    } else {
+      LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
+    }
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -270,7 +284,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+                    TSStatusCode.INTERNAL_SERVER_ERROR,
+                    String.format(
+                        DataNodeQueryMessages.MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800,
+                        t.getMessage()))));
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
@@ -365,6 +382,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {
-    // Do nothing
+    close();
+  }
+
+  @Override
+  public synchronized void close() {
+    if (executor != null) {
+      executor.shutdownNow();
+      executor = null;
+    }
   }
 }

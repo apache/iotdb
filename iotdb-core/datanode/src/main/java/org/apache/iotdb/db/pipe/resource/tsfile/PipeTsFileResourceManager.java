@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -39,6 +40,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileResourceManager {
@@ -54,6 +56,9 @@ public class PipeTsFileResourceManager {
   // PipeName -> TsFilePath -> PipeTsFileResource
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
+  private final Map<String, String> pipeNameToPipeTsFileDirPathMap = new ConcurrentHashMap<>();
+  private final Set<String> pipeTsFileResourcePipeNameSetUnderDeletion =
+      ConcurrentHashMap.newKeySet();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
 
   public static String getPipeTsFileResourcePipeName(
@@ -126,6 +131,8 @@ public class PipeTsFileResourceManager {
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
       if (Objects.nonNull(pipeName)) {
+        pipeNameToPipeTsFileDirPathMap.putIfAbsent(
+            pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
         hardlinkOrCopiedFileToPipeTsFileResourceMap
             .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
             .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
@@ -225,7 +232,8 @@ public class PipeTsFileResourceManager {
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
-      if (resource != null && resource.decreaseReferenceCount()) {
+      if (resource != null
+          && resource.decreaseReferenceCount(shouldDeleteFileWhenNoReference(pipeName))) {
         getResourceMap(pipeName).remove(filePath);
       }
     } finally {
@@ -244,6 +252,35 @@ public class PipeTsFileResourceManager {
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
     // Note that it does not exist for historical files
     decreaseFileReference(new File(getCommonFilePath(file)), null);
+  }
+
+  private boolean shouldDeleteFileWhenNoReference(
+      final @Nullable String pipeTsFileResourcePipeName) {
+    return Objects.isNull(pipeTsFileResourcePipeName)
+        || !pipeTsFileResourcePipeNameSetUnderDeletion.contains(pipeTsFileResourcePipeName);
+  }
+
+  public void markPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.add(pipeTsFileResourcePipeName);
+  }
+
+  public void unmarkPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
+  }
+
+  public void cleanPipeTsFileDir(final @Nonnull String pipeTsFileResourcePipeName) {
+    final String pipeTsFileDirPath =
+        pipeNameToPipeTsFileDirPathMap.remove(pipeTsFileResourcePipeName);
+    hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(pipeTsFileResourcePipeName);
+
+    if (Objects.isNull(pipeTsFileDirPath)) {
+      pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
+      return;
+    }
+
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.submitStalePipeDirForPeriodicalCleanup(
+        new File(pipeTsFileDirPath));
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
   }
 
   // Warning: Shall not be called by the assigner

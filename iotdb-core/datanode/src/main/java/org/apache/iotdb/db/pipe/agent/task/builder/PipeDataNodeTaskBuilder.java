@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.builder;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
@@ -127,6 +129,8 @@ public class PipeDataNodeTaskBuilder {
             sinkStage.getPipeSinkPendingQueue(),
             PROCESSOR_EXECUTOR,
             pipeTaskMeta,
+            getSourceUserEntity(sourceParameters),
+            getSourcePassword(sourceParameters),
             pipeStaticMeta
                 .getSinkParameters()
                 .getStringOrDefault(
@@ -137,6 +141,38 @@ public class PipeDataNodeTaskBuilder {
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, sourceStage, processorStage, sinkStage);
+  }
+
+  private UserEntity getSourceUserEntity(final PipeParameters sourceParameters) {
+    final String username =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    if (Objects.isNull(username)) {
+      return null;
+    }
+
+    final String userId =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            "-1");
+    final String cliHostname =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+                PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME),
+            "");
+    return new UserEntity(Long.parseLong(userId), username, cliHostname);
+  }
+
+  private String getSourcePassword(final PipeParameters sourceParameters) {
+    return sourceParameters.getStringByKeys(
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
   }
 
   public static PipeParameters blendUserAndSystemParameters(

@@ -21,14 +21,14 @@ package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
@@ -60,7 +60,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
-    initPipePeriodicalLogReducer();
+    initLoggerPeriodicalLogReducer();
 
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
@@ -97,20 +97,10 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     LOGGER.info(ManagerMessages.PIPERUNTIMECONFIGNODEAGENT_STOPPED);
   }
 
-  private void initPipePeriodicalLogReducer() {
-    final IMemoryBlock pipeLogReducerMemoryBlock = PipeConfigNodeResourceManager.logReducerMemory();
-    PipePeriodicalLogReducer.setMemoryResizeFunction(
-        targetSizeInBytes -> {
-          final long nonNegativeTargetSizeInBytes = Math.max(0, targetSizeInBytes);
-          final long oldSizeInBytes = pipeLogReducerMemoryBlock.getUsedMemoryInBytes();
-          if (oldSizeInBytes < nonNegativeTargetSizeInBytes) {
-            pipeLogReducerMemoryBlock.allocate(nonNegativeTargetSizeInBytes - oldSizeInBytes);
-          } else if (oldSizeInBytes > nonNegativeTargetSizeInBytes) {
-            pipeLogReducerMemoryBlock.release(oldSizeInBytes - nonNegativeTargetSizeInBytes);
-          }
-          return pipeLogReducerMemoryBlock.getUsedMemoryInBytes();
-        });
-    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
+  private void initLoggerPeriodicalLogReducer() {
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(
+        PipeConfigNodeResourceManager.memory()::resizeLogReducerMemory);
+    PipeLogger.setLogger(LoggerPeriodicalLogReducer::log);
   }
 
   public boolean isShutdown() {
@@ -136,6 +126,11 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   public void decreaseListenerReference(final PipeParameters parameters)
       throws IllegalPathException {
     regionListener.decreaseReference(parameters);
+  }
+
+  public void reconcileListenerReferences(final Iterable<PipeMeta> pipeMetas)
+      throws IllegalPathException {
+    regionListener.reconcileReferences(pipeMetas);
   }
 
   /** Notify the region listener that the leader is ready to allow pipe operations. */

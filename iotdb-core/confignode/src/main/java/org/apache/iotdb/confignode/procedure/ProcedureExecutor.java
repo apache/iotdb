@@ -211,6 +211,14 @@ public class ProcedureExecutor<Env> {
             runnableList.add(procedure);
           }
         });
+    // A submission-time deserialization failure may be persisted before a rollback stack index.
+    failedList.forEach(
+        procedure -> {
+          RootProcedureStack<Env> rootStack = rollbackStack.get(getRootProcedureId(procedure));
+          if (rootStack != null) {
+            initializeRollbackStackForFailedProcedure(rootStack, procedure);
+          }
+        });
     restoreLocks();
 
     waitingTimeoutList.forEach(timeoutExecutor::add);
@@ -810,10 +818,30 @@ public class ProcedureExecutor<Env> {
     // Update metrics on start of a procedure
     procedure.updateMetricsOnSubmit(getEnvironment());
     RootProcedureStack<Env> stack = new RootProcedureStack<>();
+    // Persisting a newly submitted procedure may serialize and deserialize it through the
+    // consensus layer. If that process marks the procedure as failed before it is scheduled, the
+    // rollback stack still needs an entry so the executor can finish the failed procedure instead
+    // of leaving it in the active procedure map forever.
+    if (initializeRollbackStackForFailedProcedure(stack, procedure)) {
+      try {
+        store.update(procedure);
+      } catch (Exception e) {
+        LOG.error(ProcedureMessages.FAILED_TO_UPDATE_STORE_PROCEDURE, procedure, e);
+      }
+    }
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
     scheduler.addBack(procedure);
     return procedure.getProcId();
+  }
+
+  private boolean initializeRollbackStackForFailedProcedure(
+      RootProcedureStack<Env> stack, Procedure<Env> procedure) {
+    if (procedure.isFailed() && !procedure.wasExecuted()) {
+      stack.addRollbackStep(procedure);
+      return true;
+    }
+    return false;
   }
 
   private class WorkerThread extends StoppableThread {

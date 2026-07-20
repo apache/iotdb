@@ -2096,7 +2096,7 @@ void Session::Impl::handleQueryRedirection(TEndPoint endPoint) {
 void Session::Impl::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "0.0.0.0")
+  if (UrlUtils::isWildcardAddress(endPoint.ip))
     return;
   getDefaultSessionConnection();
   deviceIdToEndpoint[deviceId] = endPoint;
@@ -2122,7 +2122,7 @@ void Session::Impl::handleRedirection(const std::shared_ptr<storage::IDeviceID>&
                                       TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "0.0.0.0")
+  if (UrlUtils::isWildcardAddress(endPoint.ip))
     return;
   getDefaultSessionConnection();
   tableModelDeviceIdToEndpoint[deviceId] = endPoint;
