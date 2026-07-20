@@ -56,11 +56,20 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-        .setSchemaReplicationFactor(3);
+        .setSchemaReplicationFactor(3)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false)
+        .setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment();

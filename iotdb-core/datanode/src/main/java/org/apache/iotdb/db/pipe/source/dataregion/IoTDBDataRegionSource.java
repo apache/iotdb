@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
@@ -109,15 +107,6 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
     hasNoExtractionNeed = false;
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
-
-    if (insertionDeletionListeningOptionPair.getLeft().equals(true)
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      throw new PipeException(
-          "The pipe cannot transfer data when data region is using ratis consensus.");
-    }
 
     // Validate source.pattern.format is within valid range
     validator

@@ -20,6 +20,14 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -29,13 +37,18 @@ import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordin
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,6 +61,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PipeHeartbeatParserTest {
+
+  private static final int DATA_NODE_ID = 1;
 
   private boolean originalSeparatedPipeHeartbeatEnabled;
 
@@ -117,7 +132,88 @@ public class PipeHeartbeatParserTest {
     verify(context.procedureManager, times(2)).pipeHandleMetaChange(true, false);
   }
 
+  @Test
+  public void testParseHeartbeatIgnoresExceptionsBeforeClearTime() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String pipeName = "staleExceptionPipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, pipeName, PipeStatus.RUNNING);
+
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    final PipeTaskMeta coordinatorTaskMeta =
+        runtimeMeta.getConsensusGroupId2TaskMetaMap().get(DATA_NODE_ID);
+    coordinatorTaskMeta.trackExceptionMessage(
+        new PipeRuntimeCriticalException("stale failure", 100L));
+
+    pipeTaskInfo.clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName, 200L);
+
+    final PipeTaskMeta agentTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    agentTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("stale failure", 100L));
+    final ConcurrentMap<Integer, PipeTaskMeta> agentPipeTasks = new ConcurrentHashMap<>();
+    agentPipeTasks.put(DATA_NODE_ID, agentTaskMeta);
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(
+                new PipeMeta(pipeMeta.getStaticMeta(), new PipeRuntimeMeta(agentPipeTasks))
+                    .serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0D));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
+
+    Assert.assertFalse(coordinatorTaskMeta.hasExceptionMessages());
+    Assert.assertEquals(PipeStatus.RUNNING, runtimeMeta.getStatus().get());
+    verify(context.procedureManager, times(1)).pipeHandleMetaChange(false, true);
+  }
+
+  @Test
+  public void testParseHeartbeatTracksExceptionsAfterClearTime() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String pipeName = "freshExceptionPipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, pipeName, PipeStatus.RUNNING);
+
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    final PipeTaskMeta coordinatorTaskMeta =
+        runtimeMeta.getConsensusGroupId2TaskMetaMap().get(DATA_NODE_ID);
+    pipeTaskInfo.clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName, 200L);
+
+    final PipeTaskMeta agentTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    agentTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("fresh failure", 300L));
+    final ConcurrentMap<Integer, PipeTaskMeta> agentPipeTasks = new ConcurrentHashMap<>();
+    agentPipeTasks.put(DATA_NODE_ID, agentTaskMeta);
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(
+                new PipeMeta(pipeMeta.getStaticMeta(), new PipeRuntimeMeta(agentPipeTasks))
+                    .serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0D));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
+
+    Assert.assertTrue(coordinatorTaskMeta.hasExceptionMessages());
+    Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
+    Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, false);
+  }
+
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
+    return createParserTestContext(registeredDataNodeCount, new PipeTaskInfo());
+  }
+
+  private ParserTestContext createParserTestContext(
+      final int registeredDataNodeCount, final PipeTaskInfo pipeTaskInfo) {
     final ConfigManager configManager = Mockito.mock(ConfigManager.class);
     final NodeManager nodeManager = Mockito.mock(NodeManager.class);
     final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
@@ -134,7 +230,7 @@ public class PipeHeartbeatParserTest {
     when(pipeManager.getPipeRuntimeCoordinator()).thenReturn(pipeRuntimeCoordinator);
     when(pipeManager.getPipeTaskCoordinator()).thenReturn(pipeTaskCoordinator);
     when(pipeRuntimeCoordinator.getProcedureSubmitter()).thenReturn(procedureSubmitter);
-    when(pipeTaskCoordinator.tryLock()).thenReturn(new AtomicReference<>(new PipeTaskInfo()));
+    when(pipeTaskCoordinator.tryLock()).thenReturn(new AtomicReference<>(pipeTaskInfo));
     when(procedureManager.pipeHandleMetaChange(anyBoolean(), anyBoolean())).thenReturn(true);
     Mockito.doAnswer(
             invocation -> {
@@ -163,6 +259,37 @@ public class PipeHeartbeatParserTest {
     final Field field = PipeHeartbeatParser.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     ((AtomicBoolean) field.get(parser)).set(value);
+  }
+
+  private void createPipe(
+      final PipeTaskInfo pipeTaskInfo, final String pipeName, final PipeStatus initialStatus) {
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put("extractor", "iotdb-source");
+    final Map<String, String> processorAttributes = new HashMap<>();
+    processorAttributes.put("processor", "do-nothing-processor");
+    final Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put("connector", "iotdb-thrift-sink");
+
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(DATA_NODE_ID, pipeTaskMeta);
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            pipeName,
+            System.currentTimeMillis(),
+            extractorAttributes,
+            processorAttributes,
+            connectorAttributes);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    pipeTaskInfo.createPipe(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
+
+    if (PipeStatus.RUNNING.equals(initialStatus)) {
+      pipeTaskInfo
+          .getPipeMetaByPipeName(pipeName)
+          .getRuntimeMeta()
+          .getStatus()
+          .set(PipeStatus.RUNNING);
+    }
   }
 
   private PipeHeartbeat emptyHeartbeat() {

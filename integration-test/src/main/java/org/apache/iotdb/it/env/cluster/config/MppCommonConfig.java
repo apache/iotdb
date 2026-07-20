@@ -442,6 +442,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
+    setProperty(
+        "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
+        String.valueOf(pipeDataStructureTabletMemoryBlockAllocationRejectThreshold));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold) {
+    setProperty(
+        "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
+        String.valueOf(pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold));
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
     return this;

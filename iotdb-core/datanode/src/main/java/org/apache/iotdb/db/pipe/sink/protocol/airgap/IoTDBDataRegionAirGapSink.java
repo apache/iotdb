@@ -32,6 +32,8 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
@@ -254,19 +256,24 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(tsFile);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+    try {
+      for (final File tsFile : sealedFiles) {
+        doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
+      }
+    } finally {
+      for (final File tsFile : sealedFiles) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(tsFile);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+        }
       }
     }
   }
@@ -435,10 +442,13 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final AirGapSocket socket,
       final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PIPE_CONFIG.getPipeSinkReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
       while (true) {
         mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
@@ -468,6 +478,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         }
       }
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min((long) PIPE_CONFIG.getPipeSinkReadFileBufferSize(), Math.max(file.length(), 1L));
   }
 
   private boolean sendBatch(

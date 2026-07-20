@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
@@ -31,7 +32,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -54,7 +54,6 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -152,6 +151,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private PipeMemoryBlock allocatedMemoryBlock;
+  private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
 
   static {
     try {
@@ -173,22 +173,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
         if (requestType != PipeRequestType.TRANSFER_SLICE) {
-          sliceReqHandler.clear();
+          clearSliceReqHandler();
+        }
+        final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
+        if (Objects.nonNull(authResp)) {
+          return authResp;
         }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
-                if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
-                    && PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                        < PipeConfig.getInstance().getPipeMinimumReceiverMemory()) {
-                  return new TPipeTransferResp(
-                      RpcUtils.getStatus(
-                          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
-                          "The receiver memory is not enough to handle the handshake request from datanode."));
-                }
-                return handleTransferHandshakeV1(
-                    PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
+                return new TPipeTransferResp(getUnsupportedHandshakeV1Status());
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
@@ -356,8 +351,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             }
           case TRANSFER_COMPRESSED:
             {
+              long requestedMemorySizeInBytes = 0;
               try {
-                return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                requestedMemorySizeInBytes =
+                    PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
+                try (final PipeMemoryBlock ignored =
+                    tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
+                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                }
+              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                return new TPipeTransferResp(
+                    getReceiverTemporaryUnavailableStatus(
+                        "decompressing pipe transfer request", requestedMemorySizeInBytes, e));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
@@ -430,6 +435,41 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getClusterId() {
     return IoTDBDescriptor.getInstance().getConfig().getClusterId();
+  }
+
+  private TPipeTransferResp checkPipeTransferAuthenticated(final PipeRequestType requestType) {
+    if (!requiresAuthentication(requestType)) {
+      return null;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
+      if (!hasPipeHandshakeCredential && clientSession != null) {
+        username = clientSession.getUsername();
+      }
+      return null;
+    }
+
+    return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  private static boolean requiresAuthentication(final PipeRequestType requestType) {
+    switch (requestType) {
+      case TRANSFER_TABLET_INSERT_NODE:
+      case TRANSFER_TABLET_RAW:
+      case TRANSFER_TABLET_BINARY:
+      case TRANSFER_TABLET_BATCH:
+      case TRANSFER_TS_FILE_PIECE:
+      case TRANSFER_TS_FILE_SEAL:
+      case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+      case TRANSFER_TS_FILE_SEAL_WITH_MOD:
+      case TRANSFER_SCHEMA_PLAN:
+      case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
+      case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
@@ -669,22 +709,97 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
-    final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
-    if (!isInorder) {
+    final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
+    long requestedMemorySizeInBytes = sliceBodySizeInBytes;
+    String memoryAction = "buffering sliced pipe transfer request";
+    PipeMemoryBlock sliceMemoryBlock = null;
+    try {
+      sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
+
+      final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
+      if (!isInorder) {
+        closeMemoryBlock(sliceMemoryBlock);
+        clearSliceReqHandler();
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
+                "Slice request is out of order, please check the request sequence."));
+      }
+
+      allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
+      sliceMemoryBlock = null;
+
+      if (pipeTransferSliceReq.getSliceIndex() + 1 < pipeTransferSliceReq.getSliceCount()) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                "Slice received, waiting for more slices to complete the request."));
+      }
+
+      memoryAction = "assembling sliced pipe transfer request";
+      requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
+      try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
+        final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
+        if (!req.isPresent()) {
+          return new TPipeTransferResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.SUCCESS_STATUS,
+                  "Slice received, waiting for more slices to complete the request."));
+        }
+        clearSliceReqHandler();
+        return receive(req.get());
+      }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      closeMemoryBlock(sliceMemoryBlock);
+      clearSliceReqHandler();
       return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-              "Slice request is out of order, please check the request sequence."));
+          getReceiverTemporaryUnavailableStatus(memoryAction, requestedMemorySizeInBytes, e));
+    } catch (final RuntimeException e) {
+      closeMemoryBlock(sliceMemoryBlock);
+      clearSliceReqHandler();
+      throw e;
     }
-    final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
-    if (!req.isPresent()) {
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.SUCCESS_STATUS,
-              "Slice received, waiting for more slices to complete the request."));
+  }
+
+  private long getSliceBodySizeInBytes(final PipeTransferSliceReq pipeTransferSliceReq) {
+    return pipeTransferSliceReq.getSliceBody() == null
+        ? 0
+        : pipeTransferSliceReq.getSliceBody().length;
+  }
+
+  private void clearSliceReqHandler() {
+    sliceReqHandler.clear();
+    allocatedSliceMemoryBlocks.forEach(this::closeMemoryBlock);
+    allocatedSliceMemoryBlocks.clear();
+  }
+
+  private void closeMemoryBlock(final PipeMemoryBlock memoryBlock) {
+    if (Objects.nonNull(memoryBlock)) {
+      memoryBlock.close();
     }
-    // sliceReqHandler will be cleared in the receive(req) method
-    return receive(req.get());
+  }
+
+  private PipeMemoryBlock tryAllocateReceiverMemory(final long requestedMemorySizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return PipeDataNodeResourceManager.memory()
+        .forceAllocate(Math.max(requestedMemorySizeInBytes, 0));
+  }
+
+  @Override
+  protected TSStatus getReceiverTemporaryUnavailableStatus(
+      final String action,
+      final long requestedMemorySizeInBytes,
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(
+            String.format(
+                "Temporarily out of memory when %s. Requested memory: %d bytes, used memory: %d "
+                    + "bytes, free memory: %d bytes, total non-floating memory: %d bytes",
+                action,
+                requestedMemorySizeInBytes,
+                PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+                PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
+                PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()));
   }
 
   /**
@@ -814,7 +929,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   static boolean shouldLogStatementException(
       final long receiverId, final Statement statement, final Exception e) {
     // Use the reducer cache as a gate. The actual stack trace is logged only when it passes.
-    return PipePeriodicalLogReducer.log(
+    return LoggerPeriodicalLogReducer.log(
         message -> {},
         "Receiver id = %s, statement = %s, exception = %s, message = %s",
         receiverId,
@@ -885,13 +1000,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
+            false,
+            statement.isDebug())
         .status;
   }
 
   @Override
   protected TSStatus login() {
     final IClientSession session = SESSION_MANAGER.getCurrSession();
+
+    if (!hasPipeHandshakeCredential) {
+      return session != null && session.isLogin()
+          ? RpcUtils.SUCCESS_STATUS
+          : getNotLoggedInStatus();
+    }
 
     if (session != null && !session.isLogin()) {
       final BasicOpenSessionResp openSessionResp =
@@ -910,6 +1032,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    clearSliceReqHandler();
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());
