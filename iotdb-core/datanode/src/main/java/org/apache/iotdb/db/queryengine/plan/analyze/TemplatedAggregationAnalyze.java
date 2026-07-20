@@ -40,6 +40,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,26 @@ public class TemplatedAggregationAnalyze {
       MPPQueryContext context,
       Template template,
       List<PartialPath> deviceList) {
+    return canBuildAggregationPlanUseTemplate(
+        analysis,
+        queryStatement,
+        partitionFetcher,
+        schemaTree,
+        context,
+        template,
+        deviceList,
+        new TreeAnalysisMutationJournal());
+  }
+
+  static boolean canBuildAggregationPlanUseTemplate(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      IPartitionFetcher partitionFetcher,
+      ISchemaTree schemaTree,
+      MPPQueryContext context,
+      Template template,
+      List<PartialPath> deviceList,
+      TreeAnalysisMutationJournal mutationJournal) {
 
     // not support order by expression and non-aligned template
     if (queryStatement.hasOrderByExpression() || !template.isDirectAligned()) {
@@ -77,13 +98,6 @@ public class TemplatedAggregationAnalyze {
     }
 
     analysis.setNoWhereAndAggregation(false);
-
-    if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
-      // remove the device which won't appear in resultSet after limit/offset
-      deviceList =
-          pushDownLimitOffsetInGroupByTimeForDevice(
-              deviceList, queryStatement, context.getZoneId());
-    }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     boolean valid = analyzeSelect(queryStatement, analysis, outputExpressions, template);
@@ -110,6 +124,21 @@ public class TemplatedAggregationAnalyze {
     if (!valid) {
       analysis.setDeviceTemplate(null);
       return false;
+    }
+
+    if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
+      // Pushdown rewrites LIMIT/OFFSET and the GROUP BY time range in the statement. Do it only
+      // after every template eligibility check succeeds, because the regular analyzer consumes the
+      // same statement when this optimization falls back.
+      mutationJournal.recordLimitOffsetPushDown(queryStatement);
+      deviceList =
+          pushDownLimitOffsetInGroupByTimeForDevice(
+              deviceList, queryStatement, context.getZoneId());
+      if (deviceList.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        return true;
+      }
+      analysis.setDeviceList(deviceList);
     }
 
     analyzeDeviceToExpressions(analysis);
@@ -151,13 +180,29 @@ public class TemplatedAggregationAnalyze {
       if (selectExpression instanceof FunctionExpression
           && COUNT_TIME.equalsIgnoreCase(
               ((FunctionExpression) selectExpression).getFunctionName())) {
-        outputExpressions.add(new Pair<>(selectExpression, resultColumn.getAlias()));
-        selectExpressions.add(selectExpression);
-        aggregationExpressions.add(selectExpression);
+        FunctionExpression countTimeExpression = (FunctionExpression) selectExpression;
+        // The parsed count_time(*) expression belongs to the statement and may be analyzed again
+        // after a dispatch failure. Build a template-only expression instead of replacing its
+        // wildcard child in place. Prime the copy's expression string before replacing the child:
+        // the result header must remain count_time(*), while the planning output symbol must be
+        // count_time(Time), just as it was when the parsed expression was mutated in place.
+        FunctionExpression templatedCountTimeExpression =
+            new FunctionExpression(
+                countTimeExpression.getFunctionName(),
+                new LinkedHashMap<>(countTimeExpression.getFunctionAttributes()),
+                new ArrayList<>(countTimeExpression.getExpressions()));
+        templatedCountTimeExpression.getExpressionString();
+        templatedCountTimeExpression.setExpressions(
+            Collections.singletonList(new TimestampOperand()));
+        templatedCountTimeExpression.setFunctionType(countTimeExpression.getFunctionType());
 
-        analysis.getExpressionTypes().put(NodeRef.of(selectExpression), TSDataType.INT64);
-        ((FunctionExpression) selectExpression)
-            .setExpressions(Collections.singletonList(new TimestampOperand()));
+        outputExpressions.add(new Pair<>(templatedCountTimeExpression, resultColumn.getAlias()));
+        selectExpressions.add(templatedCountTimeExpression);
+        aggregationExpressions.add(templatedCountTimeExpression);
+
+        analysis
+            .getExpressionTypes()
+            .put(NodeRef.of(templatedCountTimeExpression), TSDataType.INT64);
         continue;
       }
 

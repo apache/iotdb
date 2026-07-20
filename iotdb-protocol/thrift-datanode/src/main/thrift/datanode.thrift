@@ -289,6 +289,7 @@ struct TDataNodeHeartbeatReq {
   // Using 8 bit to represent 8 bool
   // lowest bit: enable separation of admin powers
   16: optional byte booleanVariables1
+  17: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeActivation {

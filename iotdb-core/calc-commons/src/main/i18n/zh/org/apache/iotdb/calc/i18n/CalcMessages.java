@@ -382,6 +382,8 @@ public final class CalcMessages {
   public static final String EXCEPTION_THE_SIZE_OF_READYQUEUE_CANNOT_BE_NEGATIVE_DOT_01D8D0CB = "readyQueue 的大小不能为负数。";
   public static final String EXCEPTION_THE_SIZE_BETWEEN_WHENTRANSFORMERS_AND_THENTRANSFORMERS_NEEDS_TO_BE_SAME_AC796883 = "whenTransformers 和 thenTransformers 的大小应相同";
   public static final String EXCEPTION_EXCEED_MAX_CALL_TIMES_OF_GETCOLUMN_69C77C7E = "超过 getColumn 的最大调用次数";
+  public static final String EXCEPTION_TOPK_RUNTIME_FILTER_REQUIRES_SINGLE_TIME_ORDER_BY_7EED6208 =
+      "TopK Runtime Filter 要求 ORDER BY 单个 INT64 或 TIMESTAMP 类型的 time 列";
   public static final String EXCEPTION_FILTER_IS_NOT_SUPPORTED_IN_ARG_DOT_FILTER_IS_ARG_DOT_417C4F3C = "%s 不支持过滤条件。过滤条件为 %s。";
   public static final String EXCEPTION_NULL_9B41EF67 = "null";
   public static final String EXCEPTION_ARG_MUST_HAVE_JOIN_KEYS_DOT_C24DAB2D = "%s 必须包含连接键。";

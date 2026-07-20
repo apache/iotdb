@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -1414,7 +1415,7 @@ public class Session implements ISession {
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
-      if (endpoint.ip.equals("0.0.0.0")) {
+      if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
       }
       if (!deviceIdToEndpoint.containsKey(deviceId)
@@ -1440,7 +1441,7 @@ public class Session implements ISession {
   private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
-      if (endpoint.ip.equals("0.0.0.0")) {
+      if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
       }
       if (!tableModelDeviceIdToEndpoint.containsKey(deviceId)

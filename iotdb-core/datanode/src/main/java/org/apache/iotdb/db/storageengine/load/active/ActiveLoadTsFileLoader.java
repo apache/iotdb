@@ -261,6 +261,15 @@ public class ActiveLoadTsFileLoader {
             : new File(entry.getPendingDir());
     final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
     ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+    final String userName =
+        attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
+    final Optional<Long> userId = AuthorityChecker.getUserId(userName);
+    if (!userId.isPresent()) {
+      return new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode())
+          .setMessage(StorageEngineMessages.USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST);
+    }
+    session.setUserId(userId.get());
+    session.setUsername(userName);
 
     final File parentFile;
     if (statement.getDatabase() == null && entry.isTableModel()) {

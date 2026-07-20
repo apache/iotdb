@@ -262,20 +262,13 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
@@ -448,7 +441,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
         break;
       }
-      pendingQueue.pollLast();
+      final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
+      if (droppedEvent != null) {
+        droppedEvent.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+      }
     }
     final Event last = pendingQueue.peekLast();
     if (last instanceof PipeRealtimeEvent
@@ -459,6 +455,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
       return;
     }
     pendingQueue.offer(event);

@@ -101,8 +101,10 @@ public class SubscriptionConsumerAgent {
 
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
-      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
+          consumerGroupId, metaFromCoordinator.getSubscribedTopicNames());
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       return;
     }
 
@@ -125,6 +127,8 @@ public class SubscriptionConsumerAgent {
         }
       }
 
+      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
+          consumerGroupId, metaFromCoordinator.getSubscribedTopicNames());
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       // no need to create broker manually
@@ -143,15 +147,6 @@ public class SubscriptionConsumerAgent {
       }
       pipeTopicsUnsubByGroup.add(topicName);
     }
-    for (final String topicName : pipeTopicsUnsubByGroup) {
-      SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
-    }
-    // Tear down consensus-based subscriptions for unsubscribed topics
-    if (!consensusTopicsUnsubByGroup.isEmpty()) {
-      ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
-          consumerGroupId, consensusTopicsUnsubByGroup);
-    }
-
     // Detect newly subscribed topics (present in new meta but not in old meta)
     final Set<String> newlySubscribedTopics =
         ConsumerGroupMeta.getTopicsNewlySubByGroup(metaInAgent, metaFromCoordinator);
@@ -163,17 +158,37 @@ public class SubscriptionConsumerAgent {
         topicsUnsubByGroup,
         newlySubscribedTopics);
 
-    // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
-    //       changes in its fields.
-    consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-    consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+    applyTopicDiff(
+        () -> {
+          if (!newlySubscribedTopics.isEmpty()) {
+            ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
+                consumerGroupId, newlySubscribedTopics);
+          }
+        },
+        () -> {
+          for (final String topicName : pipeTopicsUnsubByGroup) {
+            SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
+          }
+          if (!consensusTopicsUnsubByGroup.isEmpty()) {
+            ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
+                consumerGroupId, consensusTopicsUnsubByGroup);
+          }
+        },
+        () -> {
+          // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
+          // checking the changes in its fields.
+          consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+          consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+        });
+  }
 
-    // Set up consensus-based subscription for newly subscribed consensus-mode topics.
-    // This must happen after the meta is updated so that the broker can find the topic config.
-    if (!newlySubscribedTopics.isEmpty()) {
-      ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
-          consumerGroupId, newlySubscribedTopics);
-    }
+  static void applyTopicDiff(
+      final Runnable setupNewTopics,
+      final Runnable teardownRemovedTopics,
+      final Runnable publishMeta) {
+    setupNewTopics.run();
+    teardownRemovedTopics.run();
+    publishMeta.run();
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(

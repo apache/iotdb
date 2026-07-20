@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -849,12 +850,8 @@ public class StorageEngine implements IService {
                       dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
                       region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
               if (regionSnapshotDir.exists()) {
-                try {
-                  FileUtils.deleteDirectory(regionSnapshotDir);
-                } catch (IOException e) {
-                  LOGGER.error(
-                      StorageEngineMessages.FAILED_TO_DELETE_SNAPSHOT_DIR, regionSnapshotDir, e);
-                }
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectoryWithRateLimiter(
+                    regionSnapshotDir, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
               }
             }
             break;

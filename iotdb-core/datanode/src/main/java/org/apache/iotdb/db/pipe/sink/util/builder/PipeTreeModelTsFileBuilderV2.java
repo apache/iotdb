@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
@@ -120,10 +121,15 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   private List<Pair<String, File>> writeTabletsToTsFiles() throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
-    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(memTable, writer);
-      sealedFiles.add(new Pair<>(null, writer.getFile()));
+    File file = null;
+    try {
+      file = createFile();
+      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+        writeTabletsIntoOneFile(memTable, writer);
+        sealedFiles.add(new Pair<>(null, writer.getFile()));
+      }
     } catch (final Exception e) {
+      FileUtils.deleteQuietly(file);
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),
@@ -155,14 +161,16 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
         final IMeasurementSchema schema = measurementSchemas[j];
         if (Objects.isNull(schema)) {
-          break;
+          continue;
         }
 
         if (Objects.equals(TSDataType.DATE, schema.getType()) && values[j] instanceof LocalDate[]) {
           final LocalDate[] dates = ((LocalDate[]) values[j]);
           final int[] dateValues = new int[dates.length];
           for (int k = 0; k < Math.min(dates.length, tablet.getRowSize()); k++) {
-            dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            if (Objects.nonNull(dates[k])) {
+              dateValues[k] = DateUtils.parseDateExpressionToInt(dates[k]);
+            }
           }
           values[j] = dateValues;
         }

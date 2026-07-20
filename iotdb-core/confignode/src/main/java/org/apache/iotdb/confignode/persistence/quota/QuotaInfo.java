@@ -259,6 +259,7 @@ public class QuotaInfo implements SnapshotProcessor {
 
   public void clear() {
     spaceQuotaLimit.clear();
+    spaceQuotaUsage.clear();
     throttleQuotaLimit.clear();
   }
 }

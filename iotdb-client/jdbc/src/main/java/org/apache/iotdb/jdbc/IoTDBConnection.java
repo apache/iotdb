@@ -129,7 +129,7 @@ public class IoTDBConnection implements Connection {
     }
     params = Utils.parseUrl(url, info);
     this.url = url;
-    this.userName = info.get("user").toString();
+    this.userName = params.getUsername();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
