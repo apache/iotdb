@@ -852,6 +852,8 @@ public final class DataNodeQueryMessages {
       "无效的标量参数：";
   public static final String ARGUMENT_SHOULD_BE_A_STRING =
       "参数 %s 应为字符串";
+  public static final String ARGUMENT_SHOULD_BE_A_NUMBER =
+      "参数 %s 应为数字";
   public static final String ARGUMENT_SHOULD_CONTAIN_AT_LEAST_ONE_PATH =
       "参数 %s 应至少包含一个路径";
   public static final String READ_TSFILE_PATH_IS_NOT_ALLOWED =
@@ -1096,6 +1098,8 @@ public final class DataNodeQueryMessages {
       "在节点 {} 上取消查询 {} 失败。";
   public static final String CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION =
       "无法为加载操作分发 FI";
+  public static final String MESSAGE_UNEXPECTED_ERRORS_ARG_78EE0800 =
+      "意外错误：%s";
   public static final String RECEIVE_LOAD_NODE_FROM_UUID =
       "接收来自 uuid {} 的加载节点。";
   public static final String LOAD_TSFILE_NODE_ERROR =

@@ -73,4 +73,10 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
     properties.setProperty("leader_distribution_policy", policy);
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    properties.setProperty("metadata_lease_fence_ms", String.valueOf(metadataLeaseFenceMs));
+    return this;
+  }
 }

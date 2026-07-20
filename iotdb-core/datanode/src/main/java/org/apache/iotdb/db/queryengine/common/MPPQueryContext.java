@@ -291,7 +291,10 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(
-      String tableName, List<String> tsFilePaths, Map<Symbol, ColumnSchema> tableColumnSchema) {
+      String tableName,
+      List<String> tsFilePaths,
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      long deviceMetadataInfoSwapThreshold) {
     int resourceIndex = externalTsFileQueryResourceIndex.getAndIncrement();
     ExternalTsFileQueryResource externalTsFileQueryResource =
         new ExternalTsFileQueryResource(
@@ -302,7 +305,8 @@ public class MPPQueryContext implements IAuditEntity {
                 .resolve(String.valueOf(resourceIndex)),
             tableName,
             tsFilePaths,
-            tableColumnSchema);
+            tableColumnSchema,
+            deviceMetadataInfoSwapThreshold);
     externalTsFileQueryResources.add(externalTsFileQueryResource);
     return externalTsFileQueryResource;
   }

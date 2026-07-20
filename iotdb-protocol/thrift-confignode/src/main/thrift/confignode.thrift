@@ -129,6 +129,7 @@ struct TRuntimeConfiguration {
   10: optional bool enableSeparationOfAdminPowers
   // use 'optional' here to support rolling upgrade
   11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
+  12: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeRegisterReq {
@@ -157,6 +158,11 @@ struct TDataNodeRestartResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
   4: optional list<common.TRegionReplicaSet> correctConsensusGroups
+}
+
+struct TDataNodeLeaseRecoveryResp{
+ 1: required common.TSStatus status
+ 2: optional binary tableInfo
 }
 
 struct TDataNodeRemoveReq {
@@ -1343,6 +1349,11 @@ service IConfigNodeRPCService {
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
 
+  /**
+  * get all metadate cache when the heartbeart renew the lease
+  */
+  TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery();
+
    // ======================================================
    // AINode
    // ======================================================
@@ -2095,7 +2106,7 @@ service IConfigNodeRPCService {
 
   TDescTable4InformationSchemaResp descTables4InformationSchema()
 
-  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap, byte tableNodeStatus)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 

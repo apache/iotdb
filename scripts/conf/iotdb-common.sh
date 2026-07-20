@@ -393,3 +393,118 @@ get_iotdb_include() {
   done
   echo "$VARS"
 }
+
+# Calculate ON_HEAP_MEMORY and OFF_HEAP_MEMORY from system resources.
+#
+# $1  numerator   of the suggested memory fraction  (e.g. 1 for DataNode, 3 for ConfigNode)
+# $2  denominator of the suggested memory fraction  (e.g. 2 for DataNode, 10 for ConfigNode)
+# $3  max suggested memory in MB; 0 means no cap    (e.g. 0 for DataNode, 8192 for ConfigNode)
+#
+# Respects the MEMORY_SIZE environment variable (e.g. '2G' or '2048M') when set.
+calculate_memory_sizes()
+{
+    local suggest_numerator=${1:-1}
+    local suggest_denominator=${2:-2}
+    local max_suggest_mb=${3:-0}
+
+    case "`uname`" in
+        Linux)
+            system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
+            # When running in a container/pod, use cgroup memory limit instead of host memory.
+            # This reads the root cgroup, which is what containers see; it does NOT walk
+            # /proc/self/cgroup, so cgroup-restricted processes on bare metal are not covered.
+            if [ -f /sys/fs/cgroup/memory.max ]; then
+                # cgroup v2
+                cgroup_mem=`cat /sys/fs/cgroup/memory.max`
+                if [ "$cgroup_mem" != "max" ]; then
+                    cgroup_mem_in_mb=`expr $cgroup_mem / 1024 / 1024`
+                    if [ "$cgroup_mem_in_mb" -lt "$system_memory_in_mb" ]; then
+                        system_memory_in_mb=$cgroup_mem_in_mb
+                    fi
+                fi
+            elif [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+                # v1 has no "max" sentinel — when unset, this file holds a huge integer (~PAGE_COUNTER_MAX);
+                # the -lt check below naturally rejects it, so no explicit guard is needed.
+                cgroup_mem=`cat /sys/fs/cgroup/memory/memory.limit_in_bytes`
+                cgroup_mem_in_mb=`expr $cgroup_mem / 1024 / 1024`
+                if [ "$cgroup_mem_in_mb" -lt "$system_memory_in_mb" ]; then
+                    system_memory_in_mb=$cgroup_mem_in_mb
+                fi
+            fi
+            system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
+        ;;
+        FreeBSD)
+            system_memory_in_bytes=`sysctl hw.physmem | awk '{print $2}'`
+            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
+            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
+        ;;
+        SunOS)
+            system_memory_in_mb=`prtconf | awk '/Memory size:/ {print $3}'`
+            system_cpu_cores=`psrinfo | wc -l`
+        ;;
+        Darwin)
+            system_memory_in_bytes=`sysctl hw.memsize | awk '{print $2}'`
+            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
+            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
+        ;;
+        *)
+            # assume reasonable defaults for e.g. a modern desktop or
+            # cheap server
+            system_memory_in_mb="2048"
+            system_cpu_cores="2"
+        ;;
+    esac
+
+    # some systems like the raspberry pi don't report cores, use at least 1
+    if [ "$system_cpu_cores" -lt "1" ]
+    then
+        system_cpu_cores="1"
+    fi
+
+    suggest_using_memory_in_mb=`expr $system_memory_in_mb / $suggest_denominator \* $suggest_numerator`
+
+    if [ -n "$MEMORY_SIZE" ]
+    then
+        if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ] || [ "${MEMORY_SIZE%"M"}" != "$MEMORY_SIZE" ]
+        then
+          if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ]
+          then
+              memory_size_in_mb=`expr ${MEMORY_SIZE%"G"} "*" 1024`
+          else
+              memory_size_in_mb=`expr ${MEMORY_SIZE%"M"}`
+          fi
+        else
+            echo "Invalid format of MEMORY_SIZE, please use the format like 2048M or 2G"
+            exit 1
+        fi
+    else
+        if [ "$max_suggest_mb" -gt "0" ] && [ "$suggest_using_memory_in_mb" -gt "$max_suggest_mb" ]
+        then
+            memory_size_in_mb=$max_suggest_mb
+        else
+            memory_size_in_mb=$suggest_using_memory_in_mb
+        fi
+    fi
+
+    # set on heap memory size
+    # when memory_size_in_mb is less than 4 * 1024, we will set on heap memory size to memory_size_in_mb / 4 * 3
+    # when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
+    # when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
+    # when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
+    if [ "$memory_size_in_mb" -lt "4096" ]
+    then
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 4 \* 3`
+    elif [ "$memory_size_in_mb" -lt "16384" ]
+    then
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 5 \* 4`
+    elif [ "$memory_size_in_mb" -lt "131072" ]
+    then
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 8 \* 7`
+    else
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb - 16384`
+    fi
+    off_heap_memory_size_in_mb=`expr $memory_size_in_mb - $on_heap_memory_size_in_mb`
+
+    ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
+    OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
+}

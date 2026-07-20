@@ -154,20 +154,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // not a timeseries, skip
         } else {
           // check WRITE_DATA permission of timeseries
-          long startTime = System.nanoTime();
-          try {
-            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
-            TSStatus status =
-                AuthorityChecker.getAccessControl()
-                    .checkFullPathWriteDataPermission(
-                        userEntity, device, timeseriesMetadata.getMeasurementId());
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new AuthException(
-                  TSStatusCode.representOf(status.getCode()), status.getMessage());
-            }
-          } finally {
-            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-          }
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           schemaCache.addTimeSeries(
@@ -188,6 +175,63 @@ public class TreeSchemaAutoCreatorAndVerifier {
           flush();
         }
       }
+    }
+  }
+
+  public void checkWritePermission(
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList) throws AuthException {
+    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+        device2TimeseriesMetadataList.entrySet()) {
+      final IDeviceID device = entry.getKey();
+
+      try {
+        if (schemaCache.isDeviceDeletedByMods(device)) {
+          continue;
+        }
+      } catch (IllegalPathException e) {
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
+            device,
+            e);
+      }
+
+      for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        try {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
+        }
+
+        if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())) {
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
+        }
+      }
+    }
+  }
+
+  private void checkWritePermission(final IDeviceID device, final String measurementId)
+      throws AuthException {
+    final long startTime = System.nanoTime();
+    try {
+      UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkFullPathWriteDataPermission(userEntity, device, measurementId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
   }
 

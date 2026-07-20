@@ -35,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -281,13 +280,9 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public void updateLastCache(String databaseName) {
-    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     TableDeviceSchemaCache.getInstance()
         .updateLastCacheIfExists(
-            databaseName, getDeviceID(), measurements, measurementSchemas, timeValuePairs);
+            databaseName, getDeviceID(), measurements, measurementSchemas, this);
   }
 
   @Override
