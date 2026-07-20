@@ -26,9 +26,7 @@ import java.io.PrintStream;
 import java.util.function.Consumer;
 
 public class PipeLogger {
-  private static PipePeriodicalLogger logger =
-      (loggerFunction, rawMessage, formatter) ->
-          loggerFunction.accept(LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter));
+  private static PipePeriodicalLogger logger = LoggerPeriodicalLogReducer::log;
 
   public static void log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
