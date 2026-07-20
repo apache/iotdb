@@ -415,10 +415,10 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "发生非 PipeRuntimeSinkCriticalException，将抛出 PipeRuntimeSinkCriticalException。";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "发生 PipeConnectionException，%s 正在重试与目标系统握手。";
+      "发生 PipeConnectionException，%s 正在重试与目标系统握手。根因：%s。";
   public static final String HANDSHAKE_SUCCESS = "{} 与目标系统握手成功。";
   public static final String HANDSHAKE_FAILED_RETRYING =
-      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。";
+      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。根因：{}。";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "休眠时被中断，将重试与目标系统握手。";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -491,9 +491,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "连接目标服务器失败（ip：{}，端口：{}），原因：{}。已忽略。";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "握手错误，可能由接收端错误引起。已忽略。";
+      "握手错误，可能由接收端错误引起。已忽略。根因：{}。";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "与目标服务器握手失败，socket：%s";
+      "与目标服务器握手失败，endpoint：%s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "握手成功。Socket：{}";
   public static final String FAILED_TO_CLOSE_CLIENT = "关闭客户端 {} 失败。";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =

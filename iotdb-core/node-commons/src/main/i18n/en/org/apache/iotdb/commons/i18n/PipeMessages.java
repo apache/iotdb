@@ -432,11 +432,11 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "PipeConnectionException occurred, %s retries to handshake with the target system.";
+      "PipeConnectionException occurred, %s retries to handshake with the target system. Root cause: %s.";
   public static final String HANDSHAKE_SUCCESS = "{} handshakes with the target system successfully.";
   public static final String HANDSHAKE_FAILED_RETRYING =
       "{} failed to handshake with the target system for {} times, "
-          + "will retry at most {} times.";
+          + "will retry at most {} times. Root cause: {}.";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "Interrupted while sleeping, will retry to handshake with the target system.";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -511,9 +511,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.";
+      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it. Root cause: {}.";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "Handshake error with target server, socket: %s";
+      "Handshake error with target server, endpoint: %s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "Handshake success. Socket: {}";
   public static final String FAILED_TO_CLOSE_CLIENT = "Failed to close client {}.";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
