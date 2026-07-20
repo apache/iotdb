@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -60,5 +61,18 @@ public class PathUtilsTest {
     assertSame(measurementLists.get(0).get(0), measurementLists.get(1).get(0));
     assertSame(measurementLists.get(0).get(1), measurementLists.get(1).get(1));
     assertEquals("path_utils_batch_s2", measurementLists.get(0).get(1));
+  }
+
+  @Test
+  public void testCheckSingleMeasurementListInPlace() throws MetadataException {
+    List<String> measurements =
+        new ArrayList<>(Arrays.asList("path_utils_batch_s1", "`path_utils_batch_s2`", null));
+
+    PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(
+        Collections.singletonList(measurements));
+
+    assertEquals("path_utils_batch_s1", measurements.get(0));
+    assertEquals("path_utils_batch_s2", measurements.get(1));
+    assertNull(measurements.get(2));
   }
 }

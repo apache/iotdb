@@ -163,21 +163,10 @@ public class TabletDecoder {
   }
 
   private static boolean supportsPlainFastPath(TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-      case DATE:
-      case INT32:
-      case TIMESTAMP:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-      case STRING:
-      case BLOB:
-      case TEXT:
-        return true;
-      default:
-        return false;
-    }
+    return switch (dataType) {
+      case BOOLEAN, DATE, INT32, TIMESTAMP, INT64, FLOAT, DOUBLE, STRING, BLOB, TEXT -> true;
+      case VECTOR, UNKNOWN, OBJECT -> false;
+    };
   }
 
   private Object decodeColumn(ByteBuffer uncompressed, int columnIndex) {

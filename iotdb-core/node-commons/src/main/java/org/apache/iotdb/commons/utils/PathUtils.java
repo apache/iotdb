@@ -156,7 +156,20 @@ public class PathUtils {
    */
   public static void checkIsLegalSingleMeasurementListsAndUpdateInPlace(
       List<List<String>> measurementLists) throws MetadataException {
-    if (measurementLists == null) {
+    if (measurementLists == null || measurementLists.isEmpty()) {
+      return;
+    }
+    if (measurementLists.size() == 1) {
+      List<String> measurements = measurementLists.get(0);
+      if (measurements == null) {
+        return;
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        if (measurement != null) {
+          measurements.set(i, checkAndReturnSingleMeasurement(measurement));
+        }
+      }
       return;
     }
     Map<String, String> checkedMeasurements = new HashMap<>();
