@@ -110,6 +110,23 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.OWNER_EPOCH_KEY,
           TopicConstant.MAX_OWNER_EPOCH_KEY,
           TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+  private static final Set<String> CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS =
+      Set.of(
+          SystemConstant.SQL_DIALECT_KEY,
+          TopicConstant.PATH_KEY,
+          TopicConstant.PATTERN_KEY,
+          TopicConstant.DATABASE_KEY,
+          TopicConstant.TABLE_KEY,
+          TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.RETENTION_BYTES_KEY,
+          TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.MODE_KEY,
+          TopicConstant.ORDER_MODE_KEY,
+          TopicConstant.FORMAT_KEY,
+          TopicConstant.OWNER_ID_KEY,
+          TopicConstant.OWNER_EPOCH_KEY,
+          TopicConstant.MAX_OWNER_EPOCH_KEY,
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
 
   private final TopicMetaKeeper topicMetaKeeper;
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
@@ -329,6 +346,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throw new SubscriptionException(exceptionMessage);
     }
 
+    validateConsensusTopicAttributes(topicConfig);
     validateConsensusProtocolSupport(topicConfig);
 
     if (topicConfig.isConsensusMode() && !topicConfig.isRecordFormat()) {
@@ -373,6 +391,35 @@ public class SubscriptionInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
+  }
+
+  private void validateConsensusTopicAttributes(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!topicConfig.isConsensusMode()) {
+      return;
+    }
+
+    final List<String> unsupportedAttributes =
+        topicConfig.getAttribute().keySet().stream()
+            .filter(
+                key ->
+                    Objects.isNull(key)
+                        || !CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS.contains(
+                            key.trim().toLowerCase(Locale.ROOT)))
+            .map(String::valueOf)
+            .sorted()
+            .collect(Collectors.toList());
+    if (unsupportedAttributes.isEmpty()) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA,
+            unsupportedAttributes);
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   private void validateConsensusProtocolSupport(final TopicConfig topicConfig)
