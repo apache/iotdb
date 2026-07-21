@@ -245,6 +245,11 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
   public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
+  public static final String CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "connector.opcua.allow-endpoint-redirect";
+  public static final String SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "sink.opcua.allow-endpoint-redirect";
+  public static final boolean CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_KEY =
       "connector.opcua.security-policy";

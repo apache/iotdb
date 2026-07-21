@@ -70,6 +70,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE;
@@ -112,6 +114,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
@@ -399,6 +402,12 @@ public class OpcUaSink implements PipeConnector {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TIMEOUT_SECONDS_KEY, SINK_OPC_UA_TIMEOUT_SECONDS_KEY),
             CONNECTOR_OPC_UA_TIMEOUT_SECONDS_DEFAULT_VALUE);
+    final boolean allowEndpointRedirect =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY,
+                SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY),
+            CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE);
 
     synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
       client =
@@ -418,11 +427,20 @@ public class OpcUaSink implements PipeConnector {
                                       SINK_OPC_UA_HISTORIZING_KEY),
                                   CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE));
                       final ClientRunner runner =
-                          new ClientRunner(result, securityDir, password, userName, timeoutSeconds);
+                          new ClientRunner(
+                              result,
+                              securityDir,
+                              password,
+                              userName,
+                              timeoutSeconds,
+                              allowEndpointRedirect);
                       runner.run();
                       return new Pair<>(new AtomicInteger(0), result);
                     }
-                    oldValue.getRight().checkEquals(userName, password, securityDir, policy);
+                    oldValue
+                        .getRight()
+                        .checkEquals(
+                            userName, password, securityDir, policy, allowEndpointRedirect);
                     return oldValue;
                   })
               .getRight();

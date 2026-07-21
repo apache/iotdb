@@ -945,6 +945,9 @@ public final class DataNodePipeMessages {
       "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "OPC UA endpoint selected: configured={}, advertised={}, effective={}, allowEndpointRedirect={}.";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "When %s or %s is true, specify a complete trust-store pair under the same "
           + "alias: %s and %s, %s and %s, or %s and %s";
