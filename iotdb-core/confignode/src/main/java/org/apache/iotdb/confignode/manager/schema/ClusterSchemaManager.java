@@ -603,7 +603,9 @@ public class ClusterSchemaManager {
                 ? dataNodeNum
                 : (CONF.getDataRegionPerDataNode() == 0 ? totalCpuCoreNum : dataNodeNum),
             databaseNum,
-            databaseSchema.getSchemaReplicationFactor(),
+            (consensusGroupType == TConsensusGroupType.SchemaRegion)
+                ? databaseSchema.getSchemaReplicationFactor()
+                : databaseSchema.getDataReplicationFactor(),
             allocatedRegionGroupCount);
     LOGGER.info(
         (consensusGroupType == TConsensusGroupType.SchemaRegion)
