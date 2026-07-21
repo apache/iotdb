@@ -59,6 +59,9 @@ public class JSONPayloadFormatter implements PayloadFormatter {
     }
     String txt = payload.toString(StandardCharsets.UTF_8);
     JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);
+    if (jsonElement == null || jsonElement.isJsonNull()) {
+      throw new JsonParseException(MqttMessages.PAYLOAD_INVALID);
+    }
     if (jsonElement.isJsonObject()) {
       JsonObject jsonObject = jsonElement.getAsJsonObject();
       if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
@@ -91,6 +94,8 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   }
 
   private List<Message> formatJson(JsonObject jsonObject) {
+    validateRequiredFields(
+        jsonObject, JSON_KEY_DEVICE, JSON_KEY_TIMESTAMP, JSON_KEY_MEASUREMENTS, JSON_KEY_VALUES);
     TreeMessage message = new TreeMessage();
     message.setDevice(jsonObject.get(JSON_KEY_DEVICE).getAsString());
     message.setTimestamp(jsonObject.get(JSON_KEY_TIMESTAMP).getAsLong());
@@ -108,6 +113,8 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   }
 
   private List<Message> formatBatchJson(JsonObject jsonObject) {
+    validateRequiredFields(
+        jsonObject, JSON_KEY_DEVICE, JSON_KEY_TIMESTAMPS, JSON_KEY_MEASUREMENTS, JSON_KEY_VALUES);
     String device = jsonObject.get(JSON_KEY_DEVICE).getAsString();
     List<String> measurements =
         GSON.fromJson(
@@ -136,6 +143,14 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       ret.add(message);
     }
     return ret;
+  }
+
+  private void validateRequiredFields(JsonObject jsonObject, String... fields) {
+    for (String field : fields) {
+      if (!jsonObject.has(field) || jsonObject.get(field).isJsonNull()) {
+        throw new JsonParseException(MqttMessages.PAYLOAD_INVALID);
+      }
+    }
   }
 
   @Override

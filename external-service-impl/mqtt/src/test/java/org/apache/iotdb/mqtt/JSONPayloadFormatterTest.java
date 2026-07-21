@@ -18,6 +18,7 @@
 
 package org.apache.iotdb.mqtt;
 
+import com.google.gson.JsonParseException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.Test;
@@ -25,6 +26,7 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class JSONPayloadFormatterTest {
 
@@ -48,6 +50,22 @@ public class JSONPayloadFormatterTest {
     assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
     assertEquals("s1", message.getMeasurements().get(0));
     assertEquals(0.530635D, Double.parseDouble(message.getValues().get(0)), 0);
+  }
+
+  @Test
+  public void formatInvalidJson() {
+    String payload =
+        "{"
+            + "\"device_id\":\"sensor_001\","
+            + "\"timestamp\":1758091708321,"
+            + "\"temperature\":26.264338636398318,"
+            + "\"humidity\":59.75943528811137"
+            + "}";
+
+    ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    JSONPayloadFormatter formatter = new JSONPayloadFormatter();
+
+    assertThrows(JsonParseException.class, () -> formatter.format("", buf));
   }
 
   @Test
