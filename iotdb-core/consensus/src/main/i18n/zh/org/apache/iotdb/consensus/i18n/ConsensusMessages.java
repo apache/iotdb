@@ -112,9 +112,9 @@ public final class ConsensusMessages {
   // ===================== RPC 处理器通用消息 =====================
 
   public static final String UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST =
-      "共识组 ID %s 与 %s 请求不匹配";
+      "共识组 %s 不存在，无法处理 %s 请求";
   public static final String UNEXPECTED_CONSENSUS_GROUP_ID_FOR_SYNC_LOG =
-      "共识组 ID %s 与 TSyncLogEntriesReq 不匹配，大小为 %s";
+      "共识组 %s 不存在，无法处理包含 %s 条日志的 TSyncLogEntriesReq";
   public static final String SYNC_LOG_SYSTEM_READ_ONLY =
       "系统为只读模式，无法同步日志。";
   public static final String PEER_INACTIVE_NOT_READY =

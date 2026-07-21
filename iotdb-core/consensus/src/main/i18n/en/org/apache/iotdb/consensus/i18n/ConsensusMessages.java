@@ -114,9 +114,9 @@ public final class ConsensusMessages {
   // ===================== RPC processor common messages =====================
 
   public static final String UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST =
-      "unexpected consensusGroupId %s for %s request";
+      "Consensus group %s does not exist for %s request";
   public static final String UNEXPECTED_CONSENSUS_GROUP_ID_FOR_SYNC_LOG =
-      "unexpected consensusGroupId %s for TSyncLogEntriesReq which size is %s";
+      "Consensus group %s does not exist for TSyncLogEntriesReq with %s log entries";
   public static final String SYNC_LOG_SYSTEM_READ_ONLY =
       "fail to sync logEntries because system is read-only.";
   public static final String PEER_INACTIVE_NOT_READY =
