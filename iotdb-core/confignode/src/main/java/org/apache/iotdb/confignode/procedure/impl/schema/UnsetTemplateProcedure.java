@@ -155,7 +155,7 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void executeInvalidateCache(final ConfigNodeProcedureEnv env) throws ProcedureException {
+  void executeInvalidateCache(final ConfigNodeProcedureEnv env) throws ProcedureException {
     final TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
     req.setTemplateInfo(getInvalidateTemplateSetInfo());
@@ -247,8 +247,7 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env)
-      throws ProcedureException {
+  void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env) throws ProcedureException {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     TUpdateTemplateReq rollbackTemplateSetInfoReq = new TUpdateTemplateReq();
