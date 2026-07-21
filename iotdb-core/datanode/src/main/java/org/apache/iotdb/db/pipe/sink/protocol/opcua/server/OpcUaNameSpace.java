@@ -972,6 +972,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   public void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final String securityDir,
@@ -979,6 +980,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final Set<SecurityPolicy> securityPolicies,
       final long debounceTimeMs) {
     builder.checkEquals(
+        advertisedHost,
         user,
         password,
         Paths.get(securityDir),

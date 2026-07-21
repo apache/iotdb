@@ -207,6 +207,10 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_HTTPS_BIND_PORT_KEY = "sink.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
+  public static final String CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY =
+      "connector.opcua.advertised-host";
+  public static final String SINK_OPC_UA_ADVERTISED_HOST_KEY = "sink.opcua.advertised-host";
+
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
   public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
@@ -245,6 +249,11 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
   public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
+  public static final String CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "connector.opcua.allow-endpoint-redirect";
+  public static final String SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "sink.opcua.allow-endpoint-redirect";
+  public static final boolean CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_KEY =
       "connector.opcua.security-policy";
