@@ -196,27 +196,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       return new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
     }
 
-    final BufferedTsFileInput input = new BufferedTsFileInput(tsFile.toPath());
-    try {
-      final ByteBuffer versionBuffer = ByteBuffer.allocate(Byte.BYTES);
-      if (input.read(versionBuffer, TSFileConfig.MAGIC_STRING.getBytes().length) == Byte.BYTES) {
-        versionBuffer.flip();
-        if (versionBuffer.get() == TSFileConfig.VERSION_NUMBER) {
-          return new TsFileSequenceReader(input, false);
-        }
-      }
-    } catch (final IOException | RuntimeException | Error e) {
-      try {
-        input.close();
-      } catch (final IOException closeException) {
-        e.addSuppressed(closeException);
-      }
-      throw e;
-    }
-
-    // The TsFileInput constructor does not initialize the compatibility deserializer.
-    input.close();
-    return new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
+    return new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()), false, false, null);
   }
 
   @Override
