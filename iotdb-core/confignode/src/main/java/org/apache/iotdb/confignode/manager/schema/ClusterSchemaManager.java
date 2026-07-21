@@ -41,9 +41,6 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -93,6 +90,7 @@ import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -136,6 +134,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils.broadcastTemplateUpdate;
 
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
 public class ClusterSchemaManager {
@@ -1314,23 +1314,17 @@ public class ClusterSchemaManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
 
-    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            ManagerMessages.FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE,
-            template.getName(),
-            dataNodeLocationMap.get(entry.getKey()));
-        return RpcUtils.getStatus(
-            TSStatusCode.EXECUTE_STATEMENT_ERROR,
-            String.format(
-                "Failed to sync template %s extension info to DataNode %s",
-                template.getName(), dataNodeLocationMap.get(entry.getKey())));
-      }
+    // The template extension is already committed and cannot be rolled back.
+    // Unexpected DataNode internal failures cannot be handled here.
+    final boolean proceed =
+        new ClusterCachePropagator(dataNodeLocationMap)
+            .propagate(targets -> broadcastTemplateUpdate(updateTemplateReq, targets));
+    if (!proceed) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          String.format(
+              ManagerMessages.EXIST_DATANODE_FAILED_TO_EXECUTE_AND_COULD_NOT_BE_FENCED,
+              template.getName()));
     }
 
     if (intersectionMeasurements.isEmpty()) {
