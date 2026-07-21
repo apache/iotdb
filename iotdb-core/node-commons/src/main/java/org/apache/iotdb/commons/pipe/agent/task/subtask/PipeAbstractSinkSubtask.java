@@ -186,10 +186,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
    * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
    */
   private boolean onPipeConnectionException(final Throwable throwable) {
-    LOGGER.warn(
-        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+    PipeLogger.log(
+        LOGGER::warn,
+        "PipeConnectionException occurred, {} retries to handshake with the target system. Root cause: {}.",
         outputPipeConnector.getClass().getName(),
-        throwable);
+        ErrorHandlingCommonUtils.getRootCause(throwable).toString());
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
@@ -203,13 +204,14 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         break;
       } catch (final Exception e) {
         retry++;
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "{} failed to handshake with the target system for {} times, "
-                + "will retry at most {} times.",
+                + "will retry at most {} times. Root cause: {}.",
             outputPipeConnector.getClass().getName(),
             retry,
             MAX_RETRY_TIMES,
-            e);
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
         try {
           sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {

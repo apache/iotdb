@@ -22,8 +22,10 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -182,7 +184,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
         sockets.set(i, socket);
-        LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+        LOGGER.debug("Successfully connected to target server ip: {}, port: {}.", ip, port);
         failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
         final TEndPoint endPoint = nodeUrls.get(i);
@@ -203,9 +205,10 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         sendHandshakeReq(socket);
         isSocketAlive.set(i, true);
       } catch (Exception e) {
-        LOGGER.warn(
-            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
-            e);
+        PipeLogger.log(
+            LOGGER::warn,
+            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it. Root cause: {}.",
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
       }
     }
 
@@ -226,7 +229,9 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     if (!send(socket, generateHandShakeV2Payload())) {
       supportModsIfIsDataNodeReceiver = false;
       if (!send(socket, generateHandShakeV1Payload())) {
-        throw new PipeConnectionException("Handshake error with target server, socket: " + socket);
+        throw new PipeConnectionException(
+            String.format(
+                "Handshake error with target server, endpoint: %s", socket.getEndPoint()));
       }
     } else {
       supportModsIfIsDataNodeReceiver = true;
