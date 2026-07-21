@@ -167,6 +167,11 @@ public class PipeMemoryManager {
     this.notifyAll();
   }
 
+  public synchronized void waitForTsFileParserMemory(final long timeoutInMs)
+      throws InterruptedException {
+    this.wait(Math.max(1, timeoutInMs));
+  }
+
   public boolean shouldReleaseTsFileParserOnOutOfMemory(
       final long firstOutOfMemoryTimeInMs, final int retryCount) {
     final long retryIntervalInMs = PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
