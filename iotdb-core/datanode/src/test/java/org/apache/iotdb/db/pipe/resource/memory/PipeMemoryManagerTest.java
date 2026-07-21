@@ -29,7 +29,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class PipeMemoryManagerTest {
 
@@ -140,10 +147,87 @@ public class PipeMemoryManagerTest {
     Assert.assertTrue(tryAcquire(pipeBWaiting));
   }
 
+  @Test
+  public void testConcurrentTsFilesFromMultiplePipesAreNotStarved() throws Exception {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(1);
+
+    final Reservation blocker = new Reservation("blocker", 0);
+    Assert.assertTrue(tryAcquire(blocker));
+
+    // Each reservation represents a distinct TsFile event. Pipe A deliberately has more waiting
+    // TsFiles so the test can detect whether it monopolizes the single parser slot.
+    final List<Reservation> waitingTsFiles = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      waitingTsFiles.add(new Reservation("pipeA", 1));
+    }
+    for (int i = 0; i < 2; i++) {
+      waitingTsFiles.add(new Reservation("pipeB", 2));
+      waitingTsFiles.add(new Reservation("pipeC", 3));
+    }
+    reservations.addAll(waitingTsFiles);
+
+    final List<String> acquisitionOrder = Collections.synchronizedList(new ArrayList<>());
+    final CountDownLatch ready = new CountDownLatch(waitingTsFiles.size());
+    final CountDownLatch start = new CountDownLatch(1);
+    final CountDownLatch enqueued = new CountDownLatch(waitingTsFiles.size());
+    final ExecutorService executor = Executors.newFixedThreadPool(waitingTsFiles.size());
+    final List<Future<Boolean>> futures = new ArrayList<>();
+
+    try {
+      for (final Reservation reservation : waitingTsFiles) {
+        futures.add(
+            executor.submit(
+                () -> {
+                  ready.countDown();
+                  start.await();
+
+                  boolean acquired = tryAcquireWithoutTracking(reservation);
+                  enqueued.countDown();
+                  final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                  while (!acquired && System.nanoTime() < deadline) {
+                    Thread.sleep(1);
+                    acquired = tryAcquireWithoutTracking(reservation);
+                  }
+                  if (!acquired) {
+                    return false;
+                  }
+
+                  acquisitionOrder.add(reservation.pipeName);
+                  Thread.sleep(5);
+                  release(reservation);
+                  return true;
+                }));
+      }
+
+      Assert.assertTrue(ready.await(5, TimeUnit.SECONDS));
+      start.countDown();
+      Assert.assertTrue(enqueued.await(5, TimeUnit.SECONDS));
+      release(blocker);
+
+      for (final Future<Boolean> future : futures) {
+        Assert.assertTrue(future.get(15, TimeUnit.SECONDS));
+      }
+      Assert.assertEquals(waitingTsFiles.size(), acquisitionOrder.size());
+      Assert.assertEquals(3, new HashSet<>(acquisitionOrder.subList(0, 3)).size());
+    } finally {
+      release(blocker);
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
   private boolean tryAcquire(final Reservation reservation) {
     if (!reservations.contains(reservation)) {
       reservations.add(reservation);
     }
+    reservation.acquired =
+        memoryManager.tryReserveTsFileParserMemory(
+            reservation.pipeName, reservation.creationTime, reservation.key);
+    return reservation.acquired;
+  }
+
+  private boolean tryAcquireWithoutTracking(final Reservation reservation) {
     reservation.acquired =
         memoryManager.tryReserveTsFileParserMemory(
             reservation.pipeName, reservation.creationTime, reservation.key);
@@ -163,7 +247,7 @@ public class PipeMemoryManagerTest {
     private final String pipeName;
     private final long creationTime;
     private final Object key = new Object();
-    private boolean acquired;
+    private volatile boolean acquired;
 
     private Reservation(final String pipeName, final long creationTime) {
       this.pipeName = pipeName;
