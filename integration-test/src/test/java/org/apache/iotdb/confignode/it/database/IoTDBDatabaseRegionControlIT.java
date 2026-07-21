@@ -315,7 +315,13 @@ public class IoTDBDatabaseRegionControlIT {
         Assert.assertEquals(16, resultSet.getInt("MaxDataRegionGroupNum"));
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
 
+  @Test
+  public void testAlterMaxSchemaRegionGroupNumCannotDecrease() throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       final String schemaDatabase = "root.rg_tree_decrease_schema";
       statement.execute(
           String.format("CREATE DATABASE %s WITH MAX_SCHEMA_REGION_GROUP_NUM=4;", schemaDatabase));
