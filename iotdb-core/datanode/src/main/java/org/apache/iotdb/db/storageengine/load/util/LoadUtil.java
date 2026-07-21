@@ -135,7 +135,6 @@ public class LoadUtil {
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
-    transferObjectFileDirToActiveDir(file, targetDir, isDeleteAfterLoad);
     transferFilesToActiveDir(
         targetDir,
         Arrays.asList(
@@ -193,7 +192,6 @@ public class LoadUtil {
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
       final File sourceFile = new File(file);
-      transferObjectFileDirToActiveDir(sourceFile, targetDir, isDeleteAfterLoad);
       sourceFiles.add(sourceFile);
     }
     sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
@@ -214,9 +212,16 @@ public class LoadUtil {
       return;
     }
 
+    final List<File> objectFileSourceDirs = getObjectFileSourceDirs(existingSourceFiles);
     final File transferDir = new File(targetDir, UUID.randomUUID().toString());
     try {
       Files.createDirectories(transferDir.toPath());
+      for (final File objectFileSourceDir : objectFileSourceDirs) {
+        transferObjectFileDirectoryToActiveDir(
+            objectFileSourceDir,
+            new File(transferDir, objectFileSourceDir.getName()),
+            isDeleteAfterLoad);
+      }
       for (final File sourceFile : existingSourceFiles) {
         final File targetFile = new File(transferDir, sourceFile.getName());
         RetryUtils.retryOnException(
@@ -234,50 +239,50 @@ public class LoadUtil {
 
     if (isDeleteAfterLoad) {
       deleteSourceFiles(existingSourceFiles);
+      for (final File objectFileSourceDir : objectFileSourceDirs) {
+        FileUtils.deleteFileOrDirectoryWithRetry(objectFileSourceDir);
+      }
     }
   }
 
-  private static void transferObjectFileDirToActiveDir(
-      final File tsFile, final File targetDir, final boolean isDeleteAfterLoad) throws IOException {
-    if (tsFile == null || !tsFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-      return;
-    }
+  private static List<File> getObjectFileSourceDirs(final List<File> sourceFiles) {
+    final List<File> objectFileSourceDirs = new ArrayList<>();
+    for (final File sourceFile : sourceFiles) {
+      if (!isTsFile(sourceFile)) {
+        continue;
+      }
 
-    final File objectFileSourceDir =
-        new File(
-            tsFile.getParentFile(),
-            PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName()));
-    if (!objectFileSourceDir.isDirectory()) {
-      return;
+      final File objectFileSourceDir =
+          new File(
+              sourceFile.getParentFile(),
+              PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(sourceFile.getName()));
+      if (objectFileSourceDir.isDirectory()) {
+        objectFileSourceDirs.add(objectFileSourceDir);
+      }
     }
-
-    transferObjectFileDirectoryToActiveDir(
-        objectFileSourceDir, new File(targetDir, objectFileSourceDir.getName()), isDeleteAfterLoad);
+    return objectFileSourceDirs;
   }
 
   private static void transferObjectFileDirectoryToActiveDir(
-      final File sourceDir, final File targetDir, final boolean isDeleteAfterLoad)
-      throws IOException {
+      final File sourceDir, final File targetDir, final boolean useHardLink) throws IOException {
     final File[] sourceFiles = sourceDir.listFiles();
     if (sourceFiles == null) {
       return;
     }
 
-    final List<File> regularFiles = new ArrayList<>();
+    Files.createDirectories(targetDir.toPath());
     for (final File sourceFile : sourceFiles) {
       if (sourceFile.isDirectory()) {
         transferObjectFileDirectoryToActiveDir(
-            sourceFile, new File(targetDir, sourceFile.getName()), isDeleteAfterLoad);
+            sourceFile, new File(targetDir, sourceFile.getName()), useHardLink);
       } else {
-        regularFiles.add(sourceFile);
+        final File targetFile = new File(targetDir, sourceFile.getName());
+        RetryUtils.retryOnException(
+            () -> {
+              transferFile(sourceFile, targetFile, useHardLink);
+              return null;
+            });
       }
-    }
-    transferFilesToActiveDir(targetDir, regularFiles, isDeleteAfterLoad);
-
-    if (isDeleteAfterLoad && !sourceDir.delete() && sourceDir.exists()) {
-      throw new IOException(
-          String.format(
-              StorageEngineMessages.FAILED_TO_DELETE_SOURCE_OBJECT_FILE_DIRECTORY, sourceDir));
     }
   }
 

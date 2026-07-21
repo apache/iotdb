@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -95,8 +96,39 @@ public class LoadUtilTest {
   }
 
   @Test
+  public void testTransferFilesKeepsObjectDirectoryInSameGroup() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    final File tsFile = sourceFiles.get(sourceFiles.size() - 1);
+    final File objectFile = createObjectFile(tsFile);
+
+    LoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, false);
+
+    final File[] transferDirs = targetDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(transferDirs);
+    Assert.assertEquals(1, transferDirs.length);
+    Assert.assertTrue(new File(transferDirs[0], tsFile.getName()).isFile());
+
+    final String objectFileRelativePath =
+        sourceDir.toPath().relativize(objectFile.toPath()).toString();
+    final File transferredObjectFile = new File(transferDirs[0], objectFileRelativePath);
+    Assert.assertTrue(transferredObjectFile.isFile());
+    Assert.assertArrayEquals(
+        "object-data".getBytes(StandardCharsets.UTF_8),
+        Files.readAllBytes(transferredObjectFile.toPath()));
+    Assert.assertTrue(objectFile.exists());
+    Assert.assertTrue(getObjectFileSourceDir(tsFile).isDirectory());
+
+    final File deleteTargetDir = new File(tempDir, "delete-target");
+    Assert.assertTrue(deleteTargetDir.mkdirs());
+    LoadUtil.transferFilesToActiveDir(deleteTargetDir, sourceFiles, true);
+    Assert.assertFalse(objectFile.exists());
+    Assert.assertFalse(getObjectFileSourceDir(tsFile).exists());
+  }
+
+  @Test
   public void testTransferFailureDoesNotDeleteSources() throws Exception {
     final List<File> sourceFiles = createTsFileAndCompanions();
+    final File objectFile = createObjectFile(sourceFiles.get(sourceFiles.size() - 1));
     // A regular file cannot contain the temporary transfer directory, forcing handoff to fail
     // before ownership of any source file can be released.
     final File invalidTargetDir = new File(tempDir, "target-file");
@@ -112,6 +144,7 @@ public class LoadUtilTest {
     for (final File sourceFile : sourceFiles) {
       Assert.assertTrue(sourceFile.exists());
     }
+    Assert.assertTrue(objectFile.exists());
   }
 
   private List<File> createTsFileAndCompanions() throws Exception {
@@ -124,6 +157,19 @@ public class LoadUtilTest {
       Files.write(sourceFile.toPath(), sourceFile.getName().getBytes(StandardCharsets.UTF_8));
     }
     return sourceFiles;
+  }
+
+  private File createObjectFile(final File tsFile) throws Exception {
+    final File objectFile =
+        new File(getObjectFileSourceDir(tsFile), "1/device/table/sensor/1600000000000.bin");
+    Assert.assertTrue(objectFile.getParentFile().mkdirs());
+    Files.write(objectFile.toPath(), "object-data".getBytes(StandardCharsets.UTF_8));
+    return objectFile;
+  }
+
+  private File getObjectFileSourceDir(final File tsFile) {
+    return new File(
+        tsFile.getParentFile(), PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName()));
   }
 
   private static void deleteRecursively(final File file) {
