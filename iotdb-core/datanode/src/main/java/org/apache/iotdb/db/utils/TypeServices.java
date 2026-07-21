@@ -325,6 +325,16 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<IntFunction<Object>> PRIMITIVE_ARRAY_ALLOCATOR_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
+                type::createArray;
+            case DATE -> Type.fromTsDataType(TSDataType.INT32)::createArray;
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
+          };
+
   public static final TypeService<Function<String, Comparable<?>>>
       CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
           type ->
@@ -453,6 +463,7 @@ public class TypeServices {
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
+    PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {

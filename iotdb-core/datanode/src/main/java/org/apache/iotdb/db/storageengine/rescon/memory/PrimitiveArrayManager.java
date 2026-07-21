@@ -25,9 +25,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
@@ -229,36 +231,9 @@ public class PrimitiveArrayManager {
   }
 
   private static Object createPrimitiveArray(TSDataType dataType) {
-    Object dataArray;
-    switch (dataType) {
-      case BOOLEAN:
-        dataArray = new boolean[ARRAY_SIZE];
-        break;
-      case INT32:
-      case DATE:
-        dataArray = new int[ARRAY_SIZE];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        dataArray = new long[ARRAY_SIZE];
-        break;
-      case FLOAT:
-        dataArray = new float[ARRAY_SIZE];
-        break;
-      case DOUBLE:
-        dataArray = new double[ARRAY_SIZE];
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        dataArray = new Binary[ARRAY_SIZE];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.name());
-    }
-
-    return dataArray;
+    return TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(ARRAY_SIZE);
   }
 
   /**
