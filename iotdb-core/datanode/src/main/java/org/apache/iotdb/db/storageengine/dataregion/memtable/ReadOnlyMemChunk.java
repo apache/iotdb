@@ -40,7 +40,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -281,41 +280,12 @@ public class ReadOnlyMemChunk {
   // read all data in memory chunk and write to tsblock
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
     MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
+    Type type = Type.fromTsDataType(dataType);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
-      switch (dataType) {
-        case BOOLEAN:
-          builder.getColumnBuilder(0).writeBoolean(tvPair.getValue().getBoolean());
-          break;
-        case INT32:
-        case DATE:
-          if (builder.getColumnBuilder(0) instanceof BinaryColumnBuilder) {
-            ((BinaryColumnBuilder) builder.getColumnBuilder(0))
-                .writeDate(tvPair.getValue().getInt());
-          } else {
-            builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          builder.getColumnBuilder(0).writeLong(tvPair.getValue().getLong());
-          break;
-        case FLOAT:
-          builder.getColumnBuilder(0).writeFloat(tvPair.getValue().getFloat());
-          break;
-        case DOUBLE:
-          builder.getColumnBuilder(0).writeDouble(tvPair.getValue().getDouble());
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          builder.getColumnBuilder(0).writeBinary(tvPair.getValue().getBinary());
-          break;
-        default:
-          break;
-      }
+      type.write(builder.getColumnBuilder(0), tvPair.getValue());
       builder.declarePosition();
     }
   }
