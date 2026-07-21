@@ -28,7 +28,6 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -351,6 +350,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
     MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
+    Type[] valueTypes = new Type[dataTypes.size()];
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      valueTypes[columnIndex] = Type.fromTsDataType(dataTypes.get(columnIndex));
+    }
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -364,34 +367,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           builder.getColumnBuilder(columnIndex).appendNull();
           continue;
         }
-        ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
-        switch (dataTypes.get(columnIndex)) {
-          case BOOLEAN:
-            valueBuilder.writeBoolean(values[columnIndex].getBoolean());
-            break;
-          case INT32:
-          case DATE:
-            valueBuilder.writeInt(values[columnIndex].getInt());
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueBuilder.writeLong(values[columnIndex].getLong());
-            break;
-          case FLOAT:
-            valueBuilder.writeFloat(values[columnIndex].getFloat());
-            break;
-          case DOUBLE:
-            valueBuilder.writeDouble(values[columnIndex].getDouble());
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            valueBuilder.writeBinary(values[columnIndex].getBinary());
-            break;
-          default:
-            break;
-        }
+        valueTypes[columnIndex].writeObject(
+            builder.getColumnBuilder(columnIndex), values[columnIndex].getValue());
       }
       builder.declarePosition();
     }
