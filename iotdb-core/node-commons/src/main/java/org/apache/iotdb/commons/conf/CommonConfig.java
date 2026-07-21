@@ -248,6 +248,13 @@ public class CommonConfig {
   // Note: Pipes that do not decompose pattern/time do not need this part of memory
   private long pipeTsFileParserMemory = 17 * MB;
 
+  // Limit concurrently active TsFile parsers globally and for each pipe. The per-pipe limit also
+  // serves as an approximate parser memory quota because every admitted parser reserves
+  // pipeTsFileParserMemory bytes.
+  private int pipeTsFileParserInFlightMaxNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int pipeTsFileParserInFlightMaxNumPerPipe = 1;
+
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
   private long pipeSinkBatchMemoryInsertNode = 15 * MB;
@@ -1037,6 +1044,34 @@ public class CommonConfig {
     }
     this.pipeTsFileParserMemory = pipeTsFileParserMemory;
     logger.info(ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserMemory", pipeTsFileParserMemory);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return pipeTsFileParserInFlightMaxNum;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNum(final int pipeTsFileParserInFlightMaxNum) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNum);
+    if (this.pipeTsFileParserInFlightMaxNum == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNum = validatedValue;
+    logger.info(ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserInFlightMaxNum", validatedValue);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipe() {
+    return pipeTsFileParserInFlightMaxNumPerPipe;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNumPerPipe(
+      final int pipeTsFileParserInFlightMaxNumPerPipe) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipe);
+    if (this.pipeTsFileParserInFlightMaxNumPerPipe == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNumPerPipe = validatedValue;
+    logger.info(
+        ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserInFlightMaxNumPerPipe", validatedValue);
   }
 
   public long getPipeSinkBatchMemoryInsertNode() {

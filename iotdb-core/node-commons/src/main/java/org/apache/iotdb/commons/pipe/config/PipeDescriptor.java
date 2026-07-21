@@ -238,6 +238,16 @@ public class PipeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "pipe_tsfile_parser_memory", String.valueOf(config.getPipeTsFileParserMemory()))));
+    config.setPipeTsFileParserInFlightMaxNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNum()))));
+    config.setPipeTsFileParserInFlightMaxNumPerPipe(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num_per_pipe",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNumPerPipe()))));
     config.setPipeSinkBatchMemoryInsertNode(
         Long.parseLong(
             properties.getProperty(

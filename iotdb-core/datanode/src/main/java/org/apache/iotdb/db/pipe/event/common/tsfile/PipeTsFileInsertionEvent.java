@@ -98,6 +98,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
   private final AtomicBoolean isTsFileParserMemoryReserved = new AtomicBoolean(false);
+  private final Object tsFileParserMemoryReservationKey = new Object();
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -924,7 +925,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return true;
       }
 
-      if (!memoryManager.tryReserveTsFileParserMemory()) {
+      if (!memoryManager.tryReserveTsFileParserMemory(
+          pipeName, creationTime, tsFileParserMemoryReservationKey)) {
         return false;
       }
 
@@ -936,8 +938,16 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private void releaseTsFileParserMemoryIfReserved() {
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
-        PipeDataNodeResourceManager.memory().releaseTsFileParserMemory();
+        PipeDataNodeResourceManager.memory().releaseTsFileParserMemory(pipeName, creationTime);
       }
+    }
+  }
+
+  private void cancelTsFileParserMemoryReservationIfPending() {
+    if (!isTsFileParserMemoryReserved.get()) {
+      PipeDataNodeResourceManager.memory()
+          .cancelTsFileParserMemoryReservation(
+              pipeName, creationTime, tsFileParserMemoryReservationKey);
     }
   }
 
@@ -1009,6 +1019,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
+    cancelTsFileParserMemoryReservationIfPending();
     eventParser.getAndUpdate(
         parser -> {
           if (Objects.nonNull(parser)) {
@@ -1058,7 +1069,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.modFile,
         this.sharedModFile,
         this.eventParser,
-        this.isTsFileParserMemoryReserved);
+        this.isTsFileParserMemoryReserved,
+        this.tsFileParserMemoryReservationKey);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -1071,6 +1083,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final String pipeName;
     private final long creationTime;
     private final AtomicBoolean isTsFileParserMemoryReserved;
+    private final Object tsFileParserMemoryReservationKey;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -1082,7 +1095,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final File modFile,
         final File sharedModFile,
         final AtomicReference<TsFileInsertionEventParser> eventParser,
-        final AtomicBoolean isTsFileParserMemoryReserved) {
+        final AtomicBoolean isTsFileParserMemoryReserved,
+        final Object tsFileParserMemoryReservationKey) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.creationTime = creationTime;
@@ -1092,11 +1106,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       this.sharedModFile = sharedModFile;
       this.eventParser = eventParser;
       this.isTsFileParserMemoryReserved = isTsFileParserMemoryReserved;
+      this.tsFileParserMemoryReservationKey = tsFileParserMemoryReservationKey;
     }
 
     @Override
     protected void finalizeResource() {
       try {
+        PipeDataNodeResourceManager.memory()
+            .cancelTsFileParserMemoryReservation(
+                pipeName, creationTime, tsFileParserMemoryReservationKey);
         final String pipeTsFileResourcePipeName =
             PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
         // decrease reference count
@@ -1117,7 +1135,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             });
         synchronized (isTsFileParserMemoryReserved) {
           if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
-            PipeDataNodeResourceManager.memory().releaseTsFileParserMemory();
+            PipeDataNodeResourceManager.memory().releaseTsFileParserMemory(pipeName, creationTime);
           }
         }
       } catch (final Exception e) {
