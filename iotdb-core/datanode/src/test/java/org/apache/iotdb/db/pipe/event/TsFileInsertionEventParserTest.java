@@ -183,7 +183,7 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
-  public void testConsumeTabletInsertionEventsWithRetryReleasesParserOnOutOfMemory()
+  public void testConsumeTabletInsertionEventsWithRetryPreservesProgressOnOutOfMemory()
       throws Exception {
     nonalignedTsFile =
         TsFileGeneratorUtils.generateNonAlignedTsFile(
@@ -233,8 +233,19 @@ public class TsFileInsertionEventParserTest {
 
     Assert.assertEquals("expected oom", exception.getMessage());
     Assert.assertNotNull(parsedEventReference.get());
-    Assert.assertTrue(parsedEventReference.get().isReleased());
-    Assert.assertNull(getEventParser(event).get());
+    Assert.assertFalse(parsedEventReference.get().isReleased());
+    Assert.assertNotNull(getEventParser(event).get());
+
+    final PipeRawTabletInsertionEvent eventAtFailure = parsedEventReference.get();
+    event.consumeTabletInsertionEventsWithRetry(
+        parsedEvent -> {
+          Assert.assertSame(eventAtFailure, parsedEvent);
+          parsedEvent.clearReferenceCount(getClass().getName());
+        },
+        "test");
+
+    Assert.assertTrue(eventAtFailure.isReleased());
+    event.close();
   }
 
   @Test
