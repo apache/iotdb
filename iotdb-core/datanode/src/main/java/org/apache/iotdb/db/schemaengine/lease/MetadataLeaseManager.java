@@ -19,22 +19,30 @@
 
 package org.apache.iotdb.db.schemaengine.lease;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,6 +53,7 @@ import java.util.function.LongSupplier;
 
 import static org.apache.iotdb.commons.concurrent.ThreadName.CHECK_DN_LEASE_STATUS;
 import static org.apache.iotdb.commons.concurrent.ThreadName.RELOAD_TABLE_METADATA_CACHE;
+import static org.apache.iotdb.db.i18n.DataNodeSchemaMessages.FAILED_TO_REFRESH_CACHE_FROM_CN;
 
 /**
  * Tracks the DataNode's "metadata lease" with the ConfigNode. The ConfigNode periodically sends
@@ -70,7 +79,6 @@ public class MetadataLeaseManager {
   private final Logger LOGGER = LoggerFactory.getLogger(MetadataLeaseManager.class);
 
   private final List<MetadataAction> clearCacheList;
-  private final List<MetadataAction> pullMetaList;
 
   private final LongSupplier nanoClock;
   private volatile long fenceThresholdMs = 20000;
@@ -95,7 +103,6 @@ public class MetadataLeaseManager {
     this(
         System::nanoTime,
         defaultClearCacheList(),
-        defaultPullMetaList(),
         IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
         IoTDBDescriptor.getInstance().getConfig().getCheckDnLeaseStatusIntervalMs(),
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, CHECK_DN_LEASE_STATUS.getName()));
@@ -105,24 +112,18 @@ public class MetadataLeaseManager {
     return Arrays.asList(
         () -> ClusterPartitionFetcher.getInstance().invalidAllCache(),
         () -> DataNodeTableCache.getInstance().invalidateAll(),
-        () -> TreeDeviceSchemaCacheManager.getInstance().cleanUp());
-  }
-
-  private static List<MetadataAction> defaultPullMetaList() {
-    return Collections.singletonList(
-        () -> DataNodeTableCache.getInstance().reloadTableCacheAfterLeaseRecovery());
+        () -> TreeDeviceSchemaCacheManager.getInstance().cleanUp(),
+        () -> ClusterTemplateManager.getInstance().clear());
   }
 
   MetadataLeaseManager(
       final LongSupplier nanoClock,
       final List<MetadataAction> clearCacheList,
-      final List<MetadataAction> pullMetaList,
       final ExecutorService pullExecutorService,
       final long checkDnLeaseStatusIntervalMs,
       final ScheduledExecutorService checkLeaseStatusExecutor) {
     this.nanoClock = nanoClock;
     this.clearCacheList = new ArrayList<>(clearCacheList);
-    this.pullMetaList = new ArrayList<>(pullMetaList);
     // Startup registration performs a full re-sync, so treat construction time as a fresh contact.
     this.lastConfigNodeHeartbeatNanos = nanoClock.getAsLong();
 
@@ -222,18 +223,36 @@ public class MetadataLeaseManager {
       LOGGER.error(DataNodeSchemaMessages.FAILED_TO_MARK_METADATA_STATE_AS_PULLING, metadataState);
       return;
     }
-
-    for (final MetadataAction action : pullMetaList) {
-      try {
-        action.execute();
-      } catch (final Throwable t) {
-        metadataStateRef.set(MetadataState.PULL_OR_INIT_FAILED, metadataStateRef.getStamp() + 1);
-        LOGGER.error(DataNodeSchemaMessages.FAILED_TO_PULL_OR_INIT_METADATA, t);
-        rethrowUnchecked(t);
-      }
+    try {
+      reloadRelatedCache();
+    } catch (final Throwable t) {
+      metadataStateRef.set(MetadataState.PULL_OR_INIT_FAILED, metadataStateRef.getStamp() + 1);
+      LOGGER.error(DataNodeSchemaMessages.FAILED_TO_PULL_OR_INIT_METADATA, t);
+      rethrowUnchecked(t);
     }
+
     this.lastConfigNodeHeartbeatNanos = nanoClock.getAsLong();
     metadataStateRef.set(MetadataState.NORMAL, metadataStateRef.getStamp() + 1);
+  }
+
+  void reloadRelatedCache() {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final TDataNodeLeaseRecoveryResp resp = configNodeClient.reloadCacheAfterLeaseRecovery();
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(resp.getStatus().getMessage(), resp.getStatus().getCode());
+      }
+      if (!resp.isSetTableInfo() || !resp.isSetTemplateInfo()) {
+        throw new RuntimeException(FAILED_TO_REFRESH_CACHE_FROM_CN);
+      }
+      DataNodeTableCache.getInstance().reloadTableCacheAfterLeaseRecovery(resp.getTableInfo());
+      ClusterTemplateManager.getInstance()
+          .reloadTemplateCacheAfterLeaseRecovery(resp.getTemplateInfo());
+
+    } catch (final ClientManagerException | TException e) {
+      throw new RuntimeException(FAILED_TO_REFRESH_CACHE_FROM_CN, e);
+    }
   }
 
   private static void rethrowUnchecked(final Throwable t) {

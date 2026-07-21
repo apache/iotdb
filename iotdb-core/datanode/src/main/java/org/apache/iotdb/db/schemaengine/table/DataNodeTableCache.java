@@ -21,9 +21,7 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
@@ -32,18 +30,15 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,8 +60,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.i18n.DataNodeSchemaMessages.FAILED_TO_REFRESH_CACHE_FROM_CN;
 
 /** It contains all tables' latest column schema */
 public class DataNodeTableCache implements ITableCache {
@@ -142,24 +135,6 @@ public class DataNodeTableCache implements ITableCache {
       LOGGER.info(DataNodeSchemaMessages.INIT_TABLE_CACHE_SUCCESS);
     } finally {
       readWriteLock.writeLock().unlock();
-    }
-  }
-
-  // No need to acquire a lock here; reloadTableCacheAfterLeaseRecovery is within a critical section
-  // protected by metadataLeaseManager
-  @Override
-  public void reloadTableCacheAfterLeaseRecovery() {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TDataNodeLeaseRecoveryResp resp = configNodeClient.reloadCacheAfterLeaseRecovery();
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(resp.getStatus().getMessage(), resp.getStatus().getCode());
-      }
-      if (resp.isSetTableInfo()) {
-        init(resp.getTableInfo());
-      }
-    } catch (final ClientManagerException | TException e) {
-      throw new RuntimeException(FAILED_TO_REFRESH_CACHE_FROM_CN, e);
     }
   }
 
@@ -815,6 +790,17 @@ public class DataNodeTableCache implements ITableCache {
           .getColumnName();
     } catch (final Exception e) {
       return null;
+    }
+  }
+
+  @Override
+  public void reloadTableCacheAfterLeaseRecovery(byte[] tableInfo) {
+    readWriteLock.writeLock().lock();
+    try {
+      invalidateAll();
+      init(tableInfo);
+    } finally {
+      readWriteLock.writeLock().unlock();
     }
   }
 }

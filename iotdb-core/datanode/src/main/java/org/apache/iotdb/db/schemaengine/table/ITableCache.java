@@ -62,5 +62,5 @@ public interface ITableCache {
 
   boolean isDatabaseExist(final String database);
 
-  void reloadTableCacheAfterLeaseRecovery();
+  void reloadTableCacheAfterLeaseRecovery(byte[] tableInfo);
 }

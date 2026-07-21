@@ -44,6 +44,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -273,6 +274,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public Template getTemplate(int id) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       return templateIdMap.get(id);
     } finally {
       readWriteLock.readLock().unlock();
@@ -283,6 +285,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
         if (devicePath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
           return new Pair<>(
@@ -300,6 +303,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       PartialPath timeSeriesPath, String alias) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
         if (timeSeriesPath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
           return new Pair<>(
@@ -343,6 +347,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       if (!templateNameMap.containsKey(templateName)) {
         return null;
       }
@@ -357,6 +362,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       Map<Integer, Template> result = new HashMap<>();
       int templateId;
       Template template;
@@ -377,6 +383,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public List<Template> getAllRelatedTemplates(PathPatternTree scope) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       List<Template> result = new ArrayList<>();
       for (Map.Entry<Integer, List<PartialPath>> entry : templateSetOnPathsMap.entrySet()) {
         int templateId = entry.getKey();
@@ -419,7 +426,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   // This is used for template info sync when activating DataNode and registering into cluster. All
   // set and pre-set info will be updated.
-  public void updateTemplateSetInfo(byte[] templateSetInfo) {
+  public void initTemplateSetInfo(byte[] templateSetInfo) {
     if (templateSetInfo == null || templateSetInfo.length == 0) {
       return;
     }
@@ -473,6 +480,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
     readWriteLock.writeLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
 
       Map<Template, List<String>> parsedTemplateSetInfo =
@@ -531,7 +539,8 @@ public class ClusterTemplateManager implements ITemplateManager {
         }
 
         if (!templateSetOnPathsMap.containsKey(templateId)
-            && !templatePreSetOnPathsMap.containsKey(templateId)) {
+            && !templatePreSetOnPathsMap.containsKey(templateId)
+            && templateIdMap.containsKey(templateId)) {
           // such template is useless on DataNode since no related set/preset path
           Template template = templateIdMap.remove(templateId);
           templateNameMap.remove(template.getName());
@@ -550,6 +559,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
     readWriteLock.writeLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
 
       Map<Template, List<String>> parsedTemplateSetInfo =
@@ -583,6 +593,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
     readWriteLock.writeLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
 
       Map<Template, List<String>> parsedTemplateSetInfo =
@@ -625,6 +636,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public void updateTemplateInfo(Template template) {
     readWriteLock.writeLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       templateIdMap.put(template.getId(), template);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -668,6 +680,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   public Integer getTemplateId(String templateName) {
+    failIfMetadataLeaseFenced();
     return templateNameMap.get(templateName);
   }
 
@@ -678,11 +691,30 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   public void clear() {
-    templateIdMap.clear();
-    templateNameMap.clear();
-    pathSetTemplateMap.clear();
-    templateSetOnPathsMap.clear();
-    pathPreSetTemplateMap.clear();
-    templatePreSetOnPathsMap.clear();
+    readWriteLock.writeLock().lock();
+    try {
+      templateIdMap.clear();
+      templateNameMap.clear();
+      pathSetTemplateMap.clear();
+      templateSetOnPathsMap.clear();
+      pathPreSetTemplateMap.clear();
+      templatePreSetOnPathsMap.clear();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void reloadTemplateCacheAfterLeaseRecovery(byte[] templateSetInfo) {
+    readWriteLock.writeLock().lock();
+    try {
+      clear();
+      initTemplateSetInfo(templateSetInfo);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced();
   }
 }

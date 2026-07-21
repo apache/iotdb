@@ -501,7 +501,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store templateSetInfo */
     ClusterTemplateManager.getInstance()
-        .updateTemplateSetInfo(runtimeConfiguration.getTemplateInfo());
+        .initTemplateSetInfo(runtimeConfiguration.getTemplateInfo());
 
     /* Store udfInformationList */
     getUDFInformationList(runtimeConfiguration.getAllUDFInformation());
