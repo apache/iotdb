@@ -32,11 +32,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
@@ -48,6 +50,7 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -295,6 +298,33 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<TVListArrayWriter> TV_LIST_ARRAY_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putBooleans(times, (boolean[]) values, bitMap, start, end);
+            case INT32, DATE ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putInts(times, (int[]) values, bitMap, start, end);
+            case INT64, TIMESTAMP ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putLongs(times, (long[]) values, bitMap, start, end);
+            case FLOAT ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putFloats(times, (float[]) values, bitMap, start, end);
+            case DOUBLE ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putDoubles(times, (double[]) values, bitMap, start, end);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (tvList, times, values, bitMap, start, end) ->
+                    tvList.putBinaries(times, (Binary[]) values, bitMap, start, end);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
   public static final TypeService<Function<String, Comparable<?>>>
       CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
           type ->
@@ -422,6 +452,7 @@ public class TypeServices {
   static {
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
+    TV_LIST_ARRAY_WRITER_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {
@@ -561,5 +592,10 @@ public class TypeServices {
   @FunctionalInterface
   public interface WALColumnWriter {
     void write(Object column, IWALByteBufferView buffer, int start, int end);
+  }
+
+  @FunctionalInterface
+  public interface TVListArrayWriter {
+    void write(TVList tvList, long[] times, Object values, BitMap bitMap, int start, int end);
   }
 }
