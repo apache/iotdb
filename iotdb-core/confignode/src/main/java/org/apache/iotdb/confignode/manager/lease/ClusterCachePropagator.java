@@ -22,9 +22,13 @@ package org.apache.iotdb.confignode.manager.lease;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.DataNodeState;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.Verdict;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +42,8 @@ import java.util.function.LongSupplier;
  * Verdict}. An unreachable DataNode can be skipped only after it is provably self-fenced.
  */
 public class ClusterCachePropagator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterCachePropagator.class);
 
   /**
    * {@code T_proceed = T_fence + margin}. The margin covers heartbeat-recording granularity and
@@ -122,6 +128,11 @@ public class ClusterCachePropagator {
             break;
           default:
             // There is a DN executes procedure with internal failure
+            // all the procedures here are not expected to trigger internal failure
+            LOGGER.error(
+                ConfigNodeMessages.LOG_DATANODE_FAILED_TO_EXECUTE_METADATA_CACHE_PROPAGATION,
+                targets.get(nodeId),
+                status);
             return Verdict.FAIL;
         }
       }

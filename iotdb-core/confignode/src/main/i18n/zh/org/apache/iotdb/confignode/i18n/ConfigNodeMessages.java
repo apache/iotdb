@@ -581,6 +581,7 @@ public final class ConfigNodeMessages {
       "向 DataNode {} 写入审计日志失败，响应：{}";
   public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_90F15E13 =
       "向 DataNode {} 写入审计日志失败";
+  public static final String LOG_DATANODE_FAILED_TO_EXECUTE_METADATA_CACHE_PROPAGATION = "DataNode {} 执行元数据缓存传播失败，状态：{}";
   public static final String EXCEPTION_UNKNOWN_PHYSICALPLANTYPE_ARG_7F21B699 =
       "未知的 PhysicalPlanType: %d";
   public static final String

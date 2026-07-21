@@ -495,9 +495,11 @@ public class ClusterTemplateManager implements ITemplateManager {
           try {
             PartialPath path = new PartialPath(pathSetTemplate);
             pathSetTemplateMap.put(path, templateId);
-            templateSetOnPathsMap
-                .computeIfAbsent(templateId, integer -> new ArrayList<>())
-                .add(path);
+            List<PartialPath> paths =
+                templateSetOnPathsMap.computeIfAbsent(templateId, integer -> new ArrayList<>());
+            if (!paths.contains(path)) {
+              paths.add(path);
+            }
           } catch (IllegalPathException ignored) {
             // won't happen
           }
@@ -608,14 +610,20 @@ public class ClusterTemplateManager implements ITemplateManager {
           try {
             PartialPath path = new PartialPath(pathSetTemplate);
             pathSetTemplateMap.put(path, templateId);
-            templateSetOnPathsMap
-                .computeIfAbsent(templateId, integer -> new ArrayList<>())
-                .add(path);
+
+            // guarantee idempotency
+            List<PartialPath> partialPaths =
+                templateSetOnPathsMap.computeIfAbsent(templateId, integer -> new ArrayList<>());
+            if (!partialPaths.contains(path)) {
+              partialPaths.add(path);
+            }
 
             pathPreSetTemplateMap.remove(path);
-            templatePreSetOnPathsMap.get(templateId).remove(path);
-            if (templatePreSetOnPathsMap.get(templateId).isEmpty()) {
-              templatePreSetOnPathsMap.remove(templateId);
+            if (templatePreSetOnPathsMap.containsKey(templateId)) {
+              templatePreSetOnPathsMap.get(templateId).remove(path);
+              if (templatePreSetOnPathsMap.get(templateId).isEmpty()) {
+                templatePreSetOnPathsMap.remove(templateId);
+              }
             }
           } catch (IllegalPathException ignored) {
             // won't happen
