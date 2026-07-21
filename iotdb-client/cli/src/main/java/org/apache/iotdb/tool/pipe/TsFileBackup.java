@@ -23,6 +23,7 @@ import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -44,8 +45,6 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 
@@ -787,20 +786,17 @@ public final class TsFileBackup {
   static File resolvePluginJar(String cliOverride, String iotdbHome) {
     String configuredJarPath = normalizePathSetting(cliOverride);
     if (StringUtils.isNotBlank(configuredJarPath)) {
-      File configuredPluginJar = new File(configuredJarPath);
-      if (configuredPluginJar.isFile()) {
-        return configuredPluginJar;
-      }
-      throw new IllegalArgumentException("Specified plugin JAR not found: " + configuredJarPath);
+      // Let the server validate the URI when the plugin needs to be created. This way a local
+      // missing JAR does not prevent using an already registered plugin.
+      return new File(configuredJarPath);
     }
 
     File defaultPluginDir = resolveDefaultPluginDir(iotdbHome);
-    File defaultPluginJar = findPluginJarInDirectory(defaultPluginDir);
-    if (defaultPluginJar != null) {
-      return defaultPluginJar;
-    }
-
-    throw new IllegalArgumentException(buildMissingPluginJarMessage(defaultPluginDir));
+    // Do not inspect the default path locally: CREATE PIPEPLUGIN is executed on the DataNode and
+    // its result is the authoritative validation of the executable.
+    return new File(
+        defaultPluginDir == null ? DEFAULT_PLUGIN_DIR : defaultPluginDir.getPath(),
+        DEFAULT_PLUGIN_JAR_PREFIX + IoTDBConstant.VERSION + DEFAULT_PLUGIN_JAR_SUFFIX);
   }
 
   private static File resolveDefaultPluginDir(String iotdbHome) {
@@ -809,42 +805,6 @@ public final class TsFileBackup {
       return null;
     }
     return new File(iotdbHome, DEFAULT_PLUGIN_DIR);
-  }
-
-  private static File findPluginJarInDirectory(File pluginDir) {
-    if (pluginDir == null || !pluginDir.isDirectory()) {
-      return null;
-    }
-
-    File[] pluginJars =
-        pluginDir.listFiles(
-            (dir, name) ->
-                name.startsWith(DEFAULT_PLUGIN_JAR_PREFIX)
-                    && name.endsWith(DEFAULT_PLUGIN_JAR_SUFFIX));
-    if (pluginJars == null || pluginJars.length == 0) {
-      return null;
-    }
-
-    Arrays.sort(pluginJars, Comparator.comparing(File::getName));
-    return pluginJars[0];
-  }
-
-  private static String buildMissingPluginJarMessage(File defaultPluginDir) {
-    String expectedJarName = DEFAULT_PLUGIN_JAR_PREFIX + "*" + DEFAULT_PLUGIN_JAR_SUFFIX;
-    if (defaultPluginDir == null) {
-      return "Pipe plugin JAR does not exist: --plugin_jar is not configured, and the default directory "
-          + DEFAULT_PLUGIN_DIR
-          + " cannot be resolved because "
-          + IOTDB_HOME_PROPERTY
-          + " is not set. Expected jar pattern: "
-          + expectedJarName
-          + ".";
-    }
-    return "Pipe plugin JAR does not exist: --plugin_jar is not configured, and the default directory "
-        + defaultPluginDir.getAbsolutePath()
-        + " does not contain "
-        + expectedJarName
-        + ".";
   }
 
   private static String normalizePathSetting(String path) {

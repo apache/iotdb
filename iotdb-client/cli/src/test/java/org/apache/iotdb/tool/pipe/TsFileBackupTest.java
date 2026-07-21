@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool.pipe;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.junit.After;
 import org.junit.Test;
 
@@ -32,7 +34,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TsFileBackupTest {
 
@@ -61,7 +62,8 @@ public class TsFileBackupTest {
     Path pluginDir = Files.createDirectories(tempDir.resolve("ext").resolve("pipe"));
     Path pluginJar =
         Files.createFile(
-            pluginDir.resolve("tsfile-remote-sink-2.0.11-SNAPSHOT-jar-with-dependencies.jar"));
+            pluginDir.resolve(
+                "tsfile-remote-sink-" + IoTDBConstant.VERSION + "-jar-with-dependencies.jar"));
 
     File resolvedPluginJar = TsFileBackup.resolvePluginJar(null, tempDir.toString());
 
@@ -69,18 +71,26 @@ public class TsFileBackupTest {
   }
 
   @Test
-  public void testResolvePluginJarReportsMissingJarInIoTDBHomeExtPipe() throws IOException {
+  public void testResolvePluginJarAllowsMissingCliOverride() throws IOException {
+    Path tempDir = createTempDir();
+    Path missingPluginJar = tempDir.resolve("missing-plugin.jar");
+
+    File resolvedPluginJar = TsFileBackup.resolvePluginJar(missingPluginJar.toString(), null);
+
+    assertEquals(
+        missingPluginJar.toFile().getCanonicalFile(), resolvedPluginJar.getCanonicalFile());
+  }
+
+  @Test
+  public void testResolvePluginJarUsesDefaultPathWhenDefaultJarIsMissing() throws IOException {
     Path tempDir = createTempDir();
     Path pluginDir = Files.createDirectories(tempDir.resolve("ext").resolve("pipe"));
 
-    try {
-      TsFileBackup.resolvePluginJar(null, tempDir.toString());
-      fail("Expected missing plugin jar validation to fail.");
-    } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("--plugin_jar is not configured"));
-      assertTrue(e.getMessage().contains("tsfile-remote-sink-*-jar-with-dependencies.jar"));
-      assertTrue(e.getMessage().contains(pluginDir.toFile().getAbsolutePath()));
-    }
+    File resolvedPluginJar = TsFileBackup.resolvePluginJar(null, tempDir.toString());
+
+    assertEquals(pluginDir.toFile(), resolvedPluginJar.getParentFile());
+    assertTrue(resolvedPluginJar.getName().startsWith("tsfile-remote-sink-"));
+    assertTrue(resolvedPluginJar.getName().endsWith("-jar-with-dependencies.jar"));
   }
 
   private Path createTempDir() throws IOException {
