@@ -707,4 +707,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
           "procedure_completed_evict_ttl 应大于 0，但当前值为 ";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
+          "创建或修改 topic 失败，mode=consensus 不支持 topic 属性 %s";
 }
