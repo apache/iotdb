@@ -28,6 +28,7 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -62,6 +63,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   @Override
   public void writeDecodeValuePage(long[] times, TsPrimitiveType[] values, TSDataType dataType)
       throws IOException {
+    final Type type = Type.fromTsDataType(dataType);
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
@@ -89,34 +91,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
           pageStartTime = Math.min(pageStartTime, times[i]);
           pageEndTime = Math.max(pageEndTime, times[i]);
           dataSize += ReadWriteIOUtils.write(false, stream);
-          switch (dataType) {
-            case INT32:
-            case DATE:
-              dataSize += ReadWriteIOUtils.write(values[i].getInt(), stream);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              dataSize += ReadWriteIOUtils.write(values[i].getLong(), stream);
-              break;
-            case FLOAT:
-              dataSize += ReadWriteIOUtils.write(values[i].getFloat(), stream);
-              break;
-            case DOUBLE:
-              dataSize += ReadWriteIOUtils.write(values[i].getDouble(), stream);
-              break;
-            case BOOLEAN:
-              dataSize += ReadWriteIOUtils.write(values[i].getBoolean(), stream);
-              break;
-            case TEXT:
-            case BLOB:
-            case OBJECT:
-            case STRING:
-              dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
-          }
+          type.serialize(values[i], stream);
+          dataSize += type.calcTypeSize(values[i]);
         }
       }
     }
