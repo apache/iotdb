@@ -109,6 +109,37 @@ public class LoadTsFileStatementTest {
     }
   }
 
+  @Test
+  public void testLoadInternalTsFileIsRejectedWithoutLeakingPath() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final String[][] originalTierDataDirs = config.getTierDataDirs();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
+    final Path dataDir = Files.createTempDirectory("load-tsfile-internal-data");
+    final Path internalTsFile =
+        Files.createDirectories(dataDir.resolve("sequence").resolve("root.db")).resolve("a.tsfile");
+    Files.createFile(internalTsFile);
+
+    try {
+      config.setTierDataDirs(new String[][] {{dataDir.toString()}});
+      config.setLoadTsFileSourcePathCheckEnabled(false);
+
+      try {
+        new LoadTsFileStatement(dataDir.toString());
+        Assert.fail("Expected internal IoTDB data directory to be rejected.");
+      } catch (final FileNotFoundException e) {
+        Assert.assertEquals(
+            "Cannot load files because the specified directory contains IoTDB data.",
+            e.getMessage());
+        Assert.assertFalse(e.getMessage().contains(dataDir.toString()));
+        Assert.assertFalse(e.getMessage().contains(internalTsFile.toString()));
+      }
+    } finally {
+      config.setTierDataDirs(originalTierDataDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
+      deleteRecursively(dataDir);
+    }
+  }
+
   private static void assertLoadSourcePathRejected(final Path sourcePath) {
     try {
       new LoadTsFileStatement(sourcePath.toString());

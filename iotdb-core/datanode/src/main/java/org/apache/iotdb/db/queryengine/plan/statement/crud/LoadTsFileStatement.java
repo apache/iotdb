@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SEQUENCE_FOLDER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.UNSEQUENCE_FOLDER_NAME;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
@@ -109,6 +111,8 @@ public class LoadTsFileStatement extends Statement {
 
   public static List<File> processTsFile(final File file, final boolean validateSourcePath)
       throws FileNotFoundException {
+    final Path[] internalTsFileDirCanonicalPaths = getInternalTsFileDirCanonicalPaths();
+    validateNotLoadingInternalTsFile(file, internalTsFileDirCanonicalPaths);
     if (validateSourcePath) {
       validateLoadSourcePath(file);
     }
@@ -124,7 +128,7 @@ public class LoadTsFileStatement extends Statement {
                     .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
                 file.getPath()));
       }
-      tsFiles.addAll(findAllTsFile(file, validateSourcePath));
+      tsFiles.addAll(findAllTsFile(file, validateSourcePath, internalTsFileDirCanonicalPaths));
     }
     sortTsFiles(tsFiles);
     return tsFiles;
@@ -146,7 +150,8 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private static List<File> findAllTsFile(File file, boolean validateSourcePath)
+  private static List<File> findAllTsFile(
+      File file, boolean validateSourcePath, Path[] internalTsFileDirCanonicalPaths)
       throws FileNotFoundException {
     final File[] files = file.listFiles();
     if (files == null) {
@@ -155,13 +160,14 @@ public class LoadTsFileStatement extends Statement {
 
     final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
+      validateNotLoadingInternalTsFile(nowFile, internalTsFileDirCanonicalPaths);
       if (validateSourcePath) {
         validateLoadSourcePath(nowFile);
       }
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath));
+        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath, internalTsFileDirCanonicalPaths));
       }
     }
     return tsFiles;
@@ -193,6 +199,31 @@ public class LoadTsFileStatement extends Statement {
                 .QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F,
             sourcePath,
             Arrays.toString(allowedDirs)));
+  }
+
+  private static Path[] getInternalTsFileDirCanonicalPaths() throws FileNotFoundException {
+    final String[] localDataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
+    final Path[] internalTsFileDirCanonicalPaths = new Path[localDataDirs.length * 2];
+    for (int i = 0; i < localDataDirs.length; i++) {
+      internalTsFileDirCanonicalPaths[i * 2] =
+          canonicalPath(new File(localDataDirs[i], SEQUENCE_FOLDER_NAME));
+      internalTsFileDirCanonicalPaths[i * 2 + 1] =
+          canonicalPath(new File(localDataDirs[i], UNSEQUENCE_FOLDER_NAME));
+    }
+    return internalTsFileDirCanonicalPaths;
+  }
+
+  private static void validateNotLoadingInternalTsFile(
+      final File file, final Path[] internalTsFileDirCanonicalPaths) throws FileNotFoundException {
+    final Path sourcePath = canonicalPath(file);
+    for (final Path internalTsFileDirCanonicalPath : internalTsFileDirCanonicalPaths) {
+      if (sourcePath.startsWith(internalTsFileDirCanonicalPath)
+          || internalTsFileDirCanonicalPath.startsWith(sourcePath)) {
+        throw new FileNotFoundException(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D);
+      }
+    }
   }
 
   private static Path canonicalPath(final File file) throws FileNotFoundException {

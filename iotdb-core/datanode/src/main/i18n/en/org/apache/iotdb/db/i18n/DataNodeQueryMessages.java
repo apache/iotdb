@@ -3013,6 +3013,9 @@ public final class DataNodeQueryMessages {
       "Can not find %s on this machine, notice that load can only handle files on this machine.";
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
       "Load TsFile source path %s is outside allowed directories %s.";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "Cannot load files because the specified directory contains IoTDB data.";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "Failed to resolve canonical path for Load TsFile source %s: %s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =

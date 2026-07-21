@@ -888,6 +888,28 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadDataNodeInternalDataDirectoryIsRejectedWithoutLeakingPath() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File dataDir = new File(dataNodeWrapper.getDataPath());
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(String.format("load \"%s\"", dataDir.getAbsolutePath()));
+        Assert.fail("Expected LOAD from the DataNode internal data directory to be rejected.");
+      } catch (final SQLException e) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Cannot load files because the specified directory contains IoTDB data."));
+        Assert.assertFalse(e.getMessage(), e.getMessage().contains(dataDir.getAbsolutePath()));
+      }
+    }
+  }
+
+  @Test
   public void testLoadWithMods() throws Exception {
     final long writtenPoint1;
     // device 0, device 1, sg 0
