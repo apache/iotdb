@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.util;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,14 +42,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
+import java.util.UUID;
 
 public class LoadUtil {
 
@@ -132,14 +135,15 @@ public class LoadUtil {
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
-    loadObjectFileDirAsyncToTargetDir(file, targetDir, isDeleteAfterLoad);
-    loadTsFileAsyncToTargetDir(
-        targetDir, new File(getTsFileResourcePath(file.getAbsolutePath())), isDeleteAfterLoad);
-    loadTsFileAsyncToTargetDir(
-        targetDir, new File(getTsFileModsV1Path(file.getAbsolutePath())), isDeleteAfterLoad);
-    loadTsFileAsyncToTargetDir(
-        targetDir, new File(getTsFileModsV2Path(file.getAbsolutePath())), isDeleteAfterLoad);
-    loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
+    transferObjectFileDirToActiveDir(file, targetDir, isDeleteAfterLoad);
+    transferFilesToActiveDir(
+        targetDir,
+        Arrays.asList(
+            new File(getTsFileResourcePath(file.getAbsolutePath())),
+            new File(getTsFileModsV1Path(file.getAbsolutePath())),
+            new File(getTsFileModsV2Path(file.getAbsolutePath())),
+            file),
+        isDeleteAfterLoad);
     return true;
   }
 
@@ -186,53 +190,89 @@ public class LoadUtil {
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
+    final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
-      final File tsFile = new File(file);
-      loadObjectFileDirAsyncToTargetDir(tsFile, targetDir, isDeleteAfterLoad);
-      loadTsFileAsyncToTargetDir(targetDir, tsFile, isDeleteAfterLoad);
+      final File sourceFile = new File(file);
+      transferObjectFileDirToActiveDir(sourceFile, targetDir, isDeleteAfterLoad);
+      sourceFiles.add(sourceFile);
     }
+    sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
+    transferFilesToActiveDir(targetDir, sourceFiles, isDeleteAfterLoad);
     return true;
   }
 
-  private static void loadObjectFileDirAsyncToTargetDir(
+  static void transferFilesToActiveDir(
+      final File targetDir, final List<File> sourceFiles, final boolean isDeleteAfterLoad)
+      throws IOException {
+    final List<File> existingSourceFiles = new ArrayList<>(sourceFiles.size());
+    for (final File sourceFile : sourceFiles) {
+      if (sourceFile.exists()) {
+        existingSourceFiles.add(sourceFile);
+      }
+    }
+    if (existingSourceFiles.isEmpty()) {
+      return;
+    }
+
+    final File transferDir = new File(targetDir, UUID.randomUUID().toString());
+    try {
+      Files.createDirectories(transferDir.toPath());
+      for (final File sourceFile : existingSourceFiles) {
+        final File targetFile = new File(transferDir, sourceFile.getName());
+        RetryUtils.retryOnException(
+            () -> {
+              transferFile(sourceFile, targetFile, isDeleteAfterLoad);
+              return null;
+            });
+      }
+    } catch (final IOException | RuntimeException e) {
+      if (transferDir.exists()) {
+        FileUtils.deleteFileOrDirectoryWithRetry(transferDir);
+      }
+      throw e;
+    }
+
+    if (isDeleteAfterLoad) {
+      deleteSourceFiles(existingSourceFiles);
+    }
+  }
+
+  private static void transferObjectFileDirToActiveDir(
       final File tsFile, final File targetDir, final boolean isDeleteAfterLoad) throws IOException {
     if (tsFile == null || !tsFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
       return;
     }
 
-    final File objectFileSearchRoot =
+    final File objectFileSourceDir =
         new File(
             tsFile.getParentFile(),
             PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName()));
-    if (!objectFileSearchRoot.exists() || !objectFileSearchRoot.isDirectory()) {
+    if (!objectFileSourceDir.isDirectory()) {
       return;
     }
-    loadDirAsyncToTargetDir(
-        objectFileSearchRoot,
-        new File(targetDir, objectFileSearchRoot.getName()),
-        isDeleteAfterLoad);
+
+    transferObjectFileDirectoryToActiveDir(
+        objectFileSourceDir, new File(targetDir, objectFileSourceDir.getName()), isDeleteAfterLoad);
   }
 
-  private static void loadDirAsyncToTargetDir(
+  private static void transferObjectFileDirectoryToActiveDir(
       final File sourceDir, final File targetDir, final boolean isDeleteAfterLoad)
       throws IOException {
-    if (!targetDir.exists() && !targetDir.mkdirs()) {
-      if (!targetDir.exists()) {
-        throw new IOException(
-            StorageEngineMessages.FAILED_TO_CREATE_TARGET_DIR + targetDir.getAbsolutePath());
-      }
+    final File[] sourceFiles = sourceDir.listFiles();
+    if (sourceFiles == null) {
+      return;
     }
 
-    final File[] files = sourceDir.listFiles();
-    if (files != null) {
-      for (final File file : files) {
-        if (file.isDirectory()) {
-          loadDirAsyncToTargetDir(file, new File(targetDir, file.getName()), isDeleteAfterLoad);
-        } else {
-          loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
-        }
+    final List<File> regularFiles = new ArrayList<>();
+    for (final File sourceFile : sourceFiles) {
+      if (sourceFile.isDirectory()) {
+        transferObjectFileDirectoryToActiveDir(
+            sourceFile, new File(targetDir, sourceFile.getName()), isDeleteAfterLoad);
+      } else {
+        regularFiles.add(sourceFile);
       }
     }
+    transferFilesToActiveDir(targetDir, regularFiles, isDeleteAfterLoad);
 
     if (isDeleteAfterLoad && !sourceDir.delete() && sourceDir.exists()) {
       throw new IOException(
@@ -241,26 +281,48 @@ public class LoadUtil {
     }
   }
 
-  private static void loadTsFileAsyncToTargetDir(
-      final File targetDir, final File file, final boolean isDeleteAfterLoad) throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    if (!targetDir.exists() && !targetDir.mkdirs()) {
-      if (!targetDir.exists()) {
-        throw new IOException(
-            StorageEngineMessages.FAILED_TO_CREATE_TARGET_DIR + targetDir.getAbsolutePath());
+  private static void transferFile(
+      final File sourceFile, final File targetFile, final boolean useHardLink) throws IOException {
+    Exception linkException = null;
+    if (useHardLink) {
+      try {
+        Files.createLink(targetFile.toPath(), sourceFile.toPath());
+        return;
+      } catch (final IOException | UnsupportedOperationException | SecurityException e) {
+        linkException = e;
       }
     }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
+
+    try {
+      Files.copy(
+          sourceFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+    } catch (final IOException e) {
+      if (linkException != null) {
+        e.addSuppressed(linkException);
+      }
+      throw e;
+    }
+  }
+
+  private static void deleteSourceFiles(final List<File> sourceFiles) {
+    for (final File sourceFile : sourceFiles) {
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              Files.deleteIfExists(sourceFile.toPath());
+              return null;
+            });
+      } catch (final Exception e) {
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_DELETE_FILE_OR_DIR, sourceFile, e);
+      }
+    }
+  }
+
+  private static boolean isTsFile(final File file) {
+    return file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX);
   }
 
   public static ILoadDiskSelector updateLoadDiskSelector() {

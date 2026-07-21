@@ -61,6 +61,8 @@ import org.mockito.MockitoAnnotations;
 import org.powermock.reflect.Whitebox;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.ZoneId;
 import java.util.Collections;
@@ -376,5 +378,44 @@ public class LoadTsFileSchedulerTest {
     return new TRegionReplicaSet()
         .setRegionId(new DataRegionId(1).convertToTConsensusGroupId())
         .setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+  }
+
+  @Test
+  public void testTsFileDataManagerClearReleasesCachedMemory() throws Exception {
+    final Constructor<LoadTsFileDataCacheMemoryBlock> memoryBlockConstructor =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredConstructor(long.class);
+    memoryBlockConstructor.setAccessible(true);
+    final LoadTsFileDataCacheMemoryBlock memoryBlock =
+        memoryBlockConstructor.newInstance(1024 * 1024L);
+
+    final Class<?> dataManagerClass =
+        Class.forName(LoadTsFileScheduler.class.getName() + "$TsFileDataManager");
+    final Constructor<?> dataManagerConstructor =
+        dataManagerClass.getDeclaredConstructor(
+            LoadTsFileScheduler.class,
+            LoadSingleTsFileNode.class,
+            LoadTsFileDataCacheMemoryBlock.class);
+    dataManagerConstructor.setAccessible(true);
+    final Object dataManager =
+        dataManagerConstructor.newInstance(
+            mock(LoadTsFileScheduler.class), mock(LoadSingleTsFileNode.class), memoryBlock);
+
+    // Simulate data buffered before split or routing aborts. clear() is the last chance to return
+    // this accounting to the shared LOAD memory block.
+    final long cachedMemorySize = 128L;
+    memoryBlock.addMemoryUsage(cachedMemorySize);
+    final Field dataSizeField = dataManagerClass.getDeclaredField("dataSize");
+    dataSizeField.setAccessible(true);
+    dataSizeField.setLong(dataManager, cachedMemorySize);
+
+    final Method clearMethod = dataManagerClass.getDeclaredMethod("clear");
+    clearMethod.setAccessible(true);
+    clearMethod.invoke(dataManager);
+
+    final Method getMemoryUsageMethod =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getMemoryUsageInBytes");
+    getMemoryUsageMethod.setAccessible(true);
+    Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
+    Assert.assertEquals(0L, dataSizeField.getLong(dataManager));
   }
 }
