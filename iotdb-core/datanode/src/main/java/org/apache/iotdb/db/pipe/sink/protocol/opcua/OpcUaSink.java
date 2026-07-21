@@ -70,6 +70,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE;
@@ -114,6 +115,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ADVERTISED_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
@@ -271,6 +273,9 @@ public class OpcUaSink implements PipeConnector {
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, SINK_OPC_UA_HTTPS_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
+    final String advertisedHost =
+        parameters.getStringByKeys(
+            CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY, SINK_OPC_UA_ADVERTISED_HOST_KEY);
 
     final String user =
         parameters.getStringOrDefault(
@@ -333,6 +338,7 @@ public class OpcUaSink implements PipeConnector {
                             new OpcUaServerBuilder()
                                 .setTcpBindPort(tcpBindPort)
                                 .setHttpsBindPort(httpsBindPort)
+                                .setAdvertisedHost(advertisedHost)
                                 .setUser(user)
                                 .setPassword(password)
                                 .setSecurityDir(securityDir)
@@ -348,6 +354,7 @@ public class OpcUaSink implements PipeConnector {
                         oldValue
                             .getRight()
                             .checkEquals(
+                                advertisedHost,
                                 user,
                                 password,
                                 securityDir,

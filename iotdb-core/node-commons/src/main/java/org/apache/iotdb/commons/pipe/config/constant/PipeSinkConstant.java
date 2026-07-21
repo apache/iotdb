@@ -207,6 +207,10 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_HTTPS_BIND_PORT_KEY = "sink.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
+  public static final String CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY =
+      "connector.opcua.advertised-host";
+  public static final String SINK_OPC_UA_ADVERTISED_HOST_KEY = "sink.opcua.advertised-host";
+
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
   public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
