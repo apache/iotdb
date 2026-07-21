@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -37,12 +38,14 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -108,6 +111,36 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertSame(node.getTimes(), tablet.getTimestamps());
     Assert.assertSame(node.getColumns()[0], tablet.getValues()[0]);
     Assert.assertSame(node.getColumns()[2], tablet.getValues()[1]);
+  }
+
+  @Test
+  public void testConvertRelationalInsertTabletNodeConvertsDateForSerialization() throws Exception {
+    final ConsensusLogToTabletConverter converter = createConverter("value");
+    final LocalDate date = LocalDate.of(2026, 1, 31);
+    final RelationalInsertTabletNode node =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("date"),
+            new PartialPath(new String[] {StatementTestUtils.tableName()}),
+            true,
+            new String[] {"device_id", "value"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.DATE},
+            new long[] {1L},
+            null,
+            new Object[] {
+              new Binary[] {new Binary("device_0".getBytes(StandardCharsets.UTF_8))},
+              new int[] {DateUtils.parseDateExpressionToInt(date)}
+            },
+            1,
+            new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertArrayEquals(new LocalDate[] {date}, (LocalDate[]) tablet.getValues()[1]);
+    final Tablet deserializedTablet = Tablet.deserialize(tablet.serialize());
+    Assert.assertArrayEquals(
+        new LocalDate[] {date}, (LocalDate[]) deserializedTablet.getValues()[1]);
   }
 
   @Test
