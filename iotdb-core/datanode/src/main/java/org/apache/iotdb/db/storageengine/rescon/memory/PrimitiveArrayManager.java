@@ -35,9 +35,11 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Array;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntFunction;
 
 /** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
@@ -284,51 +286,12 @@ public class PrimitiveArrayManager {
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = getArrayRowCount(size);
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[][] booleans = new boolean[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          booleans[i] = new boolean[ARRAY_SIZE];
-        }
-        return booleans;
-      case INT32:
-      case DATE:
-        int[][] ints = new int[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          ints[i] = new int[ARRAY_SIZE];
-        }
-        return ints;
-      case INT64:
-      case TIMESTAMP:
-        long[][] longs = new long[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          longs[i] = new long[ARRAY_SIZE];
-        }
-        return longs;
-      case FLOAT:
-        float[][] floats = new float[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          floats[i] = new float[ARRAY_SIZE];
-        }
-        return floats;
-      case DOUBLE:
-        double[][] doubles = new double[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          doubles[i] = new double[ARRAY_SIZE];
-        }
-        return doubles;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        Binary[][] binaries = new Binary[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          binaries[i] = new Binary[ARRAY_SIZE];
-        }
-        return binaries;
-      default:
-        throw new UnSupportedDataTypeException(dataType.name());
-    }
+    IntFunction<Object> arrayAllocator =
+        TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(Type.fromTsDataType(dataType));
+    Object[] dataLists =
+        (Object[]) Array.newInstance(arrayAllocator.apply(0).getClass(), arrayNumber);
+    Arrays.setAll(dataLists, index -> arrayAllocator.apply(ARRAY_SIZE));
+    return dataLists;
   }
 
   public static int getArrayRowCount(int size) {
