@@ -56,6 +56,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -611,10 +612,26 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     final long startTime = System.currentTimeMillis();
     long lastRecordTime = startTime;
 
-    final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
-    while (!tryReserveTsFileParserMemory(memoryManager)) {
-      Thread.sleep(memoryCheckIntervalMs);
+    final long initialMemoryCheckIntervalMs =
+        Math.max(1, PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs());
+    final long maxMemoryCheckIntervalMs =
+        getMaxMemoryCheckIntervalMs(
+            initialMemoryCheckIntervalMs,
+            PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries());
+    long memoryCheckIntervalMs = initialMemoryCheckIntervalMs;
+    while (true) {
+      final long elapsedTimeMs = Math.max(0, System.currentTimeMillis() - startTime);
+      if (elapsedTimeMs >= timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        throw new PipeRuntimeOutOfMemoryCriticalException(
+            String.format(
+                "TimeoutException: Waited %s seconds for memory to parse TsFile",
+                elapsedTimeMs / 1000.0));
+      }
+
+      memoryManager.waitForTsFileParserMemory(
+          Math.min(
+              getMemoryCheckIntervalWithJitter(memoryCheckIntervalMs), timeoutMs - elapsedTimeMs));
 
       final long currentTime = System.currentTimeMillis();
       final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
@@ -632,20 +649,35 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
             waitTimeSeconds);
       }
 
-      if (waitTimeSeconds * 1000 > timeoutMs) {
-        // should contain 'TimeoutException' in exception message
-        throw new PipeRuntimeOutOfMemoryCriticalException(
-            String.format(
-                "TimeoutException: Waited %s seconds for memory to parse TsFile", waitTimeSeconds));
+      if (tryReserveTsFileParserMemory(memoryManager)) {
+        LOGGER.info(
+            "Wait for memory enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+        return;
       }
-    }
 
-    final long currentTime = System.currentTimeMillis();
-    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
-    LOGGER.info(
-        "Wait for memory enough for parsing {} for {} seconds.",
-        resource != null ? resource.getTsFilePath() : "tsfile",
-        waitTimeSeconds);
+      memoryCheckIntervalMs =
+          getNextMemoryCheckIntervalMs(memoryCheckIntervalMs, maxMemoryCheckIntervalMs);
+    }
+  }
+
+  static long getMaxMemoryCheckIntervalMs(final long initialIntervalMs, final int maxRetries) {
+    final long multiplier = Math.max(1, maxRetries);
+    return initialIntervalMs > Long.MAX_VALUE / multiplier
+        ? Long.MAX_VALUE
+        : initialIntervalMs * multiplier;
+  }
+
+  static long getNextMemoryCheckIntervalMs(final long currentIntervalMs, final long maxIntervalMs) {
+    return currentIntervalMs >= maxIntervalMs - currentIntervalMs
+        ? maxIntervalMs
+        : currentIntervalMs << 1;
+  }
+
+  static long getMemoryCheckIntervalWithJitter(final long intervalMs) {
+    return Math.max(
+        1, (long) (intervalMs * (0.5 + ThreadLocalRandom.current().nextDouble() * 0.5)));
   }
 
   private boolean tryReserveTsFileParserMemory(final PipeMemoryManager memoryManager) {
