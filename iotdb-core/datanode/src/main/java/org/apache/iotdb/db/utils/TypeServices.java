@@ -47,17 +47,27 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -298,6 +308,198 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<DecodedValueChunkWriter> DECODED_VALUE_CHUNK_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, isNull ? 0 : ReadWriteIOUtils.readInt(stream), isNull);
+            case INT64, TIMESTAMP ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, isNull ? 0L : ReadWriteIOUtils.readLong(stream), isNull);
+            case FLOAT ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, isNull ? 0F : ReadWriteIOUtils.readFloat(stream), isNull);
+            case DOUBLE ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, isNull ? 0D : ReadWriteIOUtils.readDouble(stream), isNull);
+            case BOOLEAN ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, !isNull && ReadWriteIOUtils.readBool(stream), isNull);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (writer, time, stream, isNull) ->
+                    writer.write(time, isNull ? null : ReadWriteIOUtils.readBinary(stream), isNull);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<SegmentedArraySerializedSizeCalculator>
+      SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN -> (valueArrays, rowCount, arraySize) -> rowCount * Byte.BYTES;
+                case INT32, DATE -> (valueArrays, rowCount, arraySize) -> rowCount * Integer.BYTES;
+                case INT64, TIMESTAMP ->
+                    (valueArrays, rowCount, arraySize) -> rowCount * Long.BYTES;
+                case FLOAT -> (valueArrays, rowCount, arraySize) -> rowCount * Float.BYTES;
+                case DOUBLE -> (valueArrays, rowCount, arraySize) -> rowCount * Double.BYTES;
+                case TEXT, BLOB, STRING, OBJECT ->
+                    (valueArrays, rowCount, arraySize) -> {
+                      int size = 0;
+                      int remaining = rowCount;
+                      for (Object valueArray : valueArrays) {
+                        int length = Math.min(remaining, arraySize);
+                        size += type.serializedSize(valueArray, length);
+                        remaining -= length;
+                        if (remaining == 0) {
+                          break;
+                        }
+                      }
+                      return size;
+                    };
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                        .setChecked(true);
+              };
+
+  public static final TypeService<ArrayValueColumnWriter> ARRAY_VALUE_COLUMN_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (builder, values, index, floatPrecision, encoding) ->
+                    builder.writeBoolean(((boolean[]) values)[index]);
+            case INT32 ->
+                (builder, values, index, floatPrecision, encoding) ->
+                    builder.writeInt(((int[]) values)[index]);
+            case DATE ->
+                (builder, values, index, floatPrecision, encoding) -> {
+                  int value = ((int[]) values)[index];
+                  if (builder instanceof BinaryColumnBuilder) {
+                    ((BinaryColumnBuilder) builder).writeDate(value);
+                  } else {
+                    builder.writeInt(value);
+                  }
+                };
+            case INT64, TIMESTAMP ->
+                (builder, values, index, floatPrecision, encoding) ->
+                    builder.writeLong(((long[]) values)[index]);
+            case FLOAT ->
+                (builder, values, index, floatPrecision, encoding) -> {
+                  float value = ((float[]) values)[index];
+                  if (encoding != null
+                      && !Float.isNaN(value)
+                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                  }
+                  builder.writeFloat(value);
+                };
+            case DOUBLE ->
+                (builder, values, index, floatPrecision, encoding) -> {
+                  double value = ((double[]) values)[index];
+                  if (encoding != null
+                      && !Double.isNaN(value)
+                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                  }
+                  builder.writeDouble(value);
+                };
+            case TEXT, BLOB, STRING, OBJECT ->
+                (builder, values, index, floatPrecision, encoding) ->
+                    builder.writeBinary(((Binary[]) values)[index]);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<ValueSerializer<Object>> OBJECT_VALUE_SERIALIZER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE -> (value, stream) -> ReadWriteIOUtils.write((int) value, stream);
+            case INT64, TIMESTAMP ->
+                (value, stream) -> ReadWriteIOUtils.write((long) value, stream);
+            case FLOAT -> (value, stream) -> ReadWriteIOUtils.write((float) value, stream);
+            case DOUBLE -> (value, stream) -> ReadWriteIOUtils.write((double) value, stream);
+            case BOOLEAN -> (value, stream) -> ReadWriteIOUtils.write((boolean) value, stream);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (value, stream) -> ReadWriteIOUtils.write((Binary) value, stream);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<ValueSerializer<TsPrimitiveType>>
+      TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    (value, stream) -> ReadWriteIOUtils.write(value.getInt(), stream);
+                case INT64, TIMESTAMP ->
+                    (value, stream) -> ReadWriteIOUtils.write(value.getLong(), stream);
+                case FLOAT -> (value, stream) -> ReadWriteIOUtils.write(value.getFloat(), stream);
+                case DOUBLE -> (value, stream) -> ReadWriteIOUtils.write(value.getDouble(), stream);
+                case BOOLEAN ->
+                    (value, stream) -> ReadWriteIOUtils.write(value.getBoolean(), stream);
+                case TEXT, BLOB, STRING, OBJECT ->
+                    (value, stream) -> ReadWriteIOUtils.write(value.getBinary(), stream);
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                        .setChecked(true);
+              };
+
+  public static final TypeService<DecodedArrayValueReader> DECODED_ARRAY_VALUE_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (values, index, stream) ->
+                    ((int[]) values)[index] = ReadWriteIOUtils.readInt(stream);
+            case INT64, TIMESTAMP ->
+                (values, index, stream) ->
+                    ((long[]) values)[index] = ReadWriteIOUtils.readLong(stream);
+            case FLOAT ->
+                (values, index, stream) ->
+                    ((float[]) values)[index] = ReadWriteIOUtils.readFloat(stream);
+            case DOUBLE ->
+                (values, index, stream) ->
+                    ((double[]) values)[index] = ReadWriteIOUtils.readDouble(stream);
+            case BOOLEAN ->
+                (values, index, stream) ->
+                    ((boolean[]) values)[index] = ReadWriteIOUtils.readBool(stream);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (values, index, stream) ->
+                    ((Binary[]) values)[index] = ReadWriteIOUtils.readBinary(stream);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<DecodedChunkWriter> DECODED_CHUNK_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readInt(stream));
+            case INT64, TIMESTAMP ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readLong(stream));
+            case FLOAT ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readFloat(stream));
+            case DOUBLE ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readDouble(stream));
+            case BOOLEAN ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBool(stream));
+            case TEXT, BLOB, STRING, OBJECT ->
+                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBinary(stream));
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
   public static final TypeService<TVListArrayWriter> TV_LIST_ARRAY_WRITER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -498,6 +700,13 @@ public class TypeServices {
     PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
     TABLET_COLUMN_ALLOCATOR_SERVICE.check();
     ARRAY_VALUE_GETTER_SERVICE.check();
+    DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
+    SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
+    ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
+    OBJECT_VALUE_SERIALIZER_SERVICE.check();
+    TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();
+    DECODED_ARRAY_VALUE_READER_SERVICE.check();
+    DECODED_CHUNK_WRITER_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {
@@ -647,5 +856,37 @@ public class TypeServices {
   @FunctionalInterface
   public interface ArrayValueGetter {
     Object get(Object array, int index);
+  }
+
+  @FunctionalInterface
+  public interface DecodedValueChunkWriter {
+    void write(ValueChunkWriter writer, long time, InputStream stream, boolean isNull)
+        throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface SegmentedArraySerializedSizeCalculator {
+    int calculate(List<Object> valueArrays, int rowCount, int arraySize);
+  }
+
+  @FunctionalInterface
+  public interface ArrayValueColumnWriter {
+    void write(
+        ColumnBuilder builder, Object values, int index, int floatPrecision, TSEncoding encoding);
+  }
+
+  @FunctionalInterface
+  public interface ValueSerializer<T> {
+    int serialize(T value, DataOutputStream stream) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface DecodedArrayValueReader {
+    void read(Object values, int index, InputStream stream) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface DecodedChunkWriter {
+    void write(ChunkWriterImpl writer, long time, InputStream stream) throws IOException;
   }
 }

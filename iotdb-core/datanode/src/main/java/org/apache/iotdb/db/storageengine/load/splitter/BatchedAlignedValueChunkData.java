@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -29,10 +30,8 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -64,6 +63,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   public void writeDecodeValuePage(long[] times, TsPrimitiveType[] values, TSDataType dataType)
       throws IOException {
     final Type type = Type.fromTsDataType(dataType);
+    final TypeServices.ValueSerializer<TsPrimitiveType> valueSerializer =
+        TypeServices.TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.call(type);
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
@@ -91,8 +92,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
           pageStartTime = Math.min(pageStartTime, times[i]);
           pageEndTime = Math.max(pageEndTime, times[i]);
           dataSize += ReadWriteIOUtils.write(false, stream);
-          type.serialize(values[i], stream);
-          dataSize += type.calcTypeSize(values[i]);
+          dataSize += valueSerializer.serialize(values[i], stream);
         }
       }
     }
@@ -148,44 +148,12 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       // ValueChunkWriter, first use the wrong time. Before sealing each page, modify the statistic
       // in the page writer and set the correct start time and end time.
       final int length = ReadWriteIOUtils.readInt(stream);
+      final TypeServices.DecodedValueChunkWriter decodedValueWriter =
+          TypeServices.DECODED_VALUE_CHUNK_WRITER_SERVICE.call(
+              Type.fromTsDataType(chunkHeader.getDataType()));
       for (int j = 0; j < length; j++) {
         final boolean isNull = ReadWriteIOUtils.readBool(stream);
-        switch (chunkHeader.getDataType()) {
-          case INT32:
-          case DATE:
-            final int int32Value = isNull ? DEFAULT_INT32 : ReadWriteIOUtils.readInt(stream);
-            valueChunkWriter.write(0, int32Value, isNull);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            final long int64Value = isNull ? DEFAULT_INT64 : ReadWriteIOUtils.readLong(stream);
-            valueChunkWriter.write(0, int64Value, isNull);
-            break;
-          case FLOAT:
-            final float floatValue = isNull ? DEFAULT_FLOAT : ReadWriteIOUtils.readFloat(stream);
-            valueChunkWriter.write(0, floatValue, isNull);
-            break;
-          case DOUBLE:
-            final double doubleValue =
-                isNull ? DEFAULT_DOUBLE : ReadWriteIOUtils.readDouble(stream);
-            valueChunkWriter.write(0, doubleValue, isNull);
-            break;
-          case BOOLEAN:
-            final boolean boolValue = isNull ? DEFAULT_BOOLEAN : ReadWriteIOUtils.readBool(stream);
-            valueChunkWriter.write(0, boolValue, isNull);
-            break;
-          case TEXT:
-          case BLOB:
-          case OBJECT:
-          case STRING:
-            final Binary binaryValue =
-                isNull ? DEFAULT_BINARY : ReadWriteIOUtils.readBinary(stream);
-            valueChunkWriter.write(0, binaryValue, isNull);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
-        }
+        decodedValueWriter.write(valueChunkWriter, 0, stream, isNull);
       }
       Statistics<? extends Serializable> statistics =
           valueChunkWriter.getPageWriter().getStatistics();
