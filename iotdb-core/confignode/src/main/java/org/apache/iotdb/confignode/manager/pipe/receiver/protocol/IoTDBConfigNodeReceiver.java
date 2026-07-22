@@ -22,10 +22,12 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
@@ -95,7 +97,7 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
-import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotPieceReq;
@@ -183,15 +185,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           return new TPipeTransferResp(
               new TSStatus(TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode())
                   .setMessage(
-                      "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
+                      ManagerMessages
+                          .MESSAGE_RECEIVER_CONFIGNODE_HAS_SET_UP_NEW_RECEIVER_SENDER_MUST_RE_77B80C51));
+        }
+        final TPipeTransferResp authResp = checkPipeTransferAuthenticated(type);
+        if (Objects.nonNull(authResp)) {
+          return authResp;
         }
         final TPipeTransferResp resp;
         final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
-            resp =
-                handleTransferHandshakeV1(
-                    PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            resp = new TPipeTransferResp(getUnsupportedHandshakeV1Status());
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
             return resp;
@@ -199,7 +204,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             resp =
                 handleTransferHandshakeV2(
                     PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
-            userEntity.setAuditLogOperation(AuditLogOperation.DDL);
+            if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && Objects.nonNull(userEntity)) {
+              userEntity.setAuditLogOperation(AuditLogOperation.DDL);
+            }
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
             return resp;
@@ -209,14 +217,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            resp =
-                handleTransferFilePiece(
+            try {
+              try (final AutoCloseable ignored =
+                  PipeConfigNodeResourceManager.memory()
+                      .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
+                return handleTransferFilePiece(
                     PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
-            return resp;
+              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                return getReceiverTemporaryUnavailableResp(e);
+              }
+            } finally {
+              PipeConfigNodeReceiverMetrics.getInstance()
+                  .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             resp =
                 handleTransferFileSealV2(
@@ -225,7 +240,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            try (final AutoCloseable ignored =
+                PipeConfigNodeResourceManager.memory()
+                    .tryAllocateReceiverMemory(
+                        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req))) {
+              return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              return getReceiverTemporaryUnavailableResp(e);
+            }
           default:
             break;
         }
@@ -236,7 +258,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
-              String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
+              String.format(
+                  ManagerMessages.UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE, rawRequestType));
       LOGGER.warn(
           ManagerMessages.RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS,
           receiverId.get(),
@@ -244,8 +267,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
       final String error =
-          "Exception encountered while handling pipe transfer request. Root cause: "
-              + e.getMessage();
+          String.format(
+              ManagerMessages.EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST,
+              e.getMessage());
       LOGGER.warn(ManagerMessages.RECEIVER_ID, receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
@@ -260,6 +284,48 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
+  }
+
+  private TPipeTransferResp checkPipeTransferAuthenticated(final PipeRequestType type) {
+    if (!requiresAuthentication(type)) {
+      return null;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (hasPipeHandshakeCredential || (clientSession != null && clientSession.isLogin())) {
+      if (!hasPipeHandshakeCredential && clientSession != null) {
+        username = clientSession.getUsername();
+        userEntity =
+            new UserEntity(clientSession.getUserId(), username, clientSession.getClientAddress())
+                .setAuditLogOperation(AuditLogOperation.DDL);
+      }
+      return null;
+    }
+
+    return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  private static long getRequestBodySizeInBytes(final TPipeTransferReq req) {
+    return req.getBody() == null ? 0 : req.getBody().length;
+  }
+
+  private static TPipeTransferResp getReceiverTemporaryUnavailableResp(
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TPipeTransferResp(
+        new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(e.getMessage()));
+  }
+
+  private static boolean requiresAuthentication(final PipeRequestType type) {
+    switch (type) {
+      case TRANSFER_CONFIG_PLAN:
+      case TRANSFER_CONFIG_SNAPSHOT_PIECE:
+      case TRANSFER_CONFIG_SNAPSHOT_SEAL:
+      case TRANSFER_COMPRESSED:
+        return true;
+      default:
+        return false;
+    }
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final PipeTransferConfigPlanReq req)
@@ -1221,11 +1287,19 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   // 2. The detection period (300s) is too long for configPlans.
   @Override
   protected boolean shouldLogin() {
-    return true;
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return hasPipeHandshakeCredential || clientSession == null || !clientSession.isLogin();
   }
 
   @Override
   protected TSStatus login() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (!hasPipeHandshakeCredential) {
+      return session != null && session.isLogin()
+          ? RpcUtils.SUCCESS_STATUS
+          : getNotLoggedInStatus();
+    }
+
     return configManager.login(username, password, false).getStatus();
   }
 
@@ -1277,7 +1351,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
     final boolean isTreeModelDataAllowedToBeCaptured =
-        parameters.containsKey(PipeTransferFileSealReqV2.TREE);
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters);
     final TreePattern treePattern =
         TreePattern.parsePatternFromString(
             parameters.get(ColumnHeaderConstant.PATH_PATTERN),
@@ -1285,7 +1359,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
-            parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
+            PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters),
             parameters.get(PipeTransferFileSealReqV2.DATABASE_PATTERN),
             parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();

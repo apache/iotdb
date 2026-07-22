@@ -83,10 +83,15 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       return new ArrayList<>(0);
     }
     final List<Pair<String, File>> pairList = new ArrayList<>();
-    for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
+    try {
+      for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
+        pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
+      }
+      return pairList;
+    } catch (final IOException | RuntimeException e) {
+      pairList.forEach(pair -> FileUtils.deleteQuietly(pair.right));
+      throw e;
     }
-    return pairList;
   }
 
   @Override
@@ -150,7 +155,13 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          FileUtils.deleteQuietly(file);
+          throw e;
+        }
       }
 
       try {
@@ -185,7 +196,10 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
               file.getPath(),
-              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+              deleteSuccess
+                  ? ""
+                  : DataNodePipeMessages
+                      .MESSAGE_MAYBE_THE_TSFILE_NEEDS_TO_BE_DELETED_MANUALLY_342E28E2);
         }
         sealedFiles.clear();
 

@@ -183,11 +183,7 @@ class PipeAgentLauncher {
                   .collect(Collectors.toList()));
     } catch (Exception | Error e) {
       // Ignore unexpected exceptions to ensure that DataNode can start normally
-      LOGGER.info(
-          "Failed to get pipe task meta from config node. Ignore the exception, "
-              + "because config node may not be ready yet, and "
-              + "meta will be pushed by config node later.",
-          e);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_GET_PIPE_TASK_META_FROM, e);
     }
   }
 }

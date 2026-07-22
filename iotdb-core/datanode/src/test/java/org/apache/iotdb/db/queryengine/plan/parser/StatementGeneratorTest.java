@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -120,6 +121,20 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testAlterTopicStatement() {
+    final Statement statement =
+        StatementGenerator.createStatement(
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
+            ZonedDateTime.now().getOffset());
+
+    Assert.assertTrue(statement instanceof AlterTopicStatement);
+    final AlterTopicStatement alterTopicStatement = (AlterTopicStatement) statement;
+    Assert.assertEquals("topic1", alterTopicStatement.getTopicName());
+    Assert.assertEquals("owner2", alterTopicStatement.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("6", alterTopicStatement.getTopicAttributes().get("owner-epoch"));
+  }
 
   @Test
   public void testShowDiskUsage() {
@@ -1038,6 +1053,27 @@ public class StatementGeneratorTest {
     path2.add(new PartialPath("root.sg.d2"));
     assertEquals(path2, stmt.getSourcePaths().fullPathList);
     assertEquals(null, stmt.getQueryStatement());
+  }
+
+  @Test
+  public void testShowRepairDataPartitionTableProgress() {
+    Statement statement =
+        StatementGenerator.createStatement(
+            "SHOW REPAIR DATA PARTITION TABLE PROGRESS;", ZonedDateTime.now().getOffset());
+    assertEquals(StatementType.SHOW_REPAIR_DATA_PARTITION_TABLE_PROGRESS, statement.getType());
+
+    QueryStatement queryStatement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "SELECT progress FROM root.sg.d1;", ZonedDateTime.now().getOffset());
+    assertEquals(
+        "progress",
+        queryStatement
+            .getSelectComponent()
+            .getResultColumns()
+            .get(0)
+            .getExpression()
+            .getExpressionString());
   }
 
   // TODO: add more tests

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 
 import org.antlr.v4.runtime.RecognitionException;
@@ -31,8 +32,8 @@ public class ParsingException extends RuntimeException {
 
   public ParsingException(String message, RecognitionException cause, int line, int column) {
     super(message, cause);
-    checkArgument(line > 0, "line must be > 0");
-    checkArgument(column > 0, "column must be > 0");
+    checkArgument(line > 0, QueryMessages.EXCEPTION_LINE_MUST_BE_GREATER_THAN_0_8D2C1802);
+    checkArgument(column > 0, QueryMessages.EXCEPTION_COLUMN_MUST_BE_GREATER_THAN_0_2481C561);
 
     this.line = line;
     this.column = column;

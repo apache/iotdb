@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -491,7 +492,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
@@ -534,7 +536,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
     clear();
 
     logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
@@ -579,6 +581,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (IOException | MetadataException e) {
       logger.error(
           DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
@@ -592,6 +595,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             schemaRegionId,
             metadataException);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 

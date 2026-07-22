@@ -50,6 +50,13 @@ def _cache_enable() -> bool:
     return AINodeDescriptor().get_config().get_ain_data_storage_cache_size() > 0
 
 
+def _format_endpoint_url(ip: str, port: int) -> str:
+    formatted_ip = ip
+    if ":" in ip and not (ip.startswith("[") and ip.endswith("]")):
+        formatted_ip = f"[{ip}]"
+    return f"{formatted_ip}:{port}"
+
+
 class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
     cache = MemoryLRUCache()
 
@@ -84,7 +91,7 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         self.TIME_CONDITION = " where time>=%s and time<%s"
 
         self.session = Session.init_from_node_urls(
-            node_urls=[f"{ip}:{port}"],
+            node_urls=[_format_endpoint_url(ip, port)],
             user=username,
             password=password,
             use_ssl=AINodeDescriptor()
@@ -262,7 +269,7 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         )
 
         table_session_config = TableSessionConfig(
-            node_urls=[f"{ip}:{port}"],
+            node_urls=[_format_endpoint_url(ip, port)],
             username=username,
             password=password,
             use_ssl=AINodeDescriptor()

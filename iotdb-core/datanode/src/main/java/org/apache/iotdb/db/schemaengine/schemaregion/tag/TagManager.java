@@ -52,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +70,10 @@ public class TagManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
+  // The tag index memory model adds one int-sized estimated overhead for each indexed key, value,
+  // and measurement reference. This is an accounting estimate rather than a specific
+  // ConcurrentHashMap or Set field.
+  private static final long INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES = Integer.BYTES;
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -166,34 +169,31 @@ public class TagManager {
       return;
     }
 
-    int tagIndexOldSize = tagIndex.size();
-    Map<String, Set<IMeasurementMNode<?>>> tagValueMap =
-        tagIndex.computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>());
-    int tagIndexNewSize = tagIndex.size();
+    tagIndex.compute(
+        tagKey,
+        (key, tagValueMap) -> {
+          long memorySize = 0;
+          if (tagValueMap == null) {
+            tagValueMap = new ConcurrentHashMap<>();
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
 
-    int tagValueMapOldSize = tagValueMap.size();
-    Set<IMeasurementMNode<?>> measurementsSet =
-        tagValueMap.computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()));
-    int tagValueMapNewSize = tagValueMap.size();
+          Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.get(tagValue);
+          if (measurementsSet == null) {
+            measurementsSet = ConcurrentHashMap.newKeySet();
+            tagValueMap.put(tagValue, measurementsSet);
+            memorySize += RamUsageEstimator.sizeOf(tagValue) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
 
-    int measurementsSetOldSize = measurementsSet.size();
-    measurementsSet.add(measurementMNode);
-    int measurementsSetNewSize = measurementsSet.size();
-
-    long memorySize = 0;
-    if (tagIndexNewSize - tagIndexOldSize == 1) {
-      // the last 4 is the memory occupied by the size of tagvaluemap
-      memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
-    }
-    if (tagValueMapNewSize - tagValueMapOldSize == 1) {
-      // the last 4 is the memory occupied by the size of measurementsSet
-      memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
-    }
-    if (measurementsSetNewSize - measurementsSetOldSize == 1) {
-      // 8 is the memory occupied by the length of the IMeasurementMNode
-      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
-    }
-    requestMemory(memorySize);
+          if (measurementsSet.add(measurementMNode)) {
+            memorySize +=
+                RamUsageEstimator.NUM_BYTES_OBJECT_REF + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
+          if (memorySize > 0) {
+            requestMemory(memorySize);
+          }
+          return tagValueMap;
+        });
   }
 
   public void addIndex(Map<String, String> tagsMap, IMeasurementMNode<?> measurementMNode) {
@@ -208,32 +208,47 @@ public class TagManager {
     if (tagKey == null || tagValue == null || measurementMNode == null) {
       return;
     }
-    // init memory size
-    long memorySize = 0;
-    if (tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
-      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
-    }
-    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
-      if (tagIndex.get(tagKey).remove(tagValue) != null) {
-        // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-        memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
-      }
-    }
-    if (tagIndex.get(tagKey).isEmpty()) {
-      if (tagIndex.remove(tagKey) != null) {
-        // the last 4 is the memory occupied by the size of tagValueMap
-        memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
-      }
-    }
-    releaseMemory(memorySize);
+    tagIndex.computeIfPresent(
+        tagKey,
+        (key, tagValueMap) -> {
+          long memorySize = 0;
+          Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.get(tagValue);
+          if (measurementsSet == null) {
+            return tagValueMap;
+          }
+
+          if (measurementsSet.remove(measurementMNode)) {
+            memorySize +=
+                RamUsageEstimator.NUM_BYTES_OBJECT_REF + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+          }
+          if (measurementsSet.isEmpty()) {
+            if (tagValueMap.remove(tagValue, measurementsSet)) {
+              memorySize +=
+                  RamUsageEstimator.sizeOf(tagValue) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+            }
+          }
+          if (tagValueMap.isEmpty()) {
+            memorySize += RamUsageEstimator.sizeOf(tagKey) + INDEX_ENTRY_OVERHEAD_ESTIMATE_BYTES;
+            if (memorySize > 0) {
+              releaseMemory(memorySize);
+            }
+            return null;
+          }
+          if (memorySize > 0) {
+            releaseMemory(memorySize);
+          }
+          return tagValueMap;
+        });
+  }
+
+  private boolean containsIndex(String tagKey, String tagValue) {
+    Map<String, Set<IMeasurementMNode<?>>> tagValueMap = tagIndex.get(tagKey);
+    return tagValueMap != null && tagValueMap.containsKey(tagValue);
   }
 
   private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
-    if (!tagIndex.containsKey(tagFilter.getKey())) {
-      return Collections.emptyList();
-    }
     Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(tagFilter.getKey());
-    if (value2Node.isEmpty()) {
+    if (value2Node == null || value2Node.isEmpty()) {
       return Collections.emptyList();
     }
 
@@ -364,12 +379,14 @@ public class TagManager {
     Map<String, String> tagMap = tagLogFile.readTag(node.getOffset());
     if (tagMap != null) {
       for (Map.Entry<String, String> entry : tagMap.entrySet()) {
-        if (tagIndex.containsKey(entry.getKey())
-            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+        if (containsIndex(entry.getKey(), entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG, "Delete" + TAG_FORMAT, node.getFullPath()),
+                    String.format(
+                        DEBUG_MSG,
+                        DataNodeSchemaMessages.TAG_ACTION_DELETE + TAG_FORMAT,
+                        node.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     node.getOffset()));
@@ -381,7 +398,10 @@ public class TagManager {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION, node.getFullPath()),
+                    String.format(
+                        DEBUG_MSG_1,
+                        DataNodeSchemaMessages.TAG_ACTION_DELETE + PREVIOUS_CONDITION,
+                        node.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     node.getOffset(),
@@ -418,11 +438,14 @@ public class TagManager {
         // we should remove before key-value from inverted index map
         if (beforeValue != null && !beforeValue.equals(value)) {
 
-          if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+          if (containsIndex(key, beforeValue)) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   String.format(
-                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
+                      String.format(
+                          DEBUG_MSG,
+                          DataNodeSchemaMessages.TAG_ACTION_UPSERT + TAG_FORMAT,
+                          leafMNode.getFullPath()),
                       key,
                       beforeValue,
                       leafMNode.getOffset()));
@@ -435,7 +458,9 @@ public class TagManager {
               logger.debug(
                   String.format(
                       String.format(
-                          DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                          DEBUG_MSG_1,
+                          DataNodeSchemaMessages.TAG_ACTION_UPSERT + PREVIOUS_CONDITION,
+                          leafMNode.getFullPath()),
                       key,
                       beforeValue,
                       leafMNode.getOffset(),
@@ -551,12 +576,14 @@ public class TagManager {
 
     if (!deleteTag.isEmpty()) {
       for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
-        if (tagIndex.containsKey((entry.getKey()))
-            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+        if (containsIndex(entry.getKey(), entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
+                    String.format(
+                        DEBUG_MSG,
+                        DataNodeSchemaMessages.TAG_ACTION_DROP + TAG_FORMAT,
+                        leafMNode.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     leafMNode.getOffset()));
@@ -569,7 +596,9 @@ public class TagManager {
             logger.debug(
                 String.format(
                     String.format(
-                        DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                        DEBUG_MSG_1,
+                        DataNodeSchemaMessages.TAG_ACTION_DROP + PREVIOUS_CONDITION,
+                        leafMNode.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     leafMNode.getOffset(),
@@ -622,12 +651,15 @@ public class TagManager {
       String beforeValue = entry.getValue();
       String currentValue = newTagValue.get(key);
       // change the tag inverted index map
-      if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+      if (containsIndex(key, beforeValue)) {
 
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG,
+                      DataNodeSchemaMessages.TAG_ACTION_SET + TAG_FORMAT,
+                      leafMNode.getFullPath()),
                   entry.getKey(),
                   beforeValue,
                   leafMNode.getOffset()));
@@ -639,7 +671,10 @@ public class TagManager {
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG_1,
+                      DataNodeSchemaMessages.TAG_ACTION_SET + PREVIOUS_CONDITION,
+                      leafMNode.getFullPath()),
                   key,
                   beforeValue,
                   leafMNode.getOffset(),
@@ -680,12 +715,15 @@ public class TagManager {
       // persist the change to disk
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       // change the tag inverted index map
-      if (tagIndex.containsKey(oldKey) && tagIndex.get(oldKey).containsKey(value)) {
+      if (containsIndex(oldKey, value)) {
 
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG,
+                      DataNodeSchemaMessages.TAG_ACTION_RENAME + TAG_FORMAT,
+                      leafMNode.getFullPath()),
                   oldKey,
                   value,
                   leafMNode.getOffset()));
@@ -698,7 +736,9 @@ public class TagManager {
           logger.debug(
               String.format(
                   String.format(
-                      DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                      DEBUG_MSG_1,
+                      DataNodeSchemaMessages.TAG_ACTION_RENAME + PREVIOUS_CONDITION,
+                      leafMNode.getFullPath()),
                   oldKey,
                   value,
                   leafMNode.getOffset(),

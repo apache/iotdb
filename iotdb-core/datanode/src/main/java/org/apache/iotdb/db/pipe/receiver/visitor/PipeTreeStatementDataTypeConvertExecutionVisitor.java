@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
@@ -75,7 +76,13 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     try {
       return Optional.of(statementExecutor.execute(statement));
     } catch (final Exception e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE, e);
+      if (LOGGER.isWarnEnabled()) {
+        PipeLogger.log(
+            LOGGER::warn,
+            DataNodePipeMessages
+                .FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE_CONVERSION_WITH_EXCEPTION_TYPE,
+            e.getClass().getName());
+      }
       return Optional.empty();
     }
   }
@@ -105,12 +112,15 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null, true)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          final InsertTabletStatement insertTabletStatement =
+              PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                      tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
+                  .constructStatement();
+          if (loadTsFileStatement.getDatabase() != null) {
+            insertTabletStatement.setDatabaseName(loadTsFileStatement.getDatabase());
+          }
           final PipeConvertedInsertTabletStatement statement =
-              new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                          tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
-                      .constructStatement(),
-                  false);
+              new PipeConvertedInsertTabletStatement(insertTabletStatement, false);
 
           TSStatus result;
           try {

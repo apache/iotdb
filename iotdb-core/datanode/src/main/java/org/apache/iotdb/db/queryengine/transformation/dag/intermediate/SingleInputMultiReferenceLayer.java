@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
 import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -165,7 +166,8 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              DataNodeQueryMessages
+                  .LAYERROWWINDOWREADER_INDEX_OVERFLOW_BEGININDEX_ARG_ENDINDEX_ARG_WINDOWSIZE_ARG,
               beginIndex,
               endIndex,
               windowSize);

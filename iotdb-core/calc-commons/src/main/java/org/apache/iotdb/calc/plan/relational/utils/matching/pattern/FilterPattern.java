@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching.pattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
@@ -34,7 +35,7 @@ public class FilterPattern<T> extends Pattern<T> {
 
   public FilterPattern(BiPredicate<? super T, ?> predicate, Optional<Pattern<?>> previous) {
     super(previous);
-    this.predicate = requireNonNull(predicate, "predicate is null");
+    this.predicate = requireNonNull(predicate, CalcMessages.EXCEPTION_PREDICATE_IS_NULL_22E687A9);
   }
 
   public BiPredicate<? super T, ?> predicate() {

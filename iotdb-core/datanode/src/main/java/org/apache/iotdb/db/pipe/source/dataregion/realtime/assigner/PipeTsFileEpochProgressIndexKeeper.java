@@ -114,7 +114,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
         .filter(Objects::nonNull)
-        .anyMatch(resource -> !resource.getMaxProgressIndex().isAfter(progressIndex));
+        .anyMatch(resource -> progressIndex.isEqualOrAfter(resource.getMaxProgressIndex()));
   }
 
   //////////////////////////// singleton ////////////////////////////

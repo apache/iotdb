@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
@@ -246,9 +247,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
+    // The boolean result must reflect whether the ConfigRegion state-machine data was loaded, so
+    // callers (e.g. the AddPeer flow) can detect a real failure. The pipe-listener recomputation
+    // below is best-effort post-processing: a failure there is logged but must NOT be reported as a
+    // snapshot-load failure, otherwise it would (e.g.) abort ConfigNode (re)initialization on what
+    // is actually a healthy data load.
+    final boolean loadSucceeded = executor.loadSnapshot(latestSnapshotRootDir);
     try {
-      executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
       // to recover the newest snapshot in cache
       PipeConfigNodeAgent.runtime()
@@ -261,6 +267,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             e);
       }
     }
+    return loadSucceeded;
   }
 
   @Override
@@ -271,7 +278,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
           ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + "the new leader is [nodeId:{}]",
+              + ConfigNodeMessages.LOG_NEW_LEADER_NODEID_ARG_0A63760B,
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -286,7 +293,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     final int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + "start cleaning up related services",
+            + ConfigNodeMessages.LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261,
         currentNodeId,
         currentNodeTEndPoint);
     resignLeaderAsync();
@@ -298,6 +305,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
+
+    // Reset every DataNode's last-contact time to now on (re)acquiring leadership: a stale
+    // timestamp
+    // left from a previous leadership term (while another ConfigNode was contacting the DataNodes)
+    // would otherwise let the metadata-broadcast verdict wrongly judge a live DataNode as fenced.
+    DataNodeContactTracker.getInstance()
+        .onLeadershipAcquired(
+            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet());
+
     // Bump the epoch eagerly so that any in-flight services of an older epoch are invalidated
     // immediately, even before the (serialized) become-leader orchestration gets to run.
     final long epoch = nextLeaderServicesEpoch();
@@ -323,8 +339,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private void becomeLeader(final long epoch) {
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + "skip starting leader services because the leader epoch is stale",
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_NODE_NODEID_ARG_IP_PORT_ARG_IS_NO_LONGER_THE_LEADER_SKIP_STARTING_LEADER_SERVICES_BECAUSE_THE_LEADER_EPOCH_IS_STALE_CCF39435,
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint);
       return;
@@ -434,7 +450,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + "all services on old leader are unavailable now.",
+            + ConfigNodeMessages.LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F,
         currentNodeId,
         currentNodeTEndPoint);
   }
@@ -462,9 +478,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             // stays unstarted, but the node still finishes warming up and begins serving; the
             // failure is observable through this error log.
             LOGGER.error(
-                "Current ConfigNode(nodeId: {}, ip: {}) failed to start leader service [{}], the"
-                    + " node will still finish warming up; this service stays unavailable until the"
-                    + " next leadership transition.",
+                ConfigNodeMessages
+                    .MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FAILED_TO_START_LEADER_SERVICE_ARG_THE_NODE_WILL_STILL_FINISH_WARMING_UP_THIS_SERVICE_STAYS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_E89A98E7,
                 ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
                 currentNodeTEndPoint,
                 startup.name(),
@@ -485,8 +500,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private void logLoadWarmUpIfNeeded(final boolean loadReady) {
     if (!loadReady) {
       LOGGER.info(
-          "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load"
-              + " warm-up is still in progress: {}",
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_NODEID_ARG_IP_ARG_FINISHED_STARTING_LEADER_SERVICES_WHILE_LOAD_WARM_UP_IS_STILL_IN_PROGRESS_ARG_17C09A31,
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint,
           configManager.getLoadManager().getLoadReadyReason());
@@ -513,7 +528,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       return true;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Unexpected interruption while waiting for ConfigNode leader load warm-up.", e);
+      LOGGER.warn(
+          ConfigNodeMessages
+              .MESSAGE_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7,
+          e);
       return false;
     }
   }
@@ -578,7 +596,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         } catch (IOException e) {
           LOGGER.warn(
               ConfigNodeMessages.CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE
-                  + "filePath: {}, retry: {}",
+                  + ConfigNodeMessages.LOG_FILEPATH_ARG_RETRY_ARG_16284354,
               simpleLogFile.getAbsolutePath(),
               retry);
           try {

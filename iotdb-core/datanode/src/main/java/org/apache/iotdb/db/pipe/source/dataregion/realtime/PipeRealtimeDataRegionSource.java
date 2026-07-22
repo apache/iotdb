@@ -166,7 +166,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                 SOURCE_START_TIME_KEY,
                 EXTRACTOR_START_TIME_KEY,
                 realtimeDataExtractionStartTime,
@@ -203,7 +204,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (!sloppyOptionSet.isEmpty()) {
         throw new PipeParameterNotValidException(
             String.format(
-                "Parameters in set %s are not allowed in 'realtime.loose-range'", sloppyOptionSet));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_REALTIME_LOOSE_RANGE_BACD2475,
+                sloppyOptionSet));
       }
     }
   }
@@ -259,20 +262,13 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
@@ -445,7 +441,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
         break;
       }
-      pendingQueue.pollLast();
+      final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
+      if (droppedEvent != null) {
+        droppedEvent.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
+      }
     }
     final Event last = pendingQueue.peekLast();
     if (last instanceof PipeRealtimeEvent
@@ -456,6 +455,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
       return;
     }
     pendingQueue.offer(event);

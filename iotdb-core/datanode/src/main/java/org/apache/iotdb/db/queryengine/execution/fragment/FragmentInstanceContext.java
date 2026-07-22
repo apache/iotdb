@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
@@ -46,6 +47,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -84,6 +87,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_OPERATOR_FROM_RAW_DATA;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
@@ -117,6 +123,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
+
+  private ExternalTsFileQueryResource externalTsFileQueryResource;
+  private boolean externalTsFileQueryResourceRetained;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -152,6 +161,9 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
+  // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
+  private long outerQueryDeadlineMs = -1L;
+
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private DataNodeQueryContext dataNodeQueryContext;
 
@@ -163,6 +175,9 @@ public class FragmentInstanceContext extends QueryContext {
   private int initQueryDataSourceRetryCount = 0;
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromRawDataCost = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromStatisticsCost = new AtomicLong(0);
+  private final AtomicLong aggregationOperatorFromRawDataCost = new AtomicLong(0);
   private long unclosedSeqFileNum = 0;
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
@@ -206,6 +221,7 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
     FragmentInstanceContext instanceContext =
@@ -216,6 +232,7 @@ public class FragmentInstanceContext extends QueryContext {
             dataRegion,
             globalTimePredicate,
             dataNodeQueryContextMap,
+            outerQueryDeadlineMs,
             debug,
             isVerbose);
     instanceContext.initialize();
@@ -229,6 +246,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  @Override
+  public boolean isExternalTsFileScan() {
+    return queryDataSourceType == QueryDataSourceType.EXTERNAL_TSFILE_SCAN;
   }
 
   @TestOnly
@@ -271,6 +293,7 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean verbose) {
     super(debug, verbose);
@@ -278,6 +301,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
+    this.outerQueryDeadlineMs = outerQueryDeadlineMs;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
         globalTimePredicate == null
@@ -567,6 +591,10 @@ public class FragmentInstanceContext extends QueryContext {
     return sessionInfo;
   }
 
+  public long getOuterQueryDeadlineMs() {
+    return outerQueryDeadlineMs;
+  }
+
   public Optional<Throwable> getFailureCause() {
     return Optional.ofNullable(
         stateMachine.getFailureCauses().stream()
@@ -630,6 +658,54 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setDevicePathsToContext(Map<IDeviceID, DeviceContext> devicePathsToContext) {
     this.devicePathsToContext = devicePathsToContext;
+  }
+
+  public void addExternalTsFileQueryResource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    if (this.externalTsFileQueryResource != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET);
+    }
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+  }
+
+  public boolean initExternalTsFileQueryDataSource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFileQueryResource == null) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+      } else {
+        if (!externalTsFileQueryResourceRetained) {
+          externalTsFileQueryResource.retainFragmentInstanceUsage();
+          externalTsFileQueryResourceRetained = true;
+        }
+        this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+        closedUnseqFileNum = externalTsFileQueryResource.getSharedTsFileResources().size();
+      }
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+    }
+    return true;
+  }
+
+  private void releaseExternalTsFileQueryResource() {
+    if (!externalTsFileQueryResourceRetained || externalTsFileQueryResource == null) {
+      externalTsFileQueryResource = null;
+      externalTsFileQueryResourceRetained = false;
+      return;
+    }
+    try {
+      // This FragmentInstance retained the resource during datasource initialization. Releasing the
+      // last runtime usage closes the shared resource and deletes its temporary run files.
+      externalTsFileQueryResource.closeByFragmentInstance();
+    } catch (Exception e) {
+      LOGGER.warn(
+          DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
+          e);
+    }
+    externalTsFileQueryResource = null;
+    externalTsFileQueryResourceRetained = false;
   }
 
   public MemoryReservationManager getMemoryReservationContext() {
@@ -824,9 +900,17 @@ public class FragmentInstanceContext extends QueryContext {
             return getUnfinishedQueryDataSource();
           }
           break;
+        case EXTERNAL_TSFILE_SCAN:
+          if (!initExternalTsFileQueryDataSource(externalTsFileQueryResource)) {
+            return getUnfinishedQueryDataSource();
+          }
+          break;
         default:
           throw new QueryProcessException(
-              "Unsupported query data source type: " + queryDataSourceType);
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_QUERY_DATA_SOURCE_TYPE_S_7424E63F,
+                  queryDataSourceType));
       }
     }
     return sharedQueryDataSource;
@@ -837,7 +921,7 @@ public class FragmentInstanceContext extends QueryContext {
     // record warn log every 10 times retry
     if (initQueryDataSourceRetryCount % 10 == 0) {
       LOGGER.warn(
-          "Failed to acquire the read lock of DataRegion-{} for {} times",
+          DataNodeQueryMessages.FAILED_TO_ACQUIRE_THE_READ_LOCK_OF_DATAREGION_ARG_FOR_ARG_TIMES,
           dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
           initQueryDataSourceRetryCount);
     }
@@ -937,7 +1021,9 @@ public class FragmentInstanceContext extends QueryContext {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn(
-            "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
+            DataNodeQueryMessages
+                .INTERRUPTED_WHEN_AWAIT_ON_ALLDRIVERSCLOSED_FRAGMENTINSTANCE_ID_IS_ARG,
+            this.getId());
       }
     }
     long duration = System.nanoTime() - startTime;
@@ -963,14 +1049,16 @@ public class FragmentInstanceContext extends QueryContext {
         if (tvList.getOwnerQuery() == this) {
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
-                "Release TVList owned by query: allocate size {}, release size {}",
+                DataNodeQueryMessages
+                    .RELEASE_TVLIST_OWNED_BY_QUERY_ALLOCATE_SIZE_ARG_RELEASE_SIZE_ARG,
                 tvList.getReservedMemoryBytes(),
                 tvListRamSize);
           }
           if (queryContextSet.isEmpty()) {
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_RELEASED_BY_THE_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   this.getId());
             }
@@ -990,12 +1078,14 @@ public class FragmentInstanceContext extends QueryContext {
                   .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
             } catch (MemoryNotEnoughException ex) {
               LOGGER.warn(
-                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  DataNodeQueryMessages
+                      .MEMORYNOTENOUGHEXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER,
                   this.getId(),
                   queryContext.getId());
             } catch (RuntimeException ex) {
               LOGGER.warn(
-                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  DataNodeQueryMessages
+                      .UNEXPECTED_EXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER_QUERY,
                   this.getId(),
                   queryContext.getId(),
                   ex);
@@ -1003,7 +1093,8 @@ public class FragmentInstanceContext extends QueryContext {
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_NOW_OWNED_BY_ANOTHER_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   queryContext.getId());
             }
@@ -1036,6 +1127,8 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
+    releaseExternalTsFileQueryResource();
+
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
 
@@ -1053,6 +1146,8 @@ public class FragmentInstanceContext extends QueryContext {
         .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
 
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
+    recordAggregationCostToMetric();
 
     QueryResourceMetricSet.getInstance()
         .recordInitQueryResourceRetryCount(getInitQueryDataSourceRetryCount());
@@ -1201,6 +1296,49 @@ public class FragmentInstanceContext extends QueryContext {
     blockQueueTime.addAndGet(time);
   }
 
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    addCost(scanAggregationFromRawDataCost, costTimeInNanos);
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    addCost(scanAggregationFromStatisticsCost, costTimeInNanos);
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    addCost(aggregationOperatorFromRawDataCost, costTimeInNanos);
+  }
+
+  private void addCost(AtomicLong cost, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      cost.addAndGet(costTimeInNanos);
+    }
+  }
+
+  long drainScanAggregationFromRawDataCost() {
+    return scanAggregationFromRawDataCost.getAndSet(0);
+  }
+
+  long drainScanAggregationFromStatisticsCost() {
+    return scanAggregationFromStatisticsCost.getAndSet(0);
+  }
+
+  long drainAggregationOperatorFromRawDataCost() {
+    return aggregationOperatorFromRawDataCost.getAndSet(0);
+  }
+
+  void recordAggregationCostToMetric() {
+    recordAggregationCost(AGGREGATION_FROM_RAW_DATA, drainScanAggregationFromRawDataCost());
+    recordAggregationCost(AGGREGATION_FROM_STATISTICS, drainScanAggregationFromStatisticsCost());
+    recordAggregationCost(
+        AGGREGATION_OPERATOR_FROM_RAW_DATA, drainAggregationOperatorFromRawDataCost());
+  }
+
+  private void recordAggregationCost(String stage, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      QueryExecutionMetricSet.getInstance().recordExecutionCost(stage, costTimeInNanos);
+    }
+  }
+
   public long getReadyQueueTime() {
     return readyQueueTime.get();
   }
@@ -1239,6 +1377,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setHighestPriority(boolean highestPriority) {
     this.highestPriority = highestPriority;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
+    }
   }
 
   public boolean isSingleSourcePath() {

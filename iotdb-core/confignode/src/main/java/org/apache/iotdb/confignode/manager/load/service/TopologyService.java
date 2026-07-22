@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.AwaitForSignal;
 import org.apache.tsfile.utils.Pair;
@@ -72,6 +73,7 @@ import java.util.stream.Collectors;
 public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyService.class);
   private static final int SAMPLING_WINDOW_SIZE = 100;
+  private static final int TOPOLOGY_PROBING_RETRY_NUM = 1;
 
   private final ExecutorService topologyThread =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -113,7 +115,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                CONF.getFailureDetectorHeartbeatIntervalInMs() * 200_000L,
                 IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
@@ -222,7 +224,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                 nodeLocations,
                 proberLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(dataNodeAsyncRequestContext, timeout);
+        .sendAsyncRequest(dataNodeAsyncRequestContext, TOPOLOGY_PROBING_RETRY_NUM, timeout, true);
     final List<TTestConnectionResult> results = new ArrayList<>();
     dataNodeAsyncRequestContext
         .getResponseMap()
@@ -360,15 +362,18 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
 
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(context, CONF.getTopologyProbingBaseIntervalInMs());
+        .sendAsyncRequest(
+            context, TOPOLOGY_PROBING_RETRY_NUM, CONF.getTopologyProbingBaseIntervalInMs(), true);
 
     context
         .getResponseMap()
         .forEach(
             (nodeId, resp) -> {
-              Set<Integer> reachableSet =
-                  computedTopology.getOrDefault(nodeId, Collections.emptySet());
-              lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+              if (resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                Set<Integer> reachableSet =
+                    computedTopology.getOrDefault(nodeId, Collections.emptySet());
+                lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+              }
             });
   }
 

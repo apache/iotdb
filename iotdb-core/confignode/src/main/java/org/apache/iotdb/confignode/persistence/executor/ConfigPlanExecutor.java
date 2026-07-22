@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -133,6 +134,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -606,6 +608,8 @@ public class ConfigPlanExecutor {
       case PreDeleteTable:
       case PreDeleteView:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
+      case RollbackPreDeleteTable:
+        return clusterSchemaInfo.rollbackPreDeleteTable((RollbackPreDeleteTablePlan) physicalPlan);
       case CommitDeleteTable:
       case CommitDeleteView:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
@@ -772,12 +776,12 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           ConfigNodeMessages.SNAPSHOT_DIRECTORY_IS_NOT_EXIST_CAN_NOT_LOAD_SNAPSHOT_WITH,
           latestSnapshotRootDir.getAbsolutePath());
-      return;
+      return false;
     }
 
     final AtomicBoolean result = new AtomicBoolean(true);
@@ -801,10 +805,21 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
-      LOGGER.info(
-          ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
-          latestSnapshotRootDir);
+      try {
+        PipeConfigNodeAgent.runtime()
+            .reconcileListenerReferences(pipeInfo.getPipeTaskInfo().getPipeMetaList());
+        pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
+        LOGGER.info(
+            ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
+            latestSnapshotRootDir);
+      } catch (final IllegalPathException e) {
+        result.set(false);
+        LOGGER.error(ConfigNodeMessages.LOAD_SNAPSHOT_ERROR, e);
+      }
     }
+    // Propagate any snapshot-load failure so callers (e.g. the AddPeer flow) do not treat a
+    // partially or wholly failed load as success.
+    return result.get();
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {

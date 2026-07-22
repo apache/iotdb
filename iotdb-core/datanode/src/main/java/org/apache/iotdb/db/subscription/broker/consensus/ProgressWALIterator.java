@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
@@ -132,7 +134,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     return skippedBrokenWalVersionIds.contains(versionId) || isHeaderOnlyWalFile(walFile);
   }
 
-  private boolean isHeaderOnlyWalFile(final File walFile) {
+  static boolean isHeaderOnlyWalFile(final File walFile) {
     return walFile.length() <= HEADER_ONLY_WAL_FILE_BYTES;
   }
 
@@ -169,7 +171,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       }
     } catch (IOException e) {
       lastError = e;
-      LOGGER.warn("ProgressWALIterator: error reading WAL", e);
+      LOGGER.warn(DataNodePipeMessages.PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41, e);
       return false;
     }
     return nextReady != null;
@@ -384,7 +386,8 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     } catch (final IOException e) {
       if (isNearLiveWalVersion(versionId)) {
         LOGGER.debug(
-            "ProgressWALIterator: failed to open near-live WAL file {}, retrying without blacklisting",
+            DataNodePipeMessages
+                .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_NEAR_LIVE_WAL_FILE_RETRYING_5AEB94AC,
             walFile.getName(),
             e);
         if (allowNearLiveRetry) {
@@ -405,7 +408,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       }
       skippedBrokenWalVersionIds.add(versionId);
       LOGGER.warn(
-          "ProgressWALIterator: failed to open WAL file {}, skipping", walFile.getName(), e);
+          DataNodePipeMessages
+              .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092,
+          walFile.getName(),
+          e);
       return false;
     }
   }
@@ -456,7 +462,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return metadataSearchIndex;
     }
     buffer.position(SEARCH_INDEX_OFFSET);
-    final long bodySearchIndex = buffer.getLong();
+    final long bodySearchIndex = SearchNode.extractSearchIndex(buffer.getLong());
     return bodySearchIndex >= 0 ? bodySearchIndex : metadataSearchIndex;
   }
 

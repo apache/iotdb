@@ -74,15 +74,22 @@ public abstract class AbstractCli {
 
   static final String USE_SSL_ARGS = "usessl";
   static final String TRUST_STORE_ARGS = "ts";
+  static final String KEY_STORE_ARGS = "ks";
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
+  static final String KEY_STORE_PWD_ARGS = "kpw";
+
+  static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
 
   private static final String EXECUTE_NAME = "execute";
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
+  private static final String KEY_STORE = "key_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String KEY_STORE_PWD = "key_store_pwd";
+  private static final String SSL_PROTOCOL = "ssl_protocol";
   private static final String NULL = "null";
 
   static final int CODE_OK = 0;
@@ -132,6 +139,9 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  static String keyStore;
+  static String keyStorePwd;
+  static String sslProtocol;
 
   static String execute;
   static boolean hasExecuteSQL = false;
@@ -156,6 +166,9 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + KEY_STORE_ARGS);
+    keywordSet.add("-" + KEY_STORE_PWD_ARGS);
+    keywordSet.add("-" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
@@ -213,6 +226,51 @@ public abstract class AbstractCli {
             .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
+
+    Option trustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE)
+            .argName(TRUST_STORE)
+            .hasArg()
+            .desc("Trust store. (optional)")
+            .build();
+    options.addOption(trustStore);
+
+    Option trustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD)
+            .argName(TRUST_STORE_PWD)
+            .hasArg()
+            .desc("Trust store password. (optional)")
+            .build();
+    options.addOption(trustStorePwd);
+
+    Option keyStore =
+        Option.builder(KEY_STORE_ARGS)
+            .longOpt(KEY_STORE)
+            .argName(KEY_STORE)
+            .hasArg()
+            .desc("Key store for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStore);
+
+    Option keyStorePwd =
+        Option.builder(KEY_STORE_PWD_ARGS)
+            .longOpt(KEY_STORE_PWD)
+            .argName(KEY_STORE_PWD)
+            .hasArg()
+            .desc("Key store password for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStorePwd);
+
+    Option sslProtocol =
+        Option.builder(SSL_PROTOCOL_ARGS)
+            .longOpt(SSL_PROTOCOL)
+            .argName(SSL_PROTOCOL)
+            .hasArg()
+            .desc("SSL protocol. (optional)")
+            .build();
+    options.addOption(sslProtocol);
 
     Option execute =
         Option.builder(EXECUTE_ARGS)
@@ -566,7 +624,11 @@ public abstract class AbstractCli {
           List<Integer> maxSizeList = new ArrayList<>(columnLength);
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
-          output(ctx, lists, maxSizeList);
+          if (isJsonExplainResult(lists)) {
+            outputRawJson(ctx, lists, maxSizeList);
+          } else {
+            output(ctx, lists, maxSizeList);
+          }
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -814,6 +876,46 @@ public abstract class AbstractCli {
     }
 
     return lists;
+  }
+
+  private static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
+  private static final String COLUMN_EXPLAIN_ANALYZE = "Explain Analyze";
+
+  private static boolean isJsonExplainResult(List<List<String>> lists) {
+    if (lists.size() != 1 || lists.get(0).size() < 2) {
+      return false;
+    }
+    String columnName = lists.get(0).get(0);
+    if (!COLUMN_DISTRIBUTION_PLAN.equalsIgnoreCase(columnName)
+        && !COLUMN_EXPLAIN_ANALYZE.equalsIgnoreCase(columnName)) {
+      return false;
+    }
+    String value = lists.get(0).get(1).trim();
+    return value.startsWith("{") || value.startsWith("[");
+  }
+
+  private static void outputRawJson(
+      CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
+    // Use header text length for border width instead of the full content length
+    String header = lists.get(0).get(0);
+    int headerLen = header.length() + ctx.getPrinter().computeHANCount(header);
+    List<Integer> headerSizeList = new ArrayList<>(1);
+    headerSizeList.add(headerLen);
+    // Print header with table border
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    ctx.getPrinter().printRow(lists, 0, headerSizeList);
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    // Print JSON content without '|' borders
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      ctx.getPrinter().println(lists.get(0).get(i));
+    }
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    if (isReachEnd) {
+      lineCount += lists.get(0).size() - 1;
+      ctx.getPrinter().printCount(lineCount);
+    } else {
+      lineCount += maxPrintRowCount;
+    }
   }
 
   private static void output(CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {

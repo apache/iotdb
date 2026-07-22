@@ -119,6 +119,27 @@ public class IoTDBRegionOperationReliabilityITFramework {
         LOGGER.info("Cluster has been restarted");
       };
 
+  /**
+   * Gracefully stop (SIGTERM, not a forcible kill) the ConfigNode that hit the kill point, then
+   * restart it. A graceful stop lets the ConfigNode run its shutdown hooks, which interrupts the
+   * in-flight region-operation procedure worker. This reproduces a leader switch / graceful
+   * shutdown during AddRegionPeer: the interrupted {@code waitTaskFinish()} returns PROCESSING
+   * while the AddRegionPeerTask is still running on the coordinator DataNode. The procedure must
+   * NOT silently end here, otherwise the parent RegionMigrateProcedure would falsely treat AddPeer
+   * as complete and remove the source replica before the destination replica is actually Running.
+   * See AddRegionPeerProcedure#executeFromState DO_ADD_REGION_PEER PROCESSING branch.
+   */
+  public static Consumer<KillPointContext> actionOfGracefullyRestartConfigNode =
+      context -> {
+        Assert.assertTrue(context.getNodeWrapper() instanceof ConfigNodeWrapper);
+        context.getNodeWrapper().stop();
+        LOGGER.info("ConfigNode {} gracefully stopped.", context.getNodeWrapper().getId());
+        Assert.assertFalse(context.getNodeWrapper().isAlive());
+        context.getNodeWrapper().start();
+        LOGGER.info("ConfigNode {} restarted.", context.getNodeWrapper().getId());
+        Assert.assertTrue(context.getNodeWrapper().isAlive());
+      };
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -151,6 +172,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         killConfigNodeKeywords,
         killDataNodeKeywords,
         actionOfKillNode,
+        true,
+        killNode);
+  }
+
+  public void successTestWithAction(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionWhenDetectKeyWords,
         true,
         killNode);
   }
@@ -355,6 +398,17 @@ public class IoTDBRegionOperationReliabilityITFramework {
         Assert.fail();
       }
 
+      // The kill point is detected by a background thread tailing the node log, so the migration
+      // result (observed by awaitUntilSuccess above) can become visible before that thread has read
+      // and processed the kill-point line of the last migration phase (e.g.
+      // RemoveRegionLocationCache). Give that thread a short grace period to catch up before
+      // asserting, otherwise checkKillPointsAllTriggered may fail spuriously with "Some kill points
+      // was not triggered". This is best-effort: the authoritative assertion remains
+      // checkKillPointsAllTriggered, which still fails the test if a kill point genuinely never
+      // triggers (e.g. the badKillPoint test).
+      graceWaitForKillPointsTriggered(configNodeKeywords);
+      graceWaitForKillPointsTriggered(dataNodeKeywords);
+
       // make sure all kill points have been triggered
       checkKillPointsAllTriggered(configNodeKeywords);
       checkKillPointsAllTriggered(dataNodeKeywords);
@@ -518,6 +572,26 @@ public class IoTDBRegionOperationReliabilityITFramework {
       return;
     }
     Awaitility.await().atMost(2, TimeUnit.MINUTES).until(killPoints::isEmpty);
+  }
+
+  /**
+   * Best-effort wait for all kill points to be triggered. The kill point is detected by a
+   * background thread tailing the node log, so there can be a short lag between the migration
+   * result becoming visible and that thread processing the kill-point line. This gives it a brief
+   * grace period to catch up. Unlike {@link #awaitKillPointsTriggered}, it never throws: the
+   * authoritative check is {@link #checkKillPointsAllTriggered}, so a kill point that genuinely
+   * never triggers (e.g. the badKillPoint test) is still caught there as an AssertionError rather
+   * than masked here.
+   */
+  private static void graceWaitForKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    try {
+      Awaitility.await().atMost(1, TimeUnit.MINUTES).until(killPoints::isEmpty);
+    } catch (ConditionTimeoutException ignored) {
+      // Fall through to checkKillPointsAllTriggered, which makes the real assertion.
+    }
   }
 
   private static String buildRegionMigrateCommand(int who, int from, int to) {

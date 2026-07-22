@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -37,6 +38,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -70,7 +74,9 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         // print log every 5 seconds
         if (retryCount % 50 == 0) {
           LOGGER.warn(
-              "Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+              StorageEngineMessages
+                  .STORAGE_LOG_FAILED_TO_TRANSFER_TVLIST_MEMORY_OWNER_TO_QUERY_ENGINE_0DFA506D,
+              ex.getMessage());
         }
         retryCount++;
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
@@ -85,7 +91,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
               FragmentInstanceContext firstQuery = (FragmentInstanceContext) iterator.next();
               firstQuery.failed(
                   new MemoryNotEnoughException(
-                      "Memory not enough to clone the tvlist during flush phase"));
+                      StorageEngineMessages
+                          .STORAGE_EXCEPTION_MEMORY_NOT_ENOUGH_TO_CLONE_THE_TVLIST_DURING_FLUSH_PHASE_75C90725));
             }
           } finally {
             tvList.unlockQueryList();
@@ -278,6 +285,20 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void setEncryptParameter(EncryptParameter encryptParameter);
+
+  protected static byte[] serializeSchemaToWALBytes(IMeasurementSchema schema) {
+    try {
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream(schema.serializedSize());
+      schema.serializeTo(outputStream);
+      return outputStream.toByteArray();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  protected static int getSerializedSchemaSize(IMeasurementSchema schema) {
+    return serializeSchemaToWALBytes(schema).length;
+  }
 
   public synchronized TVList initWorkingListForFlushIfNecessary(
       TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList) {

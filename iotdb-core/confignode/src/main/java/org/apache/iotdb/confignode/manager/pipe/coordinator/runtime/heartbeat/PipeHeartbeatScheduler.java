@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -51,6 +52,7 @@ public class PipeHeartbeatScheduler {
       PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled();
   private static final long HEARTBEAT_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
+  private static final int PIPE_HEARTBEAT_RETRY_NUM = 1;
 
   private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -85,7 +87,8 @@ public class PipeHeartbeatScheduler {
     }
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
           ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
       return;
     }
@@ -100,12 +103,8 @@ public class PipeHeartbeatScheduler {
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-            clientHandler,
-            PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
-                * 1000L
-                * 2
-                / 3);
+        .sendAsyncRequest(
+            clientHandler, PIPE_HEARTBEAT_RETRY_NUM, getPipeHeartbeatRequestTimeoutInMs(), true);
     clientHandler
         .getResponseMap()
         .forEach(
@@ -116,7 +115,8 @@ public class PipeHeartbeatScheduler {
                         resp.getPipeMetaList(),
                         resp.getPipeCompletedList(),
                         resp.getPipeRemainingEventCountList(),
-                        resp.getPipeRemainingTimeList())));
+                        resp.getPipeRemainingTimeList(),
+                        resp.getPipeDegradedStatusList())));
 
     // config node heartbeat
     try {
@@ -128,10 +128,16 @@ public class PipeHeartbeatScheduler {
               configNodeResp.getPipeMetaList(),
               null,
               configNodeResp.getPipeRemainingEventCountList(),
-              configNodeResp.getPipeRemainingTimeList()));
+              configNodeResp.getPipeRemainingTimeList(),
+              configNodeResp.getPipeDegradedStatusList()));
     } catch (final Exception e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK, e);
+      PipeLogger.log(
+          LOGGER::warn, e, ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK);
     }
+  }
+
+  private static long getPipeHeartbeatRequestTimeoutInMs() {
+    return TimeUnit.SECONDS.toMillis(HEARTBEAT_INTERVAL_SECONDS) * 2 / 3;
   }
 
   public synchronized void stop() {

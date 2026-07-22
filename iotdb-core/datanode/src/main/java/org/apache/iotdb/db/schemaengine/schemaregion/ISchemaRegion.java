@@ -115,7 +115,15 @@ public interface ISchemaRegion {
 
   boolean createSnapshot(final File snapshotDir);
 
-  void loadSnapshot(final File latestSnapshotRootDir);
+  /**
+   * Load the latest schema snapshot from the given dir.
+   *
+   * @return {@code true} if the snapshot was loaded successfully, {@code false} if loading failed
+   *     (in which case the region falls back to an empty/re-initialized state). Callers rely on
+   *     this to honor the {@link org.apache.iotdb.consensus.IStateMachine#loadSnapshot}
+   *     success/failure contract (e.g. the AddPeer flow and Ratis snapshot install).
+   */
+  boolean loadSnapshot(final File latestSnapshotRootDir);
 
   // endregion
 

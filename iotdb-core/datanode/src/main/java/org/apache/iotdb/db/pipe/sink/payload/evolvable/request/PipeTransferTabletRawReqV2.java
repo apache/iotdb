@@ -214,15 +214,12 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   public void deserializeTPipeTransferRawReq(
       final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
-    final TabletStringInternPool internPool =
-        Objects.nonNull(tabletStringInternPool)
-            ? tabletStringInternPool
-            : new TabletStringInternPool();
     final int startPosition = buffer.position();
     try {
       // V2: read databaseName, readDatabaseName = true
       final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, true, internPool);
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, true, tabletStringInternPool);
       this.isAligned = insertTabletStatement.isAligned();
       // databaseName is already set in deserializeStatementFromTabletFormat when
       // readDatabaseName=true
@@ -232,9 +229,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       // If Statement deserialization fails, fallback to Tablet format
       // Reset buffer position for Tablet deserialization
       buffer.position(startPosition);
-      this.tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), internPool);
+      this.tablet =
+          PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
       this.isAligned = ReadWriteIOUtils.readBool(buffer);
-      this.dataBaseName = internPool.intern(ReadWriteIOUtils.readString(buffer));
+      final String dataBaseName = ReadWriteIOUtils.readString(buffer);
+      this.dataBaseName =
+          Objects.nonNull(tabletStringInternPool)
+              ? tabletStringInternPool.intern(dataBaseName)
+              : dataBaseName;
     }
   }
 }

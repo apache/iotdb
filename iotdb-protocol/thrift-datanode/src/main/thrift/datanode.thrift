@@ -289,6 +289,7 @@ struct TDataNodeHeartbeatReq {
   // Using 8 bit to represent 8 bool
   // lowest bit: enable separation of admin powers
   16: optional byte booleanVariables1
+  17: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeActivation {
@@ -316,6 +317,7 @@ struct TDataNodeHeartbeatResp {
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
+  18: optional list<i32> pipeDegradedStatusList
 }
 
 struct TPipeHeartbeatReq {
@@ -545,6 +547,7 @@ struct TPushPipeMetaRespExceptionMessage {
   1: required string pipeName
   2: required string message
   3: required i64 timeStamp
+  4: optional i64 creationTime
 }
 
 struct TPushSinglePipeMetaReq {
@@ -580,6 +583,21 @@ struct TPushTopicMetaRespExceptionMessage {
   1: required string topicName
   2: required string message
   3: required i64 timeStamp
+}
+
+// Dedicated subscription owner-lease heartbeat (CN -> DN), decoupled from the node heartbeat.
+// Carries a relative remaining duration; the DataNode derives the local expire time on its own
+// clock (leaseExpireAt = localNow + leaseRemainingMs), so no absolute timestamp is compared across
+// ConfigNode and DataNode clocks.
+struct TTopicOwnerLeaseEntry {
+  1: required string topicName
+  2: required string ownerId
+  3: required i64 ownerEpoch
+  4: required i64 leaseRemainingMs
+}
+
+struct TPushTopicOwnerLeaseReq {
+  1: required list<TTopicOwnerLeaseEntry> ownerLeases
 }
 
 struct TPushConsumerGroupMetaReq {
@@ -734,6 +752,14 @@ struct TGenerateDataPartitionTableHeartbeatResp {
   2: required i32 errorCode
   3: optional string message
   4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
+}
+
+struct TGetDataPartitionTableGeneratorProgressResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: required double progress
+  4: optional string message
 }
 
 /**
@@ -1234,6 +1260,12 @@ service IDataNodeRPCService {
   TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
 
  /**
+  * Renew topic owner leases on DataNodes via the dedicated subscription owner heartbeat
+  * (independent from the node heartbeat). Carries relative remaining durations.
+  */
+  common.TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req)
+
+ /**
   * Send consumerGroupMetas to DataNodes, for synchronization
   */
   TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req)
@@ -1383,6 +1415,11 @@ service IDataNodeRPCService {
    * Check the status of DataPartitionTable generation task
    */
   TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Get the progress of DataPartitionTable generation task without consuming the generated table.
+   */
+  TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress()
 
   /**
   * END: Data Partition Table Integrity Check

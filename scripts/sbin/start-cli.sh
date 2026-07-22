@@ -148,16 +148,19 @@ JVM_VERSION=${jvmver%_*}
 version_arr=(${JVM_VERSION//./ })
 
 illegal_access_params=""
-#GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
-    # Java 8
     MAJOR_VERSION=${version_arr[1]}
 else
-    #JDK 11 and others
     MAJOR_VERSION=${version_arr[0]}
-    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
 fi
+
+if [ "$MAJOR_VERSION" -lt 17 ] ; then
+    echo "IoTDB requires Java 17 or later."
+    exit 1
+fi
+
+# Add argLine for Java 17 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
 
 JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 

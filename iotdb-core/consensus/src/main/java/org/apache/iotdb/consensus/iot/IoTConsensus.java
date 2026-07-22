@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
@@ -35,6 +36,7 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -97,6 +99,7 @@ public class IoTConsensus implements IConsensus {
   private final int thisNodeId;
   private final File storageDir;
   private final List<String> recvSnapshotDirs;
+  private final DirectoryStrategyType recvFolderStrategyType;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
@@ -127,6 +130,7 @@ public class IoTConsensus implements IConsensus {
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.recvSnapshotDirs = config.getRecvSnapshotDirs();
+    this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
     this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
@@ -195,6 +199,7 @@ public class IoTConsensus implements IConsensus {
               new IoTConsensusServerImpl(
                   path.toString(),
                   recvSnapshotDirs,
+                  recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new TreeSet<>(),
                   registry.apply(consensusGroupId),
@@ -309,6 +314,7 @@ public class IoTConsensus implements IConsensus {
                         new IoTConsensusServerImpl(
                             path,
                             recvSnapshotDirs,
+                            recvFolderStrategyType,
                             new Peer(groupId, thisNodeId, thisNode),
                             new TreeSet<>(peers),
                             registry.apply(groupId),
@@ -338,7 +344,10 @@ public class IoTConsensus implements IConsensus {
       try {
         callback.accept(groupId, stateMachineMap.get(groupId));
       } catch (final Exception e) {
-        logger.warn("onNewPeerCreated callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,
+            groupId,
+            e);
       }
     }
   }
@@ -354,7 +363,8 @@ public class IoTConsensus implements IConsensus {
       try {
         removeCallback.accept(groupId);
       } catch (final Exception e) {
-        logger.warn("onPeerRemoved callback failed for group {}", groupId, e);
+        logger.warn(
+            IoTConsensusMessages.LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF, groupId, e);
       }
     }
 
@@ -369,7 +379,9 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    FileUtils.deleteFileOrDirectoryWithRateLimiter(
+        new File(buildPeerDir(storageDir, groupId)),
+        RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 

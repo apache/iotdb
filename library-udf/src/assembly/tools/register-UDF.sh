@@ -89,6 +89,7 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function dwt as 'org.apache.iotdb.library.frequency.UDTFDWT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function idwt as 'org.apache.iotdb.library.frequency.UDTFIDWT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ifft as 'org.apache.iotdb.library.frequency.UDTFIFFT'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function envelope as 'org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis'"
 
 # Series Discovery
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function consecutivesequences as 'org.apache.iotdb.library.series.UDTFConsecutiveSequences'"

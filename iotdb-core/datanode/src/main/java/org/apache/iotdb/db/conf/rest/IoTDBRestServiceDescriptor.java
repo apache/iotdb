@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +109,9 @@ public class IoTDBRestServiceDescriptor {
     conf.setTrustStorePath(
         trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()));
     conf.setTrustStorePwd(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+    conf.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            trimProperties.getProperty("ssl_protocol", conf.getSslProtocol())));
     conf.setIdleTimeoutInSeconds(
         Integer.parseInt(
             trimProperties.getProperty(
@@ -134,8 +138,8 @@ public class IoTDBRestServiceDescriptor {
           return uri;
         }
         logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
+            DataNodeMiscMessages
+                .MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE,
             configName);
         // update all data seriesPath
         return null;

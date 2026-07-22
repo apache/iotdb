@@ -28,7 +28,9 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,11 +55,26 @@ public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
   private String storageGroupName;
   private String snapshotPath;
+  private List<String> snapshotPaths;
   private String dataRegionId;
   private SnapshotLogAnalyzer logAnalyzer;
 
   public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
+    this.snapshotPaths = Collections.singletonList(snapshotPath);
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = dataRegionId;
+  }
+
+  /**
+   * A snapshot received by IoTConsensus is spread across several receive folders (one per local
+   * data dir), so loading it means relinking the fragments from all of them. The data dirs must be
+   * cleared exactly once, before relinking from any folder; see {@link
+   * #loadSnapshotFromMultipleDirs()}.
+   */
+  public SnapshotLoader(List<String> snapshotPaths, String storageGroupName, String dataRegionId) {
+    this.snapshotPaths = snapshotPaths;
+    this.snapshotPath = snapshotPaths.isEmpty() ? null : snapshotPaths.get(0);
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
   }
@@ -98,6 +116,10 @@ public class SnapshotLoader {
    * @return
    */
   public DataRegion loadSnapshotForStateMachine() {
+    if (snapshotPaths.size() > 1) {
+      return loadSnapshotFromMultipleDirs();
+    }
+
     LOGGER.info(
         StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPath);
 
@@ -107,6 +129,40 @@ public class SnapshotLoader {
       return loadSnapshotWithoutLog();
     } else {
       return loadSnapshotWithLog(snapshotLogFile);
+    }
+  }
+
+  /**
+   * Load a snapshot whose fragments are spread across several dirs (the IoTConsensus receive
+   * folders). The snapshot log is not transferred during an IoTConsensus snapshot, so every
+   * received fragment dir takes the without-log path. Crucially, the data dirs are cleared exactly
+   * once before relinking from all dirs: clearing per-dir (as one load call per dir would) erases
+   * the fragments linked by the previous dirs and leaves only the last dir's data. Because each dir
+   * contributes a disjoint set of files, the relink order does not affect the result.
+   */
+  private DataRegion loadSnapshotFromMultipleDirs() {
+    LOGGER.info(
+        StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPaths);
+    try {
+      deleteAllFilesInDataDirs();
+      LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
+      // IoTConsensus may spread the fragments of one snapshot across several receive folders.
+      // The fileTarget map must be shared across all of them so that a tsfile and its companion
+      // files (resource, exclusive mods, etc.) are relinked to the same data dir even when their
+      // fragments were received on different disks.
+      Map<String, String> fileTarget = new HashMap<>();
+      for (String path : snapshotPaths) {
+        File snapshotDir = new File(path);
+        // IoTConsensus fragments arrive under different recv folders; do not map each
+        // fragment back to the same disk as its recv path, rely on fileTarget instead.
+        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget, false);
+        loadCompressionRatio(snapshotDir);
+      }
+      return loadSnapshot();
+    } catch (IOException | DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          StorageEngineMessages.EXCEPTION_LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, e);
+      return null;
     }
   }
 
@@ -121,7 +177,7 @@ public class SnapshotLoader {
       }
       LOGGER.info(StorageEngineMessages.MOVING_SNAPSHOT_FILE_TO_DATA_DIRS);
       File snapshotDir = new File(snapshotPath);
-      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
+      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>(), true);
       loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -245,7 +301,8 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
+  private void createLinksFromSnapshotDirToDataDirWithoutLog(
+      File sourceDir, Map<String, String> fileTarget, boolean preferKeepSameDiskWhenLoading)
       throws IOException, DiskSpaceInsufficientException {
     if (!sourceDir.exists()) {
       throw new IOException(
@@ -291,7 +348,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
 
@@ -310,7 +368,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
   }
@@ -357,9 +416,15 @@ public class SnapshotLoader {
   }
 
   private void createLinksFromSnapshotToSourceDir(
-      String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
-    Map<String, String> fileTarget = new HashMap<>();
+      String targetSuffix,
+      File[] files,
+      FolderManager folderManager,
+      Map<String, String> fileTarget,
+      boolean preferKeepSameDiskWhenLoading)
+      throws IOException {
     for (File file : files) {
+      checkTsFileResourceExists(file);
+
       String fileKey = file.getName().split("\\.")[0];
       String dataDir = fileTarget.get(fileKey);
 
@@ -370,7 +435,8 @@ public class SnapshotLoader {
 
       try {
         String firstFolderOfSameDisk =
-            IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+            preferKeepSameDiskWhenLoading
+                    && IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
                 ? folderManager.getFirstFolderOfSameDisk(file.getAbsolutePath())
                 : null;
 
@@ -391,6 +457,20 @@ public class SnapshotLoader {
                 targetSuffix),
             e);
       }
+    }
+  }
+
+  private void checkTsFileResourceExists(File file) {
+    if (!file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return;
+    }
+
+    String resourceFileName = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+    if (!new File(resourceFileName).exists()) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5,
+          file);
     }
   }
 

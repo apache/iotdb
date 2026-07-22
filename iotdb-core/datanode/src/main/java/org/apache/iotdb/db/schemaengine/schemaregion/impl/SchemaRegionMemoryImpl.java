@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -488,7 +489,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
@@ -556,7 +558,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     clear();
 
     logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
@@ -651,6 +653,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (final Exception e) {
       logger.error(
           DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
@@ -662,6 +665,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logger.error(
             DataNodeSchemaMessages.ERROR_DURING_INIT_SCHEMA_REGION, schemaRegionId, exception);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 

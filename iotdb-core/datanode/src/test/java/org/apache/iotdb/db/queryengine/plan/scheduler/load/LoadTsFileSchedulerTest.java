@@ -28,12 +28,19 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -86,5 +93,71 @@ public class LoadTsFileSchedulerTest {
     when(node.getDatabase()).thenReturn("test");
 
     Assert.assertEquals("test", LoadTsFileScheduler.getPartitionQueryDatabase(node, false));
+  }
+
+  @Test
+  public void testBuildRetryTreeLoadStatementUpdatesDatabaseLevel() throws Exception {
+    final LoadTsFileScheduler scheduler =
+        new LoadTsFileScheduler(
+            distributedQueryPlan,
+            mock(MPPQueryContext.class),
+            mock(QueryStateMachine.class),
+            mock(IClientManager.class),
+            mock(IPartitionFetcher.class),
+            true);
+    final Method method =
+        LoadTsFileScheduler.class.getDeclaredMethod(
+            "buildRetryTreeLoadStatement", String.class, boolean.class, String.class);
+    method.setAccessible(true);
+
+    final File tsFile = File.createTempFile("test", ".tsfile");
+    tsFile.deleteOnExit();
+
+    final LoadTsFileStatement statement =
+        (LoadTsFileStatement)
+            method.invoke(scheduler, tsFile.getAbsolutePath(), true, "root.test.sg_0");
+
+    Assert.assertEquals("root.test.sg_0", statement.getDatabase());
+    Assert.assertEquals(2, statement.getDatabaseLevel());
+    Assert.assertTrue(statement.isGeneratedByPipe());
+  }
+
+  @Test
+  public void testTsFileDataManagerClearReleasesCachedMemory() throws Exception {
+    final Constructor<LoadTsFileDataCacheMemoryBlock> memoryBlockConstructor =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredConstructor(long.class);
+    memoryBlockConstructor.setAccessible(true);
+    final LoadTsFileDataCacheMemoryBlock memoryBlock =
+        memoryBlockConstructor.newInstance(1024 * 1024L);
+
+    final Class<?> dataManagerClass =
+        Class.forName(LoadTsFileScheduler.class.getName() + "$TsFileDataManager");
+    final Constructor<?> dataManagerConstructor =
+        dataManagerClass.getDeclaredConstructor(
+            LoadTsFileScheduler.class,
+            LoadSingleTsFileNode.class,
+            LoadTsFileDataCacheMemoryBlock.class);
+    dataManagerConstructor.setAccessible(true);
+    final Object dataManager =
+        dataManagerConstructor.newInstance(
+            mock(LoadTsFileScheduler.class), mock(LoadSingleTsFileNode.class), memoryBlock);
+
+    // Simulate data buffered before split or routing aborts. clear() is the last chance to return
+    // this accounting to the shared LOAD memory block.
+    final long cachedMemorySize = 128L;
+    memoryBlock.addMemoryUsage(cachedMemorySize);
+    final Field dataSizeField = dataManagerClass.getDeclaredField("dataSize");
+    dataSizeField.setAccessible(true);
+    dataSizeField.setLong(dataManager, cachedMemorySize);
+
+    final Method clearMethod = dataManagerClass.getDeclaredMethod("clear");
+    clearMethod.setAccessible(true);
+    clearMethod.invoke(dataManager);
+
+    final Method getMemoryUsageMethod =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getMemoryUsageInBytes");
+    getMemoryUsageMethod.setAccessible(true);
+    Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
+    Assert.assertEquals(0L, dataSizeField.getLong(dataManager));
   }
 }

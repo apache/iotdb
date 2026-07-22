@@ -20,8 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -47,6 +48,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,7 +61,9 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
   private static final Logger LOGGER = LoggerFactory.getLogger(CommitProgressSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
+          / 2;
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
   public CommitProgressSyncProcedure() {
@@ -81,7 +85,8 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     if (System.currentTimeMillis() - LAST_EXECUTION_TIME.get() < MIN_EXECUTION_INTERVAL_MS) {
       subscriptionInfo = null;
       LOGGER.info(
-          "CommitProgressSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
+          ProcedureMessages
+              .LOG_COMMITPROGRESSSYNCPROCEDURE_ACQUIRELOCK_SKIP_PROCEDURE_LAST_EXECUTION_TIME_ARG_CE3DD247,
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -95,7 +100,7 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CommitProgressSyncProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMVALIDATE_CF220E1F);
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
   }
@@ -103,23 +108,49 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CommitProgressSyncProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(
+        ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA);
 
-    // 1. Pull commit progress from all DataNodes
-    final Map<Integer, TPullCommitProgressResp> respMap = env.pullCommitProgressFromDataNodes();
+    syncCommitProgress(
+        env, subscriptionInfo.get(), env.pullCommitProgressFromDataNodesBestEffort(), false);
+  }
 
-    // 2. Merge all DataNode responses with existing progress using Math::max
+  public static void syncCommitProgressFromDataNodesRequired(
+      final ConfigNodeProcedureEnv env, final SubscriptionInfo subscriptionInfo)
+      throws SubscriptionException {
+    syncCommitProgress(env, subscriptionInfo, env.pullCommitProgressFromDataNodes(), true);
+  }
+
+  private static void syncCommitProgress(
+      final ConfigNodeProcedureEnv env,
+      final SubscriptionInfo subscriptionInfo,
+      final Map<Integer, TPullCommitProgressResp> respMap,
+      final boolean requireAllDataNodes)
+      throws SubscriptionException {
+    if (requireAllDataNodes) {
+      for (final Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
+        if (!isSuccessfulResponse(entry.getValue())) {
+          throw new SubscriptionException(
+              String.format(
+                  ProcedureMessages
+                      .EXCEPTION_FAILED_TO_PULL_REQUIRED_COMMIT_PROGRESS_FROM_DATANODE_ARG_STATUS_ARG_E08A2450,
+                  entry.getKey(),
+                  Objects.isNull(entry.getValue()) ? null : entry.getValue().getStatus()));
+        }
+      }
+    }
+
     final Map<String, RegionProgress> mergedRegionProgress =
         deserializeRegionProgressMap(
-            subscriptionInfo.get().getCommitProgressKeeper().getAllRegionProgress());
+            subscriptionInfo.getCommitProgressKeeper().getAllRegionProgress());
 
-    for (Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
+    for (final Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
       final TPullCommitProgressResp resp = entry.getValue();
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (!isSuccessfulResponse(resp)) {
         LOGGER.warn(
-            "Failed to pull commit progress from DataNode {}, status: {}",
+            ProcedureMessages.LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29,
             entry.getKey(),
-            resp.getStatus());
+            Objects.isNull(resp) ? null : resp.getStatus());
         continue;
       }
       if (resp.isSetCommitRegionProgress()) {
@@ -137,7 +168,6 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
       }
     }
 
-    // 3. Write the merged progress to consensus
     TSStatus response;
     try {
       response =
@@ -147,7 +177,7 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
                   new CommitProgressHandleMetaChangePlan(
                       serializeRegionProgressMap(mergedRegionProgress)));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -156,25 +186,36 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     }
   }
 
+  private static boolean isSuccessfulResponse(final TPullCommitProgressResp response) {
+    return Objects.nonNull(response)
+        && response.isSetStatus()
+        && response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CommitProgressSyncProcedure: executeFromOperateOnDataNodes (no-op)");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360);
     // No need to push back to DataNodes
   }
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CommitProgressSyncProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMVALIDATE_2309D4D2);
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CommitProgressSyncProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(
+        ProcedureMessages
+            .LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_57CB907B);
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CommitProgressSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(
+        ProcedureMessages.LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0D2CEB50);
   }
 
   @Override
@@ -228,7 +269,8 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
       return RegionProgress.deserialize(duplicate);
     } catch (final RuntimeException e) {
       LOGGER.warn(
-          "CommitProgressSyncProcedure: failed to deserialize region progress, key={}, summary={}",
+          ProcedureMessages
+              .LOG_COMMITPROGRESSSYNCPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_0202F658,
           key,
           summarizeRegionProgressPayload(buffer),
           e);
@@ -288,7 +330,9 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
       dos.flush();
       return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
     } catch (final IOException e) {
-      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+      throw new RuntimeException(
+          ProcedureMessages.EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 + regionProgress,
+          e);
     }
   }
 

@@ -106,4 +106,51 @@ public class PipeHandleLeaderChangeProcedureTest {
       fail();
     }
   }
+
+  @Test
+  public void completedProcedureEqualsTest() {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap = new HashMap<>();
+    leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new Pair<>(1, 2));
+
+    try {
+      PipeHandleLeaderChangeProcedure proc = deserializeCompletedProcedure(leaderMap);
+      PipeHandleLeaderChangeProcedure proc2 = deserializeCompletedProcedure(leaderMap);
+
+      assertEquals(proc, proc2);
+      assertEquals(proc.hashCode(), proc2.hashCode());
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  private PipeHandleLeaderChangeProcedure deserializeCompletedProcedure(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) throws Exception {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    outputStream.writeShort(ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE.getTypeCode());
+    outputStream.writeLong(Procedure.NO_PROC_ID);
+    outputStream.writeInt(ProcedureState.SUCCESS.ordinal());
+    outputStream.writeLong(0L);
+    outputStream.writeLong(0L);
+    outputStream.writeLong(Procedure.NO_PROC_ID);
+    outputStream.writeLong(Procedure.NO_TIMEOUT);
+    outputStream.writeInt(-1);
+    outputStream.write((byte) 0);
+    outputStream.writeInt(-1);
+    outputStream.write((byte) 0);
+    outputStream.writeInt(1);
+    outputStream.writeInt(Integer.MIN_VALUE);
+    outputStream.write((byte) 0);
+    outputStream.writeInt(leaderMap.size());
+    for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> entry : leaderMap.entrySet()) {
+      outputStream.writeInt(entry.getKey().getId());
+      outputStream.writeInt(entry.getValue().getLeft());
+      outputStream.writeInt(entry.getValue().getRight());
+    }
+
+    ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    return (PipeHandleLeaderChangeProcedure) ProcedureFactory.getInstance().create(buffer);
+  }
 }

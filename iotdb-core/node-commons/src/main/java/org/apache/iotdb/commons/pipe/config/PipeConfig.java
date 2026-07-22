@@ -220,6 +220,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall();
   }
 
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryMaxDurationMs();
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryProbeIntervalMs();
+  }
+
   public int getPipeAsyncSinkSelectorNumber() {
     return COMMON_CONFIG.getPipeAsyncSinkSelectorNumber();
   }
@@ -622,6 +630,12 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL,
         getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS,
+        getPipeAsyncSinkRetryMaxDurationMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS,
+        getPipeAsyncSinkRetryProbeIntervalMs());
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER, getPipeAsyncSinkSelectorNumber());
     LOGGER.info(

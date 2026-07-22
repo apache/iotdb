@@ -202,6 +202,7 @@ struct TPipeHeartbeatResp {
   2: optional list<bool> pipeCompletedList
   3: optional list<i64> pipeRemainingEventCountList
   4: optional list<double> pipeRemainingTimeList
+  5: optional list<i32> pipeDegradedStatusList
 }
 
 struct TLicense {
@@ -317,6 +318,7 @@ enum TAggregationType {
   REGR_INTERCEPT,
   SKEWNESS,
   KURTOSIS
+  PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {

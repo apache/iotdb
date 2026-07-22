@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
@@ -117,6 +118,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
+  private PipeTerminateEvent currentTerminateEvent;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -147,6 +149,10 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
+  public String getTopicName() {
+    return topicName;
+  }
+
   protected void cleanUpInternal() {
     // clean up events in batches
     batches.cleanUp();
@@ -174,6 +180,10 @@ public abstract class SubscriptionPrefetchingQueue {
       ((EnrichedEvent) currentTabletInsertionEvent.innerEvent)
           .clearReferenceCount(this.getClass().getName());
       currentTabletInsertionEvent = null;
+    }
+    if (Objects.nonNull(currentTerminateEvent)) {
+      currentTerminateEvent.clearReferenceCount(this.getClass().getName());
+      currentTerminateEvent = null;
     }
   }
 
@@ -236,48 +246,13 @@ public abstract class SubscriptionPrefetchingQueue {
       onEvent();
     }
 
-    final long size = prefetchingQueue.size();
-    long count = 0;
-
-    SubscriptionEvent event;
     try {
-      while (count++ < size // limit control
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
-        if (event.isCommitted()) {
-          LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
-              this,
-              event);
-          // no need to update inFlightEvents
-          continue;
-        }
-
-        if (!event.pollable()) {
-          LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
-              this,
-              event);
-          event.nack(); // now pollable
-          // no need to update inFlightEvents and prefetchingQueue
-          continue;
-        }
-
-        // This operation should be performed before updating inFlightEvents to prevent multiple
-        // consumers from consuming the same event.
-        event.recordLastPolledTimestamp(); // now non-pollable
-
-        inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
-        event.recordLastPolledConsumerId(consumerId);
-        return event;
-      }
+      return pollPrefetchedEvent(consumerId);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingQueue {} interrupted while polling events.",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_INTERRUPTED_WHILE_F8923826,
           this,
           e);
     }
@@ -307,51 +282,65 @@ public abstract class SubscriptionPrefetchingQueue {
           onEvent();
         }
 
-        final long size = prefetchingQueue.size();
-        long count = 0;
-
-        while (count++ < size // limit control
-            && Objects.nonNull(
-                event =
-                    prefetchingQueue.poll(
-                        SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                        TimeUnit.MILLISECONDS))) {
-          if (event.isCommitted()) {
-            LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
-                this,
-                event);
-            // no need to update inFlightEvents
-            continue;
-          }
-
-          if (!event.pollable()) {
-            LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
-                this,
-                event);
-            event.nack(); // now pollable
-            // no need to update inFlightEvents and prefetchingQueue
-            continue;
-          }
-
-          // This operation should be performed before updating inFlightEvents to prevent multiple
-          // consumers from consuming the same event.
-          event.recordLastPolledTimestamp(); // now non-pollable
-
-          inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
-          event.recordLastPolledConsumerId(consumerId);
+        event = pollPrefetchedEvent(consumerId);
+        if (Objects.nonNull(event)) {
           return event;
         }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} interrupted while polling events.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_INTERRUPTED_WHILE_F8923826,
             this,
             e);
       }
       timer.update();
     } while (!timer.isExpired());
+
+    return null;
+  }
+
+  private synchronized SubscriptionEvent pollPrefetchedEvent(final String consumerId)
+      throws InterruptedException {
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    while (count++ < size // limit control
+        && Objects.nonNull(
+            event =
+                prefetchingQueue.poll(
+                    SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                    TimeUnit.MILLISECONDS))) {
+      if (event.isCommitted()) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_COMMITTED_8684FF17,
+            this,
+            event);
+        // no need to update inFlightEvents
+        continue;
+      }
+
+      if (!event.pollable()) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B,
+            this,
+            event);
+        event.nack(); // now pollable
+        // no need to update inFlightEvents and prefetchingQueue
+        continue;
+      }
+
+      // This operation should be performed before updating inFlightEvents to prevent multiple
+      // consumers from consuming the same event.
+      event.recordLastPolledTimestamp(); // now non-pollable
+
+      inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
+      event.recordLastPolledConsumerId(consumerId);
+      return event;
+    }
 
     return null;
   }
@@ -366,7 +355,12 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
-      if (states.shouldPrefetch()) {
+      if (hasCurrentTerminateEvent()) {
+        tryCommitCurrentTerminateEventIfPresent();
+        remapInFlightEventsSnapshot(
+            committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
+        return true;
+      } else if (states.shouldPrefetch()) {
         tryPrefetch();
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
@@ -447,7 +441,8 @@ public abstract class SubscriptionPrefetchingQueue {
     final Event polledEvent = inputPendingQueue.waitedPoll();
     if (!Objects.equals(peekedEvent, polledEvent)) {
       LOGGER.warn(
-          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, offer back",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_INCONSISTENT_HEARTBEAT_EVENT_WHEN_PEEKING_BROKEN_BFE1DF6E,
           this,
           peekedEvent,
           polledEvent);
@@ -467,6 +462,10 @@ public abstract class SubscriptionPrefetchingQueue {
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    */
   private synchronized void tryPrefetch() {
+    if (Objects.nonNull(currentTerminateEvent) && !tryCommitCurrentTerminateEvent()) {
+      return;
+    }
+
     while (!inputPendingQueue.isEmpty() || Objects.nonNull(currentTabletInsertionEvent)) {
       if (Objects.nonNull(currentTabletInsertionEvent)) {
         final RetryableState state = onRetryableTabletInsertionEvent(currentTabletInsertionEvent);
@@ -490,23 +489,18 @@ public abstract class SubscriptionPrefetchingQueue {
 
       if (!(event instanceof EnrichedEvent)) {
         LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_ONLY_SUPPORT_PREFETCH_F3B33B30,
             this,
             event);
         continue;
       }
 
       if (event instanceof PipeTerminateEvent) {
-        final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
-        // add mark completed hook
-        terminateEvent.addOnCommittedHook(this::markCompleted);
-        // commit directly
-        ((PipeTerminateEvent) event)
-            .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-        LOGGER.info(
-            "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-            this,
-            terminateEvent);
+        currentTerminateEvent = (PipeTerminateEvent) event;
+        if (!tryCommitCurrentTerminateEvent()) {
+          return;
+        }
         continue;
       }
 
@@ -535,7 +529,8 @@ public abstract class SubscriptionPrefetchingQueue {
       //  - UserDefinedEnrichedEvent: ignored?
       //  - Others: events related to meta sync, safe to ignore
       LOGGER.info(
-          "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_IGNORE_ENRICHEDEVENT_95C6241C,
           this,
           event);
       ((EnrichedEvent) event)
@@ -549,6 +544,11 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private synchronized void tryPrefetchV2() {
+    if (Objects.nonNull(currentTerminateEvent)) {
+      tryCommitCurrentTerminateEvent();
+      return;
+    }
+
     if (!prefetchingQueue.isEmpty()) {
       return;
     }
@@ -606,23 +606,16 @@ public abstract class SubscriptionPrefetchingQueue {
 
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_ONLY_SUPPORT_PREFETCH_F3B33B30,
           this,
           event);
       return;
     }
 
     if (event instanceof PipeTerminateEvent) {
-      final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
-      // add mark completed hook
-      terminateEvent.addOnCommittedHook(this::markCompleted);
-      // commit directly
-      ((PipeTerminateEvent) event)
-          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-      LOGGER.info(
-          "Subscription: SubscriptionPrefetchingQueue {} commit PipeTerminateEvent {}",
-          this,
-          terminateEvent);
+      currentTerminateEvent = (PipeTerminateEvent) event;
+      tryCommitCurrentTerminateEvent();
       return;
     }
 
@@ -633,17 +626,19 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     if (event instanceof TsFileInsertionEvent) {
-      if (PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+      if (canPassThroughTsFile(pipeTsFileInsertionEvent)) {
         onEvent((TsFileInsertionEvent) event);
         return;
       }
       if (Objects.nonNull(currentToTabletIterator)) {
         LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} prefetch TsFileInsertionEvent when ToTabletIterator is not null (broken invariant). Ignore {}.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_PREFETCH_TSFILEINSERTIONEVENT_19444D2C,
             this,
             event);
       } else {
-        constructToTabletIterator((PipeTsFileInsertionEvent) event);
+        constructToTabletIterator(pipeTsFileInsertionEvent);
         return;
       }
     }
@@ -653,7 +648,8 @@ public abstract class SubscriptionPrefetchingQueue {
     //  - UserDefinedEnrichedEvent: ignored?
     //  - Others: events related to meta sync, safe to ignore
     LOGGER.info(
-        "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_IGNORE_ENRICHEDEVENT_95C6241C,
         this,
         event);
     ((EnrichedEvent) event)
@@ -676,6 +672,12 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
+  private boolean canPassThroughTsFile(final PipeTsFileInsertionEvent event) {
+    return PipeEventCollector.canSkipParsing4TsFileEvent(event)
+        && (!event.isTableModelEvent()
+            || SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isMatchAll());
+  }
+
   private RetryableState onRetryableTabletInsertionEvent(
       final RetryableEvent<TabletInsertionEvent> retryableEvent) {
     currentTabletInsertionEvent = null;
@@ -683,7 +685,8 @@ public abstract class SubscriptionPrefetchingQueue {
     if (retryableEvent.shouldIncreaseReferenceCount) {
       if (!event.increaseReferenceCount(this.getClass().getName())) {
         LOGGER.warn(
-            "Failed to increase reference count for {} when {} on retryable TabletInsertionEvent",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_WHEN_ON_RETRYABLE_4E10BE3B,
             event,
             this);
         currentTabletInsertionEvent = retryableEvent;
@@ -705,7 +708,11 @@ public abstract class SubscriptionPrefetchingQueue {
           : RetryableState.NO_RETRY;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when {} on retryable TabletInsertionEvent {}", this, event, e);
+          DataNodePipeMessages
+              .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_ON_RETRYABLE_TABLETINSERTIONEVENT_2350D9F7,
+          this,
+          event,
+          e);
       currentTabletInsertionEvent = retryableEvent;
       return RetryableState.RETRY;
     }
@@ -729,6 +736,41 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   protected boolean onEvent() {
     return batches.onEvent(this::prefetchEvent);
+  }
+
+  private synchronized boolean hasCurrentTerminateEvent() {
+    return Objects.nonNull(currentTerminateEvent);
+  }
+
+  private synchronized void tryCommitCurrentTerminateEventIfPresent() {
+    if (Objects.nonNull(currentTerminateEvent)) {
+      tryCommitCurrentTerminateEvent();
+    }
+  }
+
+  private synchronized boolean tryCommitCurrentTerminateEvent() {
+    try {
+      batches.emitAll(this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
+          this,
+          currentTerminateEvent,
+          e);
+      return false;
+    }
+
+    if (!prefetchingQueue.isEmpty() || !inFlightEvents.isEmpty()) {
+      return false;
+    }
+
+    // Add mark completed hook only when all subscription events have been consumed.
+    currentTerminateEvent.addOnCommittedHook(this::markCompleted);
+    currentTerminateEvent.decreaseReferenceCount(
+        SubscriptionPrefetchingQueue.class.getName(), true);
+    LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, currentTerminateEvent);
+    currentTerminateEvent = null;
+    return true;
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -791,7 +833,8 @@ public abstract class SubscriptionPrefetchingQueue {
         (key, ev) -> {
           if (Objects.isNull(ev)) {
             LOGGER.warn(
-                "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_0E4EF990,
                 commitContext,
                 this);
             return null;
@@ -799,7 +842,8 @@ public abstract class SubscriptionPrefetchingQueue {
 
           if (ev.isCommitted()) {
             LOGGER.warn(
-                "Subscription: subscription event {} is committed, subscription commit context {}, prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_EVENT_IS_COMMITTED_SUBSCRIPTION_BEE17D7F,
                 ev,
                 commitContext,
                 this);
@@ -810,7 +854,8 @@ public abstract class SubscriptionPrefetchingQueue {
 
           if (!ev.isCommittable()) {
             LOGGER.warn(
-                "Subscription: subscription event {} is not committable, subscription commit context {}, prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_EVENT_IS_NOT_COMMITTABLE_SUBSCRIPTION_8D03A10C,
                 ev,
                 commitContext,
                 this);
@@ -821,7 +866,8 @@ public abstract class SubscriptionPrefetchingQueue {
           final String consumerGroupId = commitContext.getConsumerGroupId();
           if (!Objects.equals(consumerGroupId, brokerId)) {
             LOGGER.warn(
-                "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                DataNodePipeMessages
+                    .PIPE_LOG_INCONSISTENT_CONSUMER_GROUP_WHEN_ACKING_EVENT_CURRENT_INCOMING_AEE3E90F,
                 brokerId,
                 consumerGroupId,
                 consumerId,
@@ -864,7 +910,8 @@ public abstract class SubscriptionPrefetchingQueue {
         (key, ev) -> {
           if (Objects.isNull(ev)) {
             LOGGER.warn(
-                "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_DE907E05,
                 commitContext,
                 this);
             return null;
@@ -874,7 +921,8 @@ public abstract class SubscriptionPrefetchingQueue {
           final String consumerGroupId = commitContext.getConsumerGroupId();
           if (!Objects.equals(consumerGroupId, brokerId)) {
             LOGGER.warn(
-                "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                DataNodePipeMessages
+                    .PIPE_LOG_INCONSISTENT_CONSUMER_GROUP_WHEN_NACKING_EVENT_CURRENT_INCOMING_B0104C41,
                 brokerId,
                 consumerGroupId,
                 consumerId,
@@ -887,7 +935,8 @@ public abstract class SubscriptionPrefetchingQueue {
 
           if (ev.isPoisoned()) {
             LOGGER.error(
-                "Subscription: poison message detected (nackCount={}), force-acking event {} in prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_7528DD6B,
                 ev.getNackCount(),
                 ev,
                 this);
@@ -1067,7 +1116,8 @@ public abstract class SubscriptionPrefetchingQueue {
           ev.nack(); // now pollable (the nack operation here is actually unnecessary)
           if (ev.isPoisoned()) {
             LOGGER.error(
-                "Subscription: poison message detected (nackCount={}), force-acking eagerly pollable event {} in prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_D984349C,
                 ev.getNackCount(),
                 ev,
                 this);
@@ -1083,7 +1133,8 @@ public abstract class SubscriptionPrefetchingQueue {
           ev.nack(); // now pollable
           if (ev.isPoisoned()) {
             LOGGER.error(
-                "Subscription: poison message detected (nackCount={}), force-acking pollable event {} in prefetching queue: {}",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_FEF0F0BF,
                 ev.getNackCount(),
                 ev,
                 this);
@@ -1094,7 +1145,8 @@ public abstract class SubscriptionPrefetchingQueue {
           }
           prefetchEvent(ev);
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_RECYCLE_EVENT_7B120BC3,
               this,
               ev);
           return null; // remove this entry

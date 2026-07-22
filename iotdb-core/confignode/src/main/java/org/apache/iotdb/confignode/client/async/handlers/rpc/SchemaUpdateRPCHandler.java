@@ -77,10 +77,10 @@ public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
             + e.getMessage();
     LOGGER.warn(errorMsg);
 
-    countDownLatch.countDown();
     responseMap.put(
         requestId,
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    countDownLatch.countDown();
   }
 }

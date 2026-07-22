@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.utils.IObjectFileService;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -101,7 +102,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
     byte[] bytes = new byte[(int) readSize];
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
-      fileChannel.read(buffer, offset);
+      IOUtils.readFully(fileChannel, buffer, offset);
     } catch (IOException e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }

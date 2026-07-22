@@ -51,9 +51,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedCo
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowSpecification;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -73,11 +77,13 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.isAggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.getReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.isFieldFromScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 /** Checks whether an expression is constant with respect to the group */
 class AggregationAnalyzer {
@@ -122,10 +128,11 @@ class AggregationAnalyzer {
       Scope sourceScope,
       Optional<Scope> orderByScope,
       Analysis analysis) {
-    requireNonNull(groupByExpressions, "groupByExpressions is null");
-    requireNonNull(sourceScope, "sourceScope is null");
-    requireNonNull(orderByScope, "orderByScope is null");
-    requireNonNull(analysis, "analysis is null");
+    requireNonNull(
+        groupByExpressions, DataNodeQueryMessages.EXCEPTION_GROUPBYEXPRESSIONS_IS_NULL_BFDC07D2);
+    requireNonNull(sourceScope, DataNodeQueryMessages.EXCEPTION_SOURCESCOPE_IS_NULL_4B3626A7);
+    requireNonNull(orderByScope, DataNodeQueryMessages.EXCEPTION_ORDERBYSCOPE_IS_NULL_A6017E73);
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
 
     this.sourceScope = sourceScope;
     this.orderByScope = orderByScope;
@@ -151,7 +158,7 @@ class AggregationAnalyzer {
         fieldId -> {
           checkState(
               isFieldFromScope(fieldId, sourceScope),
-              "Grouping field %s should originate from %s",
+              DataNodeQueryMessages.EXCEPTION_GROUPING_FIELD_ARG_SHOULD_ORIGINATE_FROM_ARG_6DBBCE6B,
               fieldId,
               sourceScope.getRelationType());
         });
@@ -162,7 +169,8 @@ class AggregationAnalyzer {
     if (!visitor.process(expression, null)) {
       throw new SemanticException(
           String.format(
-              "'%s' must be an aggregate expression or appear in GROUP BY clause", expression));
+              DataNodeQueryMessages.S_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE,
+              expression));
     }
   }
 
@@ -171,7 +179,10 @@ class AggregationAnalyzer {
     @Override
     public Boolean visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
-          "aggregation analysis not yet implemented for: " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AGGREGATION_ANALYSIS_NOT_YET_IMPLEMENTED_FOR_S_38B64170,
+              node.getClass().getName()));
     }
 
     @Override
@@ -188,7 +199,8 @@ class AggregationAnalyzer {
               expression -> {
                 throw new SemanticException(
                     String.format(
-                        "Subquery uses '%s' which must appear in GROUP BY clause", expression));
+                        DataNodeQueryMessages.SUBQUERY_USES_S_WHICH_MUST_APPEAR_IN_GROUP_BY_CLAUSE,
+                        expression));
               });
 
       return true;
@@ -288,19 +300,93 @@ class AggregationAnalyzer {
     @Override
     public Boolean visitFunctionCall(FunctionCall node, Void context) {
       if (isAggregationFunction(node.getName().toString())) {
-        List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+        if (node.getWindow().isEmpty()) {
+          List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+          List<Expression> windowExpressions = extractWindowExpressions(node.getArguments());
 
-        if (!aggregateFunctions.isEmpty()) {
-          throw new SemanticException(
-              String.format(
-                  "Cannot nest aggregations inside aggregation '%s': %s",
-                  node.getName(), aggregateFunctions));
+          if (!aggregateFunctions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4,
+                    node.getName(),
+                    aggregateFunctions));
+          }
+
+          if (!windowExpressions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897,
+                    node.getName(),
+                    windowExpressions));
+          }
+
+          return true;
         }
+      } else {
+        // Reject FILTER for non-aggregation functions when FunctionCall supports FILTER.
+        // Reject ORDER BY for non-aggregation functions when FunctionCall supports function-level
+        // ORDER BY.
+      }
 
-        return true;
+      if (node.getWindow().isPresent()) {
+        Window window = node.getWindow().get();
+        if (window instanceof WindowSpecification windowSpecification
+            && !process(windowSpecification, context)) {
+          return false;
+        }
       }
 
       return node.getArguments().stream().allMatch(expression -> process(expression, context));
+    }
+
+    @Override
+    public Boolean visitWindowSpecification(WindowSpecification node, Void context) {
+      for (Expression expression : node.getPartitionBy()) {
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6,
+                  expression));
+        }
+      }
+
+      for (SortItem sortItem : getSortItemsFromOrderBy(node.getOrderBy())) {
+        Expression expression = sortItem.getSortKey();
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B,
+                  expression));
+        }
+      }
+
+      if (node.getFrame().isPresent()) {
+        process(node.getFrame().get(), context);
+      }
+
+      return true;
+    }
+
+    @Override
+    public Boolean visitWindowFrame(WindowFrame node, Void context) {
+      if (node.getStart().getValue().isPresent()
+          && !process(node.getStart().getValue().get(), context)) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63);
+      }
+      if (node.getEnd().isPresent()
+          && node.getEnd().get().getValue().isPresent()
+          && !process(node.getEnd().get().getValue().get(), context)) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55);
+      }
+      return true;
     }
 
     @Override
@@ -335,7 +421,9 @@ class AggregationAnalyzer {
 
     private boolean isGroupingKey(Expression node) {
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
 
       if (orderByScope.isPresent() && isFieldFromScope(fieldId, orderByScope.get())) {
@@ -352,7 +440,9 @@ class AggregationAnalyzer {
       }
 
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
       boolean inGroup = groupingFields.contains(fieldId);
       if (!inGroup) {
@@ -441,7 +531,8 @@ class AggregationAnalyzer {
       Map<NodeRef<Parameter>, Expression> parameters = analysis.getParameters();
       checkArgument(
           node.getId() < parameters.size(),
-          "Invalid parameter number %s, max values is %s",
+          DataNodeQueryMessages
+              .EXCEPTION_INVALID_PARAMETER_NUMBER_ARG_COMMA_MAX_VALUES_IS_ARG_B3F5C4E8,
           node.getId(),
           parameters.size() - 1);
       return process(parameters.get(NodeRef.of(node)), context);

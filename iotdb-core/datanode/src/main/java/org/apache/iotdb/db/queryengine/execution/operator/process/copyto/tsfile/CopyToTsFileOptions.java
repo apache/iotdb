@@ -181,7 +181,9 @@ public class CopyToTsFileOptions implements CopyToOptions {
       if (targetTagColumns.contains(columnHeader.getColumnName())) {
         if (columnHeader.getColumnType() != TSDataType.STRING) {
           throw new SemanticException(
-              "Data type of tag column " + columnHeader.getColumnName() + " is not STRING");
+              DataNodeQueryMessages.DATA_TYPE_OF_TAG_COLUMN
+                  + columnHeader.getColumnName()
+                  + DataNodeQueryMessages.IS_NOT_STRING);
         }
         foundTagColumns++;
       }

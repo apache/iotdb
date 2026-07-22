@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.db.it.udf;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -55,7 +56,7 @@ public class IoTDBSQLFunctionManagementIT {
   private static final int BUILTIN_AGGREGATE_FUNCTIONS_COUNT =
       TableBuiltinAggregationFunction.values().length;
   private static final int BUILTIN_TABLE_FUNCTIONS_COUNT =
-      TableBuiltinTableFunction.values().length;
+      TableBuiltinTableFunction.values().length + DataNodeTableBuiltinTableFunction.values().length;
   private static final int BUILTIN_FUNCTIONS_COUNT =
       BUILTIN_SCALAR_FUNCTIONS_COUNT
           + BUILTIN_AGGREGATE_FUNCTIONS_COUNT

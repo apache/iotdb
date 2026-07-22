@@ -63,6 +63,12 @@ public class ActiveLoadAgent {
     activeLoadMetricsCollector.start();
   }
 
+  public synchronized void stop() {
+    activeLoadDirScanner.stop();
+    activeLoadMetricsCollector.stop();
+    activeLoadTsFileLoader.stop();
+  }
+
   /**
    * Clean up all listening directories for active load on DataNode first startup. This method will
    * clean up all files and subdirectories in the listening directories, including: 1. Pending

@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -52,6 +53,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -93,7 +95,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return snapshotTaker.takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
-          "Exception occurs when taking snapshot for {}-{} in {}",
+          DataNodePipeMessages.PIPE_LOG_EXCEPTION_OCCURS_WHEN_TAKING_SNAPSHOT_FOR_IN_48CBDFCC,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           snapshotDir,
@@ -109,7 +111,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotTmpId, snapshotId, true);
     } catch (Exception e) {
       logger.error(
-          "Exception occurs when taking snapshot for {}-{} in {}",
+          DataNodePipeMessages.PIPE_LOG_EXCEPTION_OCCURS_WHEN_TAKING_SNAPSHOT_FOR_IN_48CBDFCC,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           snapshotDir,
@@ -124,31 +126,54 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    String databaseName = region.getDatabaseName();
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(
+                    latestSnapshotRootDir.getAbsolutePath(), databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDir);
+  }
+
+  @Override
+  public boolean loadSnapshot(List<File> latestSnapshotRootDirs) {
+    final String databaseName = region.getDatabaseName();
+    final String dataRegionIdString = region.getDataRegionIdString();
+    // A single snapshot is spread across several receive folders, and loading wipes the data dirs
+    // before relinking. It must therefore be loaded in one shot (clear once, relink every folder)
+    // rather than once per folder, otherwise each per-folder load would erase the previous folders'
+    // fragments and leave only the last one's data.
+    final List<String> snapshotRootPaths = new ArrayList<>();
+    for (File dir : latestSnapshotRootDirs) {
+      snapshotRootPaths.add(dir.getAbsolutePath());
+    }
+    return loadSnapshot(
+        () ->
+            new SnapshotLoader(snapshotRootPaths, databaseName, dataRegionIdString)
+                .loadSnapshotForStateMachine(),
+        latestSnapshotRootDirs);
+  }
+
+  private boolean loadSnapshot(Supplier<DataRegion> snapshotLoader, Object snapshotRootForLog) {
     String dataRegionIdString = region.getDataRegionIdString();
     DataRegionId regionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     try {
       DataRegion newRegion =
-          StorageEngine.getInstance()
-              .setDataRegionForSnapshotLoad(
-                  regionId,
-                  () ->
-                      new SnapshotLoader(
-                              latestSnapshotRootDir.getAbsolutePath(),
-                              databaseName,
-                              dataRegionIdString)
-                          .loadSnapshotForStateMachine());
+          StorageEngine.getInstance().setDataRegionForSnapshotLoad(regionId, snapshotLoader);
       if (newRegion == null) {
-        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, latestSnapshotRootDir);
-        return;
+        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, snapshotRootForLog);
+        return false;
       }
       this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
+      return true;
     } catch (Exception e) {
       logger.error(DataNodeMiscMessages.EXCEPTION_REPLACING_DATA_REGION, e);
+      return false;
     }
   }
 
@@ -171,8 +196,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
         } else {
           throw new IllegalArgumentException(
               String.format(
-                  "There are two types of PlanNode in one request: %s and %s",
-                  onlyOne.getClass(), planNode.getClass()));
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_S_30FB3EE5,
+                  onlyOne.getClass(),
+                  planNode.getClass()));
         }
       }
     }
@@ -180,7 +207,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
       if (!searchNodes.isEmpty()) {
         throw new IllegalArgumentException(
             String.format(
-                "There are two types of PlanNode in one request: %s and SearchNode",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_SEARCHNODE_F8B4D860,
                 onlyOne.getClass()));
       }
       return onlyOne;
@@ -199,7 +227,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
-          "Meets error when getting snapshot files for {}-{}",
+          DataNodePipeMessages.PIPE_LOG_MEETS_ERROR_WHEN_GETTING_SNAPSHOT_FILES_FOR_9BFA76B9,
           region.getDatabaseName(),
           region.getDataRegionIdString(),
           e);
@@ -224,13 +252,17 @@ public class DataRegionStateMachine extends BaseStateMachine {
     int retryTime = 0;
     while (retryTime < MAX_WRITE_RETRY_TIMES) {
       result = planNode.accept(new DataExecutionVisitor(), region);
-      if (needRetry(result.getCode())) {
+      // Let pipe retry with the original event instead of retrying a possibly mutated node here.
+      if (needRetry(result.getCode()) && !planNode.isGeneratedByPipe()) {
         retryTime++;
         logger.debug(
-            "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
+            DataNodePipeMessages.PIPE_LOG_WRITE_OPERATION_FAILED_BECAUSE_RETRYTIME_34EFBE99,
+            result.getCode(),
+            retryTime);
         if (retryTime == MAX_WRITE_RETRY_TIMES) {
           logger.error(
-              "write operation still failed after {} retry times, because {}.",
+              DataNodePipeMessages
+                  .PIPE_LOG_WRITE_OPERATION_STILL_FAILED_AFTER_RETRY_TIMES_BECAUSE_15EEA702,
               MAX_WRITE_RETRY_TIMES,
               result.getCode());
         }

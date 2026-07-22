@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
@@ -105,7 +106,10 @@ public class WALMetaData implements SerializedSize {
   private static short toShortExact(long value, String fieldName) {
     if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
       throw new IllegalArgumentException(
-          String.format("%s %s exceeds short range", fieldName, value));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_S_EXCEEDS_SHORT_RANGE_1DF75A2D,
+              fieldName,
+              value));
     }
     return (short) value;
   }
@@ -360,12 +364,12 @@ public class WALMetaData implements SerializedSize {
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
       WALFileVersion version = WALFileVersion.getVersion(channel);
       position = channel.size() - Integer.BYTES - (version.getVersionBytes().length);
-      channel.read(metadataSizeBuf, position);
+      IOUtils.readFully(channel, metadataSizeBuf, position);
       metadataSizeBuf.flip();
       // load metadata
       int metadataSize = metadataSizeBuf.getInt();
       ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-      channel.read(metadataBuf, position - metadataSize);
+      IOUtils.readFully(channel, metadataBuf, position - metadataSize);
       metadataBuf.flip();
       metaData = WALMetaData.deserialize(metadataBuf, version);
       // versions before V1.3, should recover memTable ids from entries
@@ -374,8 +378,8 @@ public class WALMetaData implements SerializedSize {
         for (int size : metaData.buffersSize) {
           channel.position(offset);
           ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-          channel.read(buffer);
-          buffer.clear();
+          IOUtils.readFully(channel, buffer);
+          buffer.flip();
           metaData.memTablesId.add(buffer.getLong());
           offset += size;
         }
@@ -399,7 +403,8 @@ public class WALMetaData implements SerializedSize {
       return false;
     }
     ByteBuffer magicStringBytes = ByteBuffer.allocate(maxMagicLen);
-    channel.read(magicStringBytes, channel.size() - maxMagicLen);
+    IOUtils.readFully(channel, magicStringBytes, channel.size() - maxMagicLen);
+
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
     return magicString.contains(WALFileVersion.V3.getVersionString())

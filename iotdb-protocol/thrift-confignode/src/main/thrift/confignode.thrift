@@ -129,6 +129,7 @@ struct TRuntimeConfiguration {
   10: optional bool enableSeparationOfAdminPowers
   // use 'optional' here to support rolling upgrade
   11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
+  12: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeRegisterReq {
@@ -157,6 +158,11 @@ struct TDataNodeRestartResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
   4: optional list<common.TRegionReplicaSet> correctConsensusGroups
+}
+
+struct TDataNodeLeaseRecoveryResp{
+ 1: required common.TSStatus status
+ 2: optional binary tableInfo
 }
 
 struct TDataNodeRemoveReq {
@@ -280,6 +286,13 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TShowRepairDataPartitionTableProgressResp {
+  1: required common.TSStatus status
+  2: required string state
+  3: required double progress
+  4: optional string message
+}
+
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
@@ -341,7 +354,7 @@ struct TGetSeriesSlotListResp {
 }
 
 struct TMigrateRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionIds
     2: required i32 fromId
     3: required i32 toId
     4: required common.Model model
@@ -736,10 +749,8 @@ struct TDatabaseInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 minSchemaRegionNum
   8: required i32 maxSchemaRegionNum
   9: required i32 dataRegionNum
-  10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
 }
@@ -871,6 +882,7 @@ struct TShowPipeInfo {
   7: required string exceptionMessage
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
+  10: optional bool isDegraded
 }
 
 struct TGetAllPipeInfoResp {
@@ -1337,6 +1349,11 @@ service IConfigNodeRPCService {
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
 
+  /**
+  * get all metadate cache when the heartbeart renew the lease
+  */
+  TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery();
+
    // ======================================================
    // AINode
    // ======================================================
@@ -1517,6 +1534,8 @@ service IConfigNodeRPCService {
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   common.TSStatus dataPartitionTableIntegrityCheck()
+
+  TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
 
   // ======================================================
   // Authorize
@@ -1948,6 +1967,9 @@ service IConfigNodeRPCService {
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
 
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
+
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
 
@@ -2084,7 +2106,7 @@ service IConfigNodeRPCService {
 
   TDescTable4InformationSchemaResp descTables4InformationSchema()
 
-  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap, byte tableNodeStatus)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 

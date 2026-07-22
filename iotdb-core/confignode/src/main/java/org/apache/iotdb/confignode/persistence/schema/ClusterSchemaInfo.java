@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -237,31 +238,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
 
       // TODO: Support alter other fields
-      if (alterSchema.isSetMinSchemaRegionGroupNum()) {
-        currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
-        currentSchema.setMaxSchemaRegionGroupNum(
-            Math.max(
-                currentSchema.getMinSchemaRegionGroupNum(),
-                currentSchema.getMaxSchemaRegionGroupNum()));
-        LOGGER.info(
-            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MINIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
-            currentSchema.getName(),
-            currentSchema.getMinSchemaRegionGroupNum());
+      if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
+        currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
         LOGGER.info(
             ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
             currentSchema.getName(),
             currentSchema.getMaxSchemaRegionGroupNum());
       }
-      if (alterSchema.isSetMinDataRegionGroupNum()) {
-        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
-        currentSchema.setMaxDataRegionGroupNum(
-            Math.max(
-                currentSchema.getMinDataRegionGroupNum(),
-                currentSchema.getMaxDataRegionGroupNum()));
-        LOGGER.info(
-            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MINIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
-            currentSchema.getName(),
-            currentSchema.getMinDataRegionGroupNum());
+      if (alterSchema.isSetMaxDataRegionGroupNum()) {
+        currentSchema.setMaxDataRegionGroupNum(alterSchema.getMaxDataRegionGroupNum());
         LOGGER.info(
             ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
             currentSchema.getName(),
@@ -359,7 +344,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -398,7 +383,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -663,7 +648,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .orElse(Long.MAX_VALUE);
     } catch (final MetadataException e) {
       LOGGER.warn(
-          ERROR_NAME + " when trying to get max ttl under one database, use Long.MAX_VALUE.", e);
+          ERROR_NAME
+              + ConfigNodeMessages.LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2,
+          e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1203,6 +1190,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
+  public TSStatus rollbackPreDeleteTable(final RollbackPreDeleteTablePlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.rollbackPreDeleteTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+  }
+
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     return executeWithLock(
         () ->
@@ -1359,7 +1353,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               database2Tables.getKey(),
               tableModelMTree.getSpecificTablesUnderSpecificDatabase(
                   getQualifiedDatabasePartialPath(database2Tables.getKey()),
-                  database2Tables.getValue()));
+                  database2Tables.getValue(),
+                  plan.getTableNodeStatusSet()));
         } catch (final DatabaseNotSetException ignore) {
           // continue
         }
@@ -1463,7 +1458,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllPreCreateTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getAllPreCreateTables();
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_CREATE);
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreDeleteTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_DELETE);
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
@@ -1528,7 +1535,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getTableName(),
           plan.getColumnName(),
           plan instanceof PreDeleteViewColumnPlan)) {
-        status.setMessage("");
+        status.setMessage(ConfigNodeMessages.EMPTY_MESSAGE);
       }
       return status;
     } catch (final MetadataException e) {

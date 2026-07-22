@@ -35,6 +35,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
@@ -151,7 +152,8 @@ public class DataNodeShutdownHook extends Thread {
         while (true) {
           if (entry.getValue().getRemainingNonHeartbeatEvents() == 0) {
             logger.info(
-                "Successfully waited for pipe {} to finish.", entry.getValue().getPipeName());
+                DataNodeMiscMessages.MISC_LOG_SUCCESSFULLY_WAITED_FOR_PIPE_TO_FINISH_FBDF5157,
+                entry.getValue().getPipeName());
             break;
           }
           if (System.currentTimeMillis() - startTime
@@ -173,7 +175,14 @@ public class DataNodeShutdownHook extends Thread {
       }
     }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndex();
+    final long shutdownProgressPersistTimeoutInMs =
+        PipeDataNodeAgent.task().getShutdownProgressPersistTimeoutInMs();
+    logger.info(
+        DataNodePipeMessages.PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN,
+        shutdownProgressPersistTimeoutInMs);
+    if (!PipeDataNodeAgent.task().persistAllProgressIndex(shutdownProgressPersistTimeoutInMs)) {
+      logger.warn(DataNodePipeMessages.PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN);
+    }
     // Shutdown all consensus pipe's receiver
     PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
 
@@ -188,14 +197,15 @@ public class DataNodeShutdownHook extends Thread {
     // Set and report shutdown to cluster ConfigNode-leader
     if (!reportShutdownToConfigNodeLeader()) {
       logger.warn(
-          "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current DataNode as Running for a few seconds.");
+          DataNodeMiscMessages
+              .MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497);
     }
 
     // Clear lock file. All services should be shutdown before this line.
     DirectoryChecker.getInstance().deregisterAll();
 
     logger.info(
-        "DataNode exits. Jvm memory usage: {}",
+        DataNodeMiscMessages.MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5,
         MemUtils.bytesCntToStr(
             Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 
@@ -210,8 +220,8 @@ public class DataNodeShutdownHook extends Thread {
                 DataRegionConsensusImpl.getInstance().triggerSnapshot(id, true);
               } catch (ConsensusException e) {
                 logger.warn(
-                    "Something wrong happened while calling consensus layer's "
-                        + "triggerSnapshot API.",
+                    DataNodeMiscMessages
+                        .MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16,
                     e);
               }
             });

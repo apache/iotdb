@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
@@ -662,6 +664,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     if (node instanceof DeviceTableScanNode) {
       deviceTableScanNode = (DeviceTableScanNode) node;
     }
+    ExternalTsFileScanNode externalTsFileScanNode = null;
+    if (node instanceof ExternalTsFileScanNode) {
+      externalTsFileScanNode = (ExternalTsFileScanNode) node;
+    }
 
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
@@ -677,6 +683,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
             String.format("TimePredicate: %s", deviceTableScanNode.getTimePredicate().get()));
       }
     }
+    if (externalTsFileScanNode != null) {
+      boxValue.add(
+          String.format("TsFileNumber: %s", externalTsFileScanNode.getTsFilePaths().size()));
+    }
 
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
@@ -688,6 +698,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       boxValue.add(
           String.format(
               "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
+      String topKRuntimeFilterSourceId = deviceTableScanNode.getTopKRuntimeFilterSourceId();
+      if (topKRuntimeFilterSourceId != null) {
+        boxValue.add(String.format("TOPN OPT: %s", topKRuntimeFilterSourceId));
+      }
     }
 
     boxValue.add(
@@ -1039,6 +1053,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     boxValue.add(String.format("Count: %s", node.getCount()));
+    if (node.getTopKRuntimeFilterSourceId() != null) {
+      boxValue.add("TOPN OPT");
+    }
     return render(node, boxValue, context);
   }
 
@@ -1409,7 +1426,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
-        Validate.isTrue(!childBoxString.isEmpty(), "Lines of box string should be greater than 0");
+        Validate.isTrue(
+            !childBoxString.isEmpty(),
+            DataNodeQueryMessages.EXCEPTION_LINES_OF_BOX_STRING_SHOULD_BE_GREATER_THAN_0_5DB8C047);
         childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;

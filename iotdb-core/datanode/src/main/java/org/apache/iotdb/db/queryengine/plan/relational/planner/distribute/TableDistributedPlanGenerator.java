@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementEx
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceTaskPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -96,6 +97,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggre
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
@@ -419,7 +422,9 @@ public class TableDistributedPlanGenerator
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     checkArgument(
-        node.getChildren().size() == 1, "Size of TopKNode can only be 1 in logical plan.");
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_SIZE_OF_TOPKNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_DB32E3C5);
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (childrenNodes.size() == 1) {
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), childrenNodes.get(0))) {
@@ -430,12 +435,14 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
+    // root TopK is not a runtime filter producer.
+    newTopKNode.setTopKRuntimeFilterSourceId(null);
     for (PlanNode child : childrenNodes) {
       PlanNode newChild;
       if (canTopKEliminated(node.getOrderingScheme(), node.getCount(), child)) {
         newChild = child;
       } else {
-        newChild =
+        TopKNode regionTopK =
             new TopKNode(
                 queryId.genPlanNodeId(),
                 Collections.singletonList(child),
@@ -443,6 +450,8 @@ public class TableDistributedPlanGenerator
                 node.getCount(),
                 node.getOutputSymbols(),
                 node.isChildrenDataInOrder());
+        regionTopK.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
+        newChild = regionTopK;
       }
       newTopKNode.addChild(newChild);
     }
@@ -644,10 +653,13 @@ public class TableDistributedPlanGenerator
       // be MergeSortNode or
       // SortNode
       checkArgument(
-          leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
+          leftChildrenNodes.size() == 1,
+          DataNodeQueryMessages
+              .EXCEPTION_THE_SIZE_OF_LEFT_CHILDREN_NODE_OF_JOINNODE_SHOULD_BE_1_F3437368);
       checkArgument(
           rightChildrenNodes.size() == 1,
-          "The size of right children node of JoinNode should be 1");
+          DataNodeQueryMessages
+              .EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_JOINNODE_SHOULD_BE_1_6BA167CF);
     }
 
     OrderingScheme leftChildOrdering = nodeOrderingMap.get(node.getLeftChild().getPlanNodeId());
@@ -674,7 +686,8 @@ public class TableDistributedPlanGenerator
           break;
         case RIGHT:
           throw new IllegalStateException(
-              "RIGHT Join should be transformed to LEFT Join in previous process");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_RIGHT_JOIN_SHOULD_BE_TRANSFORMED_TO_LEFT_JOIN_IN_PREVIOUS_D6B56B1F);
         default:
           throw new UnsupportedOperationException(
               DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
@@ -708,10 +721,12 @@ public class TableDistributedPlanGenerator
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
     checkArgument(
         leftChildrenNodes.size() == 1,
-        "The size of left children node of SemiJoinNode should be 1");
+        DataNodeQueryMessages
+            .EXCEPTION_THE_SIZE_OF_LEFT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_FFEE3F41);
     checkArgument(
         rightChildrenNodes.size() == 1,
-        "The size of right children node of SemiJoinNode should be 1");
+        DataNodeQueryMessages
+            .EXCEPTION_THE_SIZE_OF_RIGHT_CHILDREN_NODE_OF_SEMIJOINNODE_SHOULD_BE_1_AE90C4B8);
     node.setLeftChild(leftChildrenNodes.get(0));
     node.setRightChild(rightChildrenNodes.get(0));
     return Collections.singletonList(node);
@@ -727,6 +742,125 @@ public class TableDistributedPlanGenerator
     }
   }
 
+  @Override
+  public List<PlanNode> visitExternalTsFileScan(
+      final ExternalTsFileScanNode node, final PlanContext context) {
+    TRegionReplicaSet localRegionReplicaSet =
+        new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
+    node.setRegionReplicaSet(localRegionReplicaSet);
+    context.mostUsedRegion = node.getRegionReplicaSet();
+    Optional<SortPropertyContext> sortPropertyContext =
+        context.hasSortProperty ? analyzeSortProperty(node, context) : Optional.empty();
+    int partitionCount = IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+    node.getExternalTsFileQueryResource()
+        .collectDeviceEntries(
+            node.getSchemaFilter(),
+            sortPropertyContext.map(propertyContext -> propertyContext.comparator).orElse(null),
+            partitionCount);
+
+    List<DeviceTaskPartition> partitions =
+        node.getExternalTsFileQueryResource().getDeviceTaskPartitions();
+    if (partitions.isEmpty()) {
+      return Collections.singletonList(node);
+    }
+    List<PlanNode> result = new ArrayList<>(partitions.size());
+    for (DeviceTaskPartition partition : partitions) {
+      ExternalTsFileScanNode splitNode =
+          new ExternalTsFileScanNode(
+              partition.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.getTimePredicate().orElse(null),
+              node.getScanOrder(),
+              node.isPushLimitToEachDevice(),
+              node.getTagAndAttributeIndexMap(),
+              node.getExternalTsFileQueryResource(),
+              partition.getDeviceEntryIndexes(),
+              partition.getPartitionIndex(),
+              node.getSchemaFilter());
+      splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      splitNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
+      result.add(splitNode);
+    }
+    sortPropertyContext.ifPresent(
+        propertyContext -> applySortProperty(node, result, propertyContext, false));
+    return result;
+  }
+
+  @Override
+  public List<PlanNode> visitExternalTsFileAggregationScan(
+      ExternalTsFileAggregationScanNode node, PlanContext context) {
+    TRegionReplicaSet localRegionReplicaSet =
+        new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
+    node.setRegionReplicaSet(localRegionReplicaSet);
+    context.mostUsedRegion = node.getRegionReplicaSet();
+    Optional<SortPropertyContext> sortPropertyContext =
+        context.hasSortProperty ? analyzeSortProperty(node, context) : Optional.empty();
+    int partitionCount = IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+    node.getExternalTsFileQueryResource()
+        .collectDeviceEntries(
+            node.getSchemaFilter(),
+            sortPropertyContext.map(propertyContext -> propertyContext.comparator).orElse(null),
+            partitionCount);
+
+    List<DeviceTaskPartition> partitions =
+        node.getExternalTsFileQueryResource().getDeviceTaskPartitions();
+    if (partitions.isEmpty()) {
+      return Collections.singletonList(node);
+    }
+    boolean needFinalAggregation =
+        node.getStep() == SINGLE && node.getGroupingKeys().isEmpty() && partitions.size() > 1;
+    AggregationNode finalAggregation = null;
+    AggregationTableScanNode partialTemplateNode = node;
+    if (needFinalAggregation) {
+      Pair<AggregationNode, AggregationTableScanNode> splitResult =
+          split(node, symbolAllocator, queryId);
+      finalAggregation = splitResult.left;
+      partialTemplateNode = splitResult.right;
+    }
+    List<PlanNode> result = new ArrayList<>(partitions.size());
+    for (DeviceTaskPartition partition : partitions) {
+      ExternalTsFileAggregationScanNode splitNode =
+          new ExternalTsFileAggregationScanNode(
+              partition.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              partialTemplateNode.getOutputSymbols(),
+              node.getAssignments(),
+              node.getTagAndAttributeIndexMap(),
+              node.getScanOrder(),
+              node.getTimePredicate().orElse(null),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice(),
+              node.getProjection(),
+              partialTemplateNode.getAggregations(),
+              partialTemplateNode.getGroupingSets(),
+              partialTemplateNode.getPreGroupedSymbols(),
+              partialTemplateNode.getStep(),
+              partialTemplateNode.getGroupIdSymbol(),
+              node.getExternalTsFileQueryResource(),
+              partition.getDeviceEntryIndexes(),
+              partition.getPartitionIndex(),
+              node.getSchemaFilter());
+      splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      result.add(splitNode);
+    }
+    sortPropertyContext.ifPresent(
+        propertyContext -> applySortProperty(node, result, propertyContext, false));
+    if (needFinalAggregation) {
+      OrderingScheme childOrdering = nodeOrderingMap.get(result.get(0).getPlanNodeId());
+      finalAggregation.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, result));
+      return Collections.singletonList(finalAggregation);
+    }
+    return result;
+  }
+
   private List<PlanNode> constructDeviceTableScanByTags(
       final DeviceTableScanNode node, final PlanContext context) {
     DataPartition dataPartition = analysis.getDataPartitionInfo();
@@ -740,7 +874,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
 
@@ -785,6 +919,7 @@ public class TableDistributedPlanGenerator
                         node.isPushLimitToEachDevice(),
                         node.containsNonAlignedDevice());
                 scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
+                scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                 return scanNode;
               });
       deviceTableScanNode.appendDeviceEntry(deviceEntry);
@@ -833,7 +968,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
@@ -871,6 +1006,7 @@ public class TableDistributedPlanGenerator
                           node.isPushLimitToEachDevice(),
                           node.containsNonAlignedDevice());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
+                  scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
                   return scanNode;
                 });
         deviceTableScanNode.appendDeviceEntry(deviceEntry);
@@ -923,7 +1059,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
@@ -965,6 +1101,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.left = scanNode;
         }
 
@@ -987,6 +1124,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.right = scanNode;
         }
 
@@ -1052,7 +1190,8 @@ public class TableDistributedPlanGenerator
         dataNodeLocationSupplier.getDataNodeLocations(tableName);
     if (dataNodeLocations.isEmpty()) {
       throw new IoTDBRuntimeException(
-          "No available dataNodes, may be the cluster is closing",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_NO_AVAILABLE_DATANODES_MAY_BE_THE_CLUSTER_IS_CLOSING_E13B8C50,
           TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode());
     }
 
@@ -1162,8 +1301,10 @@ public class TableDistributedPlanGenerator
         } else {
           throw new IllegalStateException(
               String.format(
-                  "Should never reach here. Child ordering: %s. PreGroupedSymbols: %s",
-                  childOrdering.getOrderBy(), node.getPreGroupedSymbols()));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_SHOULD_NEVER_REACH_HERE_CHILD_ORDERING_S_PREGROUPEDSYMBOLS_79A94AB5,
+                  childOrdering.getOrderBy(),
+                  node.getPreGroupedSymbols()));
         }
       } else if (context.deviceCrossRegion) {
         // Child has no Ordering and the device cross region, the grouped property of child is not
@@ -1566,7 +1707,7 @@ public class TableDistributedPlanGenerator
         dataPartition.getDataPartitionMap().get(dbName);
     if (seriesSlotMap == null) {
       throw new SemanticException(
-          String.format("Given queried database: %s is not exist!", dbName));
+          String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
@@ -1773,8 +1914,12 @@ public class TableDistributedPlanGenerator
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
-    checkArgument(childrenNodes != null, "childrenNodes should not be null.");
-    checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty.");
+    checkArgument(
+        childrenNodes != null,
+        DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063);
+    checkArgument(
+        !childrenNodes.isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9);
 
     if (childrenNodes.size() == 1) {
       return childrenNodes.get(0);
@@ -1802,18 +1947,26 @@ public class TableDistributedPlanGenerator
       final DeviceTableScanNode deviceTableScanNode,
       final List<PlanNode> resultTableScanNodeList,
       final PlanContext context) {
+    Optional<SortPropertyContext> sortPropertyContext =
+        analyzeSortProperty(deviceTableScanNode, context);
+    if (!sortPropertyContext.isPresent()) {
+      return;
+    }
+    applySortProperty(
+        deviceTableScanNode, resultTableScanNodeList, sortPropertyContext.get(), true);
+  }
+
+  private Optional<SortPropertyContext> analyzeSortProperty(
+      DeviceTableScanNode deviceTableScanNode, PlanContext context) {
     final List<Symbol> newOrderingSymbols = new ArrayList<>();
     final List<SortOrder> newSortOrders = new ArrayList<>();
     final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
 
     boolean lastIsTimeRelated = false;
+    boolean scanOrderDesc = false;
     for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
       if (timeRelatedSymbol(symbol, deviceTableScanNode)) {
-        if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
-          // TODO(beyyes) move scan order judgement into logical plan optimizer
-          resultTableScanNodeList.forEach(
-              node -> ((DeviceTableScanNode) node).setScanOrder(Ordering.DESC));
-        }
+        scanOrderDesc = !expectedOrderingScheme.getOrderings().get(symbol).isAscending();
         newOrderingSymbols.add(symbol);
         newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
         lastIsTimeRelated = true;
@@ -1828,9 +1981,22 @@ public class TableDistributedPlanGenerator
 
     // no sort property can be pushed down into DeviceTableScanNode
     if (newOrderingSymbols.isEmpty()) {
-      return;
+      return Optional.empty();
     }
 
+    return Optional.of(
+        new SortPropertyContext(
+            newOrderingSymbols,
+            newSortOrders,
+            createDeviceEntryComparator(deviceTableScanNode, newOrderingSymbols, newSortOrders),
+            lastIsTimeRelated,
+            scanOrderDesc));
+  }
+
+  private Comparator<DeviceEntry> createDeviceEntryComparator(
+      DeviceTableScanNode deviceTableScanNode,
+      List<Symbol> newOrderingSymbols,
+      List<SortOrder> newSortOrders) {
     Optional<IDeviceID.TreeDeviceIdColumnValueExtractor> extractor =
         createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
@@ -1905,21 +2071,48 @@ public class TableDistributedPlanGenerator
         comparator = comparator.thenComparing(thenComparator);
       }
     }
+    return comparator;
+  }
 
+  private void applySortProperty(
+      final DeviceTableScanNode deviceTableScanNode,
+      final List<PlanNode> resultTableScanNodeList,
+      final SortPropertyContext sortPropertyContext,
+      final boolean sortDeviceEntries) {
+    final Map<Symbol, ColumnSchema> tableColumnSchema;
+    if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
+      tableColumnSchema =
+          ((ExternalTsFileScanNode) deviceTableScanNode)
+              .getExternalTsFileQueryResource()
+              .getTableColumnSchema();
+    } else if (deviceTableScanNode instanceof ExternalTsFileAggregationScanNode) {
+      tableColumnSchema =
+          ((ExternalTsFileAggregationScanNode) deviceTableScanNode)
+              .getExternalTsFileQueryResource()
+              .getTableColumnSchema();
+    } else {
+      tableColumnSchema =
+          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+    }
     final Optional<OrderingScheme> newOrderingScheme =
         tableScanOrderingSchema(
-            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName()),
+            tableColumnSchema,
             deviceTableScanNode.getAssignments(),
-            newOrderingSymbols,
-            newSortOrders,
-            lastIsTimeRelated,
-            deviceTableScanNode.getDeviceEntries().size() == 1);
+            sortPropertyContext.orderingSymbols,
+            sortPropertyContext.sortOrders,
+            sortPropertyContext.lastIsTimeRelated,
+            resultTableScanNodeList.size() == 1
+                && ((DeviceTableScanNode) resultTableScanNodeList.get(0)).getDeviceEntries().size()
+                    == 1);
     for (final PlanNode planNode : resultTableScanNodeList) {
       final DeviceTableScanNode scanNode = (DeviceTableScanNode) planNode;
+      if (sortPropertyContext.scanOrderDesc) {
+        scanNode.setScanOrder(Ordering.DESC);
+      }
       newOrderingScheme.ifPresent(
           orderingScheme -> nodeOrderingMap.put(scanNode.getPlanNodeId(), orderingScheme));
-      if (comparator != null) {
-        scanNode.getDeviceEntries().sort(comparator);
+      if (sortDeviceEntries && sortPropertyContext.comparator != null) {
+        scanNode.getDeviceEntries().sort(sortPropertyContext.comparator);
       }
     }
   }
@@ -2176,7 +2369,9 @@ public class TableDistributedPlanGenerator
 
     // TODO: per partition topk eliminate
     checkArgument(
-        node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_SIZE_OF_TOPKRANKINGNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_20D6A513);
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
     if (!canSplitPushDown) {
       node.setChild(((SortNode) node.getChild()).getChild());
@@ -2237,6 +2432,27 @@ public class TableDistributedPlanGenerator
             newUnionChildren,
             newSymbolMapping.build(),
             node.getOutputSymbols()));
+  }
+
+  private static class SortPropertyContext {
+    final List<Symbol> orderingSymbols;
+    final List<SortOrder> sortOrders;
+    final Comparator<DeviceEntry> comparator;
+    final boolean lastIsTimeRelated;
+    final boolean scanOrderDesc;
+
+    private SortPropertyContext(
+        List<Symbol> orderingSymbols,
+        List<SortOrder> sortOrders,
+        Comparator<DeviceEntry> comparator,
+        boolean lastIsTimeRelated,
+        boolean scanOrderDesc) {
+      this.orderingSymbols = orderingSymbols;
+      this.sortOrders = sortOrders;
+      this.comparator = comparator;
+      this.lastIsTimeRelated = lastIsTimeRelated;
+      this.scanOrderDesc = scanOrderDesc;
+    }
   }
 
   public static class PlanContext {

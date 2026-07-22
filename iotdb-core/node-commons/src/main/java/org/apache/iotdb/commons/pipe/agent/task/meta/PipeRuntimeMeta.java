@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -128,6 +129,15 @@ public class PipeRuntimeMeta {
     }
   }
 
+  public void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    nodeId2PipeRuntimeExceptionMap
+        .entrySet()
+        .removeIf(entry -> entry.getValue().getTimeStamp() <= exceptionsClearTime);
+    consensusGroupId2TaskMetaMap
+        .values()
+        .forEach(pipeTaskMeta -> pipeTaskMeta.clearExceptionMessagesBefore(exceptionsClearTime));
+  }
+
   public boolean getIsStoppedByRuntimeException() {
     return isStoppedByRuntimeException.get();
   }
@@ -192,7 +202,8 @@ public class PipeRuntimeMeta {
         return deserializeVersion2(inputStream);
       default:
         throw new UnsupportedOperationException(
-            "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
+            PipeMessages.EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575
+                + pipeRuntimeMetaVersion.getVersion());
     }
   }
 
@@ -248,7 +259,8 @@ public class PipeRuntimeMeta {
         return deserializeVersion2(byteBuffer);
       default:
         throw new UnsupportedOperationException(
-            "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
+            PipeMessages.EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575
+                + pipeRuntimeMetaVersion.getVersion());
     }
   }
 

@@ -21,26 +21,18 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -57,7 +49,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,8 +70,6 @@ public class IoTDBLegacyPipeReceiverAgent {
   // Record the remote message for every rpc connection
   private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord =
       new ConcurrentHashMap<>();
-
-  private final Map<String, String> registeredDatabase = new ConcurrentHashMap<>();
 
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator = new AtomicLong();
@@ -124,12 +113,6 @@ public class IoTDBLegacyPipeReceiverAgent {
       new File(getFileDataDir(identityInfo)).mkdirs();
     }
     createConnection(identityInfo);
-    if (!StringUtils.isEmpty(identityInfo.getDatabase())
-        && !registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR,
-          String.format("Auto register database %s error.", identityInfo.getDatabase()));
-    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
@@ -144,54 +127,6 @@ public class IoTDBLegacyPipeReceiverAgent {
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
   }
 
-  private boolean registerDatabase(
-      final String database,
-      final IPartitionFetcher partitionFetcher,
-      final ISchemaFetcher schemaFetcher) {
-    if (registeredDatabase.containsKey(database)) {
-      return true;
-    }
-    try {
-      final DatabaseSchemaStatement statement =
-          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setDatabasePath(new PartialPath(database));
-      final long queryId = SessionManager.getInstance().requestQueryId();
-      final ExecutionResult result =
-          Coordinator.getInstance()
-              .executeForTreeModel(
-                  statement,
-                  queryId,
-                  new SessionInfo(
-                      0,
-                      new UserEntity(
-                          AuthorityChecker.SUPER_USER_ID,
-                          AuthorityChecker.SUPER_USER,
-                          IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-                      ZoneId.systemDefault()),
-                  "",
-                  partitionFetcher,
-                  schemaFetcher,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false,
-                  false);
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
-        LOGGER.error(
-            DataNodePipeMessages.CREATE_DATABASE_ERROR_STATEMENT_RESULT_STATUS,
-            statement,
-            result.status);
-        return false;
-      }
-    } catch (final IllegalPathException e) {
-      LOGGER.error(DataNodePipeMessages.PARSE_DATABASE_PARTIALPATH_ERROR, database, e);
-      return false;
-    }
-
-    registeredDatabase.put(database, "");
-    return true;
-  }
-
   /**
    * Receive {@link PipeData} and load it into IoTDB Engine.
    *
@@ -201,6 +136,11 @@ public class IoTDBLegacyPipeReceiverAgent {
    *     by {@link IoTDBLegacyPipeReceiverAgent#handshake}
    */
   public TSStatus transportPipeData(final ByteBuffer buff) throws TException {
+    return transportPipeData(buff, null);
+  }
+
+  public TSStatus transportPipeData(final ByteBuffer buff, final SessionInfo sessionInfo)
+      throws TException {
     // step1. check connection
     final SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
     if (identityInfo == null) {
@@ -236,7 +176,7 @@ public class IoTDBLegacyPipeReceiverAgent {
         pipeData.getPipeDataType(),
         pipeData);
     try {
-      pipeData.createLoader().load();
+      pipeData.createLoader().load(sessionInfo == null ? getCurrentSessionInfo() : sessionInfo);
       LOGGER.info(
           DataNodePipeMessages.LOAD_PIPEDATA_WITH_SERIALIZE_NUMBER_SUCCESSFULLY,
           pipeData.getSerialNumber());
@@ -261,6 +201,17 @@ public class IoTDBLegacyPipeReceiverAgent {
     } else {
       return null;
     }
+  }
+
+  private SessionInfo getCurrentSessionInfo() {
+    final SessionManager sessionManager = SessionManager.getInstance();
+    if (!sessionManager.checkLogin(sessionManager.getCurrSession())) {
+      throw new PipeException(
+          DataNodePipeMessages
+              .EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF);
+    }
+
+    return sessionManager.getSessionInfoOfTreeModel(sessionManager.getCurrSession());
   }
 
   /**
@@ -360,7 +311,7 @@ public class IoTDBLegacyPipeReceiverAgent {
     if (Objects.nonNull(illegalError)) {
       throw new IOException(
           String.format(PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL, fileName)
-              + ", "
+              + PipeMessages.EXCEPTION_COMMA_50AD1C01
               + illegalError);
     }
 
@@ -377,17 +328,10 @@ public class IoTDBLegacyPipeReceiverAgent {
     }
     // compare and check
     if (localIndex < 0 && startIndex != 0) {
-      LOGGER.error(
-          "The start index {} of data sync is not valid. "
-              + "The file is not exist and start index should equal to 0).",
-          startIndex);
+      LOGGER.error(DataNodePipeMessages.THE_START_INDEX_OF_DATA_SYNC_IS, startIndex);
       return new IndexCheckResult(false, "0");
     } else if (localIndex >= 0 && localIndex != startIndex) {
-      LOGGER.error(
-          "The start index {} of data sync is not valid. "
-              + "The start index of the file should equal to {}.",
-          startIndex,
-          localIndex);
+      LOGGER.error(DataNodePipeMessages.THE_START_INDEX_OF_DATA_SYNC_IS_1, startIndex, localIndex);
       return new IndexCheckResult(false, String.valueOf(localIndex));
     }
     return new IndexCheckResult(true, "0");
