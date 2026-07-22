@@ -103,6 +103,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         SCHEMA_CONSENSUS);
   }
 
+  @Override
   public void bindTableMetrics(final String tableName) {
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
@@ -139,6 +140,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
 
+  @Override
   public void unbindTableMetrics(final String tableName) {
     metricService.remove(
         MetricType.AUTO_GAUGE,

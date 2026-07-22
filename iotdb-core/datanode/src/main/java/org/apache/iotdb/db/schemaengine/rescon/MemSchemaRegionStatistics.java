@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
-import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import java.util.Map;
@@ -138,8 +137,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
           }
           final ISchemaRegionMetric metric =
               SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
-          if (metric instanceof SchemaRegionMemMetric) {
-            ((SchemaRegionMemMetric) metric).bindTableMetrics(table);
+          if (Objects.nonNull(metric)) {
+            metric.bindTableMetrics(table);
           }
           return 1L;
         });
@@ -157,8 +156,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     devicesNumber.addAndGet(-num);
     final ISchemaRegionMetric metric =
         SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
-    if (metric instanceof SchemaRegionMemMetric) {
-      ((SchemaRegionMemMetric) metric).unbindTableMetrics(table);
+    if (Objects.nonNull(metric)) {
+      metric.unbindTableMetrics(table);
     }
     schemaEngineStatistics.resetTableDevice(table);
   }

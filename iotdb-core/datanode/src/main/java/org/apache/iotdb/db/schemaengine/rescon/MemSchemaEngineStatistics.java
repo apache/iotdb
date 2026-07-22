@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaEngineMetric;
-import org.apache.iotdb.db.schemaengine.metric.SchemaEngineMemMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import org.slf4j.Logger;
@@ -210,8 +209,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
             return num + 1;
           }
           final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
-          if (metric instanceof SchemaEngineMemMetric) {
-            ((SchemaEngineMemMetric) metric).bindTableMetrics(table);
+          if (Objects.nonNull(metric)) {
+            metric.bindTableMetrics(table);
           }
           return 1L;
         });
@@ -229,8 +228,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     }
     totalDeviceNumber.addAndGet(-num);
     final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
-    if (metric instanceof SchemaEngineMemMetric) {
-      ((SchemaEngineMemMetric) metric).unbindTableMetrics(table);
+    if (Objects.nonNull(metric)) {
+      metric.unbindTableMetrics(table);
     }
   }
 

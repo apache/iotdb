@@ -135,9 +135,10 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
             database);
   }
 
+  @Override
   public void bindTableMetrics(final String tableName) {
     metricService.createAutoGauge(
-        Metric.SCHEMA_ENGINE.toString(),
+        Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
         statistics -> statistics.getTableDevicesNumber(tableName),
@@ -145,6 +146,8 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         TABLE_DEVICE_NUMBER,
         Tag.REGION.toString(),
         regionTagValue,
+        Tag.DATABASE.toString(),
+        database,
         SchemaEngineMemMetric.TABLE,
         tableName);
   }
@@ -217,14 +220,17 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         database);
   }
 
+  @Override
   public void unbindTableMetrics(final String tableName) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.SCHEMA_ENGINE.toString(),
+        Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
         TABLE_DEVICE_NUMBER,
         Tag.REGION.toString(),
         regionTagValue,
+        Tag.DATABASE.toString(),
+        database,
         SchemaEngineMemMetric.TABLE,
         tableName);
   }

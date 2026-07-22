@@ -497,10 +497,12 @@ public class SchemaEngine {
   }
 
   public ISchemaEngineMetric getSchemaEngineMetric() {
-    return schemaMetricManager.getEngineMetric();
+    return schemaMetricManager == null ? null : schemaMetricManager.getEngineMetric();
   }
 
   public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
-    return schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
+    return schemaMetricManager == null
+        ? null
+        : schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
   }
 }
