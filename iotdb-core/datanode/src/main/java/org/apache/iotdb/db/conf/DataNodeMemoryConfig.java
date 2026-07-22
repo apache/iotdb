@@ -36,6 +36,9 @@ public class DataNodeMemoryConfig {
   public static final String SCHEMA_CACHE = "SchemaCache";
   public static final String SCHEMA_REGION = "SchemaRegion";
   public static final String PARTITION_CACHE = "PartitionCache";
+  private static final String DATANODE_MEMORY_PROPORTION = "datanode_memory_proportion";
+  private static final String STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_PROPORTION =
+      "storage_query_schema_consensus_free_memory_proportion";
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
@@ -152,26 +155,27 @@ public class DataNodeMemoryConfig {
   /** The memory manager of direct Buffer */
   private MemoryManager directBufferMemoryManager;
 
+  public static long getDefaultAutoResizingBufferMemorySizeInBytes() {
+    return Runtime.getRuntime().maxMemory() / 20;
+  }
+
+  public static long calculateAutoResizingBufferMemorySizeInBytes(TrimProperties properties) {
+    return calculateAutoResizingBufferMemorySizeInBytes(
+        getMemoryAllocateProportion(properties, false));
+  }
+
   public void init(TrimProperties properties) {
     // on heap memory
-    String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
+    String memoryAllocateProportion = getMemoryAllocateProportion(properties, true);
     // Get global memory manager here
-    if (memoryAllocateProportion == null) {
-      memoryAllocateProportion =
-          properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
-      if (memoryAllocateProportion != null) {
-        LOGGER.warn(
-            DataNodeMiscMessages
-                .MISC_LOG_THE_PARAMETER_STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_51C9A377);
-      }
-    }
 
     long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
     long queryEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    autoResizingBufferMemorySize = Runtime.getRuntime().maxMemory() / 20;
+    autoResizingBufferMemorySize =
+        calculateAutoResizingBufferMemorySizeInBytes(memoryAllocateProportion);
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -193,11 +197,6 @@ public class DataNodeMemoryConfig {
         if (proportions.length >= 6) {
           pipeMemorySize =
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
-          autoResizingBufferMemorySize =
-              maxMemoryAvailable
-                  * Integer.parseInt(proportions[proportions.length - 1].trim())
-                  / proportionSum
-                  / 2;
         } else {
           pipeMemorySize =
               (maxMemoryAvailable
@@ -264,6 +263,42 @@ public class DataNodeMemoryConfig {
   public void activateAutoResizingBufferMemoryControl() {
     MemoryConfig.getInstance()
         .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
+  }
+
+  private static String getMemoryAllocateProportion(
+      TrimProperties properties, boolean warnDeprecatedProperty) {
+    String memoryAllocateProportion = properties.getProperty(DATANODE_MEMORY_PROPORTION, null);
+    if (memoryAllocateProportion == null) {
+      memoryAllocateProportion =
+          properties.getProperty(STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_PROPORTION);
+      if (memoryAllocateProportion != null && warnDeprecatedProperty) {
+        LOGGER.warn(
+            DataNodeMiscMessages
+                .MISC_LOG_THE_PARAMETER_STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_51C9A377);
+      }
+    }
+    return memoryAllocateProportion;
+  }
+
+  private static long calculateAutoResizingBufferMemorySizeInBytes(
+      String memoryAllocateProportion) {
+    long autoResizingBufferMemorySize = getDefaultAutoResizingBufferMemorySizeInBytes();
+    if (memoryAllocateProportion != null) {
+      String[] proportions = memoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+      if (proportionSum != 0 && proportions.length >= 6) {
+        autoResizingBufferMemorySize =
+            maxMemoryAvailable
+                * Integer.parseInt(proportions[proportions.length - 1].trim())
+                / proportionSum
+                / 2;
+      }
+    }
+    return autoResizingBufferMemorySize;
   }
 
   @SuppressWarnings("squid:S3518")

@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.conf.rest;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -47,6 +49,16 @@ import java.nio.charset.StandardCharsets;
 
 public class IoTDBRestServiceDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceDescriptor.class);
+
+  private static final String REST_QUERY_DEFAULT_ROW_SIZE_LIMIT =
+      "rest_query_default_row_size_limit";
+  private static final String REST_MAX_REQUEST_BODY_SIZE_IN_BYTES =
+      "rest_max_request_body_size_in_bytes";
+  private static final String REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES =
+      "rest_max_total_concurrent_request_body_size_in_bytes";
+  private static final String REST_MAX_INSERT_ROWS = "rest_max_insert_rows";
+  private static final String REST_MAX_INSERT_COLUMNS = "rest_max_insert_columns";
+  private static final String REST_MAX_INSERT_VALUES = "rest_max_insert_values";
 
   private final IoTDBRestServiceConfig conf = new IoTDBRestServiceConfig();
 
@@ -146,11 +158,7 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             trimProperties.getProperty(
                 "rest_service_port", Integer.toString(conf.getRestServicePort()))));
-    conf.setRestQueryDefaultRowSizeLimit(
-        Integer.parseInt(
-            trimProperties.getProperty(
-                "rest_query_default_row_size_limit",
-                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    loadRuntimeLimitProps(trimProperties);
     conf.setEnableSwagger(
         Boolean.parseBoolean(
             trimProperties.getProperty(
@@ -174,6 +182,71 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             trimProperties.getProperty(
                 "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+  }
+
+  public synchronized void loadHotModifiedProps(TrimProperties trimProperties) {
+    loadRuntimeLimitProps(trimProperties);
+  }
+
+  public synchronized void overwriteAppliedRuntimeLimitProperties() {
+    overlayRuntimeLimitProperties();
+  }
+
+  private void loadRuntimeLimitProps(TrimProperties trimProperties) {
+    conf.setRestQueryDefaultRowSizeLimit(
+        Integer.parseInt(
+            trimProperties.getProperty(
+                REST_QUERY_DEFAULT_ROW_SIZE_LIMIT,
+                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    conf.setRestMaxRequestBodySizeInBytes(
+        Long.parseLong(
+            trimProperties.getProperty(
+                REST_MAX_REQUEST_BODY_SIZE_IN_BYTES,
+                Long.toString(conf.getRestMaxRequestBodySizeInBytes()))));
+    conf.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+        parseMaxTotalConcurrentRequestBodySizeInBytes(trimProperties));
+    conf.setRestMaxInsertRows(
+        Integer.parseInt(
+            trimProperties.getProperty(
+                REST_MAX_INSERT_ROWS, Integer.toString(conf.getRestMaxInsertRows()))));
+    conf.setRestMaxInsertColumns(
+        Integer.parseInt(
+            trimProperties.getProperty(
+                REST_MAX_INSERT_COLUMNS, Integer.toString(conf.getRestMaxInsertColumns()))));
+    conf.setRestMaxInsertValues(
+        Long.parseLong(
+            trimProperties.getProperty(
+                REST_MAX_INSERT_VALUES, Long.toString(conf.getRestMaxInsertValues()))));
+    overlayRuntimeLimitProperties();
+  }
+
+  private long parseMaxTotalConcurrentRequestBodySizeInBytes(TrimProperties trimProperties) {
+    long maxTotalConcurrentRequestBodySizeInBytes =
+        Long.parseLong(
+            trimProperties.getProperty(
+                REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES,
+                Long.toString(conf.getRestMaxTotalConcurrentRequestBodySizeInBytes())));
+    return maxTotalConcurrentRequestBodySizeInBytes == 0
+        ? DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(trimProperties)
+        : maxTotalConcurrentRequestBodySizeInBytes;
+  }
+
+  private void overlayRuntimeLimitProperties() {
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_QUERY_DEFAULT_ROW_SIZE_LIMIT,
+        Integer.toString(conf.getRestQueryDefaultRowSizeLimit()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_MAX_REQUEST_BODY_SIZE_IN_BYTES,
+        Long.toString(conf.getRestMaxRequestBodySizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES,
+        Long.toString(conf.getRestMaxTotalConcurrentRequestBodySizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_MAX_INSERT_ROWS, Integer.toString(conf.getRestMaxInsertRows()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_MAX_INSERT_COLUMNS, Integer.toString(conf.getRestMaxInsertColumns()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        REST_MAX_INSERT_VALUES, Long.toString(conf.getRestMaxInsertValues()));
   }
 
   /**
