@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -60,7 +61,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -1010,6 +1011,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 
+  @Override
+  public long getLastCacheTimestamp() {
+    return time;
+  }
+
+  @Override
+  public boolean hasLastCacheValue(final int index) {
+    return canComposeTimeValuePair(index);
+  }
+
+  @Override
+  public TimeValuePair getLastCacheValue(final int index) {
+    return composeTimeValuePair(index);
+  }
+
   private boolean canComposeTimeValuePair(final int columnIndex) {
     return measurements != null
         && columnIndex >= 0
@@ -1026,18 +1042,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(String databaseName) {
-    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            getDeviceID(),
-            measurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, getDeviceID(), measurements, this, isAligned, measurementSchemas);
   }
 
   @Override

@@ -62,21 +62,21 @@ public class TierManager {
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
-  private final List<FolderManager> seqTiers = new ArrayList<>();
+  private volatile List<FolderManager> seqTiers = new ArrayList<>();
 
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
-  private final List<FolderManager> unSeqTiers = new ArrayList<>();
+  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
 
-  private final List<FolderManager> objectTiers = new ArrayList<>();
+  private volatile List<FolderManager> objectTiers = new ArrayList<>();
 
   /** seq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> seqDir2TierLevel = new HashMap<>();
 
   /** unSeq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
   private List<String> objectDirs;
 
@@ -95,6 +95,15 @@ public class TierManager {
   }
 
   public synchronized void initFolders() {
+    initFolders(seqTiers, unSeqTiers, objectTiers, seqDir2TierLevel, unSeqDir2TierLevel);
+  }
+
+  private void initFolders(
+      List<FolderManager> seqTiers,
+      List<FolderManager> unSeqTiers,
+      List<FolderManager> objectTiers,
+      Map<String, Integer> seqDir2TierLevel,
+      Map<String, Integer> unSeqDir2TierLevel) {
     directoryStrategyType =
         DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
@@ -204,13 +213,19 @@ public class TierManager {
 
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    seqTiers.clear();
-    unSeqTiers.clear();
-    objectTiers.clear();
-    seqDir2TierLevel.clear();
-    unSeqDir2TierLevel.clear();
+    List<FolderManager> newSeqTiers = new ArrayList<>();
+    List<FolderManager> newUnSeqTiers = new ArrayList<>();
+    List<FolderManager> newObjectTiers = new ArrayList<>();
+    Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
+    Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
 
-    initFolders();
+    initFolders(
+        newSeqTiers, newUnSeqTiers, newObjectTiers, newSeqDir2TierLevel, newUnSeqDir2TierLevel);
+    seqTiers = newSeqTiers;
+    unSeqTiers = newUnSeqTiers;
+    objectTiers = newObjectTiers;
+    seqDir2TierLevel = newSeqDir2TierLevel;
+    unSeqDir2TierLevel = newUnSeqDir2TierLevel;
     long endTime = System.currentTimeMillis();
     logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }

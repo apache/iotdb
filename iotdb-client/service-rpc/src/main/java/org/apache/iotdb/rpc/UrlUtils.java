@@ -21,10 +21,14 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /** The UrlUtils */
 public class UrlUtils {
   private static final String PORT_SEPARATOR = ":";
-  private static final String ABB_COLON = "[";
+  private static final String IPV6_BEGIN_MARK = "[";
+  private static final String IPV6_END_MARK = "]";
 
   private UrlUtils() {}
 
@@ -32,22 +36,79 @@ public class UrlUtils {
    * Parse TEndPoint from a given TEndPointUrl
    * example:[D80:0000:0000:0000:ABAA:0000:00C2:0002]:22227
    *
-   * @param endPointUrl ip:port
-   * @return TEndPoint null if parse error
+   * @param endPointUrl host:port or [ipv6]:port
+   * @return parsed TEndPoint
+   * @throws NumberFormatException if the bracketed endpoint format is invalid or the port is not a
+   *     number
    */
   public static TEndPoint parseTEndPointIpv4AndIpv6Url(String endPointUrl) {
     TEndPoint endPoint = new TEndPoint();
-    if (endPointUrl.contains(PORT_SEPARATOR)) {
-      int point_position = endPointUrl.lastIndexOf(PORT_SEPARATOR);
-      String port = endPointUrl.substring(endPointUrl.lastIndexOf(PORT_SEPARATOR) + 1);
-      String ip = endPointUrl.substring(0, point_position);
-      // If the ip/host part is provided as IPv6 address, cut off the surrounding square brackets.
-      if (ip.contains(ABB_COLON)) {
-        ip = ip.substring(1, ip.length() - 1);
+    if (endPointUrl.startsWith(IPV6_BEGIN_MARK)) {
+      int endIndex = endPointUrl.indexOf(IPV6_END_MARK);
+      if (endIndex <= 1
+          || endIndex + 1 >= endPointUrl.length()
+          || !PORT_SEPARATOR.equals(endPointUrl.substring(endIndex + 1, endIndex + 2))) {
+        throw new NumberFormatException();
       }
-      endPoint.setIp(ip);
-      endPoint.setPort(Integer.parseInt(port));
+      endPoint.setIp(endPointUrl.substring(1, endIndex));
+      endPoint.setPort(Integer.parseInt(endPointUrl.substring(endIndex + 2)));
+      return endPoint;
     }
+    if (endPointUrl.contains(IPV6_BEGIN_MARK) || endPointUrl.contains(IPV6_END_MARK)) {
+      throw new NumberFormatException();
+    }
+    int separatorIndex = endPointUrl.lastIndexOf(PORT_SEPARATOR);
+    if (separatorIndex <= 0 || separatorIndex == endPointUrl.length() - 1) {
+      throw new NumberFormatException();
+    }
+    endPoint.setIp(endPointUrl.substring(0, separatorIndex));
+    endPoint.setPort(Integer.parseInt(endPointUrl.substring(separatorIndex + 1)));
     return endPoint;
+  }
+
+  /**
+   * Convert TEndPoint to a URL string. IPv6 literals are surrounded by square brackets so the last
+   * colon remains an unambiguous port separator.
+   */
+  public static String convertTEndPointIpv4AndIpv6Url(TEndPoint endPoint) {
+    return formatTEndPointIpv4AndIpv6Url(endPoint.getIp(), endPoint.getPort());
+  }
+
+  /** Format host and port as host:port or [ipv6]:port. This method expects host without a port. */
+  public static String formatTEndPointIpv4AndIpv6Url(String host, int port) {
+    String formattedHost = host;
+    if (isIpv6Literal(host) && !isBracketedIpv6Literal(host)) {
+      formattedHost = IPV6_BEGIN_MARK + host + IPV6_END_MARK;
+    }
+    return formattedHost + PORT_SEPARATOR + port;
+  }
+
+  public static boolean isWildcardAddress(String host) {
+    if (host == null) {
+      return false;
+    }
+    String normalizedHost = host;
+    if (isBracketedIpv6Literal(host)) {
+      normalizedHost = host.substring(1, host.length() - 1);
+    }
+    if ("0.0.0.0".equals(normalizedHost)) {
+      return true;
+    }
+    if (!isIpv6Literal(normalizedHost)) {
+      return false;
+    }
+    try {
+      return InetAddress.getByName(normalizedHost).isAnyLocalAddress();
+    } catch (UnknownHostException e) {
+      return false;
+    }
+  }
+
+  private static boolean isIpv6Literal(String host) {
+    return host.contains(PORT_SEPARATOR);
+  }
+
+  private static boolean isBracketedIpv6Literal(String host) {
+    return host.startsWith(IPV6_BEGIN_MARK) && host.endsWith(IPV6_END_MARK);
   }
 }

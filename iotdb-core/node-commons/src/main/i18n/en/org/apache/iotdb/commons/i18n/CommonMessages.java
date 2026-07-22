@@ -69,6 +69,10 @@ public final class CommonMessages {
   // --- subscription ---
   public static final String CONFIG_PRINT = "{}: {}";
 
+  // --- log ---
+  public static final String LOG_LOGGERPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_C8373CF5 =
+      "LoggerPeriodicalLogReducer is allocated to {} bytes.";
+
   // --- partition ---
   public static final String DATABASE_NOT_EXISTS_AND_AUTO_CREATE_DISABLED =
       "Database %s not exists and failed to create automatically because enable_auto_create_schema is FALSE.";

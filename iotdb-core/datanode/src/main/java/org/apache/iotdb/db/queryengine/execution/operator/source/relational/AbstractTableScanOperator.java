@@ -82,7 +82,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private TsBlock measurementDataBlock;
 
-  private QueryDataSource queryDataSource;
+  protected QueryDataSource queryDataSource;
 
   protected int currentDeviceIndex;
 
@@ -217,8 +217,16 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public boolean isFinished() throws Exception {
-    return (retainedTsBlock == null)
-        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
+    if (retainedTsBlock != null) {
+      return false;
+    }
+    if (seriesScanOptions.limitConsumedUp()) {
+      return true;
+    }
+    if (currentDeviceIndex >= deviceCount) {
+      return true;
+    }
+    return shouldStopScanByRuntimeFilter();
   }
 
   @Override
@@ -251,6 +259,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   protected void moveToNextDevice() {
+    if (shouldStopScanByRuntimeFilter()) {
+      currentDeviceIndex = deviceCount;
+      return;
+    }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
@@ -262,6 +274,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       this.operatorContext.recordSpecifiedInfo(
           CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
+  }
+
+  /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
+  protected boolean shouldStopScanByRuntimeFilter() {
+    return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
   }
 
   protected void constructAlignedSeriesScanUtil() {

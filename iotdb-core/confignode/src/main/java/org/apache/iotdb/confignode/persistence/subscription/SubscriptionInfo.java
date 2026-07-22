@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
@@ -66,7 +67,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -74,8 +77,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -88,6 +89,44 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY =
       "data_region_consensus_protocol_class";
+  private static final Set<String> CASE_INSENSITIVE_TOPIC_ATTRIBUTE_KEYS =
+      Set.of(
+          SystemConstant.SQL_DIALECT_KEY,
+          TopicConstant.PATH_KEY,
+          TopicConstant.PATTERN_KEY,
+          TopicConstant.DATABASE_KEY,
+          TopicConstant.TABLE_KEY,
+          TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.RETENTION_BYTES_KEY,
+          TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.START_TIME_KEY,
+          TopicConstant.END_TIME_KEY,
+          TopicConstant.MODE_KEY,
+          TopicConstant.ORDER_MODE_KEY,
+          TopicConstant.FORMAT_KEY,
+          TopicConstant.LOOSE_RANGE_KEY,
+          TopicConstant.STRICT_KEY,
+          TopicConstant.OWNER_ID_KEY,
+          TopicConstant.OWNER_EPOCH_KEY,
+          TopicConstant.MAX_OWNER_EPOCH_KEY,
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+  private static final Set<String> CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS =
+      Set.of(
+          SystemConstant.SQL_DIALECT_KEY,
+          TopicConstant.PATH_KEY,
+          TopicConstant.PATTERN_KEY,
+          TopicConstant.DATABASE_KEY,
+          TopicConstant.TABLE_KEY,
+          TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.RETENTION_BYTES_KEY,
+          TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.MODE_KEY,
+          TopicConstant.ORDER_MODE_KEY,
+          TopicConstant.FORMAT_KEY,
+          TopicConstant.OWNER_ID_KEY,
+          TopicConstant.OWNER_EPOCH_KEY,
+          TopicConstant.MAX_OWNER_EPOCH_KEY,
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
 
   private final TopicMetaKeeper topicMetaKeeper;
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
@@ -291,6 +330,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
+    validateDuplicateTopicAttributes(topicConfig);
+
     final String mode = topicConfig.getMode();
     if (!TopicConfig.isValidMode(mode)) {
       final String exceptionMessage =
@@ -305,6 +346,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throw new SubscriptionException(exceptionMessage);
     }
 
+    validateConsensusTopicAttributes(topicConfig);
     validateConsensusProtocolSupport(topicConfig);
 
     if (topicConfig.isConsensusMode() && !topicConfig.isRecordFormat()) {
@@ -333,7 +375,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throw new SubscriptionException(exceptionMessage);
     }
 
-    validateConsensusTableColumnPattern(topicConfig);
+    validateColumnFilter(topicConfig);
     validateConsensusTopicRetentionConfig(topicConfig);
 
     final Long ownerLeaseDurationMs =
@@ -349,6 +391,35 @@ public class SubscriptionInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
+  }
+
+  private void validateConsensusTopicAttributes(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!topicConfig.isConsensusMode()) {
+      return;
+    }
+
+    final List<String> unsupportedAttributes =
+        topicConfig.getAttribute().keySet().stream()
+            .filter(
+                key ->
+                    Objects.isNull(key)
+                        || !CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS.contains(
+                            key.trim().toLowerCase(Locale.ROOT)))
+            .map(String::valueOf)
+            .sorted()
+            .collect(Collectors.toList());
+    if (unsupportedAttributes.isEmpty()) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA,
+            unsupportedAttributes);
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   private void validateConsensusProtocolSupport(final TopicConfig topicConfig)
@@ -374,9 +445,30 @@ public class SubscriptionInfo implements SnapshotProcessor {
     throw new SubscriptionException(exceptionMessage);
   }
 
-  private void validateConsensusTableColumnPattern(final TopicConfig topicConfig)
+  private void validateDuplicateTopicAttributes(final TopicConfig topicConfig)
       throws SubscriptionException {
-    if (!topicConfig.hasAttribute(TopicConstant.COLUMN_KEY)) {
+    final Set<String> seenKeys = new HashSet<>();
+    for (final String key : topicConfig.getAttribute().keySet()) {
+      if (Objects.isNull(key)) {
+        continue;
+      }
+      final String normalizedKey = key.trim().toLowerCase(Locale.ROOT);
+      if (!CASE_INSENSITIVE_TOPIC_ATTRIBUTE_KEYS.contains(normalizedKey)) {
+        continue;
+      }
+      if (!seenKeys.add(normalizedKey)) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to create or alter topic, duplicate %s attributes are not allowed",
+                normalizedKey);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    }
+  }
+
+  private void validateColumnFilter(final TopicConfig topicConfig) throws SubscriptionException {
+    if (!topicConfig.hasColumnFilter()) {
       return;
     }
 
@@ -384,31 +476,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               "Failed to create or alter topic, %s is only supported for table topics",
-              TopicConstant.COLUMN_KEY);
+              TopicConstant.COLUMN_FILTER_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
-    if (!isConsensusBasedTopicConfig(topicConfig)) {
+    if (topicConfig.getColumnFilter().trim().isEmpty()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s is only supported for consensus table topics",
-              TopicConstant.COLUMN_KEY);
+              "Failed to create or alter topic, %s should not be empty",
+              TopicConstant.COLUMN_FILTER_KEY);
       LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
-
-    final String columnPattern =
-        topicConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    try {
-      Pattern.compile(columnPattern);
-    } catch (final PatternSyntaxException e) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to create or alter topic, illegal %s=%s, detail: %s",
-              TopicConstant.COLUMN_KEY, columnPattern, e.getMessage());
-      LOGGER.warn(exceptionMessage, e);
       throw new SubscriptionException(exceptionMessage);
     }
   }
@@ -477,21 +555,6 @@ public class SubscriptionInfo implements SnapshotProcessor {
           String.format(
               "Failed to alter topic %s, changing %s is not supported because existing subscription runtimes do not hot-refresh source mode",
               topicName, TopicConstant.MODE_KEY);
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
-
-    final String existedColumnPattern =
-        existedConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    final String updatedColumnPattern =
-        updatedConfig.getStringOrDefault(
-            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
-    if (!Objects.equals(existedColumnPattern, updatedColumnPattern)) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter topic %s, changing %s is not supported because existing consensus queues do not hot-refresh converter state",
-              topicName, TopicConstant.COLUMN_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -848,9 +911,19 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
-      ConsumerGroupMeta consumerGroupMeta = plan.getConsumerGroupMeta();
+      final ConsumerGroupMeta consumerGroupMeta = plan.getConsumerGroupMeta();
       if (Objects.nonNull(consumerGroupMeta)) {
-        String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
+        final String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
+        final ConsumerGroupMeta currentConsumerGroupMeta =
+            consumerGroupMetaKeeper.containsConsumerGroupMeta(consumerGroupId)
+                ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId)
+                : null;
+        if (Objects.nonNull(currentConsumerGroupMeta)) {
+          ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
+              .forEach(
+                  topicName ->
+                      commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName));
+        }
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
         if (!consumerGroupMeta.isEmpty()) {
           consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);

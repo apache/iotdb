@@ -80,6 +80,9 @@ public class DataNodeMemoryConfig {
   /** The memory manager of on heap */
   private MemoryManager onHeapMemoryManager;
 
+  /** Memory budget for RPC auto-resizing buffers */
+  private long autoResizingBufferMemorySize;
+
   /** Memory manager for the write process */
   private MemoryManager storageEngineMemoryManager;
 
@@ -171,7 +174,7 @@ public class DataNodeMemoryConfig {
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    long autoResizingBufferMemorySize =
+    autoResizingBufferMemorySize =
         calculateAutoResizingBufferMemorySizeInBytes(memoryAllocateProportion);
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
@@ -216,8 +219,6 @@ public class DataNodeMemoryConfig {
     consensusMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     pipeMemoryManager = onHeapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
-    MemoryConfig.getInstance()
-        .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
     LOGGER.info(
         DataNodeMiscMessages.MISC_LOG_INITIAL_ALLOCATEMEMORYFORWRITE_B90EC7D9,
         storageEngineMemoryManager.getTotalMemorySizeInBytes());
@@ -257,6 +258,11 @@ public class DataNodeMemoryConfig {
     directBufferMemoryManager =
         offHeapMemoryManager.getOrCreateMemoryManager(
             "DirectBuffer", totalDirectBufferMemorySizeLimit);
+  }
+
+  public void activateAutoResizingBufferMemoryControl() {
+    MemoryConfig.getInstance()
+        .setAutoResizingBufferMemoryControl(onHeapMemoryManager, autoResizingBufferMemorySize);
   }
 
   private static String getMemoryAllocateProportion(

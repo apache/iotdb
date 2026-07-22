@@ -20,12 +20,25 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DataNodeMemoryConfigTest {
+
+  @Test
+  public void testRpcMemoryControlIsActivatedOnlyExplicitly() {
+    DataNodeMemoryConfig memoryConfig = IoTDBDescriptor.getInstance().getMemoryConfig();
+
+    assertEquals(0, MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes());
+
+    memoryConfig.activateAutoResizingBufferMemoryControl();
+
+    assertTrue(MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes() > 0);
+  }
 
   @Test
   public void testDefaultAutoResizingBufferMemorySize() {

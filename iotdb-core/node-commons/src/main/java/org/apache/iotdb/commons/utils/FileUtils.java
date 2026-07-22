@@ -48,11 +48,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+import java.util.function.LongConsumer;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int BUFFER_SIZE = 1024;
+  private static final long FILE_REMOVE_COST_IN_BYTES = 64 * 1024L;
+  private static final long DIRECTORY_REMOVE_COST_IN_BYTES = 4 * 1024L;
 
   private FileUtils() {}
 
@@ -111,15 +114,31 @@ public class FileUtils {
   }
 
   public static void deleteFileOrDirectory(File file, boolean quietForNoSuchFile) {
+    deleteFileOrDirectory(file, quietForNoSuchFile, null);
+  }
+
+  public static void deleteFileOrDirectoryWithRateLimiter(
+      File file, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(file, false, deleteRateLimiter);
+  }
+
+  public static void deleteFileOrDirectoryWithRateLimiter(
+      File file, boolean quietForNoSuchFile, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(file, quietForNoSuchFile, deleteRateLimiter);
+  }
+
+  private static void deleteFileOrDirectory(
+      File file, boolean quietForNoSuchFile, LongConsumer deleteRateLimiter) {
     if (file.isDirectory()) {
       File[] files = file.listFiles();
       if (files != null) {
         for (File subfile : files) {
-          deleteFileOrDirectory(subfile, quietForNoSuchFile);
+          deleteFileOrDirectory(subfile, quietForNoSuchFile, deleteRateLimiter);
         }
       }
     }
     try {
+      acquireRemovePermit(file, deleteRateLimiter);
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
       if (!quietForNoSuchFile) {
@@ -161,13 +180,36 @@ public class FileUtils {
   }
 
   public static void deleteDirectoryAndEmptyParent(File folder) {
-    deleteFileOrDirectory(folder);
+    deleteDirectoryAndEmptyParent(folder, null);
+  }
+
+  public static void deleteDirectoryAndEmptyParentWithRateLimiter(
+      File folder, LongConsumer deleteRateLimiter) {
+    deleteDirectoryAndEmptyParent(folder, deleteRateLimiter);
+  }
+
+  private static void deleteDirectoryAndEmptyParent(File folder, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(folder, false, deleteRateLimiter);
     final File parentFolder = folder.getParentFile();
+    if (parentFolder == null) {
+      return;
+    }
     File[] files = parentFolder.listFiles();
     if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
+      acquireRemovePermit(parentFolder, deleteRateLimiter);
       if (!parentFolder.delete()) {
         LOGGER.warn(UtilMessages.DELETE_FOLDER_FAILED, parentFolder.getAbsolutePath());
       }
+    }
+  }
+
+  public static long estimateFileOrDirectoryRemoveCost(File file) {
+    return file.isDirectory() ? DIRECTORY_REMOVE_COST_IN_BYTES : FILE_REMOVE_COST_IN_BYTES;
+  }
+
+  private static void acquireRemovePermit(File file, LongConsumer deleteRateLimiter) {
+    if (deleteRateLimiter != null && file.exists()) {
+      deleteRateLimiter.accept(estimateFileOrDirectoryRemoveCost(file));
     }
   }
 

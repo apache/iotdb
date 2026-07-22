@@ -143,7 +143,8 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           .getNodeLocationMap()
           .forEach(
               (requestId, nodeLocation) ->
-                  sendAsyncRequest(requestContext, requestId, nodeLocation, finalRetry));
+                  sendAsyncRequest(
+                      requestContext, requestId, nodeLocation, finalRetry, timeoutInMs));
 
       // Wait for this batch of asynchronous RPC requests finish
       try {
@@ -151,7 +152,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           requestContext.getCountDownLatch().await();
         } else {
           if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
-            LOGGER.warn(ClientMessages.ASYNC_REQUEST_TIMEOUT, requestType, retry, retryNum);
+            LOGGER.error(ClientMessages.ASYNC_REQUEST_TIMEOUT, requestType, retry, retryNum);
           }
         }
       } catch (final InterruptedException e) {
@@ -178,7 +179,8 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       int requestId,
       NodeLocation targetNode,
-      int retryCount) {
+      int retryCount,
+      Long timeoutInMs) {
     final TEndPoint endPoint = nodeLocationToEndPoint(targetNode);
     Client client = null;
     boolean dispatched = false;
@@ -193,7 +195,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       }
       handler = buildHandler(requestContext, requestId, targetNode);
       client = clientManager.borrowClient(endPoint);
-      adjustClientTimeoutIfNecessary(requestContext.getRequestType(), client);
+      adjustClientTimeoutIfNecessary(requestContext.getRequestType(), client, timeoutInMs);
       Object req = requestContext.getRequest(requestId);
       Objects.requireNonNull(actionMap.get(requestContext.getRequestType()))
           .accept(req, client, handler);
@@ -231,7 +233,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     }
   }
 
-  protected void adjustClientTimeoutIfNecessary(RequestType type, Client client) {
+  protected void adjustClientTimeoutIfNecessary(RequestType type, Client client, Long timeoutInMs) {
     // In default, no need to do this
   }
 

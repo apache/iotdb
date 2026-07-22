@@ -106,6 +106,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
   private String tsFileDedupScopeID;
+  // False when generated tablet events should wait for an external progress report.
+  private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
@@ -466,6 +468,23 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return resource.getMaxProgressIndex();
   }
 
+  public PipeTsFileInsertionEvent skipReportOnCommitAndGeneratedEvents() {
+    return setShouldReportGeneratedEventsOnCommit(false);
+  }
+
+  public boolean shouldReportGeneratedEventsOnCommit() {
+    return shouldReportGeneratedEventsOnCommit;
+  }
+
+  private PipeTsFileInsertionEvent setShouldReportGeneratedEventsOnCommit(
+      final boolean shouldReportGeneratedEventsOnCommit) {
+    this.shouldReportGeneratedEventsOnCommit = shouldReportGeneratedEventsOnCommit;
+    if (!shouldReportGeneratedEventsOnCommit) {
+      skipReportOnCommit();
+    }
+    return this;
+  }
+
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)
         && Objects.nonNull(resource)
@@ -521,7 +540,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             startTime,
             endTime,
             isTsFileSealed)
-        .bindTsFileDedupScopeID(tsFileDedupScopeID);
+        .bindTsFileDedupScopeID(tsFileDedupScopeID)
+        .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
   }
 
   @Override
@@ -835,9 +855,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String errorMsg =
           e instanceof InterruptedException
               ? String.format(
-                  "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
+                  DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_CLOSING_TSFILE,
+                  resource.getTsFilePath())
               : String.format(
-                  "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
+                  DataNodePipeMessages.PARSE_TSFILE_ERROR_BECAUSE,
+                  resource.getTsFilePath(),
+                  e.getMessage());
       if (e instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(LOGGER::warn, errorMsg);
       } else {

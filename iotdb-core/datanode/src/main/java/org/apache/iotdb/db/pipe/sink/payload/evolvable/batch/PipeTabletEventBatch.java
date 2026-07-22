@@ -94,6 +94,12 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
         try {
           if (constructBatch(event)) {
             events.add((EnrichedEvent) event);
+            if (firstEventProcessingTime == Long.MIN_VALUE) {
+              firstEventProcessingTime = System.currentTimeMillis();
+            }
+          } else {
+            ((EnrichedEvent) event)
+                .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), true);
           }
         } catch (final Exception e) {
           if (events.isEmpty()) {
@@ -105,10 +111,6 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
               .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
           // Will cause a retry
           throw e;
-        }
-
-        if (firstEventProcessingTime == Long.MIN_VALUE) {
-          firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
         LOGGER.warn(DataNodePipeMessages.CANNOT_INCREASE_REFERENCE_COUNT_FOR_EVENT_IGNORE, event);
@@ -122,8 +124,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * Added an {@link TabletInsertionEvent} into batch.
    *
    * @param event the {@link TabletInsertionEvent} in batch
-   * @return {@code true} if the event is calculated into batch, {@code false} if the event is
-   *     cached and not emitted in this batch. If there are failure encountered, just throw
+   * @return {@code true} if the event is retained by this batch, {@code false} if the event is
+   *     consumed but produces no batched payload. If there are failure encountered, just throw
    *     exceptions and do not return {@code false} here.
    */
   protected abstract boolean constructBatch(final TabletInsertionEvent event)

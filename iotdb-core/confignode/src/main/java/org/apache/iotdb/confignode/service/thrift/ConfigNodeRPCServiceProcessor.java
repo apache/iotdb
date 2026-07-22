@@ -46,6 +46,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -127,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -333,6 +335,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
     LOGGER.info(ConfigNodeMessages.EXECUTE_RESTARTDATANODEREQUEST_WITH_RESULT, req, resp);
 
+    return resp;
+  }
+
+  @Override
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
+    final TDataNodeLeaseRecoveryResp resp = configManager.reloadCacheAfterLeaseRecovery();
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GET_METADATA_WITH_RESULT, resp.getStatus());
     return resp;
   }
 
@@ -1501,8 +1510,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
-    return configManager.fetchTables(fetchTableMap);
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final byte tableNodeStatus) {
+    return configManager.fetchTables(fetchTableMap, TableNodeStatus.deserialize(tableNodeStatus));
   }
 
   @Override

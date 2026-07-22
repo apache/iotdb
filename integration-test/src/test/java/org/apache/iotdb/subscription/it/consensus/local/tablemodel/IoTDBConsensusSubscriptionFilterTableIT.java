@@ -154,9 +154,8 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
     final String table = "t1";
     final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
     final String expectedColumnSignature =
-        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("time", "tag1", "s2");
-    final Set<String> expectedSeenColumns =
-        new LinkedHashSet<>(Arrays.asList("time", "tag1", "s2"));
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
+    final Set<String> expectedSeenColumns = new LinkedHashSet<>(Arrays.asList("tag1", "s2"));
     final Set<String> expectedRowKeys = new LinkedHashSet<>();
     SubscriptionTablePullConsumer consumer = null;
 
@@ -172,7 +171,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
       }
 
       ConsensusSubscriptionTableITSupport.createConsensusTopic(
-          ids.getTopic(), database, table, "(tag1|s2)");
+          ids.getTopic(), database, table, "column_name REGEXP \"(tag1|s2)\"");
 
       consumer =
           ConsensusSubscriptionTableITSupport.createConsumer(
@@ -222,6 +221,8 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
     final String database = ids.getDatabase();
     final String table = "t1";
     final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
     SubscriptionTablePullConsumer consumer = null;
 
     try {
@@ -234,7 +235,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
       }
 
       ConsensusSubscriptionTableITSupport.createConsensusTopic(
-          ids.getTopic(), database, table, "not_exist");
+          ids.getTopic(), database, table, "column_name = \"not_exist\"");
 
       consumer =
           ConsensusSubscriptionTableITSupport.createConsumer(
@@ -264,9 +265,186 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
       Assert.assertTrue(consumed.getRowKeys().isEmpty());
       Assert.assertTrue(consumed.getSeenColumns().isEmpty());
       Assert.assertTrue(consumed.getSeenColumnSignatures().isEmpty());
+
+      ConsensusSubscriptionTableITSupport.alterConsensusTopicColumnFilter(
+          ids.getTopic(), "column_name = \"s2\"");
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumedAfterEmptyWindow =
+          ConsensusSubscriptionTableITSupport.insertRowsAndPollUntilColumnSignature(
+              consumer, database, table, 300L, 3, true, false, expectedColumnSignature, 50);
+
+      Assert.assertTrue(
+          consumedAfterEmptyWindow.getSeenColumnSignatures().contains(expectedColumnSignature));
+      Assert.assertTrue(consumedAfterEmptyWindow.getSeenColumns().contains("s2"));
+      Assert.assertFalse(consumedAfterEmptyWindow.getSeenColumns().contains("s1"));
       ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
     } finally {
       ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
+  public void testColumnFilteringComplexOperatorsInConsensusQueue() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_complex_operators");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
+    final String columnFilter =
+        "datatype IS NOT NULL"
+            + " AND column_name != \"s1\""
+            + " AND column_name NOT IN (\"s1\", \"s3\")"
+            + " AND column_name NOT LIKE \"unknown%\""
+            + " AND column_name NOT REGEXP \"unknown.*\""
+            + " AND (column_name LIKE \"s%\" OR column_name = \"tag1\")";
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      ConsensusSubscriptionTableITSupport.insertRows(database, table, 0L, 1, true, true, true);
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, columnFilter);
+
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+
+      final Set<String> expectedRows =
+          ConsensusSubscriptionTableITSupport.insertRows(
+              database, table, 250L, 5, true, true, true);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumed =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer, expectedRows.size(), 50);
+
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(expectedRows, consumed);
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature), consumed.getSeenColumnSignatures());
+      Assert.assertFalse(consumed.getSeenColumns().contains("s1"));
+      Assert.assertFalse(consumed.getSeenColumns().contains("s3"));
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
+  public void testColumnFilteringAlterRebindsConsensusQueue() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_alter_rebind");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
+    final String tagAndS1Signature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s1");
+    final String tagAndS2Signature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      ConsensusSubscriptionTableITSupport.insertRows(database, table, 0L, 1, true, true, true);
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, "column_name = \"s1\"");
+
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+
+      final Set<String> beforeAlterRows =
+          ConsensusSubscriptionTableITSupport.insertRows(
+              database, table, 100L, 5, true, true, true);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords beforeAlterConsumed =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer, beforeAlterRows.size(), 50);
+
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(beforeAlterRows, beforeAlterConsumed);
+      Assert.assertEquals(
+          Collections.singleton(tagAndS1Signature), beforeAlterConsumed.getSeenColumnSignatures());
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+
+      ConsensusSubscriptionTableITSupport.alterConsensusTopicColumnFilter(
+          ids.getTopic(), "column_name = \"s2\"");
+
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords afterAlterConsumed =
+          ConsensusSubscriptionTableITSupport.insertRowsAndPollUntilColumnSignature(
+              consumer, database, table, 200L, 5, true, true, tagAndS2Signature, 60);
+
+      Assert.assertTrue(afterAlterConsumed.getSeenColumnSignatures().contains(tagAndS2Signature));
+      Assert.assertFalse(afterAlterConsumed.getSeenColumns().contains("s3"));
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
+  public void testColumnFilteringConsistentAcrossConsumerGroups() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_multi_group");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
+    SubscriptionTablePullConsumer consumer1 = null;
+    SubscriptionTablePullConsumer consumer2 = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      ConsensusSubscriptionTableITSupport.insertRows(database, table, 0L, 1, true, true, true);
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, "column_name = \"s2\"");
+
+      consumer1 =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.consumer("g1"), ids.consumerGroup("g1"));
+      consumer2 =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.consumer("g2"), ids.consumerGroup("g2"));
+      consumer1.subscribe(ids.getTopic());
+      consumer2.subscribe(ids.getTopic());
+
+      final Set<String> expectedRows =
+          ConsensusSubscriptionTableITSupport.insertRows(
+              database, table, 300L, 6, true, true, true);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumed1 =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer1, expectedRows.size(), 50);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumed2 =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer2, expectedRows.size(), 50);
+
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(expectedRows, consumed1);
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(expectedRows, consumed2);
+      Assert.assertEquals(consumed1.getRowKeys(), consumed2.getRowKeys());
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature), consumed1.getSeenColumnSignatures());
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature), consumed2.getSeenColumnSignatures());
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(
+          consumer1, 3, Duration.ofMillis(500));
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(
+          consumer2, 3, Duration.ofMillis(500));
+    } finally {
+      if (consumer2 != null) {
+        try {
+          consumer2.unsubscribe(Collections.singleton(ids.getTopic()));
+        } catch (final Exception ignored) {
+          // ignored on cleanup
+        }
+        try {
+          consumer2.close();
+        } catch (final Exception ignored) {
+          // ignored on cleanup
+        }
+      }
+      ConsensusSubscriptionTableITSupport.cleanup(consumer1, ids.getTopic(), database);
     }
   }
 }

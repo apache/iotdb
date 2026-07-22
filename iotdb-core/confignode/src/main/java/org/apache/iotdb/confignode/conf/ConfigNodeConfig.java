@@ -351,6 +351,13 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  // The DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, template,
+  // TTL, permission, ...) if it has not received a ConfigNode heartbeat within this duration. Kept
+  // aligned with the failure detector threshold so a partitioned DataNode stops trusting stale
+  // caches around the same time the cluster would consider it dead. Also used by the ConfigNode to
+  // derive how long it must wait before treating an unreachable DataNode as safely fenced.
+  private long metadataLeaseFenceMs = 20_000;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1259,6 +1266,14 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public long getMetadataLeaseFenceMs() {
+    return metadataLeaseFenceMs;
+  }
+
+  public void setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    this.metadataLeaseFenceMs = metadataLeaseFenceMs;
   }
 
   public String getConfigMessage() {

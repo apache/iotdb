@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -83,7 +84,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -1314,14 +1314,11 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    StringJoiner urls = new StringJoiner(",");
+    List<String> urls = new ArrayList<>();
     for (TEndPoint end : endPointList) {
-      StringJoiner url = new StringJoiner(":");
-      url.add(end.getIp());
-      url.add(String.valueOf(end.getPort()));
-      urls.add(url.toString());
+      urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }
-    return MSG_RECONNECTION_FAIL.concat(urls.toString());
+    return MSG_RECONNECTION_FAIL.concat(String.join(",", urls));
   }
 
   @Override

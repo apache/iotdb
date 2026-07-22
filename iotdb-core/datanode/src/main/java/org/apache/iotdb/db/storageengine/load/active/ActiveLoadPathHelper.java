@@ -25,6 +25,8 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import com.google.common.io.BaseEncoding;
+
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -43,10 +45,15 @@ import java.util.Optional;
 public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
+  public static final String USER_KEY = "user";
+  // Keep a version in the user path segment so future encryption algorithms can be added safely.
+  private static final String USER_VALUE_MASK_PREFIX = "v1-";
+  private static final BaseEncoding USER_VALUE_ENCODING = BaseEncoding.base32().omitPadding();
 
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
           Arrays.asList(
+              USER_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
@@ -65,8 +72,13 @@ public final class ActiveLoadPathHelper {
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
       final Long tabletConversionThresholdBytes,
-      final Boolean pipeGenerated) {
+      final Boolean pipeGenerated,
+      final String userName) {
     final Map<String, String> attributes = new LinkedHashMap<>();
+    if (Objects.nonNull(userName) && !userName.isEmpty()) {
+      attributes.put(USER_KEY, userName);
+    }
+
     if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
       attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
     }
@@ -208,7 +220,15 @@ public final class ActiveLoadPathHelper {
   }
 
   private static String formatSegment(final String key, final String value) {
-    return key + SEGMENT_SEPARATOR + encodeValue(value);
+    return key + SEGMENT_SEPARATOR + encodeValue(maskValueIfNecessary(key, value));
+  }
+
+  private static String maskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key)) {
+      return value;
+    }
+    return USER_VALUE_MASK_PREFIX
+        + USER_VALUE_ENCODING.encode(value.getBytes(StandardCharsets.UTF_8));
   }
 
   private static String encodeValue(final String value) {
@@ -227,7 +247,11 @@ public final class ActiveLoadPathHelper {
     }
 
     final String encodedValue = dirName.substring(prefixLength);
-    final String decodedValue = decodeValue(encodedValue);
+    final String rawDecodedValue = decodeValue(encodedValue);
+    if (USER_KEY.equals(key) && !rawDecodedValue.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return Optional.empty();
+    }
+    final String decodedValue = unmaskValueIfNecessary(key, rawDecodedValue);
     try {
       validateAttributeValue(key, decodedValue);
       return Optional.of(decodedValue);
@@ -255,6 +279,11 @@ public final class ActiveLoadPathHelper {
       case LoadTsFileConfigurator.VERIFY_KEY:
         LoadTsFileConfigurator.validateVerifyParam(value);
         break;
+      case USER_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException(StorageEngineMessages.USER_NAME_MUST_NOT_BE_EMPTY);
+        }
+        break;
       default:
         LoadTsFileConfigurator.validateParameters(key, value);
     }
@@ -277,6 +306,21 @@ public final class ActiveLoadPathHelper {
       return URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
     } catch (final UnsupportedEncodingException e) {
       return value;
+    }
+  }
+
+  private static String unmaskValueIfNecessary(final String key, final String value) {
+    if (!USER_KEY.equals(key) || !value.startsWith(USER_VALUE_MASK_PREFIX)) {
+      return value;
+    }
+    return decodeUserName(value.substring(USER_VALUE_MASK_PREFIX.length()), value);
+  }
+
+  private static String decodeUserName(final String encodedUserName, final String fallback) {
+    try {
+      return new String(USER_VALUE_ENCODING.decode(encodedUserName), StandardCharsets.UTF_8);
+    } catch (final IllegalArgumentException e) {
+      return fallback;
     }
   }
 }
