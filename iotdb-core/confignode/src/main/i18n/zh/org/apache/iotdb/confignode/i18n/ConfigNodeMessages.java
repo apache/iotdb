@@ -717,15 +717,9 @@ public final class ConfigNodeMessages {
       LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01 =
           "拒绝 CreateRegionGroupsPlan，因为数据库 {} 正在删除";
   public static final String
-      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_4306DEC3 =
-          "拒绝 CreateRegionGroupsPlan，因为数据库 {} 的生命周期代次已从 {} 变为 {}";
-  public static final String
       MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440 =
           "创建 RegionGroups 失败，因为数据库 %s 不存在";
   public static final String
       MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780 =
           "创建 RegionGroups 失败，因为数据库 %s 正在删除";
-  public static final String
-      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_CCDAF444 =
-          "创建 RegionGroups 失败，因为数据库 %s 的生命周期代次已从 %d 变为 %d";
 }

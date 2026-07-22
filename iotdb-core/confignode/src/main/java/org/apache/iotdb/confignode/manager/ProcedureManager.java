@@ -220,6 +220,7 @@ public class ProcedureManager {
   private final PartitionTableAutoCleaner partitionTableCleaner;
 
   private final ReentrantLock tableLock = new ReentrantLock();
+  private final ReentrantLock databaseLifecycleAdmissionLock = new ReentrantLock();
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
@@ -1501,18 +1502,27 @@ public class ProcedureManager {
 
   // endregion
 
-  /**
-   * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
-   *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
-   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
-   */
-  public TSStatus createRegionGroups(
+  public CreateRegionGroupsProcedure submitCreateRegionGroups(
       final TConsensusGroupType consensusGroupType,
       final CreateRegionGroupsPlan createRegionGroupsPlan) {
     final CreateRegionGroupsProcedure procedure =
         new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan);
-    executor.submitProcedure(procedure);
+    // Reentrant for PartitionManager, which holds the same admission lock while allocating the
+    // plan. Keeping this guard here also makes a future direct submission visible atomically to
+    // same-name database creation.
+    try (final AutoCloseableLock ignored = acquireDatabaseLifecycleAdmissionLock()) {
+      executor.submitProcedure(procedure);
+    }
+    return procedure;
+  }
+
+  /**
+   * Wait until a {@link CreateRegionGroupsProcedure} finishes.
+   *
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
+   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
+   */
+  public TSStatus waitCreateRegionGroups(final CreateRegionGroupsProcedure procedure) {
     final TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -1520,6 +1530,21 @@ public class ProcedureManager {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(status.getMessage());
     }
+  }
+
+  public AutoCloseableLock acquireDatabaseLifecycleAdmissionLock() {
+    return AutoCloseableLock.acquire(databaseLifecycleAdmissionLock);
+  }
+
+  public boolean hasUnfinishedDatabaseLifecycleProcedure(final String database) {
+    return executor.getProcedures().values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .anyMatch(
+            procedure ->
+                (procedure instanceof DeleteDatabaseProcedure
+                        && database.equals(((DeleteDatabaseProcedure) procedure).getDatabase()))
+                    || (procedure instanceof CreateRegionGroupsProcedure
+                        && ((CreateRegionGroupsProcedure) procedure).containsDatabase(database)));
   }
 
   /**

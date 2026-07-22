@@ -105,7 +105,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -126,15 +125,9 @@ public class PartitionInfo implements SnapshotProcessor {
   // Allocate 8MB buffer for load snapshot of PartitionInfo
   private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
-  // A negative value cannot collide with nextRegionGroupId, whose only negative value is -1.
-  private static final int SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC = -20260721;
-
   /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
-
-  // Monotonically identifies different incarnations that reuse the same database name.
-  private final AtomicLong nextDatabaseGeneration;
 
   // Map<DatabaseName, DatabasePartitionInfo>
   // For tree model databases: The databaseName is a partial path's full path with "root."
@@ -149,7 +142,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
-    this.nextDatabaseGeneration = new AtomicLong(0);
     this.databasePartitionTables = new ConcurrentHashMap<>();
 
     this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
@@ -190,8 +182,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
     final String databaseName = plan.getSchema().getName();
-    final DatabasePartitionTable databasePartitionTable =
-        new DatabasePartitionTable(databaseName, nextDatabaseGeneration.incrementAndGet());
+    final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
     databasePartitionTables.put(databaseName, databasePartitionTable);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -247,29 +238,6 @@ public class PartitionInfo implements SnapshotProcessor {
                         .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780,
                     database));
       }
-
-      final long expectedGeneration = plan.getDatabaseGeneration(database);
-      final long currentGeneration = databasePartitionTable.getDatabaseGeneration();
-      // Generation-less plans may still exist in pre-upgrade consensus logs. Consensus replay is
-      // ordered, so accepting them is necessary for snapshot compatibility and cannot overtake a
-      // later database recreation. Recovered procedures are fenced separately before they can
-      // issue RPCs or write a new consensus plan.
-      if (plan.isDatabaseGenerationSet(database) && expectedGeneration != currentGeneration) {
-        LOGGER.warn(
-            ConfigNodeMessages
-                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_4306DEC3,
-            database,
-            expectedGeneration,
-            currentGeneration);
-        return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    ConfigNodeMessages
-                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_CCDAF444,
-                    database,
-                    expectedGeneration,
-                    currentGeneration));
-      }
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -291,13 +259,6 @@ public class PartitionInfo implements SnapshotProcessor {
         nextRegionGroupId.set(maxRegionId);
       }
     }
-  }
-
-  public long getDatabaseGeneration(final String database) {
-    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
-    return databasePartitionTable == null
-        ? CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET
-        : databasePartitionTable.getDatabaseGeneration();
   }
 
   /**
@@ -1123,18 +1084,14 @@ public class PartitionInfo implements SnapshotProcessor {
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
-      // Serialize the generation-aware snapshot header and allocation high-water marks.
-      ReadWriteIOUtils.write(SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC, bufferedOutputStream);
+      // serialize nextRegionGroupId
       ReadWriteIOUtils.write(nextRegionGroupId.get(), bufferedOutputStream);
-      ReadWriteIOUtils.write(nextDatabaseGeneration.get(), bufferedOutputStream);
 
       // serialize databasePartitionTable
       ReadWriteIOUtils.write(databasePartitionTables.size(), bufferedOutputStream);
       for (Map.Entry<String, DatabasePartitionTable> databasePartitionTableEntry :
           databasePartitionTables.entrySet()) {
         ReadWriteIOUtils.write(databasePartitionTableEntry.getKey(), bufferedOutputStream);
-        ReadWriteIOUtils.write(
-            databasePartitionTableEntry.getValue().getDatabaseGeneration(), bufferedOutputStream);
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
@@ -1189,15 +1146,7 @@ public class PartitionInfo implements SnapshotProcessor {
       clear();
 
       // start to restore
-      final int firstSnapshotValue = ReadWriteIOUtils.readInt(fileInputStream);
-      final boolean hasDatabaseGeneration =
-          firstSnapshotValue == SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC;
-      if (hasDatabaseGeneration) {
-        nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
-        nextDatabaseGeneration.set(ReadWriteIOUtils.readLong(fileInputStream));
-      } else {
-        nextRegionGroupId.set(firstSnapshotValue);
-      }
+      nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
       // restore databasePartitionTable
       int length = ReadWriteIOUtils.readInt(fileInputStream);
@@ -1207,12 +1156,7 @@ public class PartitionInfo implements SnapshotProcessor {
           throw new IOException(
               ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_BECAUSE_GET_NULL_DATABASE_NAME);
         }
-        final long databaseGeneration =
-            hasDatabaseGeneration
-                ? ReadWriteIOUtils.readLong(fileInputStream)
-                : CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET;
-        final DatabasePartitionTable databasePartitionTable =
-            new DatabasePartitionTable(database, databaseGeneration);
+        final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(database);
         databasePartitionTable.deserialize(fileInputStream, protocol);
         databasePartitionTables.put(database, databasePartitionTable);
       }
@@ -1396,7 +1340,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public void clear() {
     nextRegionGroupId.set(-1);
-    nextDatabaseGeneration.set(0);
     databasePartitionTables.clear();
     regionMaintainTaskList.clear();
   }
@@ -1411,14 +1354,12 @@ public class PartitionInfo implements SnapshotProcessor {
     }
     PartitionInfo that = (PartitionInfo) o;
     return nextRegionGroupId.get() == that.nextRegionGroupId.get()
-        && nextDatabaseGeneration.get() == that.nextDatabaseGeneration.get()
         && databasePartitionTables.equals(that.databasePartitionTables)
         && regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        nextRegionGroupId, nextDatabaseGeneration, databasePartitionTables, regionMaintainTaskList);
+    return Objects.hash(nextRegionGroupId, databasePartitionTables, regionMaintainTaskList);
   }
 }

@@ -74,11 +74,6 @@ public class CreateRegionGroupsProcedure
   /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
 
-  // A generation-less procedure may continue against a legacy snapshot database (generation -1),
-  // but must never bind to a database recreated by the new version. This also fails safe if a new
-  // caller accidentally constructs an incomplete plan.
-  private boolean databaseGenerationComplete;
-
   public CreateRegionGroupsProcedure() {
     super();
   }
@@ -88,7 +83,6 @@ public class CreateRegionGroupsProcedure
       final CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
-    this.databaseGenerationComplete = hasCompleteDatabaseGeneration();
   }
 
   @TestOnly
@@ -101,42 +95,30 @@ public class CreateRegionGroupsProcedure
     this.createRegionGroupsPlan = createRegionGroupsPlan;
     this.persistPlan = persistPlan;
     this.failedRegionReplicaSets = failedRegionReplicaSets;
-    this.databaseGenerationComplete = hasCompleteDatabaseGeneration();
   }
 
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final CreateRegionGroupsState state) {
-    if (!databaseGenerationComplete) {
-      final TSStatus legacyProcedureStatus = fenceLegacyProcedure(env);
-      if (legacyProcedureStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // CREATE_REGION_GROUPS has not sent RPCs yet. SHUNT_REGION_REPLICAS has sent them but has
-        // not persisted the RegionGroups, so it must compensate only the replicas that succeeded.
-        // Later states have already persisted the RegionGroups and are owned by the partition
-        // table (or by a concurrent database deletion), so they must not be removed here.
-        if (state == CreateRegionGroupsState.SHUNT_REGION_REPLICAS) {
-          submitCreatedRegionReplicaCleanup(env);
-        }
-        setFailure(new ProcedureException(new IoTDBException(legacyProcedureStatus)));
-        return Flow.NO_MORE_STATE;
+    final TSStatus validationStatus = env.validateCreateRegionGroups(createRegionGroupsPlan);
+    if (validationStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Only SHUNT_REGION_REPLICAS can have sent create RPCs without transferring ownership of the
+      // planned RegionGroups to PartitionInfo. Delete every planned replica idempotently; all later
+      // states are already owned and cleaned by DeleteDatabaseProcedure.
+      if (state == CreateRegionGroupsState.SHUNT_REGION_REPLICAS) {
+        submitPlannedRegionReplicaCleanup(env);
       }
+      setFailure(new ProcedureException(new IoTDBException(validationStatus)));
+      return Flow.NO_MORE_STATE;
     }
 
     switch (state) {
       case CREATE_REGION_GROUPS:
-        final TSStatus validationStatus = env.validateCreateRegionGroups(createRegionGroupsPlan);
-        if (validationStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          setFailure(new ProcedureException(new IoTDBException(validationStatus)));
-          return Flow.NO_MORE_STATE;
-        }
         failedRegionReplicaSets = env.doRegionCreation(consensusGroupType, createRegionGroupsPlan);
         setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
         break;
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
-        createRegionGroupsPlan
-            .getDatabaseGenerationMap()
-            .forEach(persistPlan::setDatabaseGeneration);
         final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // RegionGroups that failed to reach a serving quorum have their redundant (already-created)
         // replicas removed via an independent root RemoveRegionGroupProcedure. Submitting them as
@@ -221,7 +203,7 @@ public class CreateRegionGroupsProcedure
 
         final TSStatus persistStatus = env.persistRegionGroup(persistPlan);
         if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          submitCreatedRegionReplicaCleanup(env);
+          submitPlannedRegionReplicaCleanup(env);
           setFailure(new ProcedureException(new IoTDBException(persistStatus)));
           return Flow.NO_MORE_STATE;
         }
@@ -359,63 +341,13 @@ public class CreateRegionGroupsProcedure
     return createRegionGroupsPlan.getRegionGroupMap().keySet();
   }
 
-  private List<TRegionReplicaSet> getCreatedRegionReplicas() {
-    final List<TRegionReplicaSet> createdRegionReplicas = new ArrayList<>();
-    createRegionGroupsPlan
-        .getRegionGroupMap()
-        .values()
-        .forEach(
-            regionReplicaSets ->
-                regionReplicaSets.forEach(
-                    regionReplicaSet -> {
-                      final TRegionReplicaSet failedRegionReplicas =
-                          failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
-                      final TRegionReplicaSet createdRegionReplicaSet =
-                          new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId());
-                      regionReplicaSet
-                          .getDataNodeLocations()
-                          .forEach(
-                              dataNodeLocation -> {
-                                if (failedRegionReplicas == null
-                                    || !failedRegionReplicas
-                                        .getDataNodeLocations()
-                                        .contains(dataNodeLocation)) {
-                                  createdRegionReplicaSet.addToDataNodeLocations(dataNodeLocation);
-                                }
-                              });
-                      if (createdRegionReplicaSet.getDataNodeLocationsSize() > 0) {
-                        createdRegionReplicas.add(createdRegionReplicaSet);
-                      }
-                    }));
-    return createdRegionReplicas;
+  public boolean containsDatabase(final String database) {
+    return createRegionGroupsPlan.getRegionGroupMap().containsKey(database);
   }
 
-  private TSStatus fenceLegacyProcedure(final ConfigNodeProcedureEnv env) {
-    createRegionGroupsPlan
-        .getRegionGroupMap()
-        .keySet()
-        .forEach(
-            database ->
-                createRegionGroupsPlan.setDatabaseGeneration(
-                    database, CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET));
-    persistPlan
-        .getRegionGroupMap()
-        .keySet()
-        .forEach(
-            database ->
-                persistPlan.setDatabaseGeneration(
-                    database, CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET));
-    databaseGenerationComplete = true;
-    return env.validateCreateRegionGroups(createRegionGroupsPlan);
-  }
-
-  private boolean hasCompleteDatabaseGeneration() {
-    return createRegionGroupsPlan.getRegionGroupMap().keySet().stream()
-        .allMatch(createRegionGroupsPlan::isDatabaseGenerationSet);
-  }
-
-  private void submitCreatedRegionReplicaCleanup(final ConfigNodeProcedureEnv env) {
-    getCreatedRegionReplicas()
+  private void submitPlannedRegionReplicaCleanup(final ConfigNodeProcedureEnv env) {
+    createRegionGroupsPlan.getRegionGroupMap().values().stream()
+        .flatMap(List::stream)
         .forEach(
             replicaSet ->
                 env.getConfigManager()
@@ -438,14 +370,11 @@ public class CreateRegionGroupsProcedure
           ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(replica, stream);
         });
     persistPlan.serializeForProcedure(stream);
-    createRegionGroupsPlan.serializeDatabaseGenerationMap(stream);
-    persistPlan.serializeDatabaseGenerationMap(stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    databaseGenerationComplete = false;
     this.consensusGroupType = TConsensusGroupType.findByValue(byteBuffer.getInt());
     try {
       createRegionGroupsPlan.deserializeForProcedure(byteBuffer);
@@ -460,13 +389,6 @@ public class CreateRegionGroupsProcedure
       }
       if (byteBuffer.hasRemaining()) {
         persistPlan.deserializeForProcedure(byteBuffer);
-      }
-      if (byteBuffer.hasRemaining()) {
-        createRegionGroupsPlan.deserializeDatabaseGenerationMap(byteBuffer);
-        databaseGenerationComplete = hasCompleteDatabaseGeneration();
-      }
-      if (byteBuffer.hasRemaining()) {
-        persistPlan.deserializeDatabaseGenerationMap(byteBuffer);
       }
     } catch (final Exception e) {
       LOGGER.error(ProcedureMessages.DESERIALIZE_MEETS_ERROR_IN_CREATEREGIONGROUPSPROCEDURE, e);

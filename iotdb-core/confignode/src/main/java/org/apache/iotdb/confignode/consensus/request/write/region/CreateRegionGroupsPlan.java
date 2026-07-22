@@ -43,45 +43,21 @@ import java.util.stream.Collectors;
 /** Create regions for specified Databases. */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
-  public static final long DATABASE_GENERATION_NOT_SET = -1;
-
   // Map<Database, List<TRegionReplicaSet>>
   protected final Map<String, List<TRegionReplicaSet>> regionGroupMap;
-
-  // Map<Database, lifecycle generation>. It fences a RegionGroup allocation from a later database
-  // that reuses the same name.
-  protected final Map<String, Long> databaseGenerationMap;
 
   public CreateRegionGroupsPlan() {
     super(ConfigPhysicalPlanType.CreateRegionGroups);
     this.regionGroupMap = new HashMap<>();
-    this.databaseGenerationMap = new HashMap<>();
   }
 
   public CreateRegionGroupsPlan(final ConfigPhysicalPlanType type) {
     super(type);
     this.regionGroupMap = new HashMap<>();
-    this.databaseGenerationMap = new HashMap<>();
   }
 
   public Map<String, List<TRegionReplicaSet>> getRegionGroupMap() {
     return regionGroupMap;
-  }
-
-  public Map<String, Long> getDatabaseGenerationMap() {
-    return databaseGenerationMap;
-  }
-
-  public long getDatabaseGeneration(final String database) {
-    return databaseGenerationMap.getOrDefault(database, DATABASE_GENERATION_NOT_SET);
-  }
-
-  public boolean isDatabaseGenerationSet(final String database) {
-    return databaseGenerationMap.containsKey(database);
-  }
-
-  public void setDatabaseGeneration(final String database, final long databaseGeneration) {
-    databaseGenerationMap.put(database, databaseGeneration);
   }
 
   public void addRegionGroup(final String database, final TRegionReplicaSet regionReplicaSet) {
@@ -108,22 +84,17 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   public void serializeForProcedure(final DataOutputStream stream) throws IOException {
-    serializeRegionGroupMap(stream);
+    this.serializeImpl(stream);
   }
 
   public void deserializeForProcedure(final ByteBuffer buffer) throws IOException {
     // to remove the planType of ConfigPhysicalPlanType
     buffer.getShort();
-    deserializeRegionGroupMap(buffer);
+    this.deserializeImpl(buffer);
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    serializeRegionGroupMap(stream);
-    serializeDatabaseGenerationMap(stream);
-  }
-
-  private void serializeRegionGroupMap(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
     stream.writeInt(regionGroupMap.size());
@@ -140,13 +111,6 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    deserializeRegionGroupMap(buffer);
-    if (buffer.hasRemaining()) {
-      deserializeDatabaseGenerationMap(buffer);
-    }
-  }
-
-  private void deserializeRegionGroupMap(final ByteBuffer buffer) throws IOException {
     final int databaseNum = buffer.getInt();
     for (int i = 0; i < databaseNum; i++) {
       final String database = BasicStructureSerDeUtil.readString(buffer);
@@ -158,21 +122,6 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
         regionGroupMap.get(database).add(regionReplicaSet);
       }
-    }
-  }
-
-  public void serializeDatabaseGenerationMap(final DataOutputStream stream) throws IOException {
-    stream.writeInt(databaseGenerationMap.size());
-    for (final Entry<String, Long> entry : databaseGenerationMap.entrySet()) {
-      BasicStructureSerDeUtil.write(entry.getKey(), stream);
-      stream.writeLong(entry.getValue());
-    }
-  }
-
-  public void deserializeDatabaseGenerationMap(final ByteBuffer buffer) {
-    final int databaseNum = buffer.getInt();
-    for (int i = 0; i < databaseNum; i++) {
-      databaseGenerationMap.put(BasicStructureSerDeUtil.readString(buffer), buffer.getLong());
     }
   }
 
@@ -188,12 +137,11 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
       return false;
     }
     final CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
-    return Objects.equals(regionGroupMap, that.regionGroupMap)
-        && Objects.equals(databaseGenerationMap, that.databaseGenerationMap);
+    return Objects.equals(regionGroupMap, that.regionGroupMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), regionGroupMap, databaseGenerationMap);
+    return Objects.hash(super.hashCode(), regionGroupMap);
   }
 }

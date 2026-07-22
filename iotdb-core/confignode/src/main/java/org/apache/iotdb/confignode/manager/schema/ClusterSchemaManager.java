@@ -92,6 +92,7 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -118,6 +119,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -171,57 +173,70 @@ public class ClusterSchemaManager {
   /** Set Database */
   public TSStatus setDatabase(
       final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
-    TSStatus result;
-
     final TDatabaseSchema schema = databaseSchemaPlan.getSchema();
-    if (getPartitionManager().isDatabasePreDeleted(schema.getName())) {
-      return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR,
-          String.format("Some other task is deleting database %s", schema.getName()));
-    }
-
-    createDatabaseLock.lock();
-    try {
-      clusterSchemaInfo.isDatabaseNameValid(
-          schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
-      if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
-          && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
-        clusterSchemaInfo.checkDatabaseLimit();
+    final ProcedureManager procedureManager = configManager.getProcedureManager();
+    try (final AutoCloseableLock ignored =
+        procedureManager.acquireDatabaseLifecycleAdmissionLock()) {
+      if (procedureManager.hasUnfinishedDatabaseLifecycleProcedure(schema.getName())) {
+        return RpcUtils.getStatus(
+            TSStatusCode.METADATA_ERROR,
+            String.format(
+                ManagerMessages
+                    .MESSAGE_DATABASE_ARG_STILL_HAS_UNFINISHED_LIFECYCLE_PROCEDURES_67573924,
+                schema.getName()));
       }
-      // Cache DatabaseSchema
-      result =
-          getConsensusManager()
-              .write(
-                  isGeneratedByPipe
-                      ? new PipeEnrichedPlan(databaseSchemaPlan)
-                      : databaseSchemaPlan);
-      // set ttl
-      if (schema.isSetTTL()) {
-        result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
+      if (getPartitionManager().isDatabasePreDeleted(schema.getName())) {
+        return RpcUtils.getStatus(
+            TSStatusCode.METADATA_ERROR,
+            String.format(
+                ManagerMessages.MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F,
+                schema.getName()));
       }
-      // Bind Database metrics
-      PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
-          MetricService.getInstance(),
-          configManager,
-          schema.getName(),
-          schema.getDataReplicationFactor(),
-          schema.getSchemaReplicationFactor());
-      // Adjust the maximum RegionGroup number of each Database
-      adjustMaxRegionGroupNum();
-    } catch (final ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-    } catch (final MetadataException metadataException) {
-      // Reject if Database already set
-      result = new TSStatus(metadataException.getErrorCode());
-      result.setMessage(metadataException.getMessage());
-    } finally {
-      createDatabaseLock.unlock();
-    }
 
-    return result;
+      TSStatus result;
+      createDatabaseLock.lock();
+      try {
+        clusterSchemaInfo.isDatabaseNameValid(
+            schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
+        if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
+            && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+            && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+          clusterSchemaInfo.checkDatabaseLimit();
+        }
+        // Cache DatabaseSchema
+        result =
+            getConsensusManager()
+                .write(
+                    isGeneratedByPipe
+                        ? new PipeEnrichedPlan(databaseSchemaPlan)
+                        : databaseSchemaPlan);
+        // set ttl
+        if (schema.isSetTTL()) {
+          result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
+        }
+        // Bind Database metrics
+        PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
+            MetricService.getInstance(),
+            configManager,
+            schema.getName(),
+            schema.getDataReplicationFactor(),
+            schema.getSchemaReplicationFactor());
+        // Adjust the maximum RegionGroup number of each Database
+        adjustMaxRegionGroupNum();
+      } catch (final ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+        result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+        result.setMessage(e.getMessage());
+      } catch (final MetadataException metadataException) {
+        // Reject if Database already set
+        result = new TSStatus(metadataException.getErrorCode());
+        result.setMessage(metadataException.getMessage());
+      } finally {
+        createDatabaseLock.unlock();
+      }
+
+      return result;
+    }
   }
 
   /** Alter Database */

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -67,8 +66,6 @@ public class DatabasePartitionTable {
   private volatile boolean preDeleted = false;
   // The name of database
   private String databaseName;
-  // The incarnation of databaseName. A new value is assigned whenever the name is recreated.
-  private final long databaseGeneration;
 
   // RegionGroup
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
@@ -78,12 +75,7 @@ public class DatabasePartitionTable {
   private final DataPartitionTable dataPartitionTable;
 
   public DatabasePartitionTable(String databaseName) {
-    this(databaseName, CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET);
-  }
-
-  public DatabasePartitionTable(String databaseName, long databaseGeneration) {
     this.databaseName = databaseName;
-    this.databaseGeneration = databaseGeneration;
 
     this.regionGroupMap = new ConcurrentHashMap<>();
 
@@ -97,10 +89,6 @@ public class DatabasePartitionTable {
 
   public void setPreDeleted(boolean preDeleted) {
     this.preDeleted = preDeleted;
-  }
-
-  public long getDatabaseGeneration() {
-    return databaseGeneration;
   }
 
   /**
@@ -667,8 +655,7 @@ public class DatabasePartitionTable {
       return false;
     }
     DatabasePartitionTable that = (DatabasePartitionTable) o;
-    return databaseGeneration == that.databaseGeneration
-        && databaseName.equals(that.databaseName)
+    return databaseName.equals(that.databaseName)
         && regionGroupMap.equals(that.regionGroupMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
@@ -676,7 +663,6 @@ public class DatabasePartitionTable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        databaseName, databaseGeneration, regionGroupMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(databaseName, regionGroupMap, schemaPartitionTable, dataPartitionTable);
   }
 }

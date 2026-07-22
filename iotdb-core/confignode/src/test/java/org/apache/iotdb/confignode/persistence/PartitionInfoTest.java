@@ -58,8 +58,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -154,6 +156,17 @@ public class PartitionInfoTest {
     partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
 
     Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
+    try (final DataInputStream inputStream =
+        new DataInputStream(
+            Files.newInputStream(new File(snapshotDir, "partition_info.bin").toPath()))) {
+      // Keep the historical snapshot framing: next RegionGroupId followed by database count.
+      Assert.assertEquals(
+          Math.max(
+              schemaRegionReplicaSet.getRegionId().getId(),
+              dataRegionReplicaSet.getRegionId().getId()),
+          inputStream.readInt());
+      Assert.assertEquals(1, inputStream.readInt());
+    }
 
     PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
@@ -308,7 +321,6 @@ public class PartitionInfoTest {
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
 
     final CreateRegionGroupsPlan preDeletedPlan = new CreateRegionGroupsPlan();
-    preDeletedPlan.setDatabaseGeneration(database, partitionInfo.getDatabaseGeneration(database));
     preDeletedPlan.addRegionGroup(
         database,
         generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 1)));
@@ -329,32 +341,6 @@ public class PartitionInfoTest {
   }
 
   @Test
-  public void testOldCreateRegionGroupsPlanCannotPolluteRecreatedDatabase()
-      throws DatabaseNotExistsException {
-    final String database = "root.recreated";
-    final DatabaseSchemaPlan createDatabasePlan =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database));
-    partitionInfo.createDatabase(createDatabasePlan);
-
-    final long oldGeneration = partitionInfo.getDatabaseGeneration(database);
-    final CreateRegionGroupsPlan oldPlan = new CreateRegionGroupsPlan();
-    oldPlan.setDatabaseGeneration(database, oldGeneration);
-    oldPlan.addRegionGroup(
-        database,
-        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 3)));
-
-    partitionInfo.deleteDatabase(new DeleteDatabasePlan(database));
-    partitionInfo.createDatabase(createDatabasePlan);
-    Assert.assertNotEquals(oldGeneration, partitionInfo.getDatabaseGeneration(database));
-
-    final TSStatus status = partitionInfo.createRegionGroups(oldPlan);
-    Assert.assertEquals(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(), status.getCode());
-    Assert.assertEquals(
-        0, partitionInfo.getRegionGroupCount(database, TConsensusGroupType.DataRegion));
-  }
-
-  @Test
   public void testBatchedCreateRegionGroupsPlanIsValidatedAtomically()
       throws DatabaseNotExistsException {
     final String existingDatabase = "root.existing";
@@ -363,8 +349,6 @@ public class PartitionInfoTest {
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(existingDatabase)));
 
     final CreateRegionGroupsPlan batchedPlan = new CreateRegionGroupsPlan();
-    batchedPlan.setDatabaseGeneration(
-        existingDatabase, partitionInfo.getDatabaseGeneration(existingDatabase));
     batchedPlan.addRegionGroup(
         existingDatabase,
         generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 40)));

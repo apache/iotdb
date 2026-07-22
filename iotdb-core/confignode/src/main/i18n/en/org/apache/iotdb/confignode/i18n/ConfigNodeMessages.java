@@ -672,15 +672,9 @@ public final class ConfigNodeMessages {
       LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01 =
           "Reject CreateRegionGroupsPlan because database {} is being deleted";
   public static final String
-      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_4306DEC3 =
-          "Reject CreateRegionGroupsPlan because database {} lifecycle generation changed from {} to {}";
-  public static final String
       MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440 =
           "Create RegionGroups failed because database %s does not exist";
   public static final String
       MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780 =
           "Create RegionGroups failed because database %s is being deleted";
-  public static final String
-      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_CCDAF444 =
-          "Create RegionGroups failed because database %s lifecycle generation changed from %d to %d";
 }

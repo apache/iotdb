@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -101,6 +102,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Pair;
@@ -754,11 +756,22 @@ public class PartitionManager {
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
     if (!allotmentMap.isEmpty()) {
-      final CreateRegionGroupsPlan createRegionGroupsPlan =
-          getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
-      LOGGER.info(ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
-      createRegionGroupsPlan.planLog(LOGGER);
-      return getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
+      final CreateRegionGroupsProcedure procedure;
+      // Database creation uses the same admission lock when checking unfinished lifecycle
+      // procedures. Cover both ID allocation and submission so a delayed plan can never become
+      // invisible between same-name database deletion and recreation.
+      try (final AutoCloseableLock ignored =
+          getProcedureManager().acquireDatabaseLifecycleAdmissionLock()) {
+        final CreateRegionGroupsPlan createRegionGroupsPlan =
+            getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
+        LOGGER.info(
+            ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
+        createRegionGroupsPlan.planLog(LOGGER);
+        procedure =
+            getProcedureManager()
+                .submitCreateRegionGroups(consensusGroupType, createRegionGroupsPlan);
+      }
+      return getProcedureManager().waitCreateRegionGroups(procedure);
     } else {
       return RpcUtils.SUCCESS_STATUS;
     }
@@ -1164,10 +1177,6 @@ public class PartitionManager {
 
   public boolean isDatabasePreDeleted(final String database) {
     return partitionInfo.isDatabasePreDeleted(database);
-  }
-
-  public long getDatabaseGeneration(final String database) {
-    return partitionInfo.getDatabaseGeneration(database);
   }
 
   public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan plan) {

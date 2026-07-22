@@ -579,6 +579,11 @@ public final class ManagerMessages {
   public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "schema_engine_mode";
   public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
+  public static final String
+      MESSAGE_DATABASE_ARG_STILL_HAS_UNFINISHED_LIFECYCLE_PROCEDURES_67573924 =
+          "数据库 %s 仍有未完成的生命周期流程";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "其他任务正在删除数据库 %s";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "设置数据库 %s 的空间配额时发生意外错误 ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "设置用户 %s 的限流配额时发生意外错误 ";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";

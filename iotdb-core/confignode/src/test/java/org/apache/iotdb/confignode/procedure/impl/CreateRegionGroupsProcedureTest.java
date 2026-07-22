@@ -85,6 +85,10 @@ public class CreateRegionGroupsProcedureTest {
       executeFromState(env, CreateRegionGroupsState.CREATE_REGION_GROUPS);
     }
 
+    private void executePostPersist(final ConfigNodeProcedureEnv env) {
+      executeFromState(env, CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
+    }
+
     private ProcedureLockState acquireDatabaseLock(final ConfigNodeProcedureEnv env) {
       return acquireLock(env);
     }
@@ -153,14 +157,10 @@ public class CreateRegionGroupsProcedureTest {
     assertEquals(failedRegions0, failedRegions1);
 
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-    createRegionGroupsPlan.setDatabaseGeneration("root.sg0", 11);
-    createRegionGroupsPlan.setDatabaseGeneration("root.sg1", 12);
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
-    persistPlan.setDatabaseGeneration("root.sg0", 11);
-    persistPlan.setDatabaseGeneration("root.sg1", 12);
     persistPlan.addRegionGroup("root.sg0", dataRegionSet);
     persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
@@ -177,6 +177,7 @@ public class CreateRegionGroupsProcedureTest {
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       Assert.assertEquals(ProcedureType.CREATE_REGION_GROUPS.getTypeCode(), buffer.getShort());
       procedure1.deserialize(buffer);
+      Assert.assertFalse(buffer.hasRemaining());
       assertEquals(procedure0, procedure1);
       assertEquals(procedure0.hashCode(), procedure1.hashCode());
 
@@ -192,22 +193,28 @@ public class CreateRegionGroupsProcedureTest {
   }
 
   @Test
-  public void testPersistRejectionCleansCreatedRegionReplicas() {
+  public void testPersistRejectionCleansEveryPlannedRegionReplica() {
     final TDataNodeLocation createdDataNode =
         new TDataNodeLocation().setDataNodeId(1).setInternalEndPoint(new TEndPoint("0.0.0.1", 1));
     final TDataNodeLocation failedDataNode =
         new TDataNodeLocation().setDataNodeId(2).setInternalEndPoint(new TEndPoint("0.0.0.2", 2));
+    final TDataNodeLocation otherFailedDataNode =
+        new TDataNodeLocation().setDataNodeId(3).setInternalEndPoint(new TEndPoint("0.0.0.3", 3));
     final TConsensusGroupId regionId = new TConsensusGroupId(DataRegion, 10);
+    final TConsensusGroupId otherRegionId = new TConsensusGroupId(DataRegion, 11);
     final TRegionReplicaSet allocatedReplicaSet =
         new TRegionReplicaSet(regionId, List.of(createdDataNode, failedDataNode));
     final TRegionReplicaSet failedReplicaSet =
         new TRegionReplicaSet(regionId, Collections.singletonList(failedDataNode));
+    final TRegionReplicaSet otherAllocatedReplicaSet =
+        new TRegionReplicaSet(otherRegionId, Collections.singletonList(otherFailedDataNode));
 
     final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
-    createPlan.setDatabaseGeneration("root.sg", 1);
     createPlan.addRegionGroup("root.sg", allocatedReplicaSet);
+    createPlan.addRegionGroup("root.sg", otherAllocatedReplicaSet);
     final Map<TConsensusGroupId, TRegionReplicaSet> failedReplicaSets = new HashMap<>();
     failedReplicaSets.put(regionId, failedReplicaSet);
+    failedReplicaSets.put(otherRegionId, otherAllocatedReplicaSet);
     final TestCreateRegionGroupsProcedure procedure =
         new TestCreateRegionGroupsProcedure(
             DataRegion, createPlan, new CreateRegionGroupsPlan(), failedReplicaSets);
@@ -218,6 +225,8 @@ public class CreateRegionGroupsProcedureTest {
     @SuppressWarnings("unchecked")
     final ProcedureExecutor<ConfigNodeProcedureEnv> executor =
         Mockito.mock(ProcedureExecutor.class);
+    Mockito.when(env.validateCreateRegionGroups(createPlan))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     Mockito.when(env.persistRegionGroup(Mockito.any()))
         .thenReturn(new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
     Mockito.when(env.getConfigManager()).thenReturn(configManager);
@@ -228,47 +237,89 @@ public class CreateRegionGroupsProcedureTest {
 
     final ArgumentCaptor<Procedure<ConfigNodeProcedureEnv>> cleanupCaptor =
         ArgumentCaptor.forClass(Procedure.class);
-    Mockito.verify(executor).submitProcedure(cleanupCaptor.capture());
-    Assert.assertEquals(
-        new RemoveRegionGroupProcedure(
-            new TRegionReplicaSet(regionId, Collections.singletonList(createdDataNode))),
-        cleanupCaptor.getValue());
+    Mockito.verify(executor, Mockito.times(2)).submitProcedure(cleanupCaptor.capture());
+    Assert.assertTrue(
+        cleanupCaptor.getAllValues().contains(new RemoveRegionGroupProcedure(allocatedReplicaSet)));
+    Assert.assertTrue(
+        cleanupCaptor
+            .getAllValues()
+            .contains(new RemoveRegionGroupProcedure(otherAllocatedReplicaSet)));
   }
 
   @Test
-  public void testLegacyProcedureCannotBindToRecreatedDatabase() throws IOException {
+  public void testFencedBeforeCreateRpcDoesNotSubmitCleanup() {
     final String database = "root.sg";
-    final CreateRegionGroupsPlan legacyCreatePlan = new CreateRegionGroupsPlan();
-    legacyCreatePlan.addRegionGroup(
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.addRegionGroup(
         database,
         new TRegionReplicaSet(new TConsensusGroupId(DataRegion, 10), Collections.emptyList()));
-    final CreateRegionGroupsProcedure sourceProcedure =
-        new CreateRegionGroupsProcedure(DataRegion, legacyCreatePlan);
-
-    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    sourceProcedure.serialize(new DataOutputStream(byteArrayOutputStream));
-    final ByteBuffer legacyProcedureBuffer =
-        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size() - 8);
-    Assert.assertEquals(
-        ProcedureType.CREATE_REGION_GROUPS.getTypeCode(), legacyProcedureBuffer.getShort());
-    final TestCreateRegionGroupsProcedure restoredProcedure = new TestCreateRegionGroupsProcedure();
-    restoredProcedure.deserialize(legacyProcedureBuffer);
+    final TestCreateRegionGroupsProcedure procedure =
+        new TestCreateRegionGroupsProcedure(
+            DataRegion, createPlan, new CreateRegionGroupsPlan(), Collections.emptyMap());
 
     final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
-    Mockito.when(env.validateCreateRegionGroups(Mockito.any()))
+    Mockito.when(env.validateCreateRegionGroups(createPlan))
         .thenReturn(new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode()));
-    restoredProcedure.executeCreate(env);
+    procedure.executeCreate(env);
 
-    final ArgumentCaptor<CreateRegionGroupsPlan> validationPlanCaptor =
-        ArgumentCaptor.forClass(CreateRegionGroupsPlan.class);
-    Mockito.verify(env).validateCreateRegionGroups(validationPlanCaptor.capture());
-    Assert.assertTrue(validationPlanCaptor.getValue().isDatabaseGenerationSet(database));
-    Assert.assertEquals(
-        CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET,
-        validationPlanCaptor.getValue().getDatabaseGeneration(database));
     Mockito.verify(env, Mockito.never())
         .doRegionCreation(Mockito.any(), Mockito.any(CreateRegionGroupsPlan.class));
-    Assert.assertTrue(restoredProcedure.isFailed());
+    Mockito.verify(env, Mockito.never()).getConfigManager();
+    Assert.assertTrue(procedure.isFailed());
+  }
+
+  @Test
+  public void testFencedAfterCreateRpcCleansEveryPlannedRegionReplica() {
+    final TRegionReplicaSet replicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(DataRegion, 10),
+            Collections.singletonList(new TDataNodeLocation().setDataNodeId(1)));
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.addRegionGroup("root.sg", replicaSet);
+    final TestCreateRegionGroupsProcedure procedure =
+        new TestCreateRegionGroupsProcedure(
+            DataRegion, createPlan, new CreateRegionGroupsPlan(), Collections.emptyMap());
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
+    @SuppressWarnings("unchecked")
+    final ProcedureExecutor<ConfigNodeProcedureEnv> executor =
+        Mockito.mock(ProcedureExecutor.class);
+    Mockito.when(env.validateCreateRegionGroups(createPlan))
+        .thenReturn(new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    Mockito.when(procedureManager.getExecutor()).thenReturn(executor);
+
+    procedure.executeShunt(env);
+
+    final ArgumentCaptor<Procedure<ConfigNodeProcedureEnv>> cleanupCaptor =
+        ArgumentCaptor.forClass(Procedure.class);
+    Mockito.verify(executor).submitProcedure(cleanupCaptor.capture());
+    Assert.assertEquals(new RemoveRegionGroupProcedure(replicaSet), cleanupCaptor.getValue());
+    Mockito.verify(env, Mockito.never()).persistRegionGroup(Mockito.any());
+    Assert.assertTrue(procedure.isFailed());
+  }
+
+  @Test
+  public void testFencedAfterPersistenceDoesNotSubmitCleanup() {
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.addRegionGroup(
+        "root.sg",
+        new TRegionReplicaSet(new TConsensusGroupId(DataRegion, 10), Collections.emptyList()));
+    final TestCreateRegionGroupsProcedure procedure =
+        new TestCreateRegionGroupsProcedure(
+            DataRegion, createPlan, createPlan, Collections.emptyMap());
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    Mockito.when(env.validateCreateRegionGroups(createPlan))
+        .thenReturn(new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+
+    procedure.executePostPersist(env);
+
+    Mockito.verify(env, Mockito.never()).getConfigManager();
+    Assert.assertTrue(procedure.isFailed());
   }
 
   @Test

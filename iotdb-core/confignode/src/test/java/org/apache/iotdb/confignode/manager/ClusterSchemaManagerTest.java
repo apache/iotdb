@@ -18,10 +18,27 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.AutoCloseableLock;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ClusterSchemaManagerTest {
 
@@ -36,5 +53,52 @@ public class ClusterSchemaManagerTest {
 
     // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
     Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  }
+
+  @Test
+  public void testSetDatabaseWaitsForLifecycleAdmissionBeforeCheckingProcedures() throws Exception {
+    final String database = "root.sg";
+    final IManager configManager = Mockito.mock(IManager.class);
+    final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
+    final ReentrantLock admissionLock = new ReentrantLock();
+    final CountDownLatch admissionAttempted = new CountDownLatch(1);
+    final AtomicBoolean unfinishedProcedure = new AtomicBoolean(false);
+    Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    Mockito.when(procedureManager.acquireDatabaseLifecycleAdmissionLock())
+        .thenAnswer(
+            ignored -> {
+              admissionAttempted.countDown();
+              return AutoCloseableLock.acquire(admissionLock);
+            });
+    Mockito.when(procedureManager.hasUnfinishedDatabaseLifecycleProcedure(database))
+        .thenAnswer(ignored -> unfinishedProcedure.get());
+
+    final ClusterSchemaManager schemaManager =
+        new ClusterSchemaManager(
+            configManager,
+            Mockito.mock(ClusterSchemaInfo.class),
+            Mockito.mock(ClusterSchemaQuotaStatistics.class));
+    final DatabaseSchemaPlan plan =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database));
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    admissionLock.lock();
+    try {
+      final Future<TSStatus> statusFuture =
+          executor.submit(() -> schemaManager.setDatabase(plan, false));
+      Assert.assertTrue(admissionAttempted.await(10, TimeUnit.SECONDS));
+      unfinishedProcedure.set(true);
+      admissionLock.unlock();
+
+      final TSStatus status = statusFuture.get(10, TimeUnit.SECONDS);
+      Assert.assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), status.getCode());
+      Mockito.verify(procedureManager).hasUnfinishedDatabaseLifecycleProcedure(database);
+    } finally {
+      if (admissionLock.isHeldByCurrentThread()) {
+        admissionLock.unlock();
+      }
+      executor.shutdownNow();
+    }
   }
 }
