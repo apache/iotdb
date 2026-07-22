@@ -391,34 +391,33 @@ public class MemoryPool {
     Validate.notNull(queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_CAN_NOT_BE_NULL_DOT_16639DBE);
     Validate.isTrue(bytes > 0L);
 
-    try {
-      while (true) {
-        final Map<String, Map<String, Long>> queryRelatedMemory =
-            queryMemoryReservations.get(queryId);
-        final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
-        synchronized (fragmentRelatedMemory) {
-          // The fragment map may have been removed while this thread was waiting for its lock.
-          if (queryMemoryReservations.get(queryId) != queryRelatedMemory
-              || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
-            continue;
-          }
-          fragmentRelatedMemory.computeIfPresent(
-              planNodeId,
-              (k, reservedMemory) -> {
-                if (reservedMemory < bytes) {
-                  throw new IllegalArgumentException(
-                      DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
-                }
-                return reservedMemory - bytes;
-              });
-          break;
-        }
+    while (true) {
+      final Map<String, Map<String, Long>> queryRelatedMemory =
+          queryMemoryReservations.get(queryId);
+      if (queryRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
       }
-    } catch (NullPointerException e) {
-      throw new IllegalArgumentException(
-          DataNodeQueryMessages
-              .QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2,
-          e);
+      final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      if (fragmentRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
+      }
+      synchronized (fragmentRelatedMemory) {
+        // The fragment map may have been removed while this thread was waiting for its lock.
+        if (queryMemoryReservations.get(queryId) != queryRelatedMemory
+            || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
+          continue;
+        }
+        fragmentRelatedMemory.computeIfPresent(
+            planNodeId,
+            (k, reservedMemory) -> {
+              if (reservedMemory < bytes) {
+                throw new IllegalArgumentException(
+                    DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
+              }
+              return reservedMemory - bytes;
+            });
+        break;
+      }
     }
 
     memoryBlock.release(bytes);
@@ -474,7 +473,13 @@ public class MemoryPool {
     while (true) {
       final Map<String, Map<String, Long>> queryRelatedMemory =
           queryMemoryReservations.get(queryId);
+      if (queryRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
+      }
       final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      if (fragmentRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
+      }
       synchronized (fragmentRelatedMemory) {
         // Serialize reservation changes with fragment deregistration while allowing reservations
         // for other fragments to proceed concurrently.
@@ -495,7 +500,13 @@ public class MemoryPool {
     while (true) {
       final Map<String, Map<String, Long>> queryRelatedMemory =
           queryMemoryReservations.get(queryId);
+      if (queryRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
+      }
       final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      if (fragmentRelatedMemory == null) {
+        throw memoryReservationNotRegistered(queryId, fragmentInstanceId);
+      }
       synchronized (fragmentRelatedMemory) {
         if (queryMemoryReservations.get(queryId) != queryRelatedMemory
             || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
@@ -506,5 +517,15 @@ public class MemoryPool {
         return;
       }
     }
+  }
+
+  private IllegalArgumentException memoryReservationNotRegistered(
+      String queryId, String fragmentInstanceId) {
+    return new IllegalArgumentException(
+        String.format(
+            DataNodeQueryMessages
+                .EXCEPTION_NO_MEMORY_RESERVATION_IS_REGISTERED_FOR_QUERY_ARG_AND_FRAGMENT_INSTANCE_ARG_06016520,
+            queryId,
+            fragmentInstanceId));
   }
 }

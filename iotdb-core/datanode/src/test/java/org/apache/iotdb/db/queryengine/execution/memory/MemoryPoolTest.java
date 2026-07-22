@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -471,6 +472,50 @@ public class MemoryPoolTest {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  @Test(timeout = 15000L)
+  public void testDeregistrationWinsBeforeReserveAcquiresFragmentLock() throws Exception {
+    Field reservationsField = MemoryPool.class.getDeclaredField("queryMemoryReservations");
+    reservationsField.setAccessible(true);
+    Map<String, Map<String, Map<String, Long>>> reservations =
+        (Map<String, Map<String, Map<String, Long>>>) reservationsField.get(pool);
+
+    BlockingQueryMap blockingQueryMap = new BlockingQueryMap();
+    blockingQueryMap.putAll(reservations.get(QUERY_ID));
+    reservations.put(QUERY_ID, blockingQueryMap);
+
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<Boolean> reservation = null;
+    try {
+      reservation =
+          executor.submit(
+              () -> {
+                blockingQueryMap.blockCurrentThreadOnGet();
+                return pool.tryReserveForTest(
+                    QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE);
+              });
+      Assert.assertTrue(blockingQueryMap.fragmentMapRead.await(5, TimeUnit.SECONDS));
+
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, false);
+      Assert.assertEquals(0, pool.getQueryMemoryReservationSize());
+      blockingQueryMap.allowGetToReturn.countDown();
+
+      try {
+        reservation.get(5, TimeUnit.SECONDS);
+        Assert.fail("Expected the reservation to fail after deregistration");
+      } catch (ExecutionException e) {
+        Assert.assertTrue(e.getCause() instanceof IllegalArgumentException);
+      }
+      Assert.assertEquals(0L, pool.getReservedBytes());
+    } finally {
+      blockingQueryMap.allowGetToReturn.countDown();
+      if (reservation != null) {
+        reservation.cancel(true);
+      }
+      executor.shutdownNow();
+    }
+  }
+
   private static class BlockingMemoryMap extends ConcurrentHashMap<String, Long> {
 
     private final CountDownLatch reservationStarted = new CountDownLatch(1);
@@ -519,6 +564,27 @@ public class MemoryPoolTest {
         Thread.currentThread().interrupt();
         throw new AssertionError(e);
       }
+    }
+  }
+
+  private static class BlockingQueryMap extends ConcurrentHashMap<String, Map<String, Long>> {
+
+    private final CountDownLatch fragmentMapRead = new CountDownLatch(1);
+    private final CountDownLatch allowGetToReturn = new CountDownLatch(1);
+    private volatile Thread blockedThread;
+
+    private void blockCurrentThreadOnGet() {
+      blockedThread = Thread.currentThread();
+    }
+
+    @Override
+    public Map<String, Long> get(Object key) {
+      Map<String, Long> result = super.get(key);
+      if (Thread.currentThread() == blockedThread) {
+        fragmentMapRead.countDown();
+        BlockingMemoryMap.await(allowGetToReturn);
+      }
+      return result;
     }
   }
 }
