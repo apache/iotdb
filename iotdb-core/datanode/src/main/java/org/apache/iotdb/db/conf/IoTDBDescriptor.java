@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -2761,6 +2762,7 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
     LoggerPeriodicalLogReducer.update();
   }
 

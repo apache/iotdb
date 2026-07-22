@@ -47,6 +47,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -99,7 +100,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
   private final AtomicBoolean isTsFileParserMemoryReserved = new AtomicBoolean(false);
-  private final Object tsFileParserMemoryReservationKey = new Object();
+  private final TsFileParserMemoryReservation tsFileParserMemoryReservationKey =
+      new TsFileParserMemoryReservation();
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -882,15 +884,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final long startTime = System.currentTimeMillis();
     long lastRecordTime = startTime;
 
-    final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
     while (!tryReserveTsFileParserMemory(memoryManager)) {
-      Thread.sleep(memoryCheckIntervalMs);
-
       final long currentTime = System.currentTimeMillis();
-      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
-      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
-      if (elapsedRecordTimeSeconds > 10.0) {
+      final long elapsedRecordTimeInMs = currentTime - lastRecordTime;
+      final long waitTimeInMs = currentTime - startTime;
+      final double waitTimeSeconds = waitTimeInMs / 1000.0;
+      if (elapsedRecordTimeInMs > 10_000) {
         LOGGER.info(
             DataNodePipeMessages.WAIT_FOR_MEMORY_ENOUGH_FOR_PARSING_FOR,
             resource != null ? resource.getTsFilePath() : "tsfile",
@@ -903,7 +902,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             waitTimeSeconds);
       }
 
-      if (waitTimeSeconds * 1000 > timeoutMs) {
+      if (waitTimeInMs > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         throw new PipeRuntimeOutOfMemoryCriticalException(
             String.format(
@@ -911,6 +910,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                     .PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_FOR_MEMORY_TO_PARSE_TSFILE_0E4EF8FD,
                 waitTimeSeconds));
       }
+
+      tsFileParserMemoryReservationKey.await(
+          Math.max(
+              1,
+              Math.min(
+                  timeoutMs - waitTimeInMs, 10_000 - Math.min(10_000, elapsedRecordTimeInMs))));
     }
 
     final long currentTime = System.currentTimeMillis();
@@ -1088,7 +1093,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final long creationTime;
     private final String dataRegionId;
     private final AtomicBoolean isTsFileParserMemoryReserved;
-    private final Object tsFileParserMemoryReservationKey;
+    private final TsFileParserMemoryReservation tsFileParserMemoryReservationKey;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -1102,7 +1107,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final File sharedModFile,
         final AtomicReference<TsFileInsertionEventParser> eventParser,
         final AtomicBoolean isTsFileParserMemoryReserved,
-        final Object tsFileParserMemoryReservationKey) {
+        final TsFileParserMemoryReservation tsFileParserMemoryReservationKey) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.creationTime = creationTime;

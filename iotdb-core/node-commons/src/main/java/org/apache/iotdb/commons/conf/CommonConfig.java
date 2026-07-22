@@ -1051,7 +1051,10 @@ public class CommonConfig {
   }
 
   public void setPipeTsFileParserInFlightMaxNum(final int pipeTsFileParserInFlightMaxNum) {
-    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNum);
+    final int validatedValue =
+        pipeTsFileParserInFlightMaxNum > 0
+            ? pipeTsFileParserInFlightMaxNum
+            : Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
     if (this.pipeTsFileParserInFlightMaxNum == validatedValue) {
       return;
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -258,7 +259,11 @@ public class PipeMemoryManagerTest {
                   enqueued.countDown();
                   final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
                   while (!acquired && System.nanoTime() < deadline) {
-                    Thread.sleep(1);
+                    reservation.key.await(
+                        Math.max(
+                            1,
+                            TimeUnit.NANOSECONDS.toMillis(
+                                Math.max(1, deadline - System.nanoTime()))));
                     acquired = tryAcquireWithoutTracking(reservation);
                   }
                   if (!acquired) {
@@ -326,7 +331,7 @@ public class PipeMemoryManagerTest {
     private final String pipeName;
     private final long creationTime;
     private final String dataRegionId;
-    private final Object key = new Object();
+    private final TsFileParserMemoryReservation key = new TsFileParserMemoryReservation();
     private volatile boolean acquired;
 
     private Reservation(final String pipeName, final long creationTime) {
