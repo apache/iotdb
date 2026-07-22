@@ -20,6 +20,8 @@ package org.apache.iotdb.rest.protocol.handler;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.rest.protocol.exception.RequestLimitExceededException;
+import org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest;
+import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +29,9 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+
+import static org.apache.iotdb.rest.protocol.v1.handler.RequestValidationHandler.validateInsertTabletRequest;
+import static org.apache.iotdb.rest.protocol.v2.handler.RequestValidationHandler.validateInsertRecordsRequest;
 
 public class RequestValidationLimitTest {
 
@@ -54,8 +59,7 @@ public class RequestValidationLimitTest {
   public void testV1InsertTabletRejectsTooManyRows() {
     config.setRestMaxInsertRows(2);
 
-    org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest request =
-        new org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest();
+    InsertTabletRequest request = new InsertTabletRequest();
     request.setDeviceId("root.sg.d1");
     request.setIsAligned(false);
     request.setMeasurements(Collections.singletonList("s1"));
@@ -63,8 +67,7 @@ public class RequestValidationLimitTest {
     request.setTimestamps(Arrays.asList(1L, 2L, 3L));
     request.setValues(Collections.singletonList(Arrays.asList(1L, 2L, 3L)));
 
-    org.apache.iotdb.rest.protocol.v1.handler.RequestValidationHandler.validateInsertTabletRequest(
-        request);
+    validateInsertTabletRequest(request);
   }
 
   @Test(expected = RequestLimitExceededException.class)
@@ -73,8 +76,7 @@ public class RequestValidationLimitTest {
     config.setRestMaxInsertColumns(10);
     config.setRestMaxInsertValues(2);
 
-    org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest request =
-        new org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest();
+    InsertRecordsRequest request = new InsertRecordsRequest();
     request.setIsAligned(false);
     request.setDevices(Arrays.asList("root.sg.d1", "root.sg.d2"));
     request.setTimestamps(Arrays.asList(1L, 2L));
@@ -84,8 +86,7 @@ public class RequestValidationLimitTest {
         Arrays.asList(Arrays.asList("INT64", "INT64"), Collections.singletonList("INT64")));
     request.setValuesList(Arrays.asList(Arrays.asList(1L, 2L), Collections.singletonList(3L)));
 
-    org.apache.iotdb.rest.protocol.v2.handler.RequestValidationHandler.validateInsertRecordsRequest(
-        request);
+    validateInsertRecordsRequest(request);
   }
 
   @Test(expected = RequestLimitExceededException.class)

@@ -18,6 +18,8 @@
 package org.apache.iotdb.rest.protocol.filter;
 
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.rest.i18n.RestMessages;
+import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -34,6 +36,8 @@ import java.io.InputStream;
 @Provider
 @PreMatching
 public class RequestSizeLimitFilter implements ContainerRequestFilter {
+
+  private static final int PAYLOAD_TOO_LARGE_STATUS_CODE = 413;
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
@@ -54,9 +58,15 @@ public class RequestSizeLimitFilter implements ContainerRequestFilter {
   }
 
   private static Response buildPayloadTooLargeResponse(long maxBodySize) {
-    return Response.status(413)
-        .type(MediaType.TEXT_PLAIN_TYPE)
-        .entity("REST request body exceeds limit " + maxBodySize + " bytes")
+    return Response.status(PAYLOAD_TOO_LARGE_STATUS_CODE)
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(
+            new ExecutionStatus()
+                .code(PAYLOAD_TOO_LARGE_STATUS_CODE)
+                .message(
+                    String.format(
+                        RestMessages.MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412,
+                        maxBodySize)))
         .build();
   }
 

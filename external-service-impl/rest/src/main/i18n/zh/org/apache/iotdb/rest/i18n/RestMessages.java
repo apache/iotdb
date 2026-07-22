@@ -72,6 +72,10 @@ public final class RestMessages {
       "第 %d 行的 values 数量与 data_types 数量不相等";
   public static final String ERROR_MESSAGE_SEPARATOR = "，";
 
+  // --- RequestSizeLimitFilter ---
+  public static final String MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412 =
+      "REST 请求体超过限制 %d 字节";
+
   private RestMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

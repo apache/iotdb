@@ -74,6 +74,10 @@ public final class RestMessages {
       "The number of values in the %dth row is not equal to the data_types size";
   public static final String ERROR_MESSAGE_SEPARATOR = ",";
 
+  // --- RequestSizeLimitFilter ---
+  public static final String MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412 =
+      "REST request body exceeds limit %d bytes";
+
   private RestMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
