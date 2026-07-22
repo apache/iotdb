@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -36,6 +37,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
@@ -47,21 +50,27 @@ public class RequestSizeLimitFilterTest {
 
   private IoTDBRestServiceConfig config;
   private long originalMaxBodySize;
+  private long originalMemoryLimit;
 
   @Before
   public void setUp() {
     config = IoTDBRestServiceDescriptor.getInstance().getConfig();
     originalMaxBodySize = config.getRestMaxRequestBodySizeInBytes();
+    originalMemoryLimit = config.getRestRequestBodyMemoryLimitInBytes();
+    RestRequestBodyMemoryManager.resetForTest();
   }
 
   @After
   public void tearDown() {
     config.setRestMaxRequestBodySizeInBytes(originalMaxBodySize);
+    config.setRestRequestBodyMemoryLimitInBytes(originalMemoryLimit);
+    RestRequestBodyMemoryManager.resetForTest();
   }
 
   @Test
   public void testAbortContentLengthOverLimit() {
     config.setRestMaxRequestBodySizeInBytes(4);
+    config.setRestRequestBodyMemoryLimitInBytes(10);
     TestRequestContext context = TestRequestContext.withLength(5);
 
     new RequestSizeLimitFilter().filter(context.proxy());
@@ -72,6 +81,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testRejectStreamOverLimit() throws IOException {
     config.setRestMaxRequestBodySizeInBytes(4);
+    config.setRestRequestBodyMemoryLimitInBytes(10);
     TestRequestContext context =
         TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
 
@@ -81,6 +91,67 @@ public class RequestSizeLimitFilterTest {
     WebApplicationException exception =
         assertThrows(WebApplicationException.class, () -> context.entityStream().readAllBytes());
     assertPayloadTooLarge(exception.getResponse(), 4);
+    assertEquals(0, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
+  }
+
+  @Test
+  public void testAbortContentLengthOverMemoryLimit() {
+    config.setRestMaxRequestBodySizeInBytes(10);
+    config.setRestRequestBodyMemoryLimitInBytes(4);
+    TestRequestContext context = TestRequestContext.withLength(5);
+
+    new RequestSizeLimitFilter().filter(context.proxy());
+
+    assertMemoryQuotaExceeded(context.abortedResponse(), 4);
+    assertEquals(0, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
+  }
+
+  @Test
+  public void testRejectStreamOverMemoryLimit() throws IOException {
+    config.setRestMaxRequestBodySizeInBytes(10);
+    config.setRestRequestBodyMemoryLimitInBytes(4);
+    TestRequestContext context =
+        TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
+
+    new RequestSizeLimitFilter().filter(context.proxy());
+
+    assertNull(context.abortedResponse());
+    WebApplicationException exception =
+        assertThrows(WebApplicationException.class, () -> context.entityStream().readAllBytes());
+    assertMemoryQuotaExceeded(exception.getResponse(), 4);
+    assertEquals(0, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
+  }
+
+  @Test
+  public void testDisabledMemoryLimitDoesNotReserveMemory() throws IOException {
+    config.setRestMaxRequestBodySizeInBytes(10);
+    config.setRestRequestBodyMemoryLimitInBytes(0);
+    TestRequestContext context =
+        TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
+
+    new RequestSizeLimitFilter().filter(context.proxy());
+
+    assertNull(context.abortedResponse());
+    assertEquals(
+        "12345", new String(context.entityStream().readAllBytes(), StandardCharsets.UTF_8));
+    assertEquals(0, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
+  }
+
+  @Test
+  public void testReleaseMemoryOnResponse() {
+    config.setRestMaxRequestBodySizeInBytes(10);
+    config.setRestRequestBodyMemoryLimitInBytes(5);
+    TestRequestContext context = TestRequestContext.withLength(4);
+    RequestSizeLimitFilter filter = new RequestSizeLimitFilter();
+
+    filter.filter(context.proxy());
+
+    assertNull(context.abortedResponse());
+    assertEquals(4, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
+
+    new RequestBodyMemoryReleaseFilter().filter(context.proxy(), responseContext());
+
+    assertEquals(0, RestRequestBodyMemoryManager.getReservedMemoryInBytes());
   }
 
   private static void assertPayloadTooLarge(Response response, long maxBodySize) {
@@ -96,11 +167,36 @@ public class RequestSizeLimitFilterTest {
         status.getMessage());
   }
 
+  private static void assertMemoryQuotaExceeded(Response response, long memoryLimit) {
+    assertEquals(503, response.getStatus());
+    assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+    assertTrue(response.getEntity() instanceof ExecutionStatus);
+
+    ExecutionStatus status = (ExecutionStatus) response.getEntity();
+    assertEquals(Integer.valueOf(503), status.getCode());
+    assertEquals(
+        String.format(
+            RestMessages.MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9,
+            memoryLimit),
+        status.getMessage());
+  }
+
+  private static ContainerResponseContext responseContext() {
+    return (ContainerResponseContext)
+        Proxy.newProxyInstance(
+            ContainerResponseContext.class.getClassLoader(),
+            new Class<?>[] {ContainerResponseContext.class},
+            (proxy, method, args) -> {
+              throw new UnsupportedOperationException(method.getName());
+            });
+  }
+
   private static class TestRequestContext {
 
     private final int contentLength;
     private final AtomicReference<InputStream> entityStream;
     private final AtomicReference<Response> abortedResponse = new AtomicReference<>();
+    private final Map<String, Object> properties = new HashMap<>();
 
     private TestRequestContext(int contentLength, InputStream entityStream) {
       this.contentLength = contentLength;
@@ -131,6 +227,14 @@ public class RequestSizeLimitFilterTest {
                     return null;
                   case "abortWith":
                     abortedResponse.set((Response) args[0]);
+                    return null;
+                  case "getProperty":
+                    return properties.get((String) args[0]);
+                  case "setProperty":
+                    properties.put((String) args[0], args[1]);
+                    return null;
+                  case "removeProperty":
+                    properties.remove((String) args[0]);
                     return null;
                   default:
                     throw new UnsupportedOperationException(method.getName());

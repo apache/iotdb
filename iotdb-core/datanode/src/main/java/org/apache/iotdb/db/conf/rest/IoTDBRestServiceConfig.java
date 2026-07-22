@@ -65,6 +65,9 @@ public class IoTDBRestServiceConfig {
   /** Maximum accepted REST request body size in bytes. */
   private long restMaxRequestBodySizeInBytes = 16 * 1024 * 1024L;
 
+  /** Maximum REST request body bytes reserved across concurrent requests. */
+  private long restRequestBodyMemoryLimitInBytes = 64 * 1024 * 1024L;
+
   /** Maximum row count accepted by a single REST write request. */
   private int restMaxInsertRows = 100000;
 
@@ -203,6 +206,14 @@ public class IoTDBRestServiceConfig {
 
   public void setRestMaxRequestBodySizeInBytes(long restMaxRequestBodySizeInBytes) {
     this.restMaxRequestBodySizeInBytes = restMaxRequestBodySizeInBytes;
+  }
+
+  public long getRestRequestBodyMemoryLimitInBytes() {
+    return restRequestBodyMemoryLimitInBytes;
+  }
+
+  public void setRestRequestBodyMemoryLimitInBytes(long restRequestBodyMemoryLimitInBytes) {
+    this.restRequestBodyMemoryLimitInBytes = restRequestBodyMemoryLimitInBytes;
   }
 
   public int getRestMaxInsertRows() {

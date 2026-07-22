@@ -38,23 +38,47 @@ import java.io.InputStream;
 public class RequestSizeLimitFilter implements ContainerRequestFilter {
 
   private static final int PAYLOAD_TOO_LARGE_STATUS_CODE = 413;
+  private static final int SERVICE_UNAVAILABLE_STATUS_CODE = 503;
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
     long maxBodySize =
         IoTDBRestServiceDescriptor.getInstance().getConfig().getRestMaxRequestBodySizeInBytes();
-    if (maxBodySize <= 0) {
+    long memoryLimit =
+        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestRequestBodyMemoryLimitInBytes();
+    if (maxBodySize <= 0 && memoryLimit <= 0) {
       return;
     }
 
     int contentLength = requestContext.getLength();
-    if (contentLength > maxBodySize) {
+    if (maxBodySize > 0 && contentLength > maxBodySize) {
       requestContext.abortWith(buildPayloadTooLargeResponse(maxBodySize));
       return;
     }
 
+    RestRequestBodyMemoryManager.Reservation memoryReservation =
+        RestRequestBodyMemoryManager.newReservation(memoryLimit);
+    long memoryReservedByContentLength = 0;
+    if (contentLength > 0 && memoryReservation.isEnabled()) {
+      if (!memoryReservation.reserve(contentLength)) {
+        memoryReservation.close();
+        requestContext.abortWith(buildMemoryQuotaExceededResponse(memoryLimit));
+        return;
+      }
+      memoryReservedByContentLength = contentLength;
+      RestRequestBodyMemoryManager.registerReservation(requestContext, memoryReservation);
+    }
+
     requestContext.setEntityStream(
-        new LimitedInputStream(requestContext.getEntityStream(), maxBodySize));
+        new LimitedInputStream(
+            requestContext.getEntityStream(),
+            maxBodySize,
+            memoryLimit,
+            memoryReservation,
+            memoryReservedByContentLength));
+    if (memoryReservation.isEnabled() && memoryReservedByContentLength == 0) {
+      RestRequestBodyMemoryManager.registerReservation(requestContext, memoryReservation);
+    }
   }
 
   private static Response buildPayloadTooLargeResponse(long maxBodySize) {
@@ -70,14 +94,39 @@ public class RequestSizeLimitFilter implements ContainerRequestFilter {
         .build();
   }
 
+  private static Response buildMemoryQuotaExceededResponse(long memoryLimit) {
+    return Response.status(SERVICE_UNAVAILABLE_STATUS_CODE)
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(
+            new ExecutionStatus()
+                .code(SERVICE_UNAVAILABLE_STATUS_CODE)
+                .message(
+                    String.format(
+                        RestMessages
+                            .MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9,
+                        memoryLimit)))
+        .build();
+  }
+
   private static class LimitedInputStream extends FilterInputStream {
 
     private final long maxBodySize;
+    private final long memoryLimit;
+    private final RestRequestBodyMemoryManager.Reservation memoryReservation;
+    private long memoryCoveredBytes;
     private long bytesRead;
 
-    private LimitedInputStream(InputStream in, long maxBodySize) {
+    private LimitedInputStream(
+        InputStream in,
+        long maxBodySize,
+        long memoryLimit,
+        RestRequestBodyMemoryManager.Reservation memoryReservation,
+        long memoryCoveredBytes) {
       super(in);
       this.maxBodySize = maxBodySize;
+      this.memoryLimit = memoryLimit;
+      this.memoryReservation = memoryReservation;
+      this.memoryCoveredBytes = memoryCoveredBytes;
     }
 
     @Override
@@ -100,8 +149,31 @@ public class RequestSizeLimitFilter implements ContainerRequestFilter {
 
     private void incrementBytesRead(int increment) {
       bytesRead += increment;
-      if (bytesRead > maxBodySize) {
+      if (maxBodySize > 0 && bytesRead > maxBodySize) {
+        memoryReservation.close();
         throw new WebApplicationException(buildPayloadTooLargeResponse(maxBodySize));
+      }
+      reserveMemoryIfNecessary();
+    }
+
+    private void reserveMemoryIfNecessary() {
+      if (bytesRead <= memoryCoveredBytes) {
+        return;
+      }
+      long sizeToReserve = bytesRead - memoryCoveredBytes;
+      if (!memoryReservation.reserve(sizeToReserve)) {
+        memoryReservation.close();
+        throw new WebApplicationException(buildMemoryQuotaExceededResponse(memoryLimit));
+      }
+      memoryCoveredBytes = bytesRead;
+    }
+
+    @Override
+    public void close() throws IOException {
+      try {
+        super.close();
+      } finally {
+        memoryReservation.close();
       }
     }
   }

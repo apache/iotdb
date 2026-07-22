@@ -98,6 +98,11 @@ public class IoTDBRestServiceDescriptor {
             trimProperties.getProperty(
                 "rest_max_request_body_size_in_bytes",
                 Long.toString(conf.getRestMaxRequestBodySizeInBytes()))));
+    conf.setRestRequestBodyMemoryLimitInBytes(
+        Long.parseLong(
+            trimProperties.getProperty(
+                "rest_request_body_memory_limit_in_bytes",
+                Long.toString(conf.getRestRequestBodyMemoryLimitInBytes()))));
     conf.setRestMaxInsertRows(
         Integer.parseInt(
             trimProperties.getProperty(

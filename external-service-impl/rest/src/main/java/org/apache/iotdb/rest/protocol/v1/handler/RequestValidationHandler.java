@@ -51,22 +51,27 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getValues(), RestMessages.VALUES_NOT_NULL);
 
     if (insertTabletRequest.getMeasurements().size() != insertTabletRequest.getDataTypes().size()) {
-      throw new IllegalArgumentException("measurements and dataTypes should have the same size");
+      throw new IllegalArgumentException(
+          RestMessages.EXCEPTION_MEASUREMENTS_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_FF715FA9);
     }
     if (insertTabletRequest.getValues().size() != insertTabletRequest.getDataTypes().size()) {
-      throw new IllegalArgumentException("values and dataTypes should have the same size");
+      throw new IllegalArgumentException(
+          RestMessages.EXCEPTION_VALUES_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_5BC1D604);
     }
 
     int rowCount = insertTabletRequest.getTimestamps().size();
     int columnCount = insertTabletRequest.getMeasurements().size();
-    RequestLimitChecker.checkRowCount("insertTablet request", rowCount);
-    RequestLimitChecker.checkColumnCount("insertTablet request", columnCount);
-    RequestLimitChecker.checkValueCount("insertTablet request", (long) rowCount * columnCount);
+    RequestLimitChecker.checkRowCount(RestMessages.MESSAGE_INSERTTABLET_REQUEST_8647CA58, rowCount);
+    RequestLimitChecker.checkColumnCount(
+        RestMessages.MESSAGE_INSERTTABLET_REQUEST_8647CA58, columnCount);
+    RequestLimitChecker.checkValueCount(
+        RestMessages.MESSAGE_INSERTTABLET_REQUEST_8647CA58, (long) rowCount * columnCount);
 
     for (List<Object> column : insertTabletRequest.getValues()) {
       if (column.size() != rowCount) {
         throw new IllegalArgumentException(
-            "Each value column should have the same size as timestamps");
+            RestMessages
+                .EXCEPTION_EACH_VALUE_COLUMN_SHOULD_HAVE_THE_SAME_SIZE_AS_TIMESTAMPS_523598BD);
       }
     }
   }

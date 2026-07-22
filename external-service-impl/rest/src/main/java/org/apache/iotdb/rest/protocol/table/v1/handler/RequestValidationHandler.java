@@ -67,10 +67,12 @@ public class RequestValidationHandler {
 
     int rowCount = insertTabletRequest.getTimestamps().size();
     int columnCount = insertTabletRequest.getColumnNames().size();
-    RequestLimitChecker.checkRowCount("table insertTablet request", rowCount);
-    RequestLimitChecker.checkColumnCount("table insertTablet request", columnCount);
+    RequestLimitChecker.checkRowCount(
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, rowCount);
+    RequestLimitChecker.checkColumnCount(
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, columnCount);
     RequestLimitChecker.checkValueCount(
-        "table insertTablet request", (long) rowCount * columnCount);
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, (long) rowCount * columnCount);
 
     for (int i = 0; i < insertTabletRequest.getDataTypes().size(); i++) {
       String dataType = insertTabletRequest.getDataTypes().get(i);

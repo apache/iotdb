@@ -19,6 +19,7 @@ package org.apache.iotdb.rest.protocol.handler;
 
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.exception.RequestLimitExceededException;
 
 public class RequestLimitChecker {
@@ -29,7 +30,11 @@ public class RequestLimitChecker {
     int maxRows = getConfig().getRestMaxInsertRows();
     if (maxRows > 0 && rowCount > maxRows) {
       throw new RequestLimitExceededException(
-          String.format("%s row count %d exceeds limit %d", requestName, rowCount, maxRows));
+          String.format(
+              RestMessages.EXCEPTION_ARG_ROW_COUNT_ARG_EXCEEDS_LIMIT_ARG_EE427E4B,
+              requestName,
+              rowCount,
+              maxRows));
     }
   }
 
@@ -38,7 +43,10 @@ public class RequestLimitChecker {
     if (maxColumns > 0 && columnCount > maxColumns) {
       throw new RequestLimitExceededException(
           String.format(
-              "%s column count %d exceeds limit %d", requestName, columnCount, maxColumns));
+              RestMessages.EXCEPTION_ARG_COLUMN_COUNT_ARG_EXCEEDS_LIMIT_ARG_DEE9637E,
+              requestName,
+              columnCount,
+              maxColumns));
     }
   }
 
@@ -46,7 +54,11 @@ public class RequestLimitChecker {
     long maxValues = getConfig().getRestMaxInsertValues();
     if (maxValues > 0 && valueCount > maxValues) {
       throw new RequestLimitExceededException(
-          String.format("%s value count %d exceeds limit %d", requestName, valueCount, maxValues));
+          String.format(
+              RestMessages.EXCEPTION_ARG_VALUE_COUNT_ARG_EXCEEDS_LIMIT_ARG_77F95703,
+              requestName,
+              valueCount,
+              maxValues));
     }
   }
 

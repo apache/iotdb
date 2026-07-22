@@ -75,6 +75,42 @@ public final class RestMessages {
   // --- RequestSizeLimitFilter ---
   public static final String MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412 =
       "REST 请求体超过限制 %d 字节";
+  public static final String
+      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9 =
+          "REST 请求体内存配额超过限制 %d 字节";
+
+  // --- RequestLimitChecker ---
+  public static final String MESSAGE_INSERTTABLET_REQUEST_8647CA58 = "insertTablet 请求";
+  public static final String MESSAGE_INSERTRECORDS_REQUEST_93E12369 = "insertRecords 请求";
+  public static final String MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C =
+      "table insertTablet 请求";
+  public static final String EXCEPTION_ARG_ROW_COUNT_ARG_EXCEEDS_LIMIT_ARG_EE427E4B =
+      "%s 行数 %d 超过限制 %d";
+  public static final String EXCEPTION_ARG_COLUMN_COUNT_ARG_EXCEEDS_LIMIT_ARG_DEE9637E =
+      "%s 列数 %d 超过限制 %d";
+  public static final String EXCEPTION_ARG_VALUE_COUNT_ARG_EXCEEDS_LIMIT_ARG_77F95703 =
+      "%s value 数 %d 超过限制 %d";
+
+  // --- RequestValidationHandler ---
+  public static final String
+      EXCEPTION_MEASUREMENTS_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_FF715FA9 =
+          "measurements 和 dataTypes 的数量应相同";
+  public static final String EXCEPTION_VALUES_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_5BC1D604 =
+      "values 和 dataTypes 的数量应相同";
+  public static final String
+      EXCEPTION_EACH_VALUE_COLUMN_SHOULD_HAVE_THE_SAME_SIZE_AS_TIMESTAMPS_523598BD =
+          "每个 value 列的数量应与 timestamps 数量相同";
+  public static final String
+      EXCEPTION_MEASUREMENTS_AND_DATA_TYPES_SHOULD_HAVE_THE_SAME_SIZE_8526F19A =
+          "measurements 和 data_types 的数量应相同";
+  public static final String EXCEPTION_VALUES_AND_DATA_TYPES_SHOULD_HAVE_THE_SAME_SIZE_0BAE701D =
+      "values 和 data_types 的数量应相同";
+  public static final String
+      EXCEPTION_DEVICES_TIMESTAMPS_MEASUREMENTS_LIST_DATA_TYPES_LIST_AND_VALUES_LIST_SHOULD_HAVE_THE_SAME_SIZE_5983AAC2 =
+          "devices、timestamps、measurements_list、data_types_list 和 values_list 的数量应相同";
+  public static final String
+      EXCEPTION_EACH_INSERTRECORDS_ROW_SHOULD_HAVE_THE_SAME_NUMBER_OF_MEASUREMENTS_DATA_TYPES_AND_VALUES_AD58AEF2 =
+          "每个 insertRecords 行中的 measurements、data types 和 values 数量应相同";
 
   private RestMessages() {}
   // ---------------------------------------------------------------------------
