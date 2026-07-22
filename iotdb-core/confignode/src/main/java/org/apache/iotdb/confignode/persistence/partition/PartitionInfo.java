@@ -250,6 +250,10 @@ public class PartitionInfo implements SnapshotProcessor {
 
       final long expectedGeneration = plan.getDatabaseGeneration(database);
       final long currentGeneration = databasePartitionTable.getDatabaseGeneration();
+      // Generation-less plans may still exist in pre-upgrade consensus logs. Consensus replay is
+      // ordered, so accepting them is necessary for snapshot compatibility and cannot overtake a
+      // later database recreation. Recovered procedures are fenced separately before they can
+      // issue RPCs or write a new consensus plan.
       if (plan.isDatabaseGenerationSet(database) && expectedGeneration != currentGeneration) {
         LOGGER.warn(
             ConfigNodeMessages
@@ -1113,7 +1117,7 @@ public class PartitionInfo implements SnapshotProcessor {
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
-      // serialize nextRegionGroupId
+      // Serialize the generation-aware snapshot header and allocation high-water marks.
       ReadWriteIOUtils.write(SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC, bufferedOutputStream);
       ReadWriteIOUtils.write(nextRegionGroupId.get(), bufferedOutputStream);
       ReadWriteIOUtils.write(nextDatabaseGeneration.get(), bufferedOutputStream);

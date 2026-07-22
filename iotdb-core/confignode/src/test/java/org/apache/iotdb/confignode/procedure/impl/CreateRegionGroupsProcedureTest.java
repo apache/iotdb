@@ -65,6 +65,10 @@ public class CreateRegionGroupsProcedureTest {
 
   private static class TestCreateRegionGroupsProcedure extends CreateRegionGroupsProcedure {
 
+    private TestCreateRegionGroupsProcedure() {
+      super();
+    }
+
     private TestCreateRegionGroupsProcedure(
         final TConsensusGroupType consensusGroupType,
         final CreateRegionGroupsPlan createRegionGroupsPlan,
@@ -75,6 +79,10 @@ public class CreateRegionGroupsProcedureTest {
 
     private void executeShunt(final ConfigNodeProcedureEnv env) {
       executeFromState(env, CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
+    }
+
+    private void executeCreate(final ConfigNodeProcedureEnv env) {
+      executeFromState(env, CreateRegionGroupsState.CREATE_REGION_GROUPS);
     }
 
     private ProcedureLockState acquireDatabaseLock(final ConfigNodeProcedureEnv env) {
@@ -225,6 +233,42 @@ public class CreateRegionGroupsProcedureTest {
         new RemoveRegionGroupProcedure(
             new TRegionReplicaSet(regionId, Collections.singletonList(createdDataNode))),
         cleanupCaptor.getValue());
+  }
+
+  @Test
+  public void testLegacyProcedureCannotBindToRecreatedDatabase() throws IOException {
+    final String database = "root.sg";
+    final CreateRegionGroupsPlan legacyCreatePlan = new CreateRegionGroupsPlan();
+    legacyCreatePlan.addRegionGroup(
+        database,
+        new TRegionReplicaSet(new TConsensusGroupId(DataRegion, 10), Collections.emptyList()));
+    final CreateRegionGroupsProcedure sourceProcedure =
+        new CreateRegionGroupsProcedure(DataRegion, legacyCreatePlan);
+
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    sourceProcedure.serialize(new DataOutputStream(byteArrayOutputStream));
+    final ByteBuffer legacyProcedureBuffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size() - 8);
+    Assert.assertEquals(
+        ProcedureType.CREATE_REGION_GROUPS.getTypeCode(), legacyProcedureBuffer.getShort());
+    final TestCreateRegionGroupsProcedure restoredProcedure = new TestCreateRegionGroupsProcedure();
+    restoredProcedure.deserialize(legacyProcedureBuffer);
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    Mockito.when(env.validateCreateRegionGroups(Mockito.any()))
+        .thenReturn(new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode()));
+    restoredProcedure.executeCreate(env);
+
+    final ArgumentCaptor<CreateRegionGroupsPlan> validationPlanCaptor =
+        ArgumentCaptor.forClass(CreateRegionGroupsPlan.class);
+    Mockito.verify(env).validateCreateRegionGroups(validationPlanCaptor.capture());
+    Assert.assertTrue(validationPlanCaptor.getValue().isDatabaseGenerationSet(database));
+    Assert.assertEquals(
+        CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET,
+        validationPlanCaptor.getValue().getDatabaseGeneration(database));
+    Mockito.verify(env, Mockito.never())
+        .doRegionCreation(Mockito.any(), Mockito.any(CreateRegionGroupsPlan.class));
+    Assert.assertTrue(restoredProcedure.isFailed());
   }
 
   @Test
