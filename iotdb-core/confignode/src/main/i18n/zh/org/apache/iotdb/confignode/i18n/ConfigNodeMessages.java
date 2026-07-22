@@ -710,4 +710,22 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
           "创建或修改 topic 失败，mode=consensus 不支持 topic 属性 %s";
+  public static final String
+      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_616E0CDE =
+          "拒绝 CreateRegionGroupsPlan，因为数据库 {} 不存在";
+  public static final String
+      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01 =
+          "拒绝 CreateRegionGroupsPlan，因为数据库 {} 正在删除";
+  public static final String
+      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_4306DEC3 =
+          "拒绝 CreateRegionGroupsPlan，因为数据库 {} 的生命周期代次已从 {} 变为 {}";
+  public static final String
+      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440 =
+          "创建 RegionGroups 失败，因为数据库 %s 不存在";
+  public static final String
+      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780 =
+          "创建 RegionGroups 失败，因为数据库 %s 正在删除";
+  public static final String
+      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_CCDAF444 =
+          "创建 RegionGroups 失败，因为数据库 %s 的生命周期代次已从 %d 变为 %d";
 }
