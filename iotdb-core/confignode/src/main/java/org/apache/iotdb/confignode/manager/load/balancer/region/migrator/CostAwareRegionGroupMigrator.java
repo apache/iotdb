@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 
 import org.slf4j.Logger;
@@ -386,6 +387,11 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       }
     }
 
+    // The batch DFS optimizes each batch independently, so it can leave an over/under-shoot when
+    // filling initially empty nodes. Re-point existing migrations to restore the strict ideal
+    // range without violating the one-migration-per-region constraint.
+    correctPhase1Overshoot(idealFloor, idealCeil, result, migratedRegions);
+
     for (TConsensusGroupId regionId : migratedRegions) {
       MigrateOption option = result.get(regionId);
       LOGGER.info(
@@ -405,6 +411,111 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     LOGGER.info("[{}] Phase 1 distribution: {}", logTag, getNodeDistribution());
 
     return migratedRegions;
+  }
+
+  /** Correct residual region-count overshoot by re-pointing existing Phase 1 migrations. */
+  private void correctPhase1Overshoot(
+      int idealFloor,
+      int idealCeil,
+      Map<TConsensusGroupId, MigrateOption> result,
+      Set<TConsensusGroupId> migratedRegions) {
+    if (!needsRegionBalance(idealFloor, idealCeil)) {
+      return;
+    }
+
+    Map<TConsensusGroupId, List<Integer>> currentReplicaMap = new HashMap<>();
+    Map<Integer, List<TConsensusGroupId>> regionsOnNode = new HashMap<>();
+    for (TConsensusGroupId regionId : migratedRegions) {
+      MigrateOption option = result.get(regionId);
+      if (option == null || !option.isMigration) {
+        continue;
+      }
+      List<Integer> replicaNodeIds = new ArrayList<>(replicaNodesIdMap.get(regionId));
+      int sourceIndex = replicaNodeIds.indexOf(option.fromNodeId);
+      if (sourceIndex < 0) {
+        continue;
+      }
+      replicaNodeIds.set(sourceIndex, option.toNodeId);
+      currentReplicaMap.put(regionId, replicaNodeIds);
+      regionsOnNode.computeIfAbsent(option.toNodeId, ignored -> new ArrayList<>()).add(regionId);
+    }
+
+    List<Integer> sortedNodeIds = new ArrayList<>(allAvailableNodeIds);
+    Collections.sort(sortedNodeIds);
+    int corrections = 0;
+    int maxCorrections = allAvailableNodeIds.size() * Math.max(1, replicationFactor);
+    for (int iteration = 0; iteration < maxCorrections; iteration++) {
+      TConsensusGroupId correctionRegion = null;
+      MigrateOption correctionOption = null;
+      int overNode = -1;
+      int underNode = -1;
+
+      for (int candidateOverNode : sortedNodeIds) {
+        if (regionCounter[candidateOverNode] <= idealCeil) {
+          continue;
+        }
+        for (TConsensusGroupId regionId :
+            regionsOnNode.getOrDefault(candidateOverNode, Collections.emptyList())) {
+          MigrateOption option = result.get(regionId);
+          List<Integer> replicaNodeIds = currentReplicaMap.get(regionId);
+          if (option == null
+              || !option.isMigration
+              || option.toNodeId != candidateOverNode
+              || replicaNodeIds == null) {
+            continue;
+          }
+          for (int candidateUnderNode : sortedNodeIds) {
+            if (regionCounter[candidateUnderNode] < idealFloor
+                && !replicaNodeIds.contains(candidateUnderNode)) {
+              correctionRegion = regionId;
+              correctionOption = option;
+              overNode = candidateOverNode;
+              underNode = candidateUnderNode;
+              break;
+            }
+          }
+          if (correctionRegion != null) {
+            break;
+          }
+        }
+        if (correctionRegion != null) {
+          break;
+        }
+      }
+
+      if (correctionRegion == null) {
+        break;
+      }
+
+      List<Integer> replicaNodeIds = currentReplicaMap.get(correctionRegion);
+      applyMigrationWithReplicaMap(correctionRegion, overNode, underNode, replicaNodeIds);
+      replicaNodeIds.set(replicaNodeIds.indexOf(overNode), underNode);
+      if (correctionOption.fromNodeId == underNode) {
+        result.put(correctionRegion, new MigrateOption(false, -1, -1));
+        migratedRegions.remove(correctionRegion);
+      } else {
+        result.put(
+            correctionRegion, new MigrateOption(true, correctionOption.fromNodeId, underNode));
+      }
+      regionsOnNode.get(overNode).remove(correctionRegion);
+      regionsOnNode.computeIfAbsent(underNode, ignored -> new ArrayList<>()).add(correctionRegion);
+      LOGGER.info(
+          ManagerMessages
+              .LOG_ARG_PHASE_1_CORRECTED_OVERSHOOT_FOR_REGION_ARG_FROM_NODE_ARG_TO_NODE_ARG_PREVIOUS_TARGET_ARG_E72BBA5A,
+          logTag,
+          correctionRegion,
+          correctionOption.fromNodeId,
+          underNode,
+          overNode);
+      corrections++;
+    }
+
+    if (corrections > 0) {
+      LOGGER.info(
+          ManagerMessages.LOG_ARG_PHASE_1_APPLIED_ARG_OVERSHOOT_CORRECTION_S_FA477C14,
+          logTag,
+          corrections);
+    }
   }
 
   /** Check if any node has regionCount outside [idealFloor, idealCeil]. */

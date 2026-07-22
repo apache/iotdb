@@ -696,5 +696,10 @@ public final class ManagerMessages {
       "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
   public static final String MESSAGE_SUCCESSFULLY_SIGNALLED_ARG_MIGRATION_S_TO_CANCEL_BFC79B2E =
       "Successfully signalled %d migration(s) to cancel";
+  public static final String
+      LOG_ARG_PHASE_1_CORRECTED_OVERSHOOT_FOR_REGION_ARG_FROM_NODE_ARG_TO_NODE_ARG_PREVIOUS_TARGET_ARG_E72BBA5A =
+          "[{}] Phase 1: Corrected overshoot for Region {} from Node {} to Node {} (previous target: {})";
+  public static final String LOG_ARG_PHASE_1_APPLIED_ARG_OVERSHOOT_CORRECTION_S_FA477C14 =
+      "[{}] Phase 1: Applied {} overshoot correction(s)";
 
 }

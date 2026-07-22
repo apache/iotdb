@@ -675,5 +675,10 @@ public final class ManagerMessages {
       "数据库 {} 没有可用的 {} RegionGroup。PartitionInfo 中可见的 RegionGroup 及其 LoadCache 状态：{}";
   public static final String MESSAGE_SUCCESSFULLY_SIGNALLED_ARG_MIGRATION_S_TO_CANCEL_BFC79B2E =
       "已成功向 %d 个迁移任务发出取消信号";
+  public static final String
+      LOG_ARG_PHASE_1_CORRECTED_OVERSHOOT_FOR_REGION_ARG_FROM_NODE_ARG_TO_NODE_ARG_PREVIOUS_TARGET_ARG_E72BBA5A =
+          "[{}] Phase 1：已修正 Region {} 的溢出，迁移从 Node {} 指向 Node {}（原目标：{}）";
+  public static final String LOG_ARG_PHASE_1_APPLIED_ARG_OVERSHOOT_CORRECTION_S_FA477C14 =
+      "[{}] Phase 1：已应用 {} 项溢出修正";
 
 }
