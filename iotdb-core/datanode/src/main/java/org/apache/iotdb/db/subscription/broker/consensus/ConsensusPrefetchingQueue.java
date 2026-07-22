@@ -3052,8 +3052,7 @@ public class ConsensusPrefetchingQueue {
       }
 
       // Deregister metrics after the queue is fully closed.
-      ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
-          .deregister(getPrefetchingQueueId());
+      ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().deregister(this);
 
       if (Objects.nonNull(prefetchBinding.left) && Objects.nonNull(prefetchBinding.right)) {
         if (!prefetchBinding.left.isShutdown()) {
@@ -3188,6 +3187,14 @@ public class ConsensusPrefetchingQueue {
 
   public boolean isActive() {
     return isActive;
+  }
+
+  public long getActiveStatus() {
+    return isActive ? 1L : 0L;
+  }
+
+  public long getInitializedStatus() {
+    return prefetchInitialized ? 1L : 0L;
   }
 
   public void setActiveWriterNodeIds(final Set<Integer> activeWriterNodeIds) {
@@ -3417,7 +3424,8 @@ public class ConsensusPrefetchingQueue {
         prefetchingQueue.size()
             + inFlightEvents.size()
             + pendingEntries.size()
-            + getRealtimeBufferedEntryCount();
+            + getRealtimeBufferedEntryCount()
+            + lingerBatch.getEntryCount();
     final boolean hasUnreadWalEntries = hasUnreadWalEntriesBehindCursor();
     return queuedLag + (hasUnreadWalEntries ? 1 : 0);
   }
@@ -3511,7 +3519,7 @@ public class ConsensusPrefetchingQueue {
     private long physicalTime;
     private int writerNodeId;
     private long lastLocalSeq;
-    private int entryCount;
+    private volatile int entryCount;
 
     private DeliveryBatchState() {
       reset();
@@ -3519,6 +3527,10 @@ public class ConsensusPrefetchingQueue {
 
     private boolean isEmpty() {
       return tablets.isEmpty();
+    }
+
+    private int getEntryCount() {
+      return entryCount;
     }
 
     private void append(
