@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -934,6 +935,31 @@ public class TsFileProcessorTest {
   }
 
   @Test
+  public void testAlignedSparseRowDoesNotChargeUnallocatedPrimitiveArrayOnNewBlock()
+      throws IOException, WriteProcessException, IllegalPathException {
+    processor = newTestProcessor(filePath);
+    String sparseDevice = deviceId + ".sparse";
+    String denseDevice = deviceId + ".dense";
+    for (int i = 0; i < PrimitiveArrayManager.ARRAY_SIZE; i++) {
+      insertAlignedRow(processor, sparseDevice, i, true);
+      insertAlignedRow(processor, denseDevice, i, true);
+    }
+
+    IMemTable memTable = processor.getWorkMemTable();
+    long ramCostBeforeSparseRow = memTable.getTVListsRamCost();
+    insertAlignedRow(processor, sparseDevice, PrimitiveArrayManager.ARRAY_SIZE, false);
+    long sparseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeSparseRow;
+
+    long ramCostBeforeDenseRow = memTable.getTVListsRamCost();
+    insertAlignedRow(processor, denseDevice, PrimitiveArrayManager.ARRAY_SIZE, true);
+    long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
+
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(dataType),
+        denseRowRamIncrement - sparseRowRamIncrement);
+  }
+
+  @Test
   public void testAlignedRamCostIgnoresRelationalNonFieldAndNullFieldColumns()
       throws IllegalPathException, WriteProcessException, IOException {
     TsFileProcessor relationalProcessor =
@@ -1306,6 +1332,22 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(newProcessor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, newProcessor);
     return newProcessor;
+  }
+
+  private void insertAlignedRow(
+      TsFileProcessor targetProcessor,
+      String targetDevice,
+      long timestamp,
+      boolean writeSecondColumn)
+      throws IllegalPathException, WriteProcessException {
+    TSRecord record = new TSRecord(targetDevice, timestamp);
+    record.addTuple(DataPoint.getDataPoint(dataType, measurementId, Long.toString(timestamp)));
+    if (writeSecondColumn) {
+      record.addTuple(DataPoint.getDataPoint(dataType, "s1", Long.toString(timestamp)));
+    }
+    InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+    node.setAligned(true);
+    targetProcessor.insert(node, new long[5]);
   }
 
   private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)

@@ -265,6 +265,22 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testCalculateRamSizeExcludesUnallocatedPrimitiveArrays() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    int blockCount = tvList.getValues().get(0).size();
+    long denseRamSize = blockCount * tvList.alignedTvListArrayMemCost();
+    long expectedRamSize =
+        denseRamSize - blockCount * AlignedTVList.primitiveArrayMemCost(TSDataType.INT64);
+
+    Assert.assertEquals(expectedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  @Test
   public void testBatchDoesNotAllocateAllNullPrimitiveArray() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
