@@ -1169,6 +1169,14 @@ public class PartitionManager {
     return partitionInfo.isDatabasePreDeleted(database);
   }
 
+  public long getDatabaseGeneration(final String database) {
+    return partitionInfo.getDatabaseGeneration(database);
+  }
+
+  public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan plan) {
+    return partitionInfo.validateCreateRegionGroups(plan);
+  }
+
   /**
    * Get TSeriesPartitionSlot.
    *

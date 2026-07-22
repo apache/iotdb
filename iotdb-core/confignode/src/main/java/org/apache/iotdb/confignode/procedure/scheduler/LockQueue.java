@@ -64,4 +64,8 @@ public class LockQueue {
     }
     return count;
   }
+
+  public boolean isIdle() {
+    return lockOwnerProcedure == null && deque.isEmpty();
+  }
 }

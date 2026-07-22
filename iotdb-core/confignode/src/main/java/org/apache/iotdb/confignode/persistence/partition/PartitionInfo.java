@@ -105,6 +105,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -125,9 +126,15 @@ public class PartitionInfo implements SnapshotProcessor {
   // Allocate 8MB buffer for load snapshot of PartitionInfo
   private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
+  // A negative value cannot collide with nextRegionGroupId, whose only negative value is -1.
+  private static final int SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC = -20260721;
+
   /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+
+  // Monotonically identifies different incarnations that reuse the same database name.
+  private final AtomicLong nextDatabaseGeneration;
 
   // Map<DatabaseName, DatabasePartitionInfo>
   // For tree model databases: The databaseName is a partial path's full path with "root."
@@ -142,6 +149,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
+    this.nextDatabaseGeneration = new AtomicLong(0);
     this.databasePartitionTables = new ConcurrentHashMap<>();
 
     this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
@@ -182,7 +190,8 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
     final String databaseName = plan.getSchema().getName();
-    final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
+    final DatabasePartitionTable databasePartitionTable =
+        new DatabasePartitionTable(databaseName, nextDatabaseGeneration.incrementAndGet());
     databasePartitionTables.put(databaseName, databasePartitionTable);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -194,37 +203,97 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus createRegionGroups(CreateRegionGroupsPlan plan) {
-    TSStatus result;
-    AtomicInteger maxRegionId = new AtomicInteger(Integer.MIN_VALUE);
+    updateNextRegionGroupId(plan);
+
+    final TSStatus validationStatus = validateCreateRegionGroups(plan);
+    if (validationStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return validationStatus;
+    }
 
     plan.getRegionGroupMap()
         .forEach(
             (database, regionReplicaSets) -> {
-              if (isDatabasePreDeleted(database)) {
-                LOGGER.warn(
-                    ConfigNodeMessages
-                        .CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS,
-                    database);
-                return;
-              }
               databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
-              regionReplicaSets.forEach(
-                  regionReplicaSet ->
-                      maxRegionId.set(
-                          Math.max(maxRegionId.get(), regionReplicaSet.getRegionId().getId())));
             });
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /** Validates all databases before any RegionGroup in a potentially batched plan is persisted. */
+  public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan plan) {
+    for (final String database : plan.getRegionGroupMap().keySet()) {
+      final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+      if (databasePartitionTable == null) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_616E0CDE,
+            database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+            .setMessage(
+                String.format(
+                    ConfigNodeMessages
+                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440,
+                    database));
+      }
+      if (!databasePartitionTable.isNotPreDeleted()) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01,
+            database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+            .setMessage(
+                String.format(
+                    ConfigNodeMessages
+                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780,
+                    database));
+      }
+
+      final long expectedGeneration = plan.getDatabaseGeneration(database);
+      final long currentGeneration = databasePartitionTable.getDatabaseGeneration();
+      if (plan.isDatabaseGenerationSet(database) && expectedGeneration != currentGeneration) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_4306DEC3,
+            database,
+            expectedGeneration,
+            currentGeneration);
+        return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ConfigNodeMessages
+                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_LIFECYCLE_GENERATION_CHANGED_FROM_ARG_TO_ARG_CCDAF444,
+                    database,
+                    expectedGeneration,
+                    currentGeneration));
+      }
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private void updateNextRegionGroupId(final CreateRegionGroupsPlan plan) {
+    final int maxRegionId =
+        plan.getRegionGroupMap().values().stream()
+            .flatMap(List::stream)
+            .mapToInt(regionReplicaSet -> regionReplicaSet.getRegionId().getId())
+            .max()
+            .orElse(Integer.MIN_VALUE);
 
     // To ensure that the nextRegionGroupId is updated correctly when
     // the ConfigNode-followers concurrently processes CreateRegionsPlan,
     // we need to add a synchronization lock here
     synchronized (nextRegionGroupId) {
-      if (nextRegionGroupId.get() < maxRegionId.get()) {
-        nextRegionGroupId.set(maxRegionId.get());
+      if (nextRegionGroupId.get() < maxRegionId) {
+        nextRegionGroupId.set(maxRegionId);
       }
     }
+  }
 
-    result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    return result;
+  public long getDatabaseGeneration(final String database) {
+    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    return databasePartitionTable == null
+        ? CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET
+        : databasePartitionTable.getDatabaseGeneration();
   }
 
   /**
@@ -1045,13 +1114,17 @@ public class PartitionInfo implements SnapshotProcessor {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       // serialize nextRegionGroupId
+      ReadWriteIOUtils.write(SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC, bufferedOutputStream);
       ReadWriteIOUtils.write(nextRegionGroupId.get(), bufferedOutputStream);
+      ReadWriteIOUtils.write(nextDatabaseGeneration.get(), bufferedOutputStream);
 
       // serialize databasePartitionTable
       ReadWriteIOUtils.write(databasePartitionTables.size(), bufferedOutputStream);
       for (Map.Entry<String, DatabasePartitionTable> databasePartitionTableEntry :
           databasePartitionTables.entrySet()) {
         ReadWriteIOUtils.write(databasePartitionTableEntry.getKey(), bufferedOutputStream);
+        ReadWriteIOUtils.write(
+            databasePartitionTableEntry.getValue().getDatabaseGeneration(), bufferedOutputStream);
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
@@ -1106,7 +1179,15 @@ public class PartitionInfo implements SnapshotProcessor {
       clear();
 
       // start to restore
-      nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
+      final int firstSnapshotValue = ReadWriteIOUtils.readInt(fileInputStream);
+      final boolean hasDatabaseGeneration =
+          firstSnapshotValue == SNAPSHOT_WITH_DATABASE_GENERATION_MAGIC;
+      if (hasDatabaseGeneration) {
+        nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
+        nextDatabaseGeneration.set(ReadWriteIOUtils.readLong(fileInputStream));
+      } else {
+        nextRegionGroupId.set(firstSnapshotValue);
+      }
 
       // restore databasePartitionTable
       int length = ReadWriteIOUtils.readInt(fileInputStream);
@@ -1116,7 +1197,12 @@ public class PartitionInfo implements SnapshotProcessor {
           throw new IOException(
               ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_BECAUSE_GET_NULL_DATABASE_NAME);
         }
-        final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(database);
+        final long databaseGeneration =
+            hasDatabaseGeneration
+                ? ReadWriteIOUtils.readLong(fileInputStream)
+                : CreateRegionGroupsPlan.DATABASE_GENERATION_NOT_SET;
+        final DatabasePartitionTable databasePartitionTable =
+            new DatabasePartitionTable(database, databaseGeneration);
         databasePartitionTable.deserialize(fileInputStream, protocol);
         databasePartitionTables.put(database, databasePartitionTable);
       }
@@ -1300,6 +1386,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public void clear() {
     nextRegionGroupId.set(-1);
+    nextDatabaseGeneration.set(0);
     databasePartitionTables.clear();
     regionMaintainTaskList.clear();
   }
@@ -1314,12 +1401,14 @@ public class PartitionInfo implements SnapshotProcessor {
     }
     PartitionInfo that = (PartitionInfo) o;
     return nextRegionGroupId.get() == that.nextRegionGroupId.get()
+        && nextDatabaseGeneration.get() == that.nextDatabaseGeneration.get()
         && databasePartitionTables.equals(that.databasePartitionTables)
         && regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(nextRegionGroupId, databasePartitionTables, regionMaintainTaskList);
+    return Objects.hash(
+        nextRegionGroupId, nextDatabaseGeneration, databasePartitionTables, regionMaintainTaskList);
   }
 }

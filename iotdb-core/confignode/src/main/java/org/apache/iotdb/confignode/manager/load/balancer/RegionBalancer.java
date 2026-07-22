@@ -116,6 +116,8 @@ public class RegionBalancer {
     for (final Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
       final String database = entry.getKey();
       final int allotment = entry.getValue();
+      createRegionGroupsPlan.setDatabaseGeneration(
+          database, getPartitionManager().getDatabaseGeneration(database));
       final int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
       // Only considering the specified Database when doing allocation

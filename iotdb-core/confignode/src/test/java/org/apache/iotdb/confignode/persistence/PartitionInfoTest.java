@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveReg
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -47,6 +49,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMainta
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -288,6 +291,86 @@ public class PartitionInfoTest {
     Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());
     Assert.assertEquals(
         newRegion.getRegionId(), partitionInfo.getRegionMaintainEntryList().get(0).getRegionId());
+  }
+
+  @Test
+  public void testCreateRegionGroupsRejectsPreDeletedAndMissingDatabase()
+      throws DatabaseNotExistsException {
+    final String database = "root.lifecycle";
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
+
+    final CreateRegionGroupsPlan preDeletedPlan = new CreateRegionGroupsPlan();
+    preDeletedPlan.setDatabaseGeneration(database, partitionInfo.getDatabaseGeneration(database));
+    preDeletedPlan.addRegionGroup(
+        database,
+        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 1)));
+    partitionInfo.preDeleteDatabase(
+        new PreDeleteDatabasePlan(database, PreDeleteDatabasePlan.PreDeleteType.EXECUTE));
+
+    TSStatus status = partitionInfo.createRegionGroups(preDeletedPlan);
+    Assert.assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), status.getCode());
+    Assert.assertTrue(
+        partitionInfo.getAllReplicaSets(database, TConsensusGroupType.DataRegion).isEmpty());
+
+    final CreateRegionGroupsPlan missingPlan = new CreateRegionGroupsPlan();
+    missingPlan.addRegionGroup(
+        "root.missing",
+        generateTRegionReplicaSet(10, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));
+    status = partitionInfo.createRegionGroups(missingPlan);
+    Assert.assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), status.getCode());
+  }
+
+  @Test
+  public void testOldCreateRegionGroupsPlanCannotPolluteRecreatedDatabase()
+      throws DatabaseNotExistsException {
+    final String database = "root.recreated";
+    final DatabaseSchemaPlan createDatabasePlan =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database));
+    partitionInfo.createDatabase(createDatabasePlan);
+
+    final long oldGeneration = partitionInfo.getDatabaseGeneration(database);
+    final CreateRegionGroupsPlan oldPlan = new CreateRegionGroupsPlan();
+    oldPlan.setDatabaseGeneration(database, oldGeneration);
+    oldPlan.addRegionGroup(
+        database,
+        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 3)));
+
+    partitionInfo.deleteDatabase(new DeleteDatabasePlan(database));
+    partitionInfo.createDatabase(createDatabasePlan);
+    Assert.assertNotEquals(oldGeneration, partitionInfo.getDatabaseGeneration(database));
+
+    final TSStatus status = partitionInfo.createRegionGroups(oldPlan);
+    Assert.assertEquals(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        0, partitionInfo.getRegionGroupCount(database, TConsensusGroupType.DataRegion));
+  }
+
+  @Test
+  public void testBatchedCreateRegionGroupsPlanIsValidatedAtomically()
+      throws DatabaseNotExistsException {
+    final String existingDatabase = "root.existing";
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(existingDatabase)));
+
+    final CreateRegionGroupsPlan batchedPlan = new CreateRegionGroupsPlan();
+    batchedPlan.setDatabaseGeneration(
+        existingDatabase, partitionInfo.getDatabaseGeneration(existingDatabase));
+    batchedPlan.addRegionGroup(
+        existingDatabase,
+        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 40)));
+    batchedPlan.addRegionGroup(
+        "root.missing",
+        generateTRegionReplicaSet(10, new TConsensusGroupId(TConsensusGroupType.DataRegion, 41)));
+
+    final TSStatus status = partitionInfo.createRegionGroups(batchedPlan);
+    Assert.assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        0, partitionInfo.getRegionGroupCount(existingDatabase, TConsensusGroupType.DataRegion));
+    Assert.assertEquals(42, partitionInfo.generateNextRegionGroupId());
   }
 
   @Test
