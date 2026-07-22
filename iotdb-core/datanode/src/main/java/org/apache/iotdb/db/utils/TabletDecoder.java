@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -28,9 +27,8 @@ import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -144,73 +142,8 @@ public class TabletDecoder {
     TSEncoding encoding = columnEncodings.get(columnIndex + 1);
 
     Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
-    Object column = null;
-    switch (dataType) {
-      case DATE:
-      case INT32:
-        int[] intCol = new int[rowSize];
-        if (encoding == TSEncoding.PLAIN) {
-          // PlainEncoder uses var int, which may cause compatibility problem
-          for (int j = 0; j < rowSize; j++) {
-            intCol[j] = ReadWriteIOUtils.readInt(uncompressed);
-          }
-        } else {
-          for (int j = 0; j < rowSize; j++) {
-            intCol[j] = decoder.readInt(uncompressed);
-          }
-        }
-        column = intCol;
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longCol = new long[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          longCol[j] = decoder.readLong(uncompressed);
-        }
-        column = longCol;
-        break;
-      case FLOAT:
-        float[] floatCol = new float[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          floatCol[j] = decoder.readFloat(uncompressed);
-        }
-        column = floatCol;
-        break;
-      case DOUBLE:
-        double[] doubleCol = new double[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          doubleCol[j] = decoder.readDouble(uncompressed);
-        }
-        column = doubleCol;
-        break;
-      case BOOLEAN:
-        boolean[] boolCol = new boolean[rowSize];
-        for (int j = 0; j < rowSize; j++) {
-          boolCol[j] = decoder.readBoolean(uncompressed);
-        }
-        column = boolCol;
-        break;
-      case STRING:
-      case BLOB:
-      case TEXT:
-        Binary[] binaryCol = new Binary[rowSize];
-        if (encoding == TSEncoding.PLAIN) {
-          // PlainEncoder uses var int, which may cause compatibility problem
-          for (int j = 0; j < rowSize; j++) {
-            binaryCol[j] = ReadWriteIOUtils.readBinary(uncompressed);
-          }
-        } else {
-          for (int j = 0; j < rowSize; j++) {
-            binaryCol[j] = decoder.readBinary(uncompressed);
-          }
-        }
-        column = binaryCol;
-        break;
-      case UNKNOWN:
-      case VECTOR:
-      default:
-        throw new IllegalArgumentException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
-    }
-    return column;
+    return TypeServices.TABLET_COLUMN_DECODER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .decode(decoder, uncompressed, rowSize, encoding);
   }
 }

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -45,6 +46,7 @@ import com.sun.jna.platform.win32.Variant;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -63,6 +65,7 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -71,6 +74,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 public class TypeServices {
 
@@ -452,6 +456,103 @@ public class TypeServices {
                         .setChecked(true);
               };
 
+  public static final TypeService<Supplier<TsPrimitiveType>>
+      EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> type::getTsPrimitiveType;
+                case DATE -> Type.fromTsDataType(TSDataType.INT32)::getTsPrimitiveType;
+                case TIMESTAMP -> Type.fromTsDataType(TSDataType.INT64)::getTsPrimitiveType;
+                case TEXT, BLOB, STRING, OBJECT ->
+                    () ->
+                        Type.fromTsDataType(TSDataType.TEXT)
+                            .getTsPrimitiveType(new Binary("", TSFileConfig.STRING_CHARSET));
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                        .setChecked(true);
+              };
+
+  public static final TypeService<Function<IoTDBConfig, TSEncoding>> DEFAULT_ENCODING_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> IoTDBConfig::getDefaultBooleanEncoding;
+            case INT32, DATE -> IoTDBConfig::getDefaultInt32Encoding;
+            case INT64, TIMESTAMP -> IoTDBConfig::getDefaultInt64Encoding;
+            case FLOAT -> IoTDBConfig::getDefaultFloatEncoding;
+            case DOUBLE -> IoTDBConfig::getDefaultDoubleEncoding;
+            case TEXT, BLOB, STRING, OBJECT -> IoTDBConfig::getDefaultTextEncoding;
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<TabletColumnDecoder> TABLET_COLUMN_DECODER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  int[] values = new int[rowCount];
+                  // PlainEncoder uses var int, which may cause compatibility problems.
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] =
+                        encoding == TSEncoding.PLAIN
+                            ? ReadWriteIOUtils.readInt(buffer)
+                            : decoder.readInt(buffer);
+                  }
+                  return values;
+                };
+            case INT64, TIMESTAMP ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  long[] values = new long[rowCount];
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] = decoder.readLong(buffer);
+                  }
+                  return values;
+                };
+            case FLOAT ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  float[] values = new float[rowCount];
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] = decoder.readFloat(buffer);
+                  }
+                  return values;
+                };
+            case DOUBLE ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  double[] values = new double[rowCount];
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] = decoder.readDouble(buffer);
+                  }
+                  return values;
+                };
+            case BOOLEAN ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  boolean[] values = new boolean[rowCount];
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] = decoder.readBoolean(buffer);
+                  }
+                  return values;
+                };
+            case TEXT, BLOB, STRING ->
+                (decoder, buffer, rowCount, encoding) -> {
+                  Binary[] values = new Binary[rowCount];
+                  // PlainEncoder uses var int, which may cause compatibility problems.
+                  for (int i = 0; i < rowCount; i++) {
+                    values[i] =
+                        encoding == TSEncoding.PLAIN
+                            ? ReadWriteIOUtils.readBinary(buffer)
+                            : decoder.readBinary(buffer);
+                  }
+                  return values;
+                };
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
   public static final TypeService<DecodedArrayValueReader> DECODED_ARRAY_VALUE_READER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -705,6 +806,9 @@ public class TypeServices {
     ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
     OBJECT_VALUE_SERIALIZER_SERVICE.check();
     TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();
+    EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE.check();
+    DEFAULT_ENCODING_SERVICE.check();
+    TABLET_COLUMN_DECODER_SERVICE.check();
     DECODED_ARRAY_VALUE_READER_SERVICE.check();
     DECODED_CHUNK_WRITER_SERVICE.check();
   }
@@ -878,6 +982,11 @@ public class TypeServices {
   @FunctionalInterface
   public interface ValueSerializer<T> {
     int serialize(T value, DataOutputStream stream) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface TabletColumnDecoder {
+    Object decode(Decoder decoder, ByteBuffer buffer, int rowCount, TSEncoding encoding);
   }
 
   @FunctionalInterface

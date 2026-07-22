@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 public class EncodingInferenceUtils {
 
@@ -35,27 +35,6 @@ public class EncodingInferenceUtils {
   /** Get default encoding by dataType */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case DATE:
-      case INT32:
-        return conf.getDefaultInt32Encoding();
-      case TIMESTAMP:
-      case INT64:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        return conf.getDefaultTextEncoding();
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    return TypeServices.DEFAULT_ENCODING_SERVICE.call(Type.fromTsDataType(dataType)).apply(conf);
   }
 }

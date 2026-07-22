@@ -18,19 +18,9 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
-import org.apache.tsfile.utils.TsPrimitiveType.TsBoolean;
-import org.apache.tsfile.utils.TsPrimitiveType.TsDouble;
-import org.apache.tsfile.utils.TsPrimitiveType.TsFloat;
-import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
-import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 
@@ -46,58 +36,15 @@ public class TimeValuePairUtils {
    */
   public static void setTimeValuePair(TimeValuePair from, TimeValuePair to) {
     to.setTimestamp(from.getTimestamp());
-    switch (from.getValue().getDataType()) {
-      case INT32:
-      case DATE:
-        to.getValue().setInt(from.getValue().getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        to.getValue().setLong(from.getValue().getLong());
-        break;
-      case FLOAT:
-        to.getValue().setFloat(from.getValue().getFloat());
-        break;
-      case DOUBLE:
-        to.getValue().setDouble(from.getValue().getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        to.getValue().setBinary(from.getValue().getBinary());
-        break;
-      case BOOLEAN:
-        to.getValue().setBoolean(from.getValue().getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(from.getValue().getDataType()));
-    }
+    to.getValue().copy(from.getValue());
   }
 
   public static TimeValuePair getEmptyTimeValuePair(TSDataType dataType) {
-    switch (dataType) {
-      case FLOAT:
-        return new TimeValuePair(0, new TsFloat(0.0f));
-      case INT32:
-      case DATE:
-        return new TimeValuePair(0, new TsInt(0));
-      case INT64:
-      case TIMESTAMP:
-        return new TimeValuePair(0, new TsLong(0));
-      case BOOLEAN:
-        return new TimeValuePair(0, new TsBoolean(false));
-      case DOUBLE:
-        return new TimeValuePair(0, new TsDouble(0.0));
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        return new TimeValuePair(0, new TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)));
-      default:
-        throw new UnsupportedOperationException(
-            DataNodeMiscMessages.UNRECOGNIZED_DATATYPE + dataType);
-    }
+    return new TimeValuePair(
+        0,
+        TypeServices.EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .get());
   }
 
   /** All intervals are closed. */
