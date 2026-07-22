@@ -57,10 +57,9 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -368,38 +367,9 @@ public class CommonUtils {
 
   public static Object createValueColumnOfDataType(
       TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
-    Object valueColumn;
-    switch (dataType) {
-      case INT32:
-        valueColumn = new int[rowNum];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valueColumn = new long[rowNum];
-        break;
-      case FLOAT:
-        valueColumn = new float[rowNum];
-        break;
-      case DOUBLE:
-        valueColumn = new double[rowNum];
-        break;
-      case BOOLEAN:
-        valueColumn = new boolean[rowNum];
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        valueColumn = new Binary[rowNum];
-        break;
-      case DATE:
-        valueColumn = new LocalDate[rowNum];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    return valueColumn;
+    return TypeServices.TABLET_COLUMN_ALLOCATOR_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(rowNum);
   }
 
   public static void swapArray(Object[] array, int i, int j) {

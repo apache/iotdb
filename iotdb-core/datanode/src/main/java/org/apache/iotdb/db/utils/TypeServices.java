@@ -335,6 +335,38 @@ public class TypeServices {
                 throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
           };
 
+  public static final TypeService<IntFunction<Object>> TABLET_COLUMN_ALLOCATOR_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN,
+                INT32,
+                DATE,
+                INT64,
+                TIMESTAMP,
+                FLOAT,
+                DOUBLE,
+                TEXT,
+                BLOB,
+                STRING,
+                OBJECT ->
+                type::createArray;
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
+          };
+
+  public static final TypeService<ArrayValueGetter> ARRAY_VALUE_GETTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> (array, index) -> ((boolean[]) array)[index];
+            case INT32, DATE -> (array, index) -> ((int[]) array)[index];
+            case INT64, TIMESTAMP -> (array, index) -> ((long[]) array)[index];
+            case FLOAT -> (array, index) -> ((float[]) array)[index];
+            case DOUBLE -> (array, index) -> ((double[]) array)[index];
+            case TEXT, BLOB, STRING, OBJECT -> (array, index) -> ((Binary[]) array)[index];
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
+          };
+
   public static final TypeService<Function<String, Comparable<?>>>
       CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
           type ->
@@ -464,6 +496,8 @@ public class TypeServices {
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
     PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
+    TABLET_COLUMN_ALLOCATOR_SERVICE.check();
+    ARRAY_VALUE_GETTER_SERVICE.check();
   }
 
   public static int parseInteger(final String value) {
@@ -608,5 +642,10 @@ public class TypeServices {
   @FunctionalInterface
   public interface TVListArrayWriter {
     void write(TVList tvList, long[] times, Object values, BitMap bitMap, int start, int end);
+  }
+
+  @FunctionalInterface
+  public interface ArrayValueGetter {
+    Object get(Object array, int index);
   }
 }

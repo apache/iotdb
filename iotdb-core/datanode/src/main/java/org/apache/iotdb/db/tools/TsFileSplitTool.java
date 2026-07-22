@@ -42,9 +42,8 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -240,33 +239,7 @@ public class TsFileSplitTool {
 
   private void writeToChunkWriter(
       ChunkWriterImpl chunkWriter, long time, Object value, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        chunkWriter.write(time, (int) value);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        chunkWriter.write(time, (long) value);
-        break;
-      case FLOAT:
-        chunkWriter.write(time, (float) value);
-        break;
-      case DOUBLE:
-        chunkWriter.write(time, (double) value);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(time, (boolean) value);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        chunkWriter.write(time, (Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    Type.fromTsDataType(dataType).write(chunkWriter, time, value);
   }
 
   private TsFileResource endFileAndGenerateResource(TsFileIOWriter writer) throws IOException {

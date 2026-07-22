@@ -22,13 +22,13 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
@@ -394,33 +394,7 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValue = new ArrayList<>(timestamps.size());
     List<BitMap> columnBitMaps = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
-      switch (dataType) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
-          break;
-        case FLOAT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
-          break;
-        case INT32:
-        case DATE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
-          break;
-        case DOUBLE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.DOUBLE));
-          break;
-        case BOOLEAN:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.BOOLEAN));
-          break;
-        default:
-          break;
-      }
+      columnValue.add(getPrimitiveArraysByType(dataType));
       BitMap bitMap = new BitMap(ARRAY_SIZE);
       // The following code is for these 2 kinds of scenarios.
 
@@ -452,28 +426,9 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    switch (dataTypes.get(columnIndex)) {
-      case INT32:
-      case DATE:
-        return ((int[]) columnValues.get(arrayIndex))[elementIndex];
-      case INT64:
-      case TIMESTAMP:
-        return ((long[]) columnValues.get(arrayIndex))[elementIndex];
-      case FLOAT:
-        return ((float[]) columnValues.get(arrayIndex))[elementIndex];
-      case DOUBLE:
-        return ((double[]) columnValues.get(arrayIndex))[elementIndex];
-      case BOOLEAN:
-        return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-      case STRING:
-      case BLOB:
-      case TEXT:
-      case OBJECT:
-        return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-      default:
-        throw new IllegalArgumentException(
-            dataTypes.get(columnIndex) + StorageEngineMessages.IS_NOT_SUPPORTED);
-    }
+    return TypeServices.ARRAY_VALUE_GETTER_SERVICE
+        .call(Type.fromTsDataType(dataTypes.get(columnIndex)))
+        .get(columnValues.get(arrayIndex), elementIndex);
   }
 
   /**
@@ -973,44 +928,18 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
       List<Object> columnValues = values.get(i);
-      switch (dataTypes.get(i)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
+      Object targetArray = columnValues.get(arrayIndex);
+      System.arraycopy(value[i], idx, targetArray, elementIndex, remaining);
 
-          // update raw size of Text chunk
-          for (int i1 = 0; i1 < remaining; i1++) {
-            memoryBinaryChunkSize[i] +=
-                arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
-          }
-          break;
-        case FLOAT:
-          float[] arrayF = ((float[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
-          break;
-        case INT32:
-        case DATE:
-          int[] arrayI = ((int[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] arrayL = ((long[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
-          break;
-        case DOUBLE:
-          double[] arrayD = ((double[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
-          break;
-        case BOOLEAN:
-          boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
-          break;
-        default:
-          break;
+      if (dataTypes.get(i).isBinary()) {
+        Binary[] binaryValues = (Binary[]) targetArray;
+        // update raw size of Text chunk
+        for (int valueIndex = 0; valueIndex < remaining; valueIndex++) {
+          memoryBinaryChunkSize[i] +=
+              binaryValues[elementIndex + valueIndex] != null
+                  ? getBinarySize(binaryValues[elementIndex + valueIndex])
+                  : 0;
+        }
       }
     }
   }
@@ -1424,54 +1353,15 @@ public abstract class AlignedTVList extends TVList {
     }
     // serialize value and bitmap by column
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      TypeServices.WALColumnWriter valueWriter =
+          TypeServices.WAL_ARRAY_WRITER_SERVICE.call(
+              Type.fromTsDataType(dataTypes.get(columnIndex)));
       List<Object> columnValues = values.get(columnIndex);
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
         int arrayIndex = rowIndex / ARRAY_SIZE;
         int elementIndex = rowIndex % ARRAY_SIZE;
         // value
-        switch (dataTypes.get(columnIndex)) {
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-            // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
-            // current row. We need to handle this scenario to get rid of NPE. See the similar issue
-            // here: https://github.com/apache/iotdb/pull/9884
-            // Furthermore, we use an empty Binary as a placeholder here. It won't lead to data
-            // error because whether this field is null or not is decided by the bitMap rather than
-            // the object's value here.
-            if (valueT != null) {
-              WALWriteUtils.write(valueT, buffer);
-            } else {
-              WALWriteUtils.write(new Binary(new byte[0]), buffer);
-            }
-            break;
-          case FLOAT:
-            float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putFloat(valueF);
-            break;
-          case INT32:
-          case DATE:
-            int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putInt(valueI);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putLong(valueL);
-            break;
-          case DOUBLE:
-            double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
-            buffer.putDouble(valueD);
-            break;
-          case BOOLEAN:
-            boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-            WALWriteUtils.write(valueB, buffer);
-            break;
-          default:
-            throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-        }
+        valueWriter.write(columnValues.get(arrayIndex), buffer, elementIndex, elementIndex + 1);
         // bitmap
         WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
       }
@@ -2401,6 +2291,8 @@ public abstract class AlignedTVList extends TVList {
         ValueChunkWriter valueChunkWriter =
             alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
         int validColumnIndex = columnIndexList.get(columnIndex);
+        Type type = Type.fromTsDataType(dataTypeList.get(columnIndex));
+        List<Object> columnValues = values.get(validColumnIndex);
 
         // Pair of Time and Index
         Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
@@ -2443,47 +2335,9 @@ public abstract class AlignedTVList extends TVList {
           }
 
           boolean isNull = outer.isNullValue(originRowIndex, validColumnIndex);
-          switch (dataTypeList.get(columnIndex)) {
-            case BOOLEAN:
-              valueChunkWriter.write(
-                  time,
-                  !isNull && getBooleanByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case INT32:
-            case DATE:
-              valueChunkWriter.write(
-                  time, isNull ? 0 : getIntByValueIndex(originRowIndex, validColumnIndex), isNull);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              valueChunkWriter.write(
-                  time, isNull ? 0 : getLongByValueIndex(originRowIndex, validColumnIndex), isNull);
-              break;
-            case FLOAT:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? 0 : getFloatByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case DOUBLE:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? 0 : getDoubleByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-            case OBJECT:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? null : getBinaryByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            default:
-              break;
-          }
+          int arrayIndex = originRowIndex / ARRAY_SIZE;
+          int elementIndex = originRowIndex % ARRAY_SIZE;
+          type.write(valueChunkWriter, time, columnValues.get(arrayIndex), elementIndex, isNull);
         }
       }
       probeNext = false;
