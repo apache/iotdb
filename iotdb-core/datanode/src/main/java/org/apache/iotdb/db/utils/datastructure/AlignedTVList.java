@@ -46,7 +46,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -74,9 +73,7 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 public abstract class AlignedTVList extends TVList {
 
   private static final long BITMAP_RAM_COST_PER_BLOCK =
-      RamUsageEstimator.shallowSizeOfInstance(BitMap.class)
-          + RamUsageEstimator.sizeOfByteArray(BitMap.getSizeOfBytes(ARRAY_SIZE))
-          + NUM_BYTES_OBJECT_REF;
+      new BitMap(ARRAY_SIZE).ramBytesUsed() + NUM_BYTES_OBJECT_REF;
 
   // Data types of this aligned tvList
   protected List<TSDataType> dataTypes;
@@ -1188,7 +1185,7 @@ public abstract class AlignedTVList extends TVList {
     long size = 0;
     // value array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    // bitmap object, byte array, and reference in the bitmap list
+    // bitmap and its implementation, plus the reference in the bitmap list
     size += BITMAP_RAM_COST_PER_BLOCK;
     // array headers mem size
     size += NUM_BYTES_ARRAY_HEADER;

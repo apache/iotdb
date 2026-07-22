@@ -34,8 +34,21 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVListTest {
+
+  @Test
+  public void testValueListArrayMemCostIncludesBitmapImplementation() {
+    long expected =
+        (long) ARRAY_SIZE * Long.BYTES
+            + new BitMap(ARRAY_SIZE).ramBytesUsed()
+            + NUM_BYTES_ARRAY_HEADER
+            + 2L * NUM_BYTES_OBJECT_REF;
+
+    Assert.assertEquals(expected, AlignedTVList.valueListArrayMemCost(TSDataType.INT64));
+  }
 
   @Test
   public void testAlignedTVList1() {
