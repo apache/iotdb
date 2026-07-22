@@ -81,6 +81,10 @@ public abstract class AlignedTVList extends TVList {
   // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
+  // Number and memory cost of primitive arrays that have been allocated for each value column
+  private int[] materializedValueArrayCounts;
+  private long materializedValueArrayMemCost;
+
   // Data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<Object>> values;
@@ -103,6 +107,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
+    materializedValueArrayCounts = new int[dataTypes.size()];
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -169,6 +174,15 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
     alignedTvList.timeColDeletedMap = this.timeColDeletedMap;
     alignedTvList.timeDeletedCnt = this.timeDeletedCnt;
+    for (int i = 0; i < columnIndexList.size(); i++) {
+      int columnIndex = columnIndexList.get(i);
+      if (columnIndex != -1 && values.get(i) != null) {
+        int materializedArrayCount = materializedValueArrayCounts[columnIndex];
+        alignedTvList.materializedValueArrayCounts[i] = materializedArrayCount;
+        alignedTvList.materializedValueArrayMemCost +=
+            (long) materializedArrayCount * primitiveArrayMemCost(dataTypeList.get(i));
+      }
+    }
 
     return alignedTvList;
   }
@@ -182,6 +196,9 @@ public abstract class AlignedTVList extends TVList {
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
     cloneList.timeColDeletedMap = this.timeColDeletedMap;
+    cloneList.materializedValueArrayCounts =
+        Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
+    cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     return cloneList;
   }
 
@@ -217,6 +234,9 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     cloneList.timeColDeletedMap = timeColDeletedMap == null ? null : timeColDeletedMap.clone();
+    cloneList.materializedValueArrayCounts =
+        Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
+    cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     return cloneList;
   }
 
@@ -416,6 +436,7 @@ public abstract class AlignedTVList extends TVList {
     memoryBinaryChunkSize = new long[dataTypes.size()];
     System.arraycopy(
         tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
+    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
   }
 
   private Object getObjectByValueIndex(int rowIndex, int columnIndex) {
@@ -773,6 +794,8 @@ public abstract class AlignedTVList extends TVList {
       }
       memoryBinaryChunkSize[i] = 0;
     }
+    Arrays.fill(materializedValueArrayCounts, 0);
+    materializedValueArrayMemCost = 0;
   }
 
   @Override
@@ -1065,6 +1088,8 @@ public abstract class AlignedTVList extends TVList {
     if (valueArray == null) {
       valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
       columnValues.set(arrayIndex, valueArray);
+      materializedValueArrayCounts[columnIndex]++;
+      materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
     }
     return valueArray;
   }
@@ -1115,7 +1140,12 @@ public abstract class AlignedTVList extends TVList {
   @Override
   public synchronized RamInfo calculateRamSize() {
     return new RamInfo(
-        timestamps.size(), alignedTvListArrayMemCost(), rowCount, new ArrayList<>(dataTypes));
+        timestamps.size(),
+        alignedTvListArrayMemCost(),
+        (long) timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
+            + materializedValueArrayMemCost,
+        rowCount,
+        new ArrayList<>(dataTypes));
   }
 
   /**
@@ -1179,6 +1209,29 @@ public abstract class AlignedTVList extends TVList {
     size += (long) NUM_BYTES_ARRAY_HEADER * (2 + dataTypes.size());
     // Object references size in ArrayList
     size += (long) NUM_BYTES_OBJECT_REF * (2 + dataTypes.size());
+    return size;
+  }
+
+  public long alignedTvListArrayMemCostWithoutPrimitiveArrays() {
+    long size = alignedTvListArrayMemCost();
+    for (TSDataType dataType : dataTypes) {
+      if (dataType != null) {
+        size -= primitiveArrayMemCost(dataType);
+      }
+    }
+    return size;
+  }
+
+  public static long alignedTvListArrayMemCostWithoutPrimitiveArrays(
+      TSDataType[] types, TsTableColumnCategory[] columnCategories) {
+    long size = alignedTvListArrayMemCost(types, columnCategories);
+    for (int i = 0; i < types.length; i++) {
+      TSDataType dataType = types[i];
+      if (dataType != null
+          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
+        size -= primitiveArrayMemCost(dataType);
+      }
+    }
     return size;
   }
 

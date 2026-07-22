@@ -255,6 +255,7 @@ public class AlignedTVListTest {
     Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertNull(tvList.getValues().get(2).get(1));
 
+    long ramSizeBeforeExtendedColumnMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, null, 2});
 
     Assert.assertNull(tvList.getValues().get(2).get(0));
@@ -262,6 +263,42 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
+  }
+
+  @Test
+  public void testCalculateRamSizeCountsMaterializedPrimitiveArrays() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    long ramSizeBeforeMaterialization = tvList.calculateRamSize().getRamSize();
+    tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
+
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
+
+    Assert.assertEquals(
+        tvList.calculateRamSize().getRamSize(), tvList.clone().calculateRamSize().getRamSize());
+    Assert.assertEquals(
+        tvList.calculateRamSize().getRamSize(),
+        tvList.cloneForFlushSort().calculateRamSize().getRamSize());
+
+    AlignedTVList projectedTvList =
+        (AlignedTVList) tvList.getTvListByColumnIndex(List.of(1), List.of(TSDataType.INT64), false);
+    Assert.assertEquals(
+        (long) projectedTvList.getValues().get(0).size()
+                * projectedTvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+        projectedTvList.calculateRamSize().getRamSize());
+
+    tvList.clear();
+    Assert.assertEquals(0, tvList.calculateRamSize().getRamSize());
   }
 
   @Test
