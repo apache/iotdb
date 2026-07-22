@@ -790,7 +790,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return null;
     }
 
-    // Reacquire parser memory after a previous failure yielded the active parser slot.
+    // Reacquire parser memory after a previous failure yielded the active parser slot. This wait
+    // is already bounded to 20-40 seconds, while the exponential backoff below is only for retrying
+    // the current tablet without yielding its parser slot.
     waitForResourceEnough4Parsing((long) ((1 + Math.random()) * 20 * 1000));
 
     final PipeRawTabletInsertionEvent pendingEvent = pendingTabletInsertionEvent.get();
@@ -858,11 +860,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         initialBackoffInMs > Long.MAX_VALUE / maxRetries
             ? Long.MAX_VALUE
             : initialBackoffInMs * maxRetries;
-    final int shift = Math.min(30, Math.max(0, retryCount - 1));
-    if (initialBackoffInMs > (maxBackoffInMs >> shift)) {
-      return maxBackoffInMs;
+    long backoffInMs = initialBackoffInMs;
+    for (int retry = 1; retry < retryCount && backoffInMs < maxBackoffInMs; retry++) {
+      backoffInMs = backoffInMs >= maxBackoffInMs - backoffInMs ? maxBackoffInMs : backoffInMs << 1;
     }
-    return Math.min(maxBackoffInMs, initialBackoffInMs << shift);
+    return backoffInMs;
   }
 
   private void logParserRetryOnOutOfMemory(
