@@ -341,6 +341,8 @@ public class CommonConfig {
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
+  // Besides limiting allocation retries, this value also caps the TsFile parser memory admission
+  // backoff at pipeCheckMemoryEnoughIntervalMs * max(1, pipeMemoryAllocateMaxRetries).
   private volatile int pipeMemoryAllocateMaxRetries = 10;
   private volatile long pipeMemoryAllocateMinSizeInBytes = 32;
   private volatile long pipeMemoryAllocateForTsFileSequenceReaderInBytes =
