@@ -48,11 +48,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
-  private final IMemoryBlock memoryBlock =
-      IoTDBDescriptor.getInstance()
-          .getMemoryConfig()
-          .getPipeMemoryManager()
-          .exactAllocate("Stream", MemoryBlockType.DYNAMIC);
+  private final IMemoryBlock memoryBlock;
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
@@ -68,11 +64,20 @@ public class PipeMemoryManager {
   private final Set<PipeMemoryBlock> expandableBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
+    this(
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getPipeMemoryManager()
+            .exactAllocate("Stream", MemoryBlockType.DYNAMIC));
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
             this::tryExpandAllAndCheckConsistency,
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
+  }
+
+  PipeMemoryManager(final IMemoryBlock memoryBlock) {
+    this.memoryBlock = memoryBlock;
   }
 
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
@@ -208,6 +213,16 @@ public class PipeMemoryManager {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
             < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
+  }
+
+  private boolean isHardEnoughForResizing(final PipeMemoryBlock block) {
+    if (block instanceof PipeTabletMemoryBlock) {
+      return isHardEnough4TabletParsing();
+    }
+    if (block instanceof PipeTsFileMemoryBlock) {
+      return isHardEnough4TsFileSlicing();
+    }
+    return true;
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
@@ -434,8 +449,12 @@ public class PipeMemoryManager {
     long sizeInBytes = targetSize - oldSize;
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
-      if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-          >= sizeInBytes) {
+      // Dynamically resized data-structure blocks must obey the same admission thresholds as
+      // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
+      // prevent downstream consumers from allocating the memory needed to release them.
+      if (isHardEnoughForResizing(block)
+          && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+              >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
         if (oldSize == 0) {
           // If the memory block is not registered, we need to register it first.
