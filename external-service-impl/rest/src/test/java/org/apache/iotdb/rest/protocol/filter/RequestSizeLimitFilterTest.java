@@ -50,27 +50,29 @@ public class RequestSizeLimitFilterTest {
 
   private IoTDBRestServiceConfig config;
   private long originalMaxBodySize;
-  private long originalMemoryLimit;
+  private long originalMaxTotalConcurrentRequestBodySize;
 
   @Before
   public void setUp() {
     config = IoTDBRestServiceDescriptor.getInstance().getConfig();
     originalMaxBodySize = config.getRestMaxRequestBodySizeInBytes();
-    originalMemoryLimit = config.getRestRequestBodyMemoryLimitInBytes();
+    originalMaxTotalConcurrentRequestBodySize =
+        config.getRestMaxTotalConcurrentRequestBodySizeInBytes();
     RestRequestBodyMemoryManager.resetForTest();
   }
 
   @After
   public void tearDown() {
     config.setRestMaxRequestBodySizeInBytes(originalMaxBodySize);
-    config.setRestRequestBodyMemoryLimitInBytes(originalMemoryLimit);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+        originalMaxTotalConcurrentRequestBodySize);
     RestRequestBodyMemoryManager.resetForTest();
   }
 
   @Test
   public void testAbortContentLengthOverLimit() {
     config.setRestMaxRequestBodySizeInBytes(4);
-    config.setRestRequestBodyMemoryLimitInBytes(10);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(10);
     TestRequestContext context = TestRequestContext.withLength(5);
 
     new RequestSizeLimitFilter().filter(context.proxy());
@@ -81,7 +83,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testRejectStreamOverLimit() throws IOException {
     config.setRestMaxRequestBodySizeInBytes(4);
-    config.setRestRequestBodyMemoryLimitInBytes(10);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(10);
     TestRequestContext context =
         TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
 
@@ -97,7 +99,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testAbortContentLengthOverMemoryLimit() {
     config.setRestMaxRequestBodySizeInBytes(10);
-    config.setRestRequestBodyMemoryLimitInBytes(4);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(4);
     TestRequestContext context = TestRequestContext.withLength(5);
 
     new RequestSizeLimitFilter().filter(context.proxy());
@@ -109,7 +111,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testRejectStreamOverMemoryLimit() throws IOException {
     config.setRestMaxRequestBodySizeInBytes(10);
-    config.setRestRequestBodyMemoryLimitInBytes(4);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(4);
     TestRequestContext context =
         TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
 
@@ -125,7 +127,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testDisabledMemoryLimitDoesNotReserveMemory() throws IOException {
     config.setRestMaxRequestBodySizeInBytes(10);
-    config.setRestRequestBodyMemoryLimitInBytes(0);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(0);
     TestRequestContext context =
         TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
 
@@ -140,7 +142,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testReleaseMemoryOnResponse() {
     config.setRestMaxRequestBodySizeInBytes(10);
-    config.setRestRequestBodyMemoryLimitInBytes(5);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(5);
     TestRequestContext context = TestRequestContext.withLength(4);
     RequestSizeLimitFilter filter = new RequestSizeLimitFilter();
 

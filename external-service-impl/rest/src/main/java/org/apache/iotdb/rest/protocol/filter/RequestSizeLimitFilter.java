@@ -45,7 +45,9 @@ public class RequestSizeLimitFilter implements ContainerRequestFilter {
     long maxBodySize =
         IoTDBRestServiceDescriptor.getInstance().getConfig().getRestMaxRequestBodySizeInBytes();
     long memoryLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestRequestBodyMemoryLimitInBytes();
+        IoTDBRestServiceDescriptor.getInstance()
+            .getConfig()
+            .getRestMaxTotalConcurrentRequestBodySizeInBytes();
     if (maxBodySize <= 0 && memoryLimit <= 0) {
       return;
     }

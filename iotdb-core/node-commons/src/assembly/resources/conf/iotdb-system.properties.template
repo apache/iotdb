@@ -617,10 +617,10 @@ rest_query_default_row_size_limit=10000
 # Datatype: long
 rest_max_request_body_size_in_bytes=16777216
 
-# Maximum total REST request body bytes reserved across concurrent requests. Set to 0 or a negative value to disable the limit.
+# Maximum total in-flight REST request body size in bytes across concurrent requests. Set to 0 or a negative value to disable the limit.
 # effectiveMode: restart
 # Datatype: long
-rest_request_body_memory_limit_in_bytes=67108864
+rest_max_total_concurrent_request_body_size_in_bytes=67108864
 
 # Maximum rows accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
 # effectiveMode: restart
