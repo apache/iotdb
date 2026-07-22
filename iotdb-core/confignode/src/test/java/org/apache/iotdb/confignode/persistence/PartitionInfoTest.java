@@ -63,11 +63,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -199,17 +197,24 @@ public class PartitionInfoTest {
   @Test
   public void testBatchRemoveAllRegionCreateTasksAndSnapshot() throws TException, IOException {
     final String database = "root.sg";
+    final String otherDatabase = "root.other";
     partitionInfo.createDatabase(
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(otherDatabase)));
 
     final TRegionReplicaSet region0 =
         generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     final TRegionReplicaSet region1 =
         generateTRegionReplicaSet(10, new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    final TRegionReplicaSet otherRegion =
+        generateTRegionReplicaSet(20, new TConsensusGroupId(TConsensusGroupType.DataRegion, 2));
     final CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     createRegionGroupsPlan.addRegionGroup(database, region0);
     createRegionGroupsPlan.addRegionGroup(database, region1);
+    createRegionGroupsPlan.addRegionGroup(otherDatabase, otherRegion);
     partitionInfo.createRegionGroups(createRegionGroupsPlan);
 
     final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
@@ -219,26 +224,27 @@ public class PartitionInfoTest {
         new RegionCreateTask(region0.getDataNodeLocations().get(1), database, region0));
     offerPlan.appendRegionMaintainTask(
         new RegionCreateTask(region1.getDataNodeLocations().get(0), database, region1));
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(
+            otherRegion.getDataNodeLocations().get(0), otherDatabase, otherRegion));
     partitionInfo.offerRegionMaintainTasks(offerPlan);
-    Assert.assertEquals(3, partitionInfo.getRegionMaintainEntryList().size());
+    Assert.assertEquals(4, partitionInfo.getRegionMaintainEntryList().size());
 
-    final Set<TConsensusGroupId> removingRegionIds =
-        new HashSet<>(Collections.singleton(region0.getRegionId()));
-    partitionInfo.batchRemoveRegionCreateTasks(
-        new BatchRemoveRegionCreateTasksPlan(removingRegionIds));
+    partitionInfo.preDeleteDatabase(
+        new PreDeleteDatabasePlan(database, PreDeleteDatabasePlan.PreDeleteType.EXECUTE));
+    partitionInfo.batchRemoveRegionCreateTasks(new BatchRemoveRegionCreateTasksPlan(database));
     Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());
     Assert.assertEquals(
-        region1.getRegionId(), partitionInfo.getRegionMaintainEntryList().get(0).getRegionId());
+        otherRegion.getRegionId(), partitionInfo.getRegionMaintainEntryList().get(0).getRegionId());
 
     // Replaying the same consensus plan is idempotent, and a snapshot cannot revive removed tasks.
-    partitionInfo.batchRemoveRegionCreateTasks(
-        new BatchRemoveRegionCreateTasksPlan(removingRegionIds));
+    partitionInfo.batchRemoveRegionCreateTasks(new BatchRemoveRegionCreateTasksPlan(database));
     Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
     final PartitionInfo loaded = new PartitionInfo();
     loaded.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(1, loaded.getRegionMaintainEntryList().size());
     Assert.assertEquals(
-        region1.getRegionId(), loaded.getRegionMaintainEntryList().get(0).getRegionId());
+        otherRegion.getRegionId(), loaded.getRegionMaintainEntryList().get(0).getRegionId());
   }
 
   @Test
@@ -262,8 +268,7 @@ public class PartitionInfoTest {
     partitionInfo.preDeleteDatabase(
         new PreDeleteDatabasePlan(database, PreDeleteDatabasePlan.PreDeleteType.EXECUTE));
     final BatchRemoveRegionCreateTasksPlan oldCancellation =
-        new BatchRemoveRegionCreateTasksPlan(
-            new HashSet<>(Collections.singleton(oldRegion.getRegionId())));
+        new BatchRemoveRegionCreateTasksPlan(database);
     partitionInfo.batchRemoveRegionCreateTasks(oldCancellation);
     Assert.assertTrue(partitionInfo.getRegionMaintainEntryList().isEmpty());
 
@@ -285,7 +290,8 @@ public class PartitionInfoTest {
         new RegionCreateTask(newRegion.getDataNodeLocations().get(0), database, newRegion));
     partitionInfo.offerRegionMaintainTasks(newOfferPlan);
 
-    // Replaying the old RegionId-scoped cancellation and task offer cannot touch the new database.
+    // Replaying the old cancellation is a no-op because the same-name database is not pre-deleted.
+    // A late task offer from the old RegionGroup is rejected by Region ownership validation.
     partitionInfo.batchRemoveRegionCreateTasks(oldCancellation);
     partitionInfo.offerRegionMaintainTasks(oldOfferPlan);
     Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());

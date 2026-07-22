@@ -1147,14 +1147,11 @@ public class PartitionManager {
     }
   }
 
-  /** Durably removes all queued RegionCreateTasks of the specified RegionGroups. */
-  public TSStatus batchRemoveRegionCreateTasks(Set<TConsensusGroupId> regionIds) {
-    if (regionIds.isEmpty()) {
-      return RpcUtils.SUCCESS_STATUS;
-    }
+  /** Durably removes all queued RegionCreateTasks of the specified database. */
+  public TSStatus batchRemoveRegionCreateTasks(final String database) {
     regionCreateTaskLock.lock();
     try {
-      return getConsensusManager().write(new BatchRemoveRegionCreateTasksPlan(regionIds));
+      return getConsensusManager().write(new BatchRemoveRegionCreateTasksPlan(database));
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       final TSStatus status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -1424,17 +1421,17 @@ public class PartitionManager {
 
   private void maintainRegionReplicasUnderLock() {
     final List<RegionMaintainTask> persistedTasks = partitionInfo.getRegionMaintainEntryList();
-    final Set<TConsensusGroupId> invalidRegionIds = new HashSet<>();
+    final Map<TConsensusGroupId, Integer> invalidTaskCountByRegion = new HashMap<>();
     for (RegionMaintainTask task : persistedTasks) {
       if (!(task instanceof RegionCreateTask)
           || !isRegionCreateTaskRegionValid((RegionCreateTask) task)) {
-        invalidRegionIds.add(task.getRegionId());
+        invalidTaskCountByRegion.merge(task.getRegionId(), 1, Integer::sum);
       }
     }
-    if (!invalidRegionIds.isEmpty()
-        && !writeRegionCreateTaskPlan(new BatchRemoveRegionCreateTasksPlan(invalidRegionIds))) {
+    if (!removeInvalidRegionCreateTasks(invalidTaskCountByRegion)) {
       return;
     }
+    final Set<TConsensusGroupId> invalidRegionIds = invalidTaskCountByRegion.keySet();
 
     // Do not infer that an Unknown cache entry means a missing replica until the new leader has
     // collected enough heartbeats. Orphan/pre-deleted tasks above are still cleaned immediately.
@@ -1514,6 +1511,27 @@ public class PartitionManager {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       return false;
     }
+  }
+
+  private boolean removeInvalidRegionCreateTasks(
+      final Map<TConsensusGroupId, Integer> invalidTaskCountByRegion) {
+    if (invalidTaskCountByRegion.isEmpty()) {
+      return true;
+    }
+    final int maxTaskCount =
+        invalidTaskCountByRegion.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+    for (int taskIndex = 0; taskIndex < maxTaskCount; taskIndex++) {
+      final int currentTaskIndex = taskIndex;
+      final Set<TConsensusGroupId> regionIds =
+          invalidTaskCountByRegion.entrySet().stream()
+              .filter(entry -> entry.getValue() > currentTaskIndex)
+              .map(Map.Entry::getKey)
+              .collect(Collectors.toSet());
+      if (!writeRegionCreateTaskPlan(new PollSpecificRegionMaintainTaskPlan(regionIds))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean isRegionCreateTaskRegionValid(RegionCreateTask task) {

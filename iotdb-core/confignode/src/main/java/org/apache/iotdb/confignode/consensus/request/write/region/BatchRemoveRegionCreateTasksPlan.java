@@ -19,54 +19,48 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.region;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
-/** Removes every queued RegionCreateTask whose RegionId is contained in this plan. */
+/**
+ * Removes every queued RegionCreateTask that belongs to the specified pre-deleted database.
+ *
+ * <p>The state machine ignores this plan when the database is missing or active, so replaying a
+ * cancellation cannot affect a later database incarnation that reuses the same name.
+ */
 public class BatchRemoveRegionCreateTasksPlan extends ConfigPhysicalPlan {
 
-  private Set<TConsensusGroupId> regionIdSet;
+  private String database;
 
   public BatchRemoveRegionCreateTasksPlan() {
     super(ConfigPhysicalPlanType.BatchRemoveRegionCreateTasks);
   }
 
-  public BatchRemoveRegionCreateTasksPlan(Set<TConsensusGroupId> regionIdSet) {
+  public BatchRemoveRegionCreateTasksPlan(final String database) {
     super(ConfigPhysicalPlanType.BatchRemoveRegionCreateTasks);
-    this.regionIdSet = new HashSet<>(regionIdSet);
+    this.database = database;
   }
 
-  public Set<TConsensusGroupId> getRegionIdSet() {
-    return regionIdSet;
+  public String getDatabase() {
+    return database;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.writeInt(regionIdSet.size());
-    for (TConsensusGroupId regionId : regionIdSet) {
-      stream.writeInt(regionId.getType().getValue());
-      stream.writeInt(regionId.getId());
-    }
+    ReadWriteIOUtils.write(database, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    final int size = buffer.getInt();
-    regionIdSet = new HashSet<>(size);
-    for (int i = 0; i < size; i++) {
-      regionIdSet.add(
-          new TConsensusGroupId(TConsensusGroupType.findByValue(buffer.getInt()), buffer.getInt()));
-    }
+    database = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -78,11 +72,11 @@ public class BatchRemoveRegionCreateTasksPlan extends ConfigPhysicalPlan {
       return false;
     }
     final BatchRemoveRegionCreateTasksPlan that = (BatchRemoveRegionCreateTasksPlan) o;
-    return regionIdSet.equals(that.regionIdSet);
+    return Objects.equals(database, that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionIdSet);
+    return Objects.hash(database);
   }
 }

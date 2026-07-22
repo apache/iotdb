@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
@@ -52,7 +51,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class DeleteDatabaseProcedure extends AbstractDatabaseProcedure<DeleteDatabaseState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteDatabaseProcedure.class);
@@ -130,11 +128,8 @@ public class DeleteDatabaseProcedure extends AbstractDatabaseProcedure<DeleteDat
           break;
         case BATCH_REMOVE_REGION_CREATE_TASKS:
           captureTargetRegionReplicaSets(env);
-          final Set<TConsensusGroupId> targetRegionIds =
-              targetRegionReplicaSets.stream()
-                  .map(TRegionReplicaSet::getRegionId)
-                  .collect(Collectors.toSet());
-          final TSStatus removeTasksStatus = env.batchRemoveRegionCreateTasks(targetRegionIds);
+          final TSStatus removeTasksStatus =
+              env.batchRemoveRegionCreateTasks(deleteDatabaseSchema.getName());
           if (removeTasksStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
           } else if (getCycles() > RETRY_THRESHOLD) {

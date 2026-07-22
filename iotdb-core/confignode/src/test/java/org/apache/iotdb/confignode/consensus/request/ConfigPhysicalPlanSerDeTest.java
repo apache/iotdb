@@ -440,12 +440,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void BatchRemoveRegionCreateTasksPlanTest() throws IOException {
-    final Set<TConsensusGroupId> regionIds =
-        new HashSet<>(
-            Arrays.asList(
-                new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1),
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 2)));
-    final BatchRemoveRegionCreateTasksPlan plan0 = new BatchRemoveRegionCreateTasksPlan(regionIds);
+    final BatchRemoveRegionCreateTasksPlan plan0 = new BatchRemoveRegionCreateTasksPlan("root.sg");
     final BatchRemoveRegionCreateTasksPlan plan1 =
         (BatchRemoveRegionCreateTasksPlan)
             ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());

@@ -369,13 +369,19 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  /** Idempotently remove all RegionCreateTasks that belong to any of the specified RegionIds. */
+  /** Idempotently remove all RegionCreateTasks that belong to the specified database. */
   public TSStatus batchRemoveRegionCreateTasks(BatchRemoveRegionCreateTasksPlan plan) {
     synchronized (regionMaintainTaskList) {
+      final DatabasePartitionTable databasePartitionTable =
+          databasePartitionTables.get(plan.getDatabase());
+      if (databasePartitionTable == null || databasePartitionTable.isNotPreDeleted()) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
       regionMaintainTaskList.removeIf(
           task ->
               task instanceof RegionCreateTask
-                  && plan.getRegionIdSet().contains(task.getRegionId()));
+                  && Objects.equals(
+                      plan.getDatabase(), ((RegionCreateTask) task).getStorageGroup()));
       return RpcUtils.SUCCESS_STATUS;
     }
   }

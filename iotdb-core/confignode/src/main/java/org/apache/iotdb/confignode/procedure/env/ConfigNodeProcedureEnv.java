@@ -169,8 +169,8 @@ public class ConfigNodeProcedureEnv {
     return getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
-  public TSStatus batchRemoveRegionCreateTasks(final Set<TConsensusGroupId> regionIds) {
-    return getPartitionManager().batchRemoveRegionCreateTasks(regionIds);
+  public TSStatus batchRemoveRegionCreateTasks(final String database) {
+    return getPartitionManager().batchRemoveRegionCreateTasks(database);
   }
 
   public boolean invalidateCache(final String databaseName) throws IOException, TException {
