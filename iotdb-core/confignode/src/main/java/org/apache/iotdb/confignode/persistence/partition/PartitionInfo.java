@@ -107,6 +107,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.i18n.ConfigNodeMessages.MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440;
+import static org.apache.iotdb.confignode.i18n.ConfigNodeMessages.MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780;
+
 /**
  * The {@link PartitionInfo} stores cluster PartitionTable.
  *
@@ -218,24 +221,22 @@ public class PartitionInfo implements SnapshotProcessor {
             ConfigNodeMessages
                 .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_616E0CDE,
             database);
-        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-            .setMessage(
-                String.format(
-                    ConfigNodeMessages
-                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440,
-                    database));
+        final String message =
+            String.format(
+                MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440,
+                database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(message);
       }
       if (!databasePartitionTable.isNotPreDeleted()) {
         LOGGER.warn(
             ConfigNodeMessages
                 .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01,
             database);
-        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-            .setMessage(
-                String.format(
-                    ConfigNodeMessages
-                        .MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780,
-                    database));
+        final String message =
+            String.format(
+                MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780,
+                database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(message);
       }
     }
 
