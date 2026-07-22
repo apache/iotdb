@@ -209,6 +209,16 @@ public class PipeMemoryManager {
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
+  private boolean isHardEnoughForResizing(final PipeMemoryBlock block) {
+    if (block instanceof PipeTabletMemoryBlock) {
+      return isHardEnough4TabletParsing();
+    }
+    if (block instanceof PipeTsFileMemoryBlock) {
+      return isHardEnough4TsFileSlicing();
+    }
+    return true;
+  }
+
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -428,7 +438,11 @@ public class PipeMemoryManager {
     long sizeInBytes = targetSize - oldSize;
     final int memoryAllocateMaxRetries = PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
-      if (getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
+      // Dynamically resized data-structure blocks must obey the same admission thresholds as
+      // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
+      // prevent downstream consumers from allocating the memory needed to release them.
+      if (isHardEnoughForResizing(block)
+          && getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes >= sizeInBytes) {
         usedMemorySizeInBytes += sizeInBytes;
         if (oldSize == 0) {
           // If the memory block is not registered, we need to register it first.
