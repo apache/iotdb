@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -2319,6 +2320,9 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update REST runtime limit config
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
+
       // update cache_eviction_memory_computation_threshold
       conf.setCacheEvictionMemoryComputationThreshold(
           Integer.parseInt(
@@ -2380,6 +2384,7 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.updateAppliedProperties(properties, true);
       // Overwrite the keys whose setters above may have rewritten, so `show configuration`
       // displays the effective values rather than the raw file values.
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
       overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {

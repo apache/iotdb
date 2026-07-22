@@ -165,7 +165,9 @@ public class RequestSizeLimitFilterTest {
     assertEquals(Integer.valueOf(413), status.getCode());
     assertEquals(
         String.format(
-            RestMessages.MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412, maxBodySize),
+            RestMessages
+                .MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_424392C6,
+            maxBodySize),
         status.getMessage());
   }
 
@@ -178,7 +180,8 @@ public class RequestSizeLimitFilterTest {
     assertEquals(Integer.valueOf(503), status.getCode());
     assertEquals(
         String.format(
-            RestMessages.MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9,
+            RestMessages
+                .MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_F07B9DDD,
             memoryLimit),
         status.getMessage());
   }

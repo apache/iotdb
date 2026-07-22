@@ -78,11 +78,14 @@ public final class RestMessages {
   public static final String ERROR_MESSAGE_SEPARATOR = ",";
 
   // --- RequestSizeLimitFilter ---
-  public static final String MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412 =
-      "REST request body exceeds limit %d bytes";
   public static final String
-      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9 =
-          "REST request body memory quota exceeds limit %d bytes";
+      MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_424392C6 =
+          "REST request body exceeds limit %d bytes. Use SET CONFIGURATION"
+              + " 'rest_max_request_body_size_in_bytes'='<bytes>' to increase it.";
+  public static final String
+      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_F07B9DDD =
+          "REST request body memory quota exceeds limit %d bytes. Use SET CONFIGURATION"
+              + " 'rest_max_total_concurrent_request_body_size_in_bytes'='<bytes>' to increase it.";
 
   // --- RequestLimitChecker ---
   public static final String MESSAGE_INSERTTABLET_REQUEST_8647CA58 = "insertTablet request";

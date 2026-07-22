@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -62,6 +65,66 @@ public class PropertiesTest {
           "region_migration_file_remove_speed_limit_bytes_per_second",
           Long.toString(originalLimit));
       descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
+  public void testHotReloadRestRuntimeLimitProperties() throws Exception {
+    IoTDBRestServiceConfig restConfig = IoTDBRestServiceDescriptor.getInstance().getConfig();
+    int originalQueryDefaultRowSizeLimit = restConfig.getRestQueryDefaultRowSizeLimit();
+    long originalMaxRequestBodySizeInBytes = restConfig.getRestMaxRequestBodySizeInBytes();
+    long originalMaxTotalConcurrentRequestBodySizeInBytes =
+        restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes();
+    int originalMaxInsertRows = restConfig.getRestMaxInsertRows();
+    int originalMaxInsertColumns = restConfig.getRestMaxInsertColumns();
+    long originalMaxInsertValues = restConfig.getRestMaxInsertValues();
+    int originalRestServicePort = restConfig.getRestServicePort();
+    boolean originalEnableHttps = restConfig.isEnableHttps();
+    try {
+      TrimProperties properties = new TrimProperties();
+      properties.setProperty("rest_query_default_row_size_limit", "123");
+      properties.setProperty("rest_max_request_body_size_in_bytes", "456");
+      properties.setProperty("rest_max_total_concurrent_request_body_size_in_bytes", "789");
+      properties.setProperty("rest_max_insert_rows", "11");
+      properties.setProperty("rest_max_insert_columns", "12");
+      properties.setProperty("rest_max_insert_values", "13");
+      properties.setProperty("rest_service_port", Integer.toString(originalRestServicePort + 1));
+      properties.setProperty("enable_https", Boolean.toString(!originalEnableHttps));
+
+      IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+
+      Assert.assertEquals(123, restConfig.getRestQueryDefaultRowSizeLimit());
+      Assert.assertEquals(456, restConfig.getRestMaxRequestBodySizeInBytes());
+      Assert.assertEquals(789, restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes());
+      Assert.assertEquals(11, restConfig.getRestMaxInsertRows());
+      Assert.assertEquals(12, restConfig.getRestMaxInsertColumns());
+      Assert.assertEquals(13, restConfig.getRestMaxInsertValues());
+      Assert.assertEquals(originalRestServicePort, restConfig.getRestServicePort());
+      Assert.assertEquals(originalEnableHttps, restConfig.isEnableHttps());
+
+      properties.setProperty("rest_max_total_concurrent_request_body_size_in_bytes", "0");
+      properties.setProperty("datanode_memory_proportion", "1:1:1:1:1:5");
+
+      IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+
+      Assert.assertEquals(
+          Runtime.getRuntime().maxMemory() / 4,
+          restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes());
+      Assert.assertEquals(
+          Long.toString(Runtime.getRuntime().maxMemory() / 4),
+          ConfigurationFileUtils.getAppliedProperties()
+              .get("rest_max_total_concurrent_request_body_size_in_bytes"));
+    } finally {
+      restConfig.setRestQueryDefaultRowSizeLimit(originalQueryDefaultRowSizeLimit);
+      restConfig.setRestMaxRequestBodySizeInBytes(originalMaxRequestBodySizeInBytes);
+      restConfig.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+          originalMaxTotalConcurrentRequestBodySizeInBytes);
+      restConfig.setRestMaxInsertRows(originalMaxInsertRows);
+      restConfig.setRestMaxInsertColumns(originalMaxInsertColumns);
+      restConfig.setRestMaxInsertValues(originalMaxInsertValues);
+      restConfig.setRestServicePort(originalRestServicePort);
+      restConfig.setEnableHttps(originalEnableHttps);
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
     }
   }
 

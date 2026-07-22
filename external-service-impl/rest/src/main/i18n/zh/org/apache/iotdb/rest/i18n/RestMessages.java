@@ -76,11 +76,14 @@ public final class RestMessages {
   public static final String ERROR_MESSAGE_SEPARATOR = "，";
 
   // --- RequestSizeLimitFilter ---
-  public static final String MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_D9F9B412 =
-      "REST 请求体超过限制 %d 字节";
   public static final String
-      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_7F2994D9 =
-          "REST 请求体内存配额超过限制 %d 字节";
+      MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_424392C6 =
+          "REST 请求体超过限制 %d 字节。请执行 SET CONFIGURATION"
+              + " 'rest_max_request_body_size_in_bytes'='<bytes>' 增大限制。";
+  public static final String
+      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_F07B9DDD =
+          "REST 请求体内存配额超过限制 %d 字节。请执行 SET CONFIGURATION"
+              + " 'rest_max_total_concurrent_request_body_size_in_bytes'='<bytes>' 增大配额。";
 
   // --- RequestLimitChecker ---
   public static final String MESSAGE_INSERTTABLET_REQUEST_8647CA58 = "insertTablet 请求";
