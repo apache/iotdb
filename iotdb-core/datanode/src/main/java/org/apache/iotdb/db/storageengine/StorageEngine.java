@@ -801,13 +801,26 @@ public class StorageEngine implements IService {
   // the local storage before adding the corresponding consensusGroup to the consensus layer
   public void createDataRegion(DataRegionId regionId, String databaseName)
       throws DataRegionException {
+    createDataRegionIfAbsent(regionId, databaseName);
+  }
+
+  /**
+   * Atomically creates and registers a DataRegion if it is absent.
+   *
+   * @return true only when this invocation created the Region
+   */
+  public boolean createDataRegionIfAbsent(DataRegionId regionId, String databaseName)
+      throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
+    AtomicBoolean created = new AtomicBoolean(false);
     dataRegionMap.computeIfAbsent(
         regionId,
         region -> {
           try {
-            return buildNewDataRegion(databaseName, region);
+            final DataRegion dataRegion = buildNewDataRegion(databaseName, region);
+            created.set(true);
+            return dataRegion;
           } catch (DataRegionException e) {
             exceptionAtomicReference.set(e);
           }
@@ -817,6 +830,7 @@ public class StorageEngine implements IService {
     if (exceptionAtomicReference.get() != null) {
       throw exceptionAtomicReference.get();
     }
+    return created.get();
   }
 
   public void deleteDataRegion(DataRegionId regionId) {

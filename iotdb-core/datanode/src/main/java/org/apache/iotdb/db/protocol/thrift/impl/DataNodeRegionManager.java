@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
@@ -47,9 +48,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -60,13 +63,18 @@ public class DataNodeRegionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRegionManager.class);
 
-  private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final StorageEngine storageEngine = StorageEngine.getInstance();
+  private final SchemaEngine schemaEngine;
+  private final StorageEngine storageEngine;
 
   private final Map<SchemaRegionId, ReentrantReadWriteLock> schemaRegionLockMap =
       new ConcurrentHashMap<>();
   private final Map<DataRegionId, ReentrantReadWriteLock> dataRegionLockMap =
       new ConcurrentHashMap<>();
+  private final Object deletedRegionGroupFenceLock = new Object();
+  private final BitSet deletedSchemaRegionGroups = new BitSet();
+  private final BitSet deletedDataRegionGroups = new BitSet();
+  private static final int REGION_CREATION_LOCK_COUNT = 256;
+  private final ReentrantLock[] regionCreationLocks = new ReentrantLock[REGION_CREATION_LOCK_COUNT];
 
   private static class DataNodeRegionManagerHolder {
     private static final DataNodeRegionManager INSTANCE = new DataNodeRegionManager();
@@ -95,9 +103,24 @@ public class DataNodeRegionManager {
   public void clear() {
     schemaRegionLockMap.clear();
     dataRegionLockMap.clear();
+    synchronized (deletedRegionGroupFenceLock) {
+      deletedSchemaRegionGroups.clear();
+      deletedDataRegionGroups.clear();
+    }
   }
 
-  private DataNodeRegionManager() {}
+  private DataNodeRegionManager() {
+    this(SchemaEngine.getInstance(), StorageEngine.getInstance());
+  }
+
+  @TestOnly
+  DataNodeRegionManager(SchemaEngine schemaEngine, StorageEngine storageEngine) {
+    this.schemaEngine = schemaEngine;
+    this.storageEngine = storageEngine;
+    for (int i = 0; i < REGION_CREATION_LOCK_COUNT; i++) {
+      regionCreationLocks[i] = new ReentrantLock();
+    }
+  }
 
   public ReentrantReadWriteLock getRegionLock(ConsensusGroupId consensusGroupId) {
     return consensusGroupId instanceof DataRegionId
@@ -110,9 +133,21 @@ public class DataNodeRegionManager {
     TSStatus tsStatus;
     final SchemaRegionId schemaRegionId =
         new SchemaRegionId(regionReplicaSet.getRegionId().getId());
+    final ReentrantLock creationLock = getRegionCreationLock(schemaRegionId);
+    creationLock.lock();
+    boolean localRegionExisted = true;
+    boolean consensusGroupExisted = true;
+    boolean localRegionCreated = false;
     try {
-      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
-      schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
+      if (isRegionGroupDeleted(schemaRegionId)) {
+        return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      }
+      localRegionExisted = schemaEngine.getSchemaRegion(schemaRegionId) != null;
+      consensusGroupExisted =
+          SchemaRegionConsensusImpl.getInstance()
+              .getAllConsensusGroupIds()
+              .contains(schemaRegionId);
+      localRegionCreated = schemaEngine.createSchemaRegionIfAbsent(storageGroup, schemaRegionId);
       final List<Peer> peers = new ArrayList<>();
       for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         final TEndPoint endpoint =
@@ -122,6 +157,7 @@ public class DataNodeRegionManager {
         peers.add(new Peer(schemaRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
+      schemaRegionLockMap.putIfAbsent(schemaRegionId, new ReentrantReadWriteLock(false));
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final IllegalPathException e1) {
       LOGGER.error(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_ILLEGAL_PATH, storageGroup);
@@ -138,13 +174,29 @@ public class DataNodeRegionManager {
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT, e2.getMessage()));
     } catch (final ConsensusGroupAlreadyExistException e) {
+      schemaRegionLockMap.putIfAbsent(schemaRegionId, new ReentrantReadWriteLock(false));
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage(
           String.format(
               DataNodeMiscMessages.SCHEMA_REGION_ALREADY_EXISTS_FMT, schemaRegionId.getId()));
     } catch (final ConsensusException e) {
+      rollbackSchemaRegionCreation(
+          schemaRegionId, localRegionCreated, consensusGroupExisted, storageGroup);
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
+    } catch (final RuntimeException | OutOfMemoryError e) {
+      rollbackSchemaRegionCreation(
+          schemaRegionId,
+          localRegionCreated
+              || (!localRegionExisted && schemaEngine.getSchemaRegion(schemaRegionId) != null),
+          consensusGroupExisted,
+          storageGroup);
+      LOGGER.error(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED, storageGroup, e.getMessage());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus.setMessage(
+          String.format(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT, e.getMessage()));
+    } finally {
+      creationLock.unlock();
     }
     return tsStatus;
   }
@@ -152,9 +204,19 @@ public class DataNodeRegionManager {
   public TSStatus createDataRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
     DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
+    final ReentrantLock creationLock = getRegionCreationLock(dataRegionId);
+    creationLock.lock();
+    boolean localRegionExisted = true;
+    boolean consensusGroupExisted = true;
+    boolean localRegionCreated = false;
     try {
-      storageEngine.createDataRegion(dataRegionId, storageGroup);
-      dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
+      if (isRegionGroupDeleted(dataRegionId)) {
+        return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      }
+      localRegionExisted = storageEngine.getDataRegion(dataRegionId) != null;
+      consensusGroupExisted =
+          DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().contains(dataRegionId);
+      localRegionCreated = storageEngine.createDataRegionIfAbsent(dataRegionId, storageGroup);
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
@@ -164,6 +226,7 @@ public class DataNodeRegionManager {
         peers.add(new Peer(dataRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       DataRegionConsensusImpl.getInstance().createLocalPeer(dataRegionId, peers);
+      dataRegionLockMap.putIfAbsent(dataRegionId, new ReentrantReadWriteLock(false));
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (DataRegionException e) {
       LOGGER.error(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED, storageGroup, e.getMessage());
@@ -171,14 +234,112 @@ public class DataNodeRegionManager {
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED_FMT, e.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
+      dataRegionLockMap.putIfAbsent(dataRegionId, new ReentrantReadWriteLock(false));
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.DATA_REGION_ALREADY_EXISTS_FMT, dataRegionId.getId()));
     } catch (ConsensusException e) {
+      rollbackDataRegionCreation(
+          dataRegionId, localRegionCreated, consensusGroupExisted, storageGroup);
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
+    } catch (RuntimeException | OutOfMemoryError e) {
+      rollbackDataRegionCreation(
+          dataRegionId,
+          localRegionCreated
+              || (!localRegionExisted && storageEngine.getDataRegion(dataRegionId) != null),
+          consensusGroupExisted,
+          storageGroup);
+      LOGGER.error(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED, storageGroup, e.getMessage());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus.setMessage(
+          String.format(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED_FMT, e.getMessage()));
+    } finally {
+      creationLock.unlock();
     }
     return tsStatus;
+  }
+
+  private ReentrantLock getRegionCreationLock(ConsensusGroupId regionId) {
+    return regionCreationLocks[
+        (regionId.hashCode() & Integer.MAX_VALUE) % REGION_CREATION_LOCK_COUNT];
+  }
+
+  /**
+   * Fences delayed create RPCs after a whole RegionGroup starts deletion.
+   *
+   * <p>RegionGroup ids are never reused. The caller acquires the same striped lock as creation, so
+   * an already-running creation finishes before deletion starts, while every later creation is
+   * rejected even if it came from an old ConfigNode leader.
+   */
+  public void markRegionGroupDeleted(ConsensusGroupId regionId) {
+    final ReentrantLock creationLock = getRegionCreationLock(regionId);
+    creationLock.lock();
+    try {
+      synchronized (deletedRegionGroupFenceLock) {
+        getDeletedRegionGroupSet(regionId).set(regionId.getId());
+      }
+    } finally {
+      creationLock.unlock();
+    }
+  }
+
+  private boolean isRegionGroupDeleted(ConsensusGroupId regionId) {
+    synchronized (deletedRegionGroupFenceLock) {
+      return getDeletedRegionGroupSet(regionId).get(regionId.getId());
+    }
+  }
+
+  private BitSet getDeletedRegionGroupSet(ConsensusGroupId regionId) {
+    return regionId instanceof DataRegionId ? deletedDataRegionGroups : deletedSchemaRegionGroups;
+  }
+
+  private void rollbackDataRegionCreation(
+      DataRegionId regionId,
+      boolean localRegionCreated,
+      boolean consensusGroupExisted,
+      String storageGroup) {
+    rollbackConsensusPeer(
+        DataRegionConsensusImpl.getInstance(), regionId, consensusGroupExisted, storageGroup);
+    if (localRegionCreated && !consensusGroupExisted) {
+      storageEngine.deleteDataRegion(regionId);
+      dataRegionLockMap.remove(regionId);
+    }
+  }
+
+  private void rollbackSchemaRegionCreation(
+      SchemaRegionId regionId,
+      boolean localRegionCreated,
+      boolean consensusGroupExisted,
+      String storageGroup) {
+    rollbackConsensusPeer(
+        SchemaRegionConsensusImpl.getInstance(), regionId, consensusGroupExisted, storageGroup);
+    if (localRegionCreated && !consensusGroupExisted) {
+      try {
+        schemaEngine.deleteSchemaRegion(regionId);
+        schemaRegionLockMap.remove(regionId);
+      } catch (MetadataException e) {
+        LOGGER.error(
+            DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED, storageGroup, e.getMessage());
+      }
+    }
+  }
+
+  private void rollbackConsensusPeer(
+      org.apache.iotdb.consensus.IConsensus consensus,
+      ConsensusGroupId regionId,
+      boolean consensusGroupExisted,
+      String storageGroup) {
+    if (consensusGroupExisted) {
+      return;
+    }
+    try {
+      if (consensus.getAllConsensusGroupIds().contains(regionId)) {
+        consensus.deleteLocalPeer(regionId);
+      }
+    } catch (ConsensusException | RuntimeException | OutOfMemoryError e) {
+      LOGGER.error(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED, storageGroup, e.getMessage());
+    }
   }
 
   public TSStatus createNewRegion(final ConsensusGroupId regionId, final String storageGroup) {

@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -265,6 +266,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PollSpecificRegionMaintainTask:
           plan = new PollSpecificRegionMaintainTaskPlan();
+          break;
+        case BatchRemoveRegionCreateTasks:
+          plan = new BatchRemoveRegionCreateTasksPlan();
           break;
         case CreateSchemaPartition:
           plan = new CreateSchemaPartitionPlan();

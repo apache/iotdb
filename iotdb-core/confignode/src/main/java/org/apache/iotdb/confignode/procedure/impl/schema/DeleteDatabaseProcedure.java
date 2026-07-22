@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -37,14 +40,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DeleteDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteDatabaseState> {
@@ -52,6 +59,11 @@ public class DeleteDatabaseProcedure
   private static final int RETRY_THRESHOLD = 5;
 
   private TDatabaseSchema deleteDatabaseSchema;
+
+  // Captured after PRE_DELETE is committed and persisted with this procedure. RegionIds are never
+  // reused, so cancellation and deletion cannot accidentally target a newly created database with
+  // the same name after a leader change or restart.
+  private List<TRegionReplicaSet> targetRegionReplicaSets;
 
   public DeleteDatabaseProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -61,6 +73,15 @@ public class DeleteDatabaseProcedure
       final TDatabaseSchema deleteDatabaseSchema, final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
     this.deleteDatabaseSchema = deleteDatabaseSchema;
+  }
+
+  @TestOnly
+  DeleteDatabaseProcedure(
+      final TDatabaseSchema deleteDatabaseSchema,
+      final boolean isGeneratedByPipe,
+      final List<TRegionReplicaSet> targetRegionReplicaSets) {
+    this(deleteDatabaseSchema, isGeneratedByPipe);
+    this.targetRegionReplicaSets = new ArrayList<>(targetRegionReplicaSets);
   }
 
   public TDatabaseSchema getDeleteDatabaseSchema() {
@@ -83,20 +104,43 @@ public class DeleteDatabaseProcedure
           LOG.info(
               ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC,
               deleteDatabaseSchema.getName());
-          env.preDeleteDatabase(
-              PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
-          setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
+          final TSStatus preDeleteStatus =
+              env.preDeleteDatabase(
+                  PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
+          if (preDeleteStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            captureTargetRegionReplicaSets(env);
+            setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
+          } else if (getCycles() > RETRY_THRESHOLD) {
+            setFailure(
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
+          }
           break;
         case INVALIDATE_CACHE:
           LOG.info(
               ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC,
               deleteDatabaseSchema.getName());
           if (env.invalidateCache(deleteDatabaseSchema.getName())) {
-            setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
+            setNextState(DeleteDatabaseState.BATCH_REMOVE_REGION_CREATE_TASKS);
           } else {
             setFailure(
                 new ProcedureException(
                     ProcedureMessages.DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_FAILED));
+          }
+          break;
+        case BATCH_REMOVE_REGION_CREATE_TASKS:
+          captureTargetRegionReplicaSets(env);
+          final Set<TConsensusGroupId> targetRegionIds =
+              targetRegionReplicaSets.stream()
+                  .map(TRegionReplicaSet::getRegionId)
+                  .collect(Collectors.toSet());
+          final TSStatus removeTasksStatus = env.batchRemoveRegionCreateTasks(targetRegionIds);
+          if (removeTasksStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
+          } else if (getCycles() > RETRY_THRESHOLD) {
+            setFailure(
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
           }
           break;
         case DELETE_DATABASE_SCHEMA:
@@ -122,9 +166,8 @@ public class DeleteDatabaseProcedure
           // disk with no record of where they live. Re-submitting on recovery is safe instead:
           // every RemoveRegionGroupProcedure gets a fresh procId and performs an idempotent delete,
           // so a duplicate is harmless whereas a skip leaks data.
-          final List<TRegionReplicaSet> regionReplicaSets =
-              env.getAllReplicaSets(deleteDatabaseSchema.getName());
-          regionReplicaSets.forEach(
+          captureTargetRegionReplicaSets(env);
+          targetRegionReplicaSets.forEach(
               regionReplicaSet -> {
                 // Clear heartbeat cache along the way
                 env.getConfigManager()
@@ -191,6 +234,13 @@ public class DeleteDatabaseProcedure
     return Flow.HAS_MORE_STATE;
   }
 
+  private void captureTargetRegionReplicaSets(final ConfigNodeProcedureEnv env) {
+    if (targetRegionReplicaSets == null) {
+      targetRegionReplicaSets =
+          new ArrayList<>(env.getAllReplicaSets(deleteDatabaseSchema.getName()));
+    }
+  }
+
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final DeleteDatabaseState state)
       throws IOException, InterruptedException {
@@ -246,6 +296,14 @@ public class DeleteDatabaseProcedure
             : ProcedureType.DELETE_DATABASE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(deleteDatabaseSchema, stream);
+    if (targetRegionReplicaSets == null) {
+      ReadWriteIOUtils.write(-1, stream);
+    } else {
+      ReadWriteIOUtils.write(targetRegionReplicaSets.size(), stream);
+      for (TRegionReplicaSet regionReplicaSet : targetRegionReplicaSets) {
+        ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
+      }
+    }
   }
 
   @Override
@@ -253,6 +311,16 @@ public class DeleteDatabaseProcedure
     super.deserialize(byteBuffer);
     try {
       deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
+      if (byteBuffer.hasRemaining()) {
+        final int size = ReadWriteIOUtils.readInt(byteBuffer);
+        if (size >= 0) {
+          targetRegionReplicaSets = new ArrayList<>(size);
+          for (int i = 0; i < size; i++) {
+            targetRegionReplicaSets.add(
+                ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer));
+          }
+        }
+      }
     } catch (final ThriftSerDeException e) {
       LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_DELETEDATABASEPROCEDURE, e);
     }
@@ -266,7 +334,8 @@ public class DeleteDatabaseProcedure
           && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
-          && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema());
+          && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema())
+          && Objects.equals(thatProc.targetRegionReplicaSets, this.targetRegionReplicaSets);
     }
     return false;
   }
@@ -274,6 +343,11 @@ public class DeleteDatabaseProcedure
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, deleteDatabaseSchema);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        deleteDatabaseSchema,
+        targetRegionReplicaSets);
   }
 }

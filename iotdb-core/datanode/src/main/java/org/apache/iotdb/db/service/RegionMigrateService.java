@@ -508,6 +508,15 @@ public class RegionMigrateService implements IService {
 
     @Override
     public void run() {
+      // Negative task ids are reserved for RemoveRegionGroupProcedure. Fence delayed create RPCs
+      // before deleting the peer so an old ConfigNode leader cannot recreate this RegionGroup
+      // after DROP has completed.
+      if (taskId < 0) {
+        DataNodeRegionManager.getInstance()
+            .markRegionGroupDeleted(
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId));
+      }
+
       // deletePeer: remove the peer from the consensus group
       TSStatus runResult = deletePeer();
       if (isFailed(runResult)) {

@@ -159,9 +159,13 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDeleteDatabase(
+  public TSStatus preDeleteDatabase(
       final PreDeleteDatabasePlan.PreDeleteType preDeleteType, final String deleteSgName) {
-    getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
+    return getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
+  }
+
+  public TSStatus batchRemoveRegionCreateTasks(final Set<TConsensusGroupId> regionIds) {
+    return getPartitionManager().batchRemoveRegionCreateTasks(regionIds);
   }
 
   public boolean invalidateCache(final String databaseName) throws IOException, TException {

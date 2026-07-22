@@ -32,8 +32,11 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
@@ -57,9 +60,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -162,7 +167,16 @@ public class PartitionInfoTest {
     // it cannot block the recreation of that region's other replicas.
 
     // The offer plan mixes two RegionCreateTasks with one legacy RegionDeleteTask.
-    partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
+    final OfferRegionMaintainTasksPlan offerPlan = generateOfferRegionMaintainTasksPlan();
+    final RegionCreateTask createTask =
+        (RegionCreateTask) offerPlan.getRegionMaintainTaskList().get(0);
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.sg")));
+    final CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.addRegionGroup("root.sg", createTask.getRegionReplicaSet());
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+    partitionInfo.offerRegionMaintainTasks(offerPlan);
 
     // The DELETE task is filtered out at offer time; only the two CREATE tasks remain queued.
     List<RegionMaintainTask> queuedTasks = partitionInfo.getRegionMaintainEntryList();
@@ -177,6 +191,103 @@ public class PartitionInfoTest {
     loaded.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(partitionInfo, loaded);
     Assert.assertEquals(2, loaded.getRegionMaintainEntryList().size());
+  }
+
+  @Test
+  public void testBatchRemoveAllRegionCreateTasksAndSnapshot() throws TException, IOException {
+    final String database = "root.sg";
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
+
+    final TRegionReplicaSet region0 =
+        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    final TRegionReplicaSet region1 =
+        generateTRegionReplicaSet(10, new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    final CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.addRegionGroup(database, region0);
+    createRegionGroupsPlan.addRegionGroup(database, region1);
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+
+    final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(region0.getDataNodeLocations().get(0), database, region0));
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(region0.getDataNodeLocations().get(1), database, region0));
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(region1.getDataNodeLocations().get(0), database, region1));
+    partitionInfo.offerRegionMaintainTasks(offerPlan);
+    Assert.assertEquals(3, partitionInfo.getRegionMaintainEntryList().size());
+
+    final Set<TConsensusGroupId> removingRegionIds =
+        new HashSet<>(Collections.singleton(region0.getRegionId()));
+    partitionInfo.batchRemoveRegionCreateTasks(
+        new BatchRemoveRegionCreateTasksPlan(removingRegionIds));
+    Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());
+    Assert.assertEquals(
+        region1.getRegionId(), partitionInfo.getRegionMaintainEntryList().get(0).getRegionId());
+
+    // Replaying the same consensus plan is idempotent, and a snapshot cannot revive removed tasks.
+    partitionInfo.batchRemoveRegionCreateTasks(
+        new BatchRemoveRegionCreateTasksPlan(removingRegionIds));
+    Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
+    final PartitionInfo loaded = new PartitionInfo();
+    loaded.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(1, loaded.getRegionMaintainEntryList().size());
+    Assert.assertEquals(
+        region1.getRegionId(), loaded.getRegionMaintainEntryList().get(0).getRegionId());
+  }
+
+  @Test
+  public void testCancelledTasksCannotAffectRecreatedDatabase() {
+    final String database = "root.sg";
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
+    final TRegionReplicaSet oldRegion =
+        generateTRegionReplicaSet(0, new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    final CreateRegionGroupsPlan oldCreatePlan = new CreateRegionGroupsPlan();
+    oldCreatePlan.addRegionGroup(database, oldRegion);
+    partitionInfo.createRegionGroups(oldCreatePlan);
+
+    final OfferRegionMaintainTasksPlan oldOfferPlan = new OfferRegionMaintainTasksPlan();
+    oldOfferPlan.appendRegionMaintainTask(
+        new RegionCreateTask(oldRegion.getDataNodeLocations().get(0), database, oldRegion));
+    partitionInfo.offerRegionMaintainTasks(oldOfferPlan);
+    Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());
+
+    partitionInfo.preDeleteDatabase(
+        new PreDeleteDatabasePlan(database, PreDeleteDatabasePlan.PreDeleteType.EXECUTE));
+    final BatchRemoveRegionCreateTasksPlan oldCancellation =
+        new BatchRemoveRegionCreateTasksPlan(
+            new HashSet<>(Collections.singleton(oldRegion.getRegionId())));
+    partitionInfo.batchRemoveRegionCreateTasks(oldCancellation);
+    Assert.assertTrue(partitionInfo.getRegionMaintainEntryList().isEmpty());
+
+    // A late offer from the old create procedure is rejected after PRE_DELETE.
+    partitionInfo.offerRegionMaintainTasks(oldOfferPlan);
+    Assert.assertTrue(partitionInfo.getRegionMaintainEntryList().isEmpty());
+
+    partitionInfo.deleteDatabase(new DeleteDatabasePlan(database));
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)));
+    final TRegionReplicaSet newRegion =
+        generateTRegionReplicaSet(10, new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    final CreateRegionGroupsPlan newCreatePlan = new CreateRegionGroupsPlan();
+    newCreatePlan.addRegionGroup(database, newRegion);
+    partitionInfo.createRegionGroups(newCreatePlan);
+    final OfferRegionMaintainTasksPlan newOfferPlan = new OfferRegionMaintainTasksPlan();
+    newOfferPlan.appendRegionMaintainTask(
+        new RegionCreateTask(newRegion.getDataNodeLocations().get(0), database, newRegion));
+    partitionInfo.offerRegionMaintainTasks(newOfferPlan);
+
+    // Replaying the old RegionId-scoped cancellation and task offer cannot touch the new database.
+    partitionInfo.batchRemoveRegionCreateTasks(oldCancellation);
+    partitionInfo.offerRegionMaintainTasks(oldOfferPlan);
+    Assert.assertEquals(1, partitionInfo.getRegionMaintainEntryList().size());
+    Assert.assertEquals(
+        newRegion.getRegionId(), partitionInfo.getRegionMaintainEntryList().get(0).getRegionId());
   }
 
   @Test

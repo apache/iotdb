@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -27,6 +32,7 @@ import org.junit.Test;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -38,7 +44,20 @@ public class DeleteDatabaseProcedureTest {
 
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    DeleteDatabaseProcedure p1 = new DeleteDatabaseProcedure(new TDatabaseSchema("root.sg"), false);
+    TRegionReplicaSet regionReplicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            Collections.singletonList(
+                new TDataNodeLocation()
+                    .setDataNodeId(1)
+                    .setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6667))
+                    .setInternalEndPoint(new TEndPoint("127.0.0.1", 10730))
+                    .setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 10740))
+                    .setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 10760))
+                    .setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 10750))));
+    DeleteDatabaseProcedure p1 =
+        new DeleteDatabaseProcedure(
+            new TDatabaseSchema("root.sg"), false, Collections.singletonList(regionReplicaSet));
 
     try {
       p1.serialize(outputStream);

@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -63,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManage
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
@@ -245,6 +247,10 @@ public class PartitionInfo implements SnapshotProcessor {
               task.getRegionId());
           continue;
         }
+        final RegionCreateTask createTask = (RegionCreateTask) task;
+        if (!isRegionCreateTaskOwnedByCurrentPartitionTable(createTask)) {
+          continue;
+        }
         regionMaintainTaskList.add(task);
       }
       return RpcUtils.SUCCESS_STATUS;
@@ -288,6 +294,31 @@ public class PartitionInfo implements SnapshotProcessor {
       }
       return RpcUtils.SUCCESS_STATUS;
     }
+  }
+
+  /** Idempotently remove all RegionCreateTasks that belong to any of the specified RegionIds. */
+  public TSStatus batchRemoveRegionCreateTasks(BatchRemoveRegionCreateTasksPlan plan) {
+    synchronized (regionMaintainTaskList) {
+      regionMaintainTaskList.removeIf(
+          task ->
+              task instanceof RegionCreateTask
+                  && plan.getRegionIdSet().contains(task.getRegionId()));
+      return RpcUtils.SUCCESS_STATUS;
+    }
+  }
+
+  private boolean isRegionCreateTaskOwnedByCurrentPartitionTable(RegionCreateTask task) {
+    if (!isDatabaseExisted(task.getStorageGroup())) {
+      return false;
+    }
+    return getReplicaSets(task.getStorageGroup(), Collections.singletonList(task.getRegionId()))
+        .stream()
+        .anyMatch(
+            replicaSet ->
+                replicaSet.getDataNodeLocations().stream()
+                    .anyMatch(
+                        location ->
+                            location.getDataNodeId() == task.getTargetDataNode().getDataNodeId()));
   }
 
   /**
@@ -1024,10 +1055,13 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
-      // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
-        task.serialize(bufferedOutputStream, protocol);
+      // Serialize the queue under the same monitor used by every consensus mutation so the count
+      // and entries belong to one atomic snapshot.
+      synchronized (regionMaintainTaskList) {
+        ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
+        for (RegionMaintainTask task : regionMaintainTaskList) {
+          task.serialize(bufferedOutputStream, protocol);
+        }
       }
 
       // write to file

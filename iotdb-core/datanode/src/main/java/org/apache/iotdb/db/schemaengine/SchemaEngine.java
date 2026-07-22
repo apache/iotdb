@@ -279,13 +279,23 @@ public class SchemaEngine {
 
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
+    createSchemaRegionIfAbsent(storageGroup, schemaRegionId);
+  }
+
+  /**
+   * Atomically creates and registers a SchemaRegion if it is absent.
+   *
+   * @return true only when this invocation created the Region
+   */
+  public synchronized boolean createSchemaRegionIfAbsent(
+      final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
     if (this.schemaRegionMap == null) {
       throw new MetadataException(DataNodeSchemaMessages.PEER_IS_SHUTTING_DOWN);
     }
     final ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
-        return;
+        return false;
       } else {
         throw new MetadataException(
             String.format(
@@ -297,6 +307,7 @@ public class SchemaEngine {
     }
     this.schemaRegionMap.put(
         schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
+    return true;
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(

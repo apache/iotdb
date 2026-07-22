@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -59,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
@@ -123,9 +125,11 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /** The {@link PartitionManager} manages cluster PartitionTable read and write requests. */
@@ -154,8 +158,17 @@ public class PartitionManager {
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
 
+  private static final int SCHEMA_REGION_CREATE_BATCH_SIZE_PER_DATA_NODE = 32;
+  private static final int DATA_REGION_CREATE_BATCH_SIZE_PER_DATA_NODE = 64;
+  private static final long REGION_CREATE_BACKOFF_BASE_NANOS =
+      TimeUnit.SECONDS.toNanos(REGION_MAINTAINER_WORK_INTERVAL);
+  private static final long REGION_CREATE_BACKOFF_MAX_NANOS = TimeUnit.MINUTES.toNanos(5);
+
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
+  private final ReentrantLock regionCreateTaskLock = new ReentrantLock();
+  private final Map<TConsensusGroupType, Map<Integer, RegionCreateBackoff>> regionCreateBackoffMap =
+      new EnumMap<>(TConsensusGroupType.class);
 
   private final AtomicBoolean dataPartitionTableIntegrityCheckProcedureRunning =
       new AtomicBoolean(false);
@@ -1117,14 +1130,38 @@ public class PartitionManager {
     }
   }
 
-  public void preDeleteDatabase(
+  public TSStatus preDeleteDatabase(
       final String database, final PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
         new PreDeleteDatabasePlan(database, preDeleteType);
+    regionCreateTaskLock.lock();
     try {
-      getConsensusManager().write(preDeleteDatabasePlan);
+      return getConsensusManager().write(preDeleteDatabasePlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      final TSStatus status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } finally {
+      regionCreateTaskLock.unlock();
+    }
+  }
+
+  /** Durably removes all queued RegionCreateTasks of the specified RegionGroups. */
+  public TSStatus batchRemoveRegionCreateTasks(Set<TConsensusGroupId> regionIds) {
+    if (regionIds.isEmpty()) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+    regionCreateTaskLock.lock();
+    try {
+      return getConsensusManager().write(new BatchRemoveRegionCreateTasksPlan(regionIds));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      final TSStatus status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } finally {
+      regionCreateTaskLock.unlock();
     }
   }
 
@@ -1365,11 +1402,46 @@ public class PartitionManager {
       return;
     }
 
+    regionCreateTaskLock.lock();
+    try {
+      // Leadership may have changed while this invocation was waiting for an in-flight DROP.
+      if (!getConsensusManager().isLeader()) {
+        return;
+      }
+      maintainRegionReplicasUnderLock();
+    } finally {
+      regionCreateTaskLock.unlock();
+    }
+  }
+
+  private void maintainRegionReplicasUnderLock() {
+    final List<RegionMaintainTask> persistedTasks = partitionInfo.getRegionMaintainEntryList();
+    final Set<TConsensusGroupId> invalidRegionIds = new HashSet<>();
+    for (RegionMaintainTask task : persistedTasks) {
+      if (!(task instanceof RegionCreateTask)
+          || !isRegionCreateTaskRegionValid((RegionCreateTask) task)) {
+        invalidRegionIds.add(task.getRegionId());
+      }
+    }
+    if (!invalidRegionIds.isEmpty()
+        && !writeRegionCreateTaskPlan(new BatchRemoveRegionCreateTasksPlan(invalidRegionIds))) {
+      return;
+    }
+
+    // Do not infer that an Unknown cache entry means a missing replica until the new leader has
+    // collected enough heartbeats. Orphan/pre-deleted tasks above are still cleaned immediately.
+    if (!getLoadManager().isLoadReady()) {
+      return;
+    }
+
     // Group the queued tasks into one FIFO sub-queue per region. The queue only ever holds
     // RegionCreateTasks now (delete tasks are filtered out at the PartitionInfo ingestion points),
     // and a region may carry several of them when more than one of its replicas failed to create.
-    final Map<TConsensusGroupId, Queue<RegionCreateTask>> tasksByRegion = new HashMap<>();
-    for (RegionMaintainTask task : partitionInfo.getRegionMaintainEntryList()) {
+    final Map<TConsensusGroupId, Queue<RegionCreateTask>> tasksByRegion = new LinkedHashMap<>();
+    for (RegionMaintainTask task : persistedTasks) {
+      if (invalidRegionIds.contains(task.getRegionId())) {
+        continue;
+      }
       if (!(task instanceof RegionCreateTask)) {
         // Unreachable: the queue only holds create tasks now (legacy delete tasks are dropped at
         // the
@@ -1383,51 +1455,84 @@ public class PartitionManager {
           .add((RegionCreateTask) task);
     }
 
-    // Drain the sub-queues head-by-head. Each round takes the head of every region, batches those
-    // heads by region type into a single create RPC per type, then durably polls the tasks that
-    // succeeded. Tasks of the same region are advanced one at a time to preserve their offer order.
-    while (!tasksByRegion.isEmpty()) {
-      final Map<TConsensusGroupType, List<RegionCreateTask>> headsByType =
-          new EnumMap<>(TConsensusGroupType.class);
-      for (Queue<RegionCreateTask> queue : tasksByRegion.values()) {
-        final RegionCreateTask head = queue.peek();
-        headsByType.computeIfAbsent(head.getRegionId().getType(), k -> new ArrayList<>()).add(head);
+    final Set<TConsensusGroupId> invalidHeadRegionIds = new HashSet<>();
+    final Map<TConsensusGroupType, List<RegionCreateTask>> headsByType =
+        new EnumMap<>(TConsensusGroupType.class);
+    final Map<TConsensusGroupType, Map<Integer, Integer>> selectedCountByTypeAndDataNode =
+        new EnumMap<>(TConsensusGroupType.class);
+    for (Queue<RegionCreateTask> queue : tasksByRegion.values()) {
+      final RegionCreateTask head = queue.peek();
+      if (!isRegionCreateTaskTargetValid(head)) {
+        invalidHeadRegionIds.add(head.getRegionId());
+        continue;
       }
-
-      final Set<TConsensusGroupId> successfulRegions = new HashSet<>();
-      int selectedCount = 0;
-      for (Map.Entry<TConsensusGroupType, List<RegionCreateTask>> entry : headsByType.entrySet()) {
-        selectedCount += entry.getValue().size();
-        successfulRegions.addAll(submitRegionCreateTasks(entry.getKey(), entry.getValue()));
+      if (isRegionCreateTargetInBackoff(head)) {
+        continue;
       }
-
-      if (successfulRegions.isEmpty()) {
-        break;
+      final TConsensusGroupType type = head.getRegionId().getType();
+      final int dataNodeId = head.getTargetDataNode().getDataNodeId();
+      final Map<Integer, Integer> selectedCountByDataNode =
+          selectedCountByTypeAndDataNode.computeIfAbsent(type, ignored -> new HashMap<>());
+      final int selectedCount = selectedCountByDataNode.getOrDefault(dataNodeId, 0);
+      if (selectedCount >= getRegionCreateBatchSize(type)) {
+        continue;
       }
-
-      // Advance the in-memory sub-queues so the next round picks the following task of each region.
-      for (TConsensusGroupId regionId : successfulRegions) {
-        tasksByRegion.computeIfPresent(
-            regionId,
-            (k, queue) -> {
-              queue.poll();
-              return queue.isEmpty() ? null : queue;
-            });
-      }
-
-      // Durably remove the head of every successfully created region from the persisted queue.
-      try {
-        getConsensusManager().write(new PollSpecificRegionMaintainTaskPlan(successfulRegions));
-      } catch (ConsensusException e) {
-        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      }
-
-      if (successfulRegions.size() < selectedCount) {
-        // Some tasks failed this round; stop and retry on the next schedule so that the tasks of
-        // each region keep being executed in the order they were offered.
-        break;
-      }
+      selectedCountByDataNode.put(dataNodeId, selectedCount + 1);
+      headsByType.computeIfAbsent(type, ignored -> new ArrayList<>()).add(head);
     }
+
+    // A target-specific stale task only removes the head of its Region queue. A following task of
+    // the same Region may still point to another replica that is genuinely missing.
+    if (!invalidHeadRegionIds.isEmpty()
+        && !writeRegionCreateTaskPlan(
+            new PollSpecificRegionMaintainTaskPlan(invalidHeadRegionIds))) {
+      return;
+    }
+
+    final Set<TConsensusGroupId> successfulRegions = new HashSet<>();
+    for (Map.Entry<TConsensusGroupType, List<RegionCreateTask>> entry : headsByType.entrySet()) {
+      successfulRegions.addAll(submitRegionCreateTasks(entry.getKey(), entry.getValue()));
+    }
+    if (!successfulRegions.isEmpty()) {
+      writeRegionCreateTaskPlan(new PollSpecificRegionMaintainTaskPlan(successfulRegions));
+    }
+  }
+
+  private boolean writeRegionCreateTaskPlan(ConfigPhysicalPlan plan) {
+    try {
+      return getConsensusManager().write(plan).getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      return false;
+    }
+  }
+
+  private boolean isRegionCreateTaskRegionValid(RegionCreateTask task) {
+    return partitionInfo.isDatabaseExisted(task.getStorageGroup())
+        && Objects.equals(
+            task.getStorageGroup(), partitionInfo.getRegionDatabase(task.getRegionId()));
+  }
+
+  private boolean isRegionCreateTaskTargetValid(RegionCreateTask task) {
+    final List<TRegionReplicaSet> currentReplicaSets =
+        partitionInfo.getReplicaSets(
+            task.getStorageGroup(), Collections.singletonList(task.getRegionId()));
+    if (currentReplicaSets.size() != 1
+        || currentReplicaSets.get(0).getDataNodeLocations().stream()
+            .noneMatch(
+                location -> location.getDataNodeId() == task.getTargetDataNode().getDataNodeId())) {
+      return false;
+    }
+    return RegionStatus.Unknown.equals(
+        getLoadManager()
+            .getRegionStatus(task.getRegionId(), task.getTargetDataNode().getDataNodeId()));
+  }
+
+  private int getRegionCreateBatchSize(TConsensusGroupType regionType) {
+    return TConsensusGroupType.SchemaRegion.equals(regionType)
+        ? SCHEMA_REGION_CREATE_BATCH_SIZE_PER_DATA_NODE
+        : DATA_REGION_CREATE_BATCH_SIZE_PER_DATA_NODE;
   }
 
   /**
@@ -1451,10 +1556,8 @@ public class PartitionManager {
               new TCreateSchemaRegionReq(task.getRegionReplicaSet(), task.getStorageGroup()));
           schemaHandler.putNodeLocation(task.getRegionId().getId(), task.getTargetDataNode());
         }
-        CnToDnInternalServiceAsyncRequestManager.getInstance()
-            .sendAsyncRequestWithRetry(schemaHandler);
-        collectSuccessfulRegions(
-            schemaHandler.getResponseMap(), TConsensusGroupType.SchemaRegion, successfulRegions);
+        CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(schemaHandler);
+        collectSuccessfulRegions(schemaHandler.getResponseMap(), createTasks, successfulRegions);
         break;
       case DataRegion:
         final DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus> dataHandler =
@@ -1469,10 +1572,8 @@ public class PartitionManager {
               new TCreateDataRegionReq(task.getRegionReplicaSet(), task.getStorageGroup()));
           dataHandler.putNodeLocation(task.getRegionId().getId(), task.getTargetDataNode());
         }
-        CnToDnInternalServiceAsyncRequestManager.getInstance()
-            .sendAsyncRequestWithRetry(dataHandler);
-        collectSuccessfulRegions(
-            dataHandler.getResponseMap(), TConsensusGroupType.DataRegion, successfulRegions);
+        CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(dataHandler);
+        collectSuccessfulRegions(dataHandler.getResponseMap(), createTasks, successfulRegions);
         break;
       default:
         break;
@@ -1482,13 +1583,92 @@ public class PartitionManager {
 
   private void collectSuccessfulRegions(
       Map<Integer, TSStatus> responseMap,
-      TConsensusGroupType regionType,
+      List<RegionCreateTask> createTasks,
       Set<TConsensusGroupId> successfulRegions) {
-    for (Map.Entry<Integer, TSStatus> entry : responseMap.entrySet()) {
-      if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        successfulRegions.add(new TConsensusGroupId(regionType, entry.getKey()));
+    final Map<Integer, List<RegionCreateTask>> tasksByDataNode = new HashMap<>();
+    for (RegionCreateTask task : createTasks) {
+      tasksByDataNode
+          .computeIfAbsent(task.getTargetDataNode().getDataNodeId(), ignored -> new ArrayList<>())
+          .add(task);
+      final TSStatus status = responseMap.get(task.getRegionId().getId());
+      if (status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        successfulRegions.add(task.getRegionId());
       }
     }
+    for (List<RegionCreateTask> dataNodeTasks : tasksByDataNode.values()) {
+      RegionCreateTask failedTask = null;
+      TSStatus failedStatus = null;
+      for (RegionCreateTask task : dataNodeTasks) {
+        final TSStatus status = responseMap.get(task.getRegionId().getId());
+        if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (failedTask == null || isDirectMemoryFailure(status)) {
+            failedTask = task;
+            failedStatus = status;
+          }
+        }
+      }
+      if (failedTask != null) {
+        recordRegionCreateFailure(failedTask, failedStatus);
+      } else {
+        clearRegionCreateBackoff(dataNodeTasks.get(0));
+      }
+    }
+  }
+
+  private boolean isRegionCreateTargetInBackoff(RegionCreateTask task) {
+    return Optional.ofNullable(regionCreateBackoffMap.get(task.getRegionId().getType()))
+        .map(backoffByDataNode -> backoffByDataNode.get(task.getTargetDataNode().getDataNodeId()))
+        .map(backoff -> backoff.nextAttemptNanos > System.nanoTime())
+        .orElse(false);
+  }
+
+  private void clearRegionCreateBackoff(RegionCreateTask task) {
+    Optional.ofNullable(regionCreateBackoffMap.get(task.getRegionId().getType()))
+        .ifPresent(
+            backoffByDataNode ->
+                backoffByDataNode.remove(task.getTargetDataNode().getDataNodeId()));
+  }
+
+  private void recordRegionCreateFailure(RegionCreateTask task, TSStatus status) {
+    final RegionCreateBackoff backoff =
+        regionCreateBackoffMap
+            .computeIfAbsent(task.getRegionId().getType(), ignored -> new HashMap<>())
+            .computeIfAbsent(
+                task.getTargetDataNode().getDataNodeId(), ignored -> new RegionCreateBackoff());
+    backoff.failureCount++;
+    long delayNanos =
+        Math.min(
+            REGION_CREATE_BACKOFF_MAX_NANOS,
+            REGION_CREATE_BACKOFF_BASE_NANOS << Math.min(backoff.failureCount - 1, 5));
+    if (isDirectMemoryFailure(status)) {
+      delayNanos = REGION_CREATE_BACKOFF_MAX_NANOS;
+    } else {
+      final long jitterBound = Math.max(1, delayNanos / 4);
+      delayNanos =
+          Math.min(
+              REGION_CREATE_BACKOFF_MAX_NANOS,
+              delayNanos + ThreadLocalRandom.current().nextLong(jitterBound));
+    }
+    backoff.nextAttemptNanos = System.nanoTime() + delayNanos;
+  }
+
+  private boolean isDirectMemoryFailure(TSStatus status) {
+    if (status == null || status.getMessage() == null) {
+      return false;
+    }
+    final String normalizedMessage = status.getMessage().toLowerCase(java.util.Locale.ROOT);
+    return normalizedMessage.contains("direct memory")
+        || normalizedMessage.contains("direct buffer")
+        || normalizedMessage.contains("directbuffer")
+        || normalizedMessage.contains("outofmemory")
+        || normalizedMessage.contains("out of memory")
+        || normalizedMessage.contains("oom")
+        || normalizedMessage.contains("内存");
+  }
+
+  private static class RegionCreateBackoff {
+    private int failureCount;
+    private long nextAttemptNanos;
   }
 
   public void startRegionCleaner() {

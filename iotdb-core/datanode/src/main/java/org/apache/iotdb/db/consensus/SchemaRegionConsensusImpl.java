@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -50,6 +51,11 @@ public class SchemaRegionConsensusImpl {
 
   public static IConsensus getInstance() {
     return SchemaRegionConsensusImplHolder.INSTANCE;
+  }
+
+  @TestOnly
+  public static void setInstance(final IConsensus instance) {
+    SchemaRegionConsensusImplHolder.INSTANCE = instance;
   }
 
   public static void reinitializeStatics() {

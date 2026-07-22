@@ -418,68 +418,87 @@ public class DataRegion implements IDataRegionForQuery {
                 config.getDelayAnalyzerConfidenceLevel())
             : null;
     acquireDirectBufferMemory();
+    ExecutorService createdUpgradeModFileThreadPool = null;
+    DataRegionMetrics createdMetrics = null;
+    boolean tableDiskUsageRegistered = false;
+    try {
+      dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
+      this.tsFileManager =
+          new TsFileManager(databaseName, dataRegionIdString, dataRegionSysDir.getPath());
+      if (dataRegionSysDir.mkdirs()) {
+        logger.info(
+            StorageEngineMessages
+                .STORAGE_LOG_DATABASE_SYSTEM_DIRECTORY_DOESN_T_EXIST_CREATE_IT_9C0E7C68,
+            dataRegionSysDir.getPath());
+      } else if (!dataRegionSysDir.exists()) {
+        logger.error(StorageEngineMessages.CREATE_DB_SYSTEM_DIR_FAILED, dataRegionSysDir.getPath());
+      }
 
-    dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
-    this.tsFileManager =
-        new TsFileManager(databaseName, dataRegionIdString, dataRegionSysDir.getPath());
-    if (dataRegionSysDir.mkdirs()) {
-      logger.info(
-          StorageEngineMessages
-              .STORAGE_LOG_DATABASE_SYSTEM_DIRECTORY_DOESN_T_EXIST_CREATE_IT_9C0E7C68,
-          dataRegionSysDir.getPath());
-    } else if (!dataRegionSysDir.exists()) {
-      logger.error(StorageEngineMessages.CREATE_DB_SYSTEM_DIR_FAILED, dataRegionSysDir.getPath());
-    }
+      lastFlushTimeMap = new HashLastFlushTimeMap();
+      createdUpgradeModFileThreadPool =
+          IoTDBThreadPoolFactory.newSingleThreadExecutor(
+              databaseName + "-" + dataRegionIdString + "-UpgradeMod");
+      upgradeModFileThreadPool = createdUpgradeModFileThreadPool;
 
-    lastFlushTimeMap = new HashLastFlushTimeMap();
-    upgradeModFileThreadPool =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            databaseName + "-" + dataRegionIdString + "-UpgradeMod");
+      TableDiskUsageIndex.getInstance().registerRegion(this);
+      tableDiskUsageRegistered = isTableModel;
 
-    TableDiskUsageIndex.getInstance().registerRegion(this);
-
-    // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
-        && !StorageEngine.getInstance().isReadyForReadAndWrite()) {
-      logger.debug(
-          StorageEngineMessages
-              .STORAGE_LOG_SKIP_RECOVERING_DATA_REGION_WHEN_CONSENSUS_PROTOCOL_IS_RATIS_43A6A699,
-          databaseName,
-          dataRegionIdString);
-      for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
-        File dataRegionFolder =
-            fsFactory.getFile(fileFolder, databaseName + File.separator + dataRegionIdString);
-        try {
-          fsFactory.deleteDirectory(dataRegionFolder.getPath());
-        } catch (IOException e) {
-          logger.error(
-              StorageEngineMessages
-                  .STORAGE_LOG_EXCEPTION_OCCURS_WHEN_DELETING_DATA_REGION_FOLDER_FOR_8ABCF5D1,
-              databaseName,
-              dataRegionIdString,
-              e);
-        }
-        if (FSUtils.getFSType(dataRegionFolder) == FSType.LOCAL) {
-          if (dataRegionFolder.mkdirs()) {
-            logger.info(
-                StorageEngineMessages
-                    .STORAGE_LOG_DATA_REGION_DIRECTORY_DOESN_T_EXIST_CREATE_IT_EFB0AE77,
-                dataRegionFolder.getPath());
-          } else if (!dataRegionFolder.exists()) {
+      // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
+          && !StorageEngine.getInstance().isReadyForReadAndWrite()) {
+        logger.debug(
+            StorageEngineMessages
+                .STORAGE_LOG_SKIP_RECOVERING_DATA_REGION_WHEN_CONSENSUS_PROTOCOL_IS_RATIS_43A6A699,
+            databaseName,
+            dataRegionIdString);
+        for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
+          File dataRegionFolder =
+              fsFactory.getFile(fileFolder, databaseName + File.separator + dataRegionIdString);
+          try {
+            fsFactory.deleteDirectory(dataRegionFolder.getPath());
+          } catch (IOException e) {
             logger.error(
-                StorageEngineMessages.CREATE_DATA_REGION_DIR_FAILED, dataRegionFolder.getPath());
+                StorageEngineMessages
+                    .STORAGE_LOG_EXCEPTION_OCCURS_WHEN_DELETING_DATA_REGION_FOLDER_FOR_8ABCF5D1,
+                databaseName,
+                dataRegionIdString,
+                e);
+          }
+          if (FSUtils.getFSType(dataRegionFolder) == FSType.LOCAL) {
+            if (dataRegionFolder.mkdirs()) {
+              logger.info(
+                  StorageEngineMessages
+                      .STORAGE_LOG_DATA_REGION_DIRECTORY_DOESN_T_EXIST_CREATE_IT_EFB0AE77,
+                  dataRegionFolder.getPath());
+            } else if (!dataRegionFolder.exists()) {
+              logger.error(
+                  StorageEngineMessages.CREATE_DATA_REGION_DIR_FAILED, dataRegionFolder.getPath());
+            }
           }
         }
+      } else {
+        asyncTsFileResourceRecoverTaskList = new ArrayList<>();
+        recover();
       }
-    } else {
-      asyncTsFileResourceRecoverTaskList = new ArrayList<>();
-      recover();
+
+      initDiskSelector();
+
+      createdMetrics = new DataRegionMetrics(this);
+      this.metrics = createdMetrics;
+      MetricService.getInstance().addMetricSet(metrics);
+    } catch (DataRegionException | RuntimeException | Error e) {
+      if (createdMetrics != null) {
+        MetricService.getInstance().removeMetricSet(createdMetrics);
+      }
+      if (tableDiskUsageRegistered) {
+        TableDiskUsageIndex.getInstance().remove(databaseName, dataRegionId.getId());
+      }
+      if (createdUpgradeModFileThreadPool != null) {
+        createdUpgradeModFileThreadPool.shutdownNow();
+      }
+      releaseDirectBufferMemory();
+      throw e;
     }
-
-    initDiskSelector();
-
-    this.metrics = new DataRegionMetrics(this);
-    MetricService.getInstance().addMetricSet(metrics);
   }
 
   @TestOnly
@@ -5248,6 +5267,9 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      if (upgradeModFileThreadPool != null) {
+        upgradeModFileThreadPool.shutdownNow();
+      }
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
