@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -59,12 +60,34 @@ public class DatabaseLifecycleLockManager {
       while (!canAcquireRequestLocks(owner, orderedDatabases)) {
         lockReleased.awaitUninterruptibly();
       }
-      orderedDatabases.forEach(
-          database ->
-              lockStateMap
-                  .computeIfAbsent(database, ignored -> new DatabaseLockState())
-                  .acquireRequestLock(owner));
-      return new DatabaseLock(this, orderedDatabases, owner);
+      return acquireRequestLocks(orderedDatabases, owner);
+    } finally {
+      stateLock.unlock();
+    }
+  }
+
+  /**
+   * Tries to acquire database locks for a synchronous manager request within the given timeout.
+   *
+   * @return the acquired lock, or null if the timeout elapsed before every lock became available
+   */
+  public DatabaseLock tryAcquireLocks(
+      final Set<String> databaseNames, final long timeout, final TimeUnit timeUnit)
+      throws InterruptedException {
+    final List<String> orderedDatabases = orderedDatabases(databaseNames);
+    final Thread owner = Thread.currentThread();
+    long remainingNanos = timeUnit.toNanos(timeout);
+    if (!stateLock.tryLock(remainingNanos, TimeUnit.NANOSECONDS)) {
+      return null;
+    }
+    try {
+      while (!canAcquireRequestLocks(owner, orderedDatabases)) {
+        if (remainingNanos <= 0) {
+          return null;
+        }
+        remainingNanos = lockReleased.awaitNanos(remainingNanos);
+      }
+      return acquireRequestLocks(orderedDatabases, owner);
     } finally {
       stateLock.unlock();
     }
@@ -78,17 +101,22 @@ public class DatabaseLifecycleLockManager {
   public String tryLock(final Procedure<?> procedure, final Set<String> databaseNames) {
     stateLock.lock();
     try {
+      final List<String> orderedDatabases = orderedDatabases(databaseNames);
       final List<String> acquiredDatabases = new ArrayList<>();
-      for (final String database : orderedDatabases(databaseNames)) {
+      for (final String database : orderedDatabases) {
         final DatabaseLockState lockState =
             lockStateMap.computeIfAbsent(database, ignored -> new DatabaseLockState());
-        if (!lockState.canAcquireProcedureLock(procedure)) {
+        final boolean hasWaiterPriority = lockState.isHeadWaiter(procedure);
+        if (!lockState.canAcquireProcedureLock(procedure, hasWaiterPriority)) {
           acquiredDatabases.forEach(
               acquiredDatabase -> releaseProcedureLock(procedure, acquiredDatabase));
           return database;
         }
         if (lockState.acquireProcedureLock(procedure)) {
           acquiredDatabases.add(database);
+        }
+        if (hasWaiterPriority) {
+          lockState.removeHeadWaiter(procedure);
         }
       }
       return null;
@@ -102,7 +130,7 @@ public class DatabaseLifecycleLockManager {
     try {
       final DatabaseLockState lockState =
           lockStateMap.computeIfAbsent(databaseName, ignored -> new DatabaseLockState());
-      if (lockState.isUnlocked()) {
+      if (lockState.isUnlocked() && !lockState.hasWaitingProcedures()) {
         scheduler.addFront(procedure);
         removeIfIdle(databaseName, lockState);
       } else {
@@ -133,6 +161,16 @@ public class DatabaseLifecycleLockManager {
     return true;
   }
 
+  private DatabaseLock acquireRequestLocks(
+      final List<String> orderedDatabases, final Thread owner) {
+    orderedDatabases.forEach(
+        database ->
+            lockStateMap
+                .computeIfAbsent(database, ignored -> new DatabaseLockState())
+                .acquireRequestLock(owner));
+    return new DatabaseLock(this, orderedDatabases, owner);
+  }
+
   private void releaseRequestLocks(final List<String> orderedDatabases, final Thread requestOwner) {
     stateLock.lock();
     try {
@@ -157,8 +195,9 @@ public class DatabaseLifecycleLockManager {
   }
 
   private void wakeWaiters(final DatabaseLockState lockState) {
-    lockState.wakeWaitingProcedures(scheduler);
-    lockReleased.signalAll();
+    if (!lockState.wakeNextWaitingProcedure(scheduler)) {
+      lockReleased.signalAll();
+    }
   }
 
   private void removeIfIdle(final String database, final DatabaseLockState lockState) {
@@ -214,6 +253,8 @@ public class DatabaseLifecycleLockManager {
     }
 
     /**
+     * Releases one request lock hold.
+     *
      * @return true when the lock became fully released
      */
     private boolean releaseRequestLock(final Thread owner) {
@@ -228,12 +269,16 @@ public class DatabaseLifecycleLockManager {
       return false;
     }
 
-    private boolean canAcquireProcedureLock(final Procedure<?> procedure) {
+    private boolean canAcquireProcedureLock(
+        final Procedure<?> procedure, final boolean hasWaiterPriority) {
       return requestOwner == null
-          && (procedureOwner == null || procedureOwner.getProcId() == procedure.getProcId());
+          && (procedureOwner == null || procedureOwner.getProcId() == procedure.getProcId())
+          && (hasWaiterPriority || waitingProcedures.isEmpty());
     }
 
     /**
+     * Acquires the procedure lock when it is not already held by the same procedure.
+     *
      * @return true when this invocation newly acquired the lock
      */
     private boolean acquireProcedureLock(final Procedure<?> procedure) {
@@ -245,6 +290,8 @@ public class DatabaseLifecycleLockManager {
     }
 
     /**
+     * Releases the procedure lock.
+     *
      * @return true when the lock was released
      */
     private boolean releaseProcedureLock(final Procedure<?> procedure) {
@@ -262,10 +309,30 @@ public class DatabaseLifecycleLockManager {
       }
     }
 
-    private void wakeWaitingProcedures(final ProcedureScheduler procedureScheduler) {
-      while (!waitingProcedures.isEmpty()) {
-        procedureScheduler.addFront(waitingProcedures.pollFirst());
+    private boolean removeHeadWaiter(final Procedure<?> procedure) {
+      if (isHeadWaiter(procedure)) {
+        waitingProcedures.pollFirst();
+        return true;
       }
+      return false;
+    }
+
+    private boolean isHeadWaiter(final Procedure<?> procedure) {
+      return !waitingProcedures.isEmpty()
+          && waitingProcedures.peekFirst().getProcId() == procedure.getProcId();
+    }
+
+    private boolean wakeNextWaitingProcedure(final ProcedureScheduler procedureScheduler) {
+      final Procedure<?> waitingProcedure = waitingProcedures.peekFirst();
+      if (waitingProcedure == null) {
+        return false;
+      }
+      procedureScheduler.addFront(waitingProcedure);
+      return true;
+    }
+
+    private boolean hasWaitingProcedures() {
+      return !waitingProcedures.isEmpty();
     }
 
     private boolean isUnlocked() {

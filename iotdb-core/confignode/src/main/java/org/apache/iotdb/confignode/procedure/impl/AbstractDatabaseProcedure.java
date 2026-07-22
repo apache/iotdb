@@ -25,10 +25,10 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import java.util.Set;
 
 /** A procedure that holds exclusive lifecycle locks for its databases until it finishes. */
-public abstract class AbstractDatabaseProcedure<TState>
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
+public abstract class AbstractDatabaseProcedure<T>
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, T> {
 
-  private transient String waitingDatabase;
+  private String waitingDatabase;
 
   protected AbstractDatabaseProcedure() {
     super();

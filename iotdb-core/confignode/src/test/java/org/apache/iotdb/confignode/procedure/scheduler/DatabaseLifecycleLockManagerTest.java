@@ -70,7 +70,7 @@ public class DatabaseLifecycleLockManagerTest {
   }
 
   @Test
-  public void testProcedureAndRequestShareTheSameLock() throws Exception {
+  public void testWaitingProcedureCannotBeOvertakenByRequest() throws Exception {
     final ProcedureScheduler scheduler = Mockito.mock(ProcedureScheduler.class);
     final DatabaseLifecycleLockManager lockManager = new DatabaseLifecycleLockManager(scheduler);
     final Procedure<?> owner = procedure(1);
@@ -84,20 +84,42 @@ public class DatabaseLifecycleLockManagerTest {
     final ExecutorService executor = Executors.newSingleThreadExecutor();
     final CountDownLatch requestAcquired = new CountDownLatch(1);
     try {
-      executor.submit(
-          () -> {
-            try (final DatabaseLock ignored = lockManager.acquireLocks(databases)) {
-              requestAcquired.countDown();
-            }
-          });
+      final Future<?> requestFuture =
+          executor.submit(
+              () -> {
+                try (final DatabaseLock ignored = lockManager.acquireLocks(databases)) {
+                  requestAcquired.countDown();
+                }
+              });
       Assert.assertFalse(requestAcquired.await(200, TimeUnit.MILLISECONDS));
 
       lockManager.releaseLocks(owner, databases);
       Mockito.verify(scheduler).addFront(waiter);
+      Assert.assertFalse(requestAcquired.await(200, TimeUnit.MILLISECONDS));
+
+      Assert.assertNull(lockManager.tryLock(waiter, databases));
+      Assert.assertFalse(requestAcquired.await(200, TimeUnit.MILLISECONDS));
+      lockManager.releaseLocks(waiter, databases);
       Assert.assertTrue(requestAcquired.await(10, TimeUnit.SECONDS));
+      requestFuture.get(10, TimeUnit.SECONDS);
     } finally {
       executor.shutdownNow();
     }
+  }
+
+  @Test
+  public void testTimedRequestLockAcquisitionHonorsTimeout() throws Exception {
+    final DatabaseLifecycleLockManager lockManager =
+        new DatabaseLifecycleLockManager(Mockito.mock(ProcedureScheduler.class));
+    final Procedure<?> owner = procedure(1);
+    final Set<String> databases = Collections.singleton("root.sg");
+    Assert.assertNull(lockManager.tryLock(owner, databases));
+
+    final long startNanos = System.nanoTime();
+    Assert.assertNull(lockManager.tryAcquireLocks(databases, 100, TimeUnit.MILLISECONDS));
+    Assert.assertTrue(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos) < 5);
+
+    lockManager.releaseLocks(owner, databases);
   }
 
   @Test

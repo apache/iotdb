@@ -86,7 +86,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager.DatabaseLock;
@@ -1415,7 +1414,7 @@ public class PartitionManager {
             .map(RegionCreateTask::getStorageGroup)
             .distinct()
             .sorted()
-            .collect(Collectors.toList());
+            .toList();
     for (final String database : databases) {
       try (final DatabaseLock ignored =
           getProcedureManager().acquireDatabaseLifecycleLock(database)) {
@@ -1430,16 +1429,15 @@ public class PartitionManager {
   }
 
   private void maintainRegionReplicasUnderLock(final String database) {
-    final List<RegionMaintainTask> persistedTasks =
+    final List<RegionCreateTask> persistedTasks =
         partitionInfo.getRegionMaintainEntryList().stream()
             .filter(RegionCreateTask.class::isInstance)
             .map(RegionCreateTask.class::cast)
             .filter(task -> database.equals(task.getStorageGroup()))
-            .collect(Collectors.toList());
+            .toList();
     final Map<TConsensusGroupId, Integer> invalidTaskCountByRegion = new HashMap<>();
-    for (RegionMaintainTask task : persistedTasks) {
-      if (!(task instanceof RegionCreateTask)
-          || !isRegionCreateTaskRegionValid((RegionCreateTask) task)) {
+    for (final RegionCreateTask task : persistedTasks) {
+      if (!isRegionCreateTaskRegionValid(task)) {
         invalidTaskCountByRegion.merge(task.getRegionId(), 1, Integer::sum);
       }
     }
@@ -1458,21 +1456,10 @@ public class PartitionManager {
     // RegionCreateTasks now (delete tasks are filtered out at the PartitionInfo ingestion points),
     // and a region may carry several of them when more than one of its replicas failed to create.
     final Map<TConsensusGroupId, Queue<RegionCreateTask>> tasksByRegion = new LinkedHashMap<>();
-    for (RegionMaintainTask task : persistedTasks) {
-      if (invalidRegionIds.contains(task.getRegionId())) {
-        continue;
+    for (final RegionCreateTask task : persistedTasks) {
+      if (!invalidRegionIds.contains(task.getRegionId())) {
+        tasksByRegion.computeIfAbsent(task.getRegionId(), ignored -> new LinkedList<>()).add(task);
       }
-      if (!(task instanceof RegionCreateTask)) {
-        // Unreachable: the queue only holds create tasks now (legacy delete tasks are dropped at
-        // the
-        // PartitionInfo ingestion points). Guard against a regression so an unexpected task type
-        // cannot silently stall the loop.
-        LOGGER.warn(ManagerMessages.UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED);
-        continue;
-      }
-      tasksByRegion
-          .computeIfAbsent(task.getRegionId(), k -> new LinkedList<>())
-          .add((RegionCreateTask) task);
     }
 
     final Set<TConsensusGroupId> invalidHeadRegionIds = new HashSet<>();
@@ -1480,25 +1467,9 @@ public class PartitionManager {
         new EnumMap<>(TConsensusGroupType.class);
     final Map<TConsensusGroupType, Map<Integer, Integer>> selectedCountByTypeAndDataNode =
         new EnumMap<>(TConsensusGroupType.class);
-    for (Queue<RegionCreateTask> queue : tasksByRegion.values()) {
-      final RegionCreateTask head = queue.peek();
-      if (!isRegionCreateTaskTargetValid(head)) {
-        invalidHeadRegionIds.add(head.getRegionId());
-        continue;
-      }
-      if (isRegionCreateTargetInBackoff(head)) {
-        continue;
-      }
-      final TConsensusGroupType type = head.getRegionId().getType();
-      final int dataNodeId = head.getTargetDataNode().getDataNodeId();
-      final Map<Integer, Integer> selectedCountByDataNode =
-          selectedCountByTypeAndDataNode.computeIfAbsent(type, ignored -> new HashMap<>());
-      final int selectedCount = selectedCountByDataNode.getOrDefault(dataNodeId, 0);
-      if (selectedCount >= getRegionCreateBatchSize(type)) {
-        continue;
-      }
-      selectedCountByDataNode.put(dataNodeId, selectedCount + 1);
-      headsByType.computeIfAbsent(type, ignored -> new ArrayList<>()).add(head);
+    for (final Queue<RegionCreateTask> queue : tasksByRegion.values()) {
+      selectRegionCreateTask(
+          queue.peek(), invalidHeadRegionIds, headsByType, selectedCountByTypeAndDataNode);
     }
 
     // A target-specific stale task only removes the head of its Region queue. A following task of
@@ -1515,6 +1486,30 @@ public class PartitionManager {
     }
     if (!successfulRegions.isEmpty()) {
       writeRegionCreateTaskPlan(new PollSpecificRegionMaintainTaskPlan(successfulRegions));
+    }
+  }
+
+  private void selectRegionCreateTask(
+      final RegionCreateTask task,
+      final Set<TConsensusGroupId> invalidRegionIds,
+      final Map<TConsensusGroupType, List<RegionCreateTask>> tasksByType,
+      final Map<TConsensusGroupType, Map<Integer, Integer>> selectedCountByTypeAndDataNode) {
+    if (!isRegionCreateTaskTargetValid(task)) {
+      invalidRegionIds.add(task.getRegionId());
+      return;
+    }
+    if (isRegionCreateTargetInBackoff(task)) {
+      return;
+    }
+
+    final TConsensusGroupType type = task.getRegionId().getType();
+    final int dataNodeId = task.getTargetDataNode().getDataNodeId();
+    final Map<Integer, Integer> selectedCountByDataNode =
+        selectedCountByTypeAndDataNode.computeIfAbsent(type, ignored -> new HashMap<>());
+    final int selectedCount = selectedCountByDataNode.getOrDefault(dataNodeId, 0);
+    if (selectedCount < getRegionCreateBatchSize(type)) {
+      selectedCountByDataNode.put(dataNodeId, selectedCount + 1);
+      tasksByType.computeIfAbsent(type, ignored -> new ArrayList<>()).add(task);
     }
   }
 
@@ -1631,29 +1626,36 @@ public class PartitionManager {
       tasksByDataNode
           .computeIfAbsent(task.getTargetDataNode().getDataNodeId(), ignored -> new ArrayList<>())
           .add(task);
-      final TSStatus status = responseMap.get(task.getRegionId().getId());
-      if (status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (isRegionCreateSuccessful(responseMap.get(task.getRegionId().getId()))) {
         successfulRegions.add(task.getRegionId());
       }
     }
-    for (List<RegionCreateTask> dataNodeTasks : tasksByDataNode.values()) {
-      RegionCreateTask failedTask = null;
-      TSStatus failedStatus = null;
-      for (RegionCreateTask task : dataNodeTasks) {
-        final TSStatus status = responseMap.get(task.getRegionId().getId());
-        if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          if (failedTask == null || isDirectMemoryFailure(status)) {
-            failedTask = task;
-            failedStatus = status;
-          }
-        }
-      }
-      if (failedTask != null) {
-        recordRegionCreateFailure(failedTask, failedStatus);
-      } else {
-        clearRegionCreateBackoff(dataNodeTasks.get(0));
+    for (final List<RegionCreateTask> dataNodeTasks : tasksByDataNode.values()) {
+      updateRegionCreateBackoff(responseMap, dataNodeTasks);
+    }
+  }
+
+  private void updateRegionCreateBackoff(
+      final Map<Integer, TSStatus> responseMap, final List<RegionCreateTask> dataNodeTasks) {
+    RegionCreateTask failedTask = null;
+    TSStatus failedStatus = null;
+    for (final RegionCreateTask task : dataNodeTasks) {
+      final TSStatus status = responseMap.get(task.getRegionId().getId());
+      if (!isRegionCreateSuccessful(status)
+          && (failedTask == null || isDirectMemoryFailure(status))) {
+        failedTask = task;
+        failedStatus = status;
       }
     }
+    if (failedTask == null) {
+      clearRegionCreateBackoff(dataNodeTasks.get(0));
+    } else {
+      recordRegionCreateFailure(failedTask, failedStatus);
+    }
+  }
+
+  private boolean isRegionCreateSuccessful(final TSStatus status) {
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private boolean isRegionCreateTargetInBackoff(RegionCreateTask task) {

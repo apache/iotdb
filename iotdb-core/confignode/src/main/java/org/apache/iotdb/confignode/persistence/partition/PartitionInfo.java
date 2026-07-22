@@ -203,9 +203,8 @@ public class PartitionInfo implements SnapshotProcessor {
 
     plan.getRegionGroupMap()
         .forEach(
-            (database, regionReplicaSets) -> {
-              databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
-            });
+            (database, regionReplicaSets) ->
+                databasePartitionTables.get(database).createRegionGroups(regionReplicaSets));
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -274,19 +273,16 @@ public class PartitionInfo implements SnapshotProcessor {
       // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task that an upgraded node may
       // replay from an old consensus log, so it cannot get stuck in the queue and block the
       // recreation of that region's other replicas.
-      for (RegionMaintainTask task : offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
+      for (final RegionMaintainTask task :
+          offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
         if (RegionMaintainType.DELETE.equals(task.getType())) {
           LOGGER.info(
               ConfigNodeMessages
                   .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649,
               task.getRegionId());
-          continue;
-        }
-        final RegionCreateTask createTask = (RegionCreateTask) task;
-        if (!isRegionCreateTaskOwnedByCurrentPartitionTable(createTask)) {
-          continue;
-        }
-        if (existingTasks.add(task)) {
+        } else if (task instanceof RegionCreateTask createTask
+            && isRegionCreateTaskOwnedByCurrentPartitionTable(createTask)
+            && existingTasks.add(task)) {
           regionMaintainTaskList.add(task);
         }
       }
@@ -343,9 +339,8 @@ public class PartitionInfo implements SnapshotProcessor {
       }
       regionMaintainTaskList.removeIf(
           task ->
-              task instanceof RegionCreateTask
-                  && Objects.equals(
-                      plan.getDatabase(), ((RegionCreateTask) task).getStorageGroup()));
+              task instanceof RegionCreateTask createTask
+                  && Objects.equals(plan.getDatabase(), createTask.getStorageGroup()));
       return RpcUtils.SUCCESS_STATUS;
     }
   }

@@ -81,106 +81,19 @@ public class DeleteDatabaseProcedure extends AbstractDatabaseProcedure<DeleteDat
     try {
       switch (state) {
         case PRE_DELETE_DATABASE:
-          LOG.info(
-              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC,
-              deleteDatabaseSchema.getName());
-          final TSStatus preDeleteStatus =
-              env.preDeleteDatabase(
-                  PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
-          if (preDeleteStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
-          } else if (getCycles() > RETRY_THRESHOLD) {
-            setFailure(
-                new ProcedureException(
-                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
-          } else {
-            setNextState(DeleteDatabaseState.PRE_DELETE_DATABASE);
-          }
+          executePreDeleteDatabase(env);
           break;
         case INVALIDATE_CACHE:
-          LOG.info(
-              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC,
-              deleteDatabaseSchema.getName());
-          if (env.invalidateCache(deleteDatabaseSchema.getName())) {
-            final TSStatus removeTasksStatus =
-                env.batchRemoveRegionCreateTasks(deleteDatabaseSchema.getName());
-            if (removeTasksStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
-            } else if (getCycles() > RETRY_THRESHOLD) {
-              setFailure(
-                  new ProcedureException(
-                      ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
-            } else {
-              setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
-            }
-          } else {
-            setFailure(
-                new ProcedureException(
-                    ProcedureMessages.DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_FAILED));
-          }
+          executeInvalidateCache(env);
           break;
         case DELETE_DATABASE_SCHEMA:
-          LOG.info(
-              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC,
-              deleteDatabaseSchema.getName());
-
-          // Delete every RegionGroup as a child procedure. This procedure keeps the database lock
-          // while the children run, so neither same-name recreation nor a delayed Region creation
-          // can overtake cleanup. Each child carries its own replica-set copy and survives leader
-          // change or restart.
-          //
-          // Submission is intentionally NOT guarded by isStateDeserialized(): the executor persists
-          // a procedure at a state BEFORE that state's body has run (it advances the state on the
-          // previous cycle, then may stop at the inter-state boundary on a leader switch — see
-          // ProcedureExecutor#executeProcedure). So a recovery that lands on this state means the
-          // submission has NOT happened yet; skipping it would drop every region group's cleanup
-          // while the next state still drops the partition table, orphaning the region peers/data
-          // on disk with no record of where they live. Adding the children again on recovery is
-          // safe because RegionGroup deletion is idempotent.
-          final List<TRegionReplicaSet> regionReplicaSets =
-              env.getAllReplicaSets(deleteDatabaseSchema.getName());
-          regionReplicaSets.forEach(
-              regionReplicaSet -> {
-                // Clear heartbeat cache along the way
-                env.getConfigManager()
-                    .getLoadManager()
-                    .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
-                addChildProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
-              });
-          setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
+          executeDeleteDatabaseSchema(env);
           break;
         case DELETE_DATABASE_CONFIG:
-          env.getConfigManager()
-              .getLoadManager()
-              .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
-          LOG.info(
-              ProcedureMessages
-                  .LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A,
-              deleteDatabaseSchema.getName());
-
-          // Delete Database metrics
-          PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
-              MetricService.getInstance(), deleteDatabaseSchema.getName());
-          PartitionMetrics.unbindDatabaseTableMetrics(
-              MetricService.getInstance(), deleteDatabaseSchema.getName());
-
-          // Delete DatabasePartitionTable
-          final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
-
-          if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOG.info(
-                ProcedureMessages
-                    .LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202,
-                deleteDatabaseSchema.getName());
+          if (executeDeleteDatabaseConfig(env)) {
             return Flow.NO_MORE_STATE;
-          } else if (getCycles() > RETRY_THRESHOLD) {
-            setFailure(
-                new ProcedureException(
-                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
-          } else {
-            setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
           }
+          break;
       }
     } catch (final TException | IOException e) {
       if (isRollbackSupported(state)) {
@@ -207,6 +120,109 @@ public class DeleteDatabaseProcedure extends AbstractDatabaseProcedure<DeleteDat
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  private void executePreDeleteDatabase(final ConfigNodeProcedureEnv env) {
+    LOG.info(
+        ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC,
+        deleteDatabaseSchema.getName());
+    final TSStatus preDeleteStatus =
+        env.preDeleteDatabase(
+            PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
+    if (preDeleteStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
+    } else {
+      retryOrFail(DeleteDatabaseState.PRE_DELETE_DATABASE);
+    }
+  }
+
+  private void executeInvalidateCache(final ConfigNodeProcedureEnv env)
+      throws IOException, TException {
+    LOG.info(
+        ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC,
+        deleteDatabaseSchema.getName());
+    if (!env.invalidateCache(deleteDatabaseSchema.getName())) {
+      setFailure(
+          new ProcedureException(
+              ProcedureMessages.DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_FAILED));
+      return;
+    }
+
+    final TSStatus removeTasksStatus =
+        env.batchRemoveRegionCreateTasks(deleteDatabaseSchema.getName());
+    if (removeTasksStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
+    } else {
+      retryOrFail(DeleteDatabaseState.INVALIDATE_CACHE);
+    }
+  }
+
+  private void executeDeleteDatabaseSchema(final ConfigNodeProcedureEnv env) {
+    LOG.info(
+        ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC,
+        deleteDatabaseSchema.getName());
+
+    // Delete every RegionGroup as a child procedure. This procedure keeps the database lock while
+    // the children run, so neither same-name recreation nor a delayed Region creation can overtake
+    // cleanup. Each child carries its own replica-set copy and survives leader change or restart.
+    //
+    // Submission is intentionally NOT guarded by isStateDeserialized(): the executor persists a
+    // procedure at a state BEFORE that state's body has run (it advances the state on the previous
+    // cycle, then may stop at the inter-state boundary on a leader switch — see
+    // ProcedureExecutor#executeProcedure). So a recovery that lands on this state means the
+    // submission has NOT happened yet; skipping it would drop every region group's cleanup while
+    // the next state still drops the partition table, orphaning the region peers/data on disk with
+    // no record of where they live. Adding the children again on recovery is safe because
+    // RegionGroup deletion is idempotent.
+    final List<TRegionReplicaSet> regionReplicaSets =
+        env.getAllReplicaSets(deleteDatabaseSchema.getName());
+    regionReplicaSets.forEach(
+        regionReplicaSet -> {
+          // Clear heartbeat cache along the way
+          env.getConfigManager()
+              .getLoadManager()
+              .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
+          addChildProcedure(new RemoveRegionGroupProcedure(regionReplicaSet));
+        });
+    setNextState(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
+  }
+
+  private boolean executeDeleteDatabaseConfig(final ConfigNodeProcedureEnv env) {
+    env.getConfigManager()
+        .getLoadManager()
+        .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
+    LOG.info(
+        ProcedureMessages
+            .LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A,
+        deleteDatabaseSchema.getName());
+
+    // Delete Database metrics
+    PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
+        MetricService.getInstance(), deleteDatabaseSchema.getName());
+    PartitionMetrics.unbindDatabaseTableMetrics(
+        MetricService.getInstance(), deleteDatabaseSchema.getName());
+
+    // Delete DatabasePartitionTable
+    final TSStatus deleteConfigResult =
+        env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
+    if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOG.info(
+          ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202,
+          deleteDatabaseSchema.getName());
+      return true;
+    }
+    retryOrFail(DeleteDatabaseState.DELETE_DATABASE_CONFIG);
+    return false;
+  }
+
+  private void retryOrFail(final DeleteDatabaseState state) {
+    if (getCycles() > RETRY_THRESHOLD) {
+      setFailure(
+          new ProcedureException(
+              ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
+    } else {
+      setNextState(state);
+    }
   }
 
   @Override
