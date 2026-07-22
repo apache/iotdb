@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -71,6 +72,10 @@ public class IoTDBShowRegionIT {
       Awaitility.await()
           .atMost(2, TimeUnit.MINUTES)
           .pollDelay(1, TimeUnit.SECONDS)
+          // SHOW REGIONS is executed on every DataNode and the results are compared. The parallel
+          // queries may straddle an object-size heartbeat update and briefly observe different
+          // values, so retry this transient inconsistency until the cluster converges.
+          .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
           .untilAsserted(
               () -> {
                 boolean hasDataRegion = false;
