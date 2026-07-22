@@ -129,6 +129,7 @@ struct TRuntimeConfiguration {
   10: optional bool enableSeparationOfAdminPowers
   // use 'optional' here to support rolling upgrade
   11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
+  12: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeRegisterReq {

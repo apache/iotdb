@@ -582,6 +582,12 @@ public class IoTDBConfig {
 
   private volatile boolean enableTsFileValidation = false;
 
+  /**
+   * Whether to enable the TopK runtime filter optimization for table-model {@code ORDER BY time
+   * LIMIT k} queries. Hot-reloadable; set false to fall back to the original execution path.
+   */
+  private volatile boolean enableTopKRuntimeFilter = true;
+
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
 
@@ -4416,6 +4422,14 @@ public class IoTDBConfig {
 
   public void setEnableTsFileValidation(boolean enableTsFileValidation) {
     this.enableTsFileValidation = enableTsFileValidation;
+  }
+
+  public boolean isEnableTopKRuntimeFilter() {
+    return enableTopKRuntimeFilter;
+  }
+
+  public void setEnableTopKRuntimeFilter(boolean enableTopKRuntimeFilter) {
+    this.enableTopKRuntimeFilter = enableTopKRuntimeFilter;
   }
 
   public long getInnerCompactionTaskSelectionModsFileThreshold() {

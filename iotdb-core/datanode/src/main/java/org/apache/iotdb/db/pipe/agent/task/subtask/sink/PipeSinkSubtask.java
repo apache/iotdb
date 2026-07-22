@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
@@ -239,6 +240,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
           })) {
         return;
       }
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      throw e;
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(

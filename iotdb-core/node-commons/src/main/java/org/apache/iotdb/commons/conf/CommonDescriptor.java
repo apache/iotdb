@@ -341,11 +341,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "path_log_max_size", String.valueOf(config.getPathLogMaxSize()))));
 
-    config.setMetadataLeaseFenceMs(
-        Long.parseLong(
-            properties.getProperty(
-                "metadata_lease_fence_ms", String.valueOf(config.getMetadataLeaseFenceMs()))));
-
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }

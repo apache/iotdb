@@ -892,6 +892,9 @@ public final class DataNodePipeMessages {
       "网络接收 TsFile %s 失败，状态：%s";
   public static final String SECURITY_DIR = "security 目录：{}";
   public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "已选择 OPC UA endpoint：configured={}，advertised={}，effective={}，allowEndpointRedirect={}。";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
@@ -1439,6 +1442,13 @@ public final class DataNodePipeMessages {
       "安全目录：{}";
   public static final String OPC_UA_SECURITY_PKI_DIR =
       "安全 PKI 目录：{}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "advertised host 必须是不带 scheme、port 或 path 的 hostname 或 IP 地址。";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "advertised host {} 不在已加载的 OPC UA server 证书 subject alternative names 中。安全客户端可能拒绝该证书；"
+              + "请替换或重新生成证书并重新建立信任。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -2370,8 +2380,10 @@ public final class DataNodePipeMessages {
       "当前 tablet 格式反序列化中列值不完整。";
   public static final String EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461 =
       "当前 tablet 格式反序列化中时间戳不完整。";
-  public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
-      "Receiver {} 暂时不可用，对请求限流 {} ms。状态：{}";
+  public static final String MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6 =
+      "Receiver {} 要求重试，对请求限流 {} ms。状态：{}";
+  public static final String EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2 =
+      "Receiver %s 要求重试已超过 %d ms，暂停常规重试，改为每 %d ms 探测一次。";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "成功传输批量的 schema 事件，batch 大小 {}。";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =

@@ -2669,8 +2669,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(req.getMeasurementsList());
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2736,8 +2735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention (only for tree model)
       if (!req.isWriteToTable()) {
-        req.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+        PathUtils.checkIsLegalSingleMeasurementsAndUpdateInPlace(req.getMeasurements());
       }
 
       // Step 1: transfer from TSInsertTabletReq to Statement

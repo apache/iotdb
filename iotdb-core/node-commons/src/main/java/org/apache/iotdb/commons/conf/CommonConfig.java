@@ -292,6 +292,8 @@ public class CommonConfig {
   private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
   private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
   private long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = 500;
+  private long pipeAsyncSinkRetryMaxDurationMs = 60 * 1000L;
+  private long pipeAsyncSinkRetryProbeIntervalMs = 30 * 1000L;
   private int pipeAsyncSinkSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncSinkMaxClientNumber =
@@ -339,6 +341,8 @@ public class CommonConfig {
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
+  // Besides limiting allocation retries, this value also caps the TsFile parser memory admission
+  // backoff at pipeCheckMemoryEnoughIntervalMs * max(1, pipeMemoryAllocateMaxRetries).
   private volatile int pipeMemoryAllocateMaxRetries = 10;
   private volatile long pipeMemoryAllocateMinSizeInBytes = 32;
   private volatile long pipeMemoryAllocateForTsFileSequenceReaderInBytes =
@@ -476,13 +480,6 @@ public class CommonConfig {
   private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
-
-  // The DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, template,
-  // TTL, permission, ...) if it has not received a ConfigNode heartbeat within this duration. Kept
-  // aligned with the failure detector threshold so a partitioned DataNode stops trusting stale
-  // caches around the same time the cluster would consider it dead. Also used by the ConfigNode to
-  // derive how long it must wait before treating an unreachable DataNode as safely fenced.
-  private volatile long metadataLeaseFenceMs = 20_000;
 
   private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
   // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
@@ -1324,6 +1321,34 @@ public class CommonConfig {
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
     return pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
+  }
+
+  public void setPipeAsyncSinkRetryMaxDurationMs(long pipeAsyncSinkRetryMaxDurationMs) {
+    if (this.pipeAsyncSinkRetryMaxDurationMs == pipeAsyncSinkRetryMaxDurationMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryMaxDurationMs = pipeAsyncSinkRetryMaxDurationMs;
+    logger.info(
+        ConfigMessages.LOG_PIPEASYNCSINKRETRYMAXDURATIONMS_IS_SET_TO_ARG_5058C99F,
+        pipeAsyncSinkRetryMaxDurationMs);
+  }
+
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return pipeAsyncSinkRetryMaxDurationMs;
+  }
+
+  public void setPipeAsyncSinkRetryProbeIntervalMs(long pipeAsyncSinkRetryProbeIntervalMs) {
+    if (this.pipeAsyncSinkRetryProbeIntervalMs == pipeAsyncSinkRetryProbeIntervalMs) {
+      return;
+    }
+    this.pipeAsyncSinkRetryProbeIntervalMs = Math.max(1, pipeAsyncSinkRetryProbeIntervalMs);
+    logger.info(
+        ConfigMessages.LOG_PIPEASYNCSINKRETRYPROBEINTERVALMS_IS_SET_TO_ARG_A1E9AF45,
+        this.pipeAsyncSinkRetryProbeIntervalMs);
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return pipeAsyncSinkRetryProbeIntervalMs;
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
@@ -2962,14 +2987,6 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
-  }
-
-  public long getMetadataLeaseFenceMs() {
-    return metadataLeaseFenceMs;
-  }
-
-  public void setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
-    this.metadataLeaseFenceMs = metadataLeaseFenceMs;
   }
 
   public int getArenaNum() {

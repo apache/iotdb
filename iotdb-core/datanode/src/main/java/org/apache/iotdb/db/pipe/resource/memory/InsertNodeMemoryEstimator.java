@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -155,6 +156,12 @@ public class InsertNodeMemoryEstimator {
   // from the actual result because the properties of the parent class are not added.
   private static final double INSERT_ROW_NODE_EXPANSION_FACTOR = 1.3;
 
+  // Composite insert nodes are estimated on write threads. Reuse the identity set between events,
+  // but discard unusually large sets to avoid retaining a large table on every write thread.
+  private static final int MAX_RETAINED_DEDUPLICATED_OBJECTS = 1024;
+  private static final ThreadLocal<Set<Object>> REUSABLE_DEDUPLICATED_OBJECTS =
+      ThreadLocal.withInitial(InsertNodeMemoryEstimator::newDeduplicatedObjectSet);
+
   public static long sizeOf(final InsertNode insertNode) {
     try {
       final String className = insertNode.getClass().getSimpleName();
@@ -248,46 +255,62 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfInsertRowsNode(final InsertRowsNode node) {
     final Set<Object> deduplicatedObjects =
-        newDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
-    long size = INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = INSERT_ROWS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
     final Set<Object> deduplicatedObjects =
-        newDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
-    long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
     final Set<Object> deduplicatedObjects =
-        newDeduplicatedObjectSetIfNeeded(node.getInsertTabletNodeList());
-    long size = INSERT_MULTI_TABLETS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
-    size += sizeOfResults(node.getResults());
-    return size;
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertTabletNodeList());
+    try {
+      long size = INSERT_MULTI_TABLETS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
+      size += sizeOfResults(node.getResults());
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
     final Set<Object> deduplicatedObjects =
-        newDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
-    long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
-    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
-    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
-    // ignore deviceIDs
-    return size;
+        acquireDeduplicatedObjectSetIfNeeded(node.getInsertRowNodeList());
+    try {
+      long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
+      size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+      size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+      size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+      // ignore deviceIDs
+      return size;
+    } finally {
+      releaseDeduplicatedObjectSet(deduplicatedObjects);
+    }
   }
 
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
@@ -775,8 +798,24 @@ public class InsertNodeMemoryEstimator {
     return Collections.newSetFromMap(new IdentityHashMap<>());
   }
 
-  private static Set<Object> newDeduplicatedObjectSetIfNeeded(final List<?> children) {
-    return children != null && children.size() > 1 ? newDeduplicatedObjectSet() : null;
+  private static Set<Object> acquireDeduplicatedObjectSetIfNeeded(final List<?> children) {
+    return children != null && children.size() > 1 ? REUSABLE_DEDUPLICATED_OBJECTS.get() : null;
+  }
+
+  private static void releaseDeduplicatedObjectSet(final Set<Object> deduplicatedObjects) {
+    if (deduplicatedObjects == null) {
+      return;
+    }
+    final boolean oversized = deduplicatedObjects.size() > MAX_RETAINED_DEDUPLICATED_OBJECTS;
+    deduplicatedObjects.clear();
+    if (oversized) {
+      REUSABLE_DEDUPLICATED_OBJECTS.remove();
+    }
+  }
+
+  @TestOnly
+  static void clearReusableDeduplicatedObjectsForTest() {
+    REUSABLE_DEDUPLICATED_OBJECTS.remove();
   }
 
   private static boolean shouldCountObject(

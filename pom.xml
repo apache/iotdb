@@ -145,7 +145,7 @@
         <thrift.version>0.23.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.2-260616-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.2-260721-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>

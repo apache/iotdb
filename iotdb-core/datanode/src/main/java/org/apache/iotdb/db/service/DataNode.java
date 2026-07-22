@@ -80,6 +80,7 @@ import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -99,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPla
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -531,6 +533,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store superuser name */
     AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
+
+    /* Store metadata lease fence threshold from ConfigNode */
+    MetadataLeaseManager.getInstance()
+        .updateFenceThresholdMs(runtimeConfiguration.getFenceThresholdMs());
+    logger.info(
+        DataNodeSchemaMessages.UPDATED_METADATA_LEASE_FENCE_THRESHOLD,
+        runtimeConfiguration.getFenceThresholdMs());
   }
 
   /**
