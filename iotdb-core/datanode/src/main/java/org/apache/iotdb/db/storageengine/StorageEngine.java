@@ -58,6 +58,8 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -522,7 +524,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -553,7 +555,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -568,7 +570,7 @@ public class StorageEngine implements IService {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
-                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  syncCloseAllProcessorAndPublishCompletionBarrier(dataRegion);
                   return null;
                 }));
       }
@@ -607,6 +609,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException(errorMsg, e);
       }
     }
+  }
+
+  private void syncCloseAllProcessorAndPublishCompletionBarrier(final DataRegion dataRegion)
+      throws InterruptedException, ExecutionException {
+    final PipeInsertionDataNodeListener listener = PipeInsertionDataNodeListener.getInstance();
+    final int dataRegionId = dataRegion.getDataRegionId();
+    final CompletionToken completionToken = listener.invalidateDataRegionCompletion(dataRegionId);
+    dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+    listener.listenToCompletionBarrier(dataRegionId, completionToken);
   }
 
   /**

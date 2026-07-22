@@ -38,11 +38,13 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -61,7 +63,10 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -73,6 +78,7 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -115,6 +121,20 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
+  private static final Set<String> COMPLETION_SUPPORTED_SOURCES =
+      Set.of(
+          BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
+  private static final Set<String> COMPLETION_SUPPORTED_SINKS =
+      Set.of(
+          BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
+          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName());
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -568,6 +588,87 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  public Pair<Boolean, Map<Integer, PipeRealtimeDataRegionSource>> getPipeCompletionSnapshot(
+      final String pipeName, final long creationTime) {
+    if (!tryReadLockWithTimeOutInMs(10)) {
+      return new Pair<>(false, Collections.emptyMap());
+    }
+
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta == null) {
+        return new Pair<>(false, Collections.emptyMap());
+      }
+
+      final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+      final String sourceName =
+          staticMeta
+              .getSourceParameters()
+              .getStringOrDefault(
+                  Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                  BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
+      final String processorName =
+          staticMeta
+              .getProcessorParameters()
+              .getStringOrDefault(
+                  PipeProcessorConstant.PROCESSOR_KEY,
+                  BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName());
+      final PipeParameters sinkParameters = staticMeta.getSinkParameters();
+      final String sinkName = PipeSinkConstant.getConnectorOrSinkNameWithDefault(sinkParameters);
+      boolean supported =
+          staticMeta.getPipeType() == PipeType.USER
+              && COMPLETION_SUPPORTED_SOURCES.stream()
+                  .anyMatch(name -> name.equalsIgnoreCase(sourceName))
+              && BuiltinPipePlugin.DO_NOTHING_PROCESSOR
+                  .getPipePluginName()
+                  .equalsIgnoreCase(processorName)
+              && COMPLETION_SUPPORTED_SINKS.stream()
+                  .anyMatch(name -> name.equalsIgnoreCase(sinkName))
+              && PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE.equalsIgnoreCase(
+                  sinkParameters.getStringOrDefault(
+                      Arrays.asList(
+                          PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_KEY,
+                          PipeSinkConstant.SINK_LOAD_TSFILE_STRATEGY_KEY),
+                      PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE))
+              && pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING
+              && pipeMeta.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap().isEmpty()
+              && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+                  .noneMatch(PipeTaskMeta::hasExceptionMessages);
+
+      final Map<Integer, PipeRealtimeDataRegionSource> dataRegionId2Source = new HashMap<>();
+      final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
+      if (pipeTaskMap != null) {
+        for (final Map.Entry<Integer, PipeTask> entry : pipeTaskMap.entrySet()) {
+          if (!(entry.getValue() instanceof PipeDataNodeTask)) {
+            supported = false;
+            continue;
+          }
+          final PipeExtractor extractor = ((PipeDataNodeTask) entry.getValue()).getPipeExtractor();
+          if (!(extractor instanceof IoTDBDataRegionSource)) {
+            if (!(extractor instanceof IoTDBSchemaRegionSource)) {
+              supported = false;
+            }
+            continue;
+          }
+          final IoTDBDataRegionSource dataRegionSource = (IoTDBDataRegionSource) extractor;
+          final PipeRealtimeDataRegionSource realtimeSource =
+              dataRegionSource.getRealtimeSourceForCompletion();
+          if (realtimeSource == null) {
+            supported = false;
+          } else {
+            dataRegionId2Source.put(entry.getKey(), realtimeSource);
+          }
+          if (!dataRegionSource.isReadyForCompletion()) {
+            supported = false;
+          }
+        }
+      }
+      return new Pair<>(supported, dataRegionId2Source);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {

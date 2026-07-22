@@ -2538,6 +2538,78 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  /**
+   * Closes all working TsFile processors and waits for processors that were already closing.
+   *
+   * <p>This stronger variant is used by a full flush before a Pipe completion barrier is published.
+   * Unlike {@link #syncCloseAllWorkingTsFileProcessors()}, failures are propagated to the caller so
+   * a failed flush can never publish a completion barrier.
+   */
+  public void syncCloseAllWorkingAndClosingTsFileProcessors()
+      throws InterruptedException, ExecutionException {
+    final Set<TsFileProcessor> targets = new HashSet<>();
+    final Set<TsFileProcessor> targetsToClose = new HashSet<>();
+    final List<Future<?>> closingFutures = new ArrayList<>();
+
+    writeLock("syncCloseAllWorkingAndClosingTsFileProcessors");
+    try {
+      targets.addAll(closingSequenceTsFileProcessor);
+      targets.addAll(closingUnSequenceTsFileProcessor);
+      for (final TsFileProcessor target : targets) {
+        closingFutures.add(target.getCloseFuture());
+      }
+
+      targetsToClose.addAll(workSequenceTsFileProcessors.values());
+      targetsToClose.addAll(workUnsequenceTsFileProcessors.values());
+      targets.addAll(targetsToClose);
+    } finally {
+      writeUnlock();
+    }
+
+    int closedProcessorCount = 0;
+    while (!targetsToClose.isEmpty()) {
+      final List<Future<?>> currentFutures = new ArrayList<>();
+      final Set<TsFileProcessor> targetsWaitingForOrdinaryFlush = new HashSet<>();
+
+      writeLock("syncCloseAllWorkingAndClosingTsFileProcessors");
+      try {
+        final Iterator<TsFileProcessor> iterator = targetsToClose.iterator();
+        while (iterator.hasNext()) {
+          final TsFileProcessor target = iterator.next();
+          final Future<?> future =
+              asyncCloseOneTsFileProcessorForFullFlush(target.isSequence(), target);
+          currentFutures.add(future);
+          if (target.alreadyMarkedClosing()) {
+            closingFutures.add(future);
+            iterator.remove();
+            closedProcessorCount++;
+          } else {
+            targetsWaitingForOrdinaryFlush.add(target);
+          }
+        }
+      } finally {
+        writeUnlock();
+      }
+
+      for (final Future<?> future : currentFutures) {
+        if (future != null) {
+          future.get();
+        }
+      }
+      for (final TsFileProcessor target : targetsWaitingForOrdinaryFlush) {
+        target.waitUntilFlushManagerReleased();
+      }
+    }
+
+    WritingMetrics.getInstance().recordManualFlushMemTableCount(closedProcessorCount);
+    for (final Future<?> future : closingFutures) {
+      if (future != null) {
+        future.get();
+      }
+    }
+    waitClosingTsFileProcessorFinished(targets);
+  }
+
   public void syncCloseWorkingTsFileProcessors(boolean sequence) {
     try {
       writeLock("syncCloseWorkingTsFileProcessors");
@@ -2602,6 +2674,27 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private void waitClosingTsFileProcessorFinished(final Set<TsFileProcessor> targets)
+      throws InterruptedException {
+    while (containsClosingTarget(targets)) {
+      synchronized (closeStorageGroupCondition) {
+        if (containsClosingTarget(targets)) {
+          closeStorageGroupCondition.wait(60_000);
+        }
+      }
+    }
+  }
+
+  private boolean containsClosingTarget(final Set<TsFileProcessor> targets) {
+    for (final TsFileProcessor target : targets) {
+      if (closingSequenceTsFileProcessor.contains(target)
+          || closingUnSequenceTsFileProcessor.contains(target)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** close all working tsfile processors */
   public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
@@ -2628,6 +2721,53 @@ public class DataRegion implements IDataRegionForQuery {
     }
     WritingMetrics.getInstance().recordManualFlushMemTableCount(count);
     return futures;
+  }
+
+  private Future<?> asyncCloseOneTsFileProcessorForFullFlush(
+      final boolean sequence, final TsFileProcessor tsFileProcessor) {
+    if (tsFileProcessor == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    if (tsFileProcessor.alreadyMarkedClosing()) {
+      return tsFileProcessor.getCloseFuture();
+    }
+
+    final Set<TsFileProcessor> closingTsFileProcessors =
+        sequence ? closingSequenceTsFileProcessor : closingUnSequenceTsFileProcessor;
+    final TreeMap<Long, TsFileProcessor> workTsFileProcessors =
+        sequence ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors;
+
+    // Register before scheduling so even a very fast close callback can remove this processor.
+    closingTsFileProcessors.add(tsFileProcessor);
+    final Future<?> future = tsFileProcessor.asyncCloseForFullFlush();
+    if (!tsFileProcessor.alreadyMarkedClosing()) {
+      // An ordinary flush is still running. Keep the processor working, wait outside the locks,
+      // and retry after the flush manager has released it.
+      closingTsFileProcessors.remove(tsFileProcessor);
+      return future;
+    }
+
+    if (future != null && future.isDone()) {
+      closingTsFileProcessors.remove(tsFileProcessor);
+    }
+    final boolean removedWorkingProcessor =
+        workTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == tsFileProcessor;
+    if (removedWorkingProcessor) {
+      workTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
+    }
+
+    final TsFileResource resource = tsFileProcessor.getTsFileResource();
+    logger.info(
+        StorageEngineMessages.STORAGE_LOG_ASYNC_CLOSE_TSFILE_FILE_START_TIME_FILE_END_TIME_65020832,
+        resource.getTsFile().getAbsolutePath(),
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
+    if (removedWorkingProcessor
+        && workSequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null
+        && workUnsequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null) {
+      WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
+    }
+    return future;
   }
 
   /** force close all working tsfile processors */

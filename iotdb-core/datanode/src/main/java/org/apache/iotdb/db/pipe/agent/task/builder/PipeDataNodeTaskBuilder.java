@@ -125,6 +125,7 @@ public class PipeDataNodeTaskBuilder {
             pipeStaticMeta.getCreationTime(),
             blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters(), pipeTaskMeta),
             regionId,
+            sourceStage.getCompletionSourceId(),
             sourceStage.getEventSupplier(),
             sinkStage.getPipeSinkPendingQueue(),
             PROCESSOR_EXECUTOR,
