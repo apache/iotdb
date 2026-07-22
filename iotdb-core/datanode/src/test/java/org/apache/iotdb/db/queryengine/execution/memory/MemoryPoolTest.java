@@ -28,6 +28,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+
 public class MemoryPoolTest {
 
   MemoryPool pool;
@@ -389,5 +404,121 @@ public class MemoryPoolTest {
     Assert.assertEquals(256L, r.getReservedBytes());
     Assert.assertTrue(r.getFuture().isDone());
     Assert.assertEquals(256L, pool.getReservedBytes());
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test(timeout = 15000L)
+  public void testReserveIsAtomicWithFragmentDeregistration() throws Exception {
+    Field reservationsField = MemoryPool.class.getDeclaredField("queryMemoryReservations");
+    reservationsField.setAccessible(true);
+    Map<String, Map<String, Map<String, Long>>> reservations =
+        (Map<String, Map<String, Map<String, Long>>>) reservationsField.get(pool);
+
+    BlockingMemoryMap blockingMemoryMap = new BlockingMemoryMap();
+    blockingMemoryMap.put(PLAN_NODE_ID, 0L);
+    reservations.get(QUERY_ID).put(FRAGMENT_INSTANCE_ID, blockingMemoryMap);
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    Future<Boolean> reservation = null;
+    Future<?> deregistration = null;
+    try {
+      reservation =
+          executor.submit(
+              () ->
+                  pool.tryReserveForTest(
+                      QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE));
+      Assert.assertTrue(blockingMemoryMap.reservationStarted.await(5, TimeUnit.SECONDS));
+
+      deregistration =
+          executor.submit(
+              () ->
+                  pool.deRegisterFragmentInstanceFromQueryMemoryMap(
+                      QUERY_ID, FRAGMENT_INSTANCE_ID, false));
+
+      if (blockingMemoryMap.deregistrationSnapshotTaken.await(1, TimeUnit.SECONDS)) {
+        // Without synchronization, deregistration can snapshot zero and remove the fragment while
+        // the reservation update is in progress.
+        blockingMemoryMap.allowDeregistrationSnapshot.countDown();
+        deregistration.get(5, TimeUnit.SECONDS);
+        blockingMemoryMap.allowReservation.countDown();
+      } else {
+        // With the fix, deregistration waits for the reservation update and then observes 256.
+        blockingMemoryMap.allowReservation.countDown();
+        Assert.assertTrue(reservation.get(5, TimeUnit.SECONDS));
+        Assert.assertTrue(blockingMemoryMap.deregistrationSnapshotTaken.await(5, TimeUnit.SECONDS));
+        blockingMemoryMap.allowDeregistrationSnapshot.countDown();
+      }
+
+      Assert.assertTrue(reservation.get(5, TimeUnit.SECONDS));
+      deregistration.get(5, TimeUnit.SECONDS);
+      Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
+      Assert.assertEquals(256L, pool.getReservedBytes());
+
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L);
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, false);
+      Assert.assertEquals(0, pool.getQueryMemoryReservationSize());
+      Assert.assertEquals(0L, pool.getReservedBytes());
+    } finally {
+      blockingMemoryMap.allowReservation.countDown();
+      blockingMemoryMap.allowDeregistrationSnapshot.countDown();
+      if (reservation != null) {
+        reservation.cancel(true);
+      }
+      if (deregistration != null) {
+        deregistration.cancel(true);
+      }
+      executor.shutdownNow();
+    }
+  }
+
+  private static class BlockingMemoryMap extends ConcurrentHashMap<String, Long> {
+
+    private final CountDownLatch reservationStarted = new CountDownLatch(1);
+    private final CountDownLatch allowReservation = new CountDownLatch(1);
+    private final CountDownLatch deregistrationSnapshotTaken = new CountDownLatch(1);
+    private final CountDownLatch allowDeregistrationSnapshot = new CountDownLatch(1);
+
+    @Override
+    public Long merge(
+        String key,
+        Long value,
+        BiFunction<? super Long, ? super Long, ? extends Long> remappingFunction) {
+      reservationStarted.countDown();
+      await(allowReservation);
+      return super.merge(key, value, remappingFunction);
+    }
+
+    @Override
+    public Collection<Long> values() {
+      Collection<Long> snapshot = new ArrayList<>(super.values());
+      waitForDeregistration();
+      return snapshot;
+    }
+
+    @Override
+    public Set<Map.Entry<String, Long>> entrySet() {
+      Set<Map.Entry<String, Long>> snapshot = new HashSet<>();
+      for (Map.Entry<String, Long> entry : super.entrySet()) {
+        snapshot.add(new AbstractMap.SimpleImmutableEntry<>(entry));
+      }
+      waitForDeregistration();
+      return snapshot;
+    }
+
+    private void waitForDeregistration() {
+      deregistrationSnapshotTaken.countDown();
+      await(allowDeregistrationSnapshot);
+    }
+
+    private static void await(CountDownLatch latch) {
+      try {
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+          throw new AssertionError();
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
+      }
+    }
   }
 }

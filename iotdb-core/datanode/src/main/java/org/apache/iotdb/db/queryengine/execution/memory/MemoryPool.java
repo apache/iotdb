@@ -206,10 +206,13 @@ public class MemoryPool {
   public void registerPlanNodeIdToQueryMemoryMap(
       String queryId, String fragmentInstanceId, String planNodeId) {
     synchronized (queryMemoryReservations) {
-      queryMemoryReservations
-          .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-          .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-          .putIfAbsent(planNodeId, 0L);
+      final Map<String, Map<String, Long>> queryRelatedMemory =
+          queryMemoryReservations.computeIfAbsent(queryId, x -> new ConcurrentHashMap<>());
+      final Map<String, Long> fragmentRelatedMemory =
+          queryRelatedMemory.computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>());
+      synchronized (fragmentRelatedMemory) {
+        fragmentRelatedMemory.putIfAbsent(planNodeId, 0L);
+      }
     }
   }
 
@@ -224,43 +227,44 @@ public class MemoryPool {
    */
   public void deRegisterFragmentInstanceFromQueryMemoryMap(
       String queryId, String fragmentInstanceId, boolean forceDeregister) {
-    Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
-    if (queryRelatedMemory != null) {
-      Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
-      boolean hasPotentialMemoryLeak = false;
-      // fragmentRelatedMemory could be null if the FI has not reserved any memory(For example,
-      // next() of root operator returns no data)
-      if (fragmentRelatedMemory != null) {
-        hasPotentialMemoryLeak =
-            fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0L);
-      }
-      if (!forceDeregister && hasPotentialMemoryLeak) {
-        // If hasPotentialMemoryLeak is true, it means that LocalSourceChannel/LocalSourceHandles
-        // have not been closed.
-        // We should wait for them to be closed. Make sure this method is called again with
-        // forceDeregister == true, after all LocalSourceChannel/LocalSourceHandles are closed.
+    List<Map.Entry<String, Long>> invalidEntryList = null;
+    synchronized (queryMemoryReservations) {
+      final Map<String, Map<String, Long>> queryRelatedMemory =
+          queryMemoryReservations.get(queryId);
+      if (queryRelatedMemory == null) {
         return;
       }
-      synchronized (queryMemoryReservations) {
-        queryRelatedMemory.remove(fragmentInstanceId);
-        if (queryRelatedMemory.isEmpty()) {
-          queryMemoryReservations.remove(queryId);
+      final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      if (fragmentRelatedMemory != null) {
+        synchronized (fragmentRelatedMemory) {
+          invalidEntryList =
+              fragmentRelatedMemory.entrySet().stream()
+                  .filter(entry -> entry.getValue() != 0L)
+                  .collect(Collectors.toList());
+          if (!forceDeregister && !invalidEntryList.isEmpty()) {
+            // The LocalSourceChannels/LocalSourceHandles have not been closed yet. The caller will
+            // invoke this method again with forceDeregister == true after closing them.
+            return;
+          }
+          queryRelatedMemory.remove(fragmentInstanceId, fragmentRelatedMemory);
         }
+      } else {
+        // fragmentRelatedMemory could be null if the FI has not reserved any memory (for example,
+        // next() of root operator returns no data).
+        queryRelatedMemory.remove(fragmentInstanceId);
       }
-      if (hasPotentialMemoryLeak) {
-        // hasPotentialMemoryLeak means that fragmentRelatedMemory is not null
-        List<Map.Entry<String, Long>> invalidEntryList =
-            fragmentRelatedMemory.entrySet().stream()
-                .filter(entry -> entry.getValue() != 0L)
-                .collect(Collectors.toList());
-        throw new MemoryLeakException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_PLANNODE_RELATED_MEMORY_IS_NOT_ZERO_WHEN_TRYING_TO_DEREGISTER_E01109C5,
-                queryId,
-                fragmentInstanceId,
-                invalidEntryList));
+      if (queryRelatedMemory.isEmpty()) {
+        queryMemoryReservations.remove(queryId);
       }
+    }
+    if (invalidEntryList != null && !invalidEntryList.isEmpty()) {
+      throw new MemoryLeakException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_PLANNODE_RELATED_MEMORY_IS_NOT_ZERO_WHEN_TRYING_TO_DEREGISTER_E01109C5,
+              queryId,
+              fragmentInstanceId,
+              invalidEntryList));
     }
   }
 
@@ -388,10 +392,17 @@ public class MemoryPool {
     Validate.isTrue(bytes > 0L);
 
     try {
-      queryMemoryReservations
-          .get(queryId)
-          .get(fragmentInstanceId)
-          .computeIfPresent(
+      while (true) {
+        final Map<String, Map<String, Long>> queryRelatedMemory =
+            queryMemoryReservations.get(queryId);
+        final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+        synchronized (fragmentRelatedMemory) {
+          // The fragment map may have been removed while this thread was waiting for its lock.
+          if (queryMemoryReservations.get(queryId) != queryRelatedMemory
+              || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
+            continue;
+          }
+          fragmentRelatedMemory.computeIfPresent(
               planNodeId,
               (k, reservedMemory) -> {
                 if (reservedMemory < bytes) {
@@ -400,6 +411,9 @@ public class MemoryPool {
                 }
                 return reservedMemory - bytes;
               });
+          break;
+        }
+      }
     } catch (NullPointerException e) {
       throw new IllegalArgumentException(
           DataNodeQueryMessages
@@ -457,22 +471,40 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
-    long queryRemainingBytes =
-        maxBytesCanReserve
-            - queryMemoryReservations
-                .get(queryId)
-                .get(fragmentInstanceId)
-                .merge(planNodeId, bytesToReserve, Long::sum);
-    return tryUsedBytes <= memoryBlock.getTotalMemorySizeInBytes() && queryRemainingBytes >= 0;
+    while (true) {
+      final Map<String, Map<String, Long>> queryRelatedMemory =
+          queryMemoryReservations.get(queryId);
+      final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      synchronized (fragmentRelatedMemory) {
+        // Serialize reservation changes with fragment deregistration while allowing reservations
+        // for other fragments to proceed concurrently.
+        if (queryMemoryReservations.get(queryId) != queryRelatedMemory
+            || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
+          continue;
+        }
+        final long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
+        final long queryRemainingBytes =
+            maxBytesCanReserve - fragmentRelatedMemory.merge(planNodeId, bytesToReserve, Long::sum);
+        return tryUsedBytes <= memoryBlock.getTotalMemorySizeInBytes() && queryRemainingBytes >= 0;
+      }
+    }
   }
 
   private void rollbackReserve(
       String queryId, String fragmentInstanceId, String planNodeId, long bytesToReserve) {
-    queryMemoryReservations
-        .get(queryId)
-        .get(fragmentInstanceId)
-        .merge(planNodeId, -bytesToReserve, Long::sum);
-    memoryBlock.release(bytesToReserve);
+    while (true) {
+      final Map<String, Map<String, Long>> queryRelatedMemory =
+          queryMemoryReservations.get(queryId);
+      final Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      synchronized (fragmentRelatedMemory) {
+        if (queryMemoryReservations.get(queryId) != queryRelatedMemory
+            || queryRelatedMemory.get(fragmentInstanceId) != fragmentRelatedMemory) {
+          continue;
+        }
+        fragmentRelatedMemory.merge(planNodeId, -bytesToReserve, Long::sum);
+        memoryBlock.release(bytesToReserve);
+        return;
+      }
+    }
   }
 }
