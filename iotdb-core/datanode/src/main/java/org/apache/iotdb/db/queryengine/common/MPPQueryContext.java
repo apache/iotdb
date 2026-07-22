@@ -189,7 +189,10 @@ public class MPPQueryContext {
     return queryType;
   }
 
-  /** the max executing time of query in ms. Unit: millisecond */
+  /**
+   * Returns the total query timeout in milliseconds, measured from {@link #getStartTime()}. This
+   * value never represents the remaining timeout.
+   */
   public long getTimeOut() {
     return timeOut;
   }
