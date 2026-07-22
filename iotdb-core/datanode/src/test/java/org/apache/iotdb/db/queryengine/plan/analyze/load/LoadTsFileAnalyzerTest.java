@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -195,6 +197,37 @@ public class LoadTsFileAnalyzerTest {
       if (tsFile.exists()) {
         Assert.assertTrue(tsFile.delete());
       }
+    }
+  }
+
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("missing-schema", ".tsfile");
+    tsFile.deleteOnExit();
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            true,
+            new MPPQueryContext(new QueryId("load_pipe_test")))) {
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeMissingSchemaException("missing device schema")));
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new RuntimeException(
+                  "wrapped", new LoadAnalyzeMissingSchemaException("missing measurement schema"))));
+      Assert.assertFalse(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeException("Data type mismatch for measurement root.sg.d1.s1")));
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
     }
   }
 

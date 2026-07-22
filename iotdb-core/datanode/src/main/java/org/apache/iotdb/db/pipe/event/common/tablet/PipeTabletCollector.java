@@ -32,6 +32,12 @@ public class PipeTabletCollector extends PipeRawTabletEventConverter implements 
   }
 
   public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, boolean isAligned) {
+    this(pipeTaskMeta, sourceEvent);
+    this.isAligned = isAligned;
+  }
+
+  public PipeTabletCollector(
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       String sourceEventDataBase,

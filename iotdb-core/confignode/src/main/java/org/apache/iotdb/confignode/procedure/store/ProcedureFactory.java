@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProce
 import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
@@ -144,6 +145,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case NOTIFY_REGION_MIGRATION_PROCEDURE:
         procedure = new NotifyRegionMigrationProcedure();
+        break;
+      case REMOVE_REGION_GROUP_PROCEDURE:
+        procedure = new RemoveRegionGroupProcedure();
         break;
       case ALTER_ENCODING_COMPRESSOR_PROCEDURE:
         procedure = new AlterEncodingCompressorProcedure(false);
@@ -463,6 +467,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof NotifyRegionMigrationProcedure) {
       return ProcedureType.NOTIFY_REGION_MIGRATION_PROCEDURE;
+    } else if (procedure instanceof RemoveRegionGroupProcedure) {
+      return ProcedureType.REMOVE_REGION_GROUP_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {
@@ -577,7 +583,9 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
-        ProcedureMessages.PROCEDURE_TYPE + procedure.getClass() + " is not supported");
+        ProcedureMessages.PROCEDURE_TYPE
+            + procedure.getClass()
+            + ProcedureMessages.EXCEPTION_NOT_SUPPORTED_0A83F963);
   }
 
   private static class ProcedureFactoryHolder {

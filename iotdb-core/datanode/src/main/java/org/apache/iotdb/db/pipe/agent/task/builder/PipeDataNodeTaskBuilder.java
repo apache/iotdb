@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.builder;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
@@ -67,14 +69,11 @@ public class PipeDataNodeTaskBuilder {
   private static final PipeProcessorSubtaskExecutor PROCESSOR_EXECUTOR =
       PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
 
-  protected final Map<String, String> systemParameters = new HashMap<>();
-
   public PipeDataNodeTaskBuilder(
       final PipeStaticMeta pipeStaticMeta, final int regionId, final PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
-    generateSystemParameters();
   }
 
   public PipeDataNodeTask build() {
@@ -82,11 +81,10 @@ public class PipeDataNodeTaskBuilder {
 
     // Analyzes the PipeParameters to identify potential conflicts.
     final PipeParameters sourceParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getSourceParameters());
+        blendUserAndSystemParameters(pipeStaticMeta.getSourceParameters(), pipeTaskMeta);
     final PipeParameters sinkParameters =
-        blendUserAndSystemParameters(pipeStaticMeta.getSinkParameters());
-    checkConflict(sourceParameters, sinkParameters);
-    injectParameters(sourceParameters, sinkParameters);
+        blendUserAndSystemParameters(pipeStaticMeta.getSinkParameters(), pipeTaskMeta);
+    preprocessParameters(sourceParameters, sinkParameters);
 
     // We first build the source and sink, then build the processor.
     final PipeTaskSourceStage sourceStage =
@@ -125,12 +123,14 @@ public class PipeDataNodeTaskBuilder {
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters()),
+            blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters(), pipeTaskMeta),
             regionId,
             sourceStage.getEventSupplier(),
             sinkStage.getPipeSinkPendingQueue(),
             PROCESSOR_EXECUTOR,
             pipeTaskMeta,
+            getSourceUserEntity(sourceParameters),
+            getSourcePassword(sourceParameters),
             pipeStaticMeta
                 .getSinkParameters()
                 .getStringOrDefault(
@@ -143,22 +143,57 @@ public class PipeDataNodeTaskBuilder {
         pipeStaticMeta.getPipeName(), regionId, sourceStage, processorStage, sinkStage);
   }
 
-  private void generateSystemParameters() {
-    if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        || pipeTaskMeta.isNewlyAdded()) {
-      systemParameters.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+  private UserEntity getSourceUserEntity(final PipeParameters sourceParameters) {
+    final String username =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    if (Objects.isNull(username)) {
+      return null;
     }
+
+    final String userId =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            "-1");
+    final String cliHostname =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+                PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME),
+            "");
+    return new UserEntity(Long.parseLong(userId), username, cliHostname);
   }
 
-  private PipeParameters blendUserAndSystemParameters(final PipeParameters userParameters) {
+  private String getSourcePassword(final PipeParameters sourceParameters) {
+    return sourceParameters.getStringByKeys(
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+  }
+
+  public static PipeParameters blendUserAndSystemParameters(
+      final PipeParameters userParameters, final PipeTaskMeta pipeTaskMeta) {
     // Deep copy the user parameters to avoid modification of the original parameters.
     // If the original parameters are modified, progress index report will be affected.
     final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
-    blendedParameters.putAll(systemParameters);
+    if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
+        || pipeTaskMeta.isNewlyAdded()) {
+      blendedParameters.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    }
     return new PipeParameters(blendedParameters);
   }
 
-  private void checkConflict(
+  public static void preprocessParameters(
+      final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
+    checkConflict(sourceParameters, sinkParameters);
+    injectParameters(sourceParameters, sinkParameters);
+  }
+
+  private static void checkConflict(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair;
     final boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
@@ -228,7 +263,7 @@ public class PipeDataNodeTaskBuilder {
     }
   }
 
-  private void injectParameters(
+  private static void injectParameters(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
     final boolean isSourceExternal =
         !BuiltinPipePlugin.BUILTIN_SOURCES.contains(

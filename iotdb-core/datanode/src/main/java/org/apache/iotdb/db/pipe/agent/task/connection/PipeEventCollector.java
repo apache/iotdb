@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
+import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTablePrivilegeParseVisitor;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -202,12 +203,14 @@ public class PipeEventCollector implements EventCollector {
                 .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
                 .flatMap(
                     planNode ->
-                        IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
-                            planNode,
-                            new UserEntity(
-                                Long.parseLong(deleteDataEvent.getUserId()),
-                                deleteDataEvent.getUserName(),
-                                deleteDataEvent.getCliHostname()))))
+                        new PipePlanTablePrivilegeParseVisitor(
+                                deleteDataEvent.isSkipIfNoPrivileges())
+                            .process(
+                                planNode,
+                                new UserEntity(
+                                    Long.parseLong(deleteDataEvent.getUserId()),
+                                    deleteDataEvent.getUserName(),
+                                    deleteDataEvent.getCliHostname()))))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(

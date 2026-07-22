@@ -16,48 +16,50 @@
 # under the License.
 #
 
+import ipaddress
 import logging
 import random
-import sys
 import struct
+import sys
 import warnings
+
+from iotdb.utils.SessionDataSet import SessionDataSet
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 from tzlocal import get_localzone_name
 
-from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
 from .thrift.common.ttypes import TEndPoint
 from .thrift.rpc.IClientRPCService import (
     Client,
-    TSCreateTimeseriesReq,
+    TSAppendSchemaTemplateReq,
+    TSCloseSessionReq,
     TSCreateAlignedTimeseriesReq,
+    TSCreateMultiTimeseriesReq,
+    TSCreateSchemaTemplateReq,
+    TSCreateTimeseriesReq,
+    TSDropSchemaTemplateReq,
+    TSExecuteStatementReq,
     TSInsertRecordReq,
+    TSInsertRecordsOfOneDeviceReq,
+    TSInsertRecordsReq,
     TSInsertStringRecordReq,
     TSInsertTabletReq,
-    TSExecuteStatementReq,
-    TSOpenSessionReq,
-    TSCreateMultiTimeseriesReq,
-    TSCloseSessionReq,
     TSInsertTabletsReq,
-    TSInsertRecordsReq,
-    TSInsertRecordsOfOneDeviceReq,
-    TSCreateSchemaTemplateReq,
-    TSDropSchemaTemplateReq,
-    TSAppendSchemaTemplateReq,
+    TSOpenSessionReq,
     TSPruneSchemaTemplateReq,
+    TSQueryTemplateReq,
     TSSetSchemaTemplateReq,
     TSUnsetSchemaTemplateReq,
-    TSQueryTemplateReq,
 )
 from .thrift.rpc.ttypes import (
     TSDeleteDataReq,
-    TSProtocolVersion,
-    TSSetTimeZoneReq,
-    TSRawDataQueryReq,
-    TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
+    TSLastDataQueryReq,
+    TSProtocolVersion,
+    TSRawDataQueryReq,
+    TSSetTimeZoneReq,
 )
 from .tsfile.utils.date_utils import parse_date_to_int
 from .utils import rpc_utils
@@ -65,6 +67,48 @@ from .utils.exception import IoTDBConnectionException, RedirectException
 
 logger = logging.getLogger("IoTDB")
 warnings.simplefilter("always", DeprecationWarning)
+
+
+def _parse_endpoint_url(endpoint_url):
+    if endpoint_url.startswith("["):
+        end_index = endpoint_url.find("]")
+        if end_index <= 1 or end_index + 1 >= len(endpoint_url):
+            raise RuntimeError("invalid node url: {}".format(endpoint_url))
+        if endpoint_url[end_index + 1] != ":":
+            raise RuntimeError("invalid node url: {}".format(endpoint_url))
+        return endpoint_url[1:end_index], _parse_endpoint_port(
+            endpoint_url, endpoint_url[end_index + 2 :]
+        )
+
+    if "[" in endpoint_url or "]" in endpoint_url:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url))
+    split = endpoint_url.rsplit(":", 1)
+    if len(split) != 2:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url))
+    return split[0], _parse_endpoint_port(endpoint_url, split[1])
+
+
+def _parse_endpoint_port(endpoint_url, port):
+    try:
+        return int(port)
+    except ValueError as e:
+        raise RuntimeError("invalid node url: {}".format(endpoint_url)) from e
+
+
+def _is_wildcard_address(host):
+    if host is None:
+        return False
+    normalized_host = host
+    if normalized_host.startswith("[") and normalized_host.endswith("]"):
+        normalized_host = normalized_host[1:-1]
+    if normalized_host == "0.0.0.0":
+        return True
+    if ":" not in normalized_host:
+        return False
+    try:
+        return ipaddress.ip_address(normalized_host).is_unspecified
+    except ValueError:
+        return False
 
 
 class Session(object):
@@ -87,6 +131,8 @@ class Session(object):
         use_ssl=False,
         ca_certs=None,
         connection_timeout_in_ms=None,
+        client_cert=None,
+        client_key=None,
     ):
         self.__host = host
         self.__port = port
@@ -117,6 +163,8 @@ class Session(object):
         self.database = None
         self.__use_ssl = use_ssl
         self.__ca_certs = ca_certs
+        self.__client_cert = client_cert
+        self.__client_key = client_key
         self.__connection_timeout_in_ms = connection_timeout_in_ms
         self.__time_precision = "ms"
 
@@ -132,6 +180,8 @@ class Session(object):
         use_ssl=False,
         ca_certs=None,
         connection_timeout_in_ms=None,
+        client_cert=None,
+        client_key=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -145,14 +195,16 @@ class Session(object):
             enable_redirection,
             use_ssl=use_ssl,
             ca_certs=ca_certs,
+            client_cert=client_cert,
+            client_key=client_key,
             connection_timeout_in_ms=connection_timeout_in_ms,
         )
         session.__hosts = []
         session.__ports = []
         for node_url in node_urls:
-            split = node_url.split(":")
-            session.__hosts.append(split[0])
-            session.__ports.append(int(split[1]))
+            host, port = _parse_endpoint_url(node_url)
+            session.__hosts.append(host)
+            session.__ports.append(port)
         session.__host = session.__hosts[0]
         session.__port = session.__ports[0]
         session.__default_endpoint = TEndPoint(session.__host, session.__port)
@@ -171,7 +223,7 @@ class Session(object):
                     self.__default_connection = self.init_connection(
                         self.__default_endpoint
                     )
-                except Exception as e:
+                except IoTDBConnectionException as e:
                     if not self.reconnect():
                         if str(e).startswith("Could not connect to any of"):
                             error_msg = (
@@ -232,9 +284,12 @@ class Session(object):
             session_id = open_resp.sessionId
             statement_id = client.requestStatementId(session_id)
 
-        except Exception as e:
+        except TTransport.TTransportException as e:
             transport.close()
             raise IoTDBConnectionException(e) from None
+        except Exception:
+            transport.close()
+            raise
 
         if self.__zone_id is not None:
             request = TSSetTimeZoneReq(session_id, self.__zone_id)
@@ -251,6 +306,7 @@ class Session(object):
     def __get_transport(self, endpoint):
         if self.__use_ssl:
             import ssl
+
             from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):
@@ -259,7 +315,21 @@ class Session(object):
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
                 context.verify_mode = ssl.CERT_REQUIRED
                 context.check_hostname = True
-            context.load_verify_locations(cafile=self.__ca_certs)
+                context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+            if self.__has_text(self.__ca_certs):
+                context.load_verify_locations(cafile=self.__ca_certs)
+            if self.__has_text(self.__client_cert) or self.__has_text(
+                self.__client_key
+            ):
+                if not self.__has_text(self.__client_cert) or not self.__has_text(
+                    self.__client_key
+                ):
+                    raise TTransport.TTransportException(
+                        message="client_cert and client_key must be set together."
+                    )
+                context.load_cert_chain(
+                    certfile=self.__client_cert, keyfile=self.__client_key
+                )
             socket = TSSLSocket.TSSLSocket(
                 host=endpoint.ip, port=endpoint.port, ssl_context=context
             )
@@ -274,6 +344,10 @@ class Session(object):
             except TTransport.TTransportException as e:
                 raise IoTDBConnectionException(e) from None
         return transport
+
+    @staticmethod
+    def __has_text(value):
+        return value is not None and str(value).strip() != ""
 
     def is_open(self):
         return not self.__is_close
@@ -1960,7 +2034,7 @@ class Session(object):
 
     def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
-            if endpoint.ip == "0.0.0.0":
+            if _is_wildcard_address(endpoint.ip):
                 return 0
             if (
                 device_id not in self.__device_id_to_endpoint

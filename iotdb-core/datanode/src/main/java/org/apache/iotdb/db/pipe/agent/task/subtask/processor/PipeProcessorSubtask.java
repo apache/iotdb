@@ -49,6 +49,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +105,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningScheduledExecutorService ignoredScheduledExecutor,
       final ExecutorService ignored,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
@@ -177,6 +179,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   event1 -> {
                     try {
                       pipeProcessor.process(event1, outputEventCollector);
+                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                      throw e;
                     } catch (Exception e) {
                       ex.set(e);
                     }
@@ -245,21 +249,22 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       PipeLogger.log(
           LOGGER::info,
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+          DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
           e.getMessage());
       return false;
     } catch (final Exception e) {
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(
             LOGGER::info,
-            "Temporarily out of memory in pipe event processing, will wait for the memory to release. Message: %s",
+            DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
             e.getMessage());
         return false;
       }
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
-                "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_EXCEPTION_IN_PIPE_PROCESS_SUBTASK_S_LAST_EVENT_S_ROOT_CAUSE_95B49C24,
                 getDisplayTaskID(),
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()

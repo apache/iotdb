@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
@@ -124,11 +125,14 @@ abstract class AbstractSubscriptionSession {
       throws IoTDBConnectionException, StatementExecutionException {
     IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     if (Objects.isNull(properties) || properties.isEmpty()) {
-      throw new StatementExecutionException("Topic attributes should not be empty in ALTER TOPIC.");
+      throw new StatementExecutionException(
+          SubscriptionMessages
+              .EXCEPTION_TOPIC_ATTRIBUTES_SHOULD_NOT_BE_EMPTY_IN_ALTER_TOPIC_573B2F09);
     }
     if (!allowOwnerAttributes && containsOwnerAttribute(properties)) {
       throw new StatementExecutionException(
-          "Topic owner attributes should be modified by alterTopicOwner only.");
+          SubscriptionMessages
+              .EXCEPTION_TOPIC_OWNER_ATTRIBUTES_SHOULD_BE_MODIFIED_BY_ALTERTOPICOWNER_ONLY_FBD794F4);
     }
     final String sql =
         String.format("ALTER TOPIC %s WITH %s", topicName, buildTopicAttributesClause(properties));
@@ -148,7 +152,8 @@ abstract class AbstractSubscriptionSession {
       final Long ownerLeaseDurationMs)
       throws IoTDBConnectionException, StatementExecutionException {
     if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
-      throw new StatementExecutionException("Topic owner id should not be empty.");
+      throw new StatementExecutionException(
+          SubscriptionMessages.EXCEPTION_TOPIC_OWNER_ID_SHOULD_NOT_BE_EMPTY_94976B6D);
     }
 
     final Properties properties = new Properties();
@@ -239,8 +244,11 @@ abstract class AbstractSubscriptionSession {
       if (fields.size() != 2) {
         throw new SubscriptionException(
             String.format(
-                "Unexpected fields %s was obtained during SHOW TOPIC...",
-                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
+                SubscriptionMessages
+                    .EXCEPTION_UNEXPECTED_FIELDS_ARG_WAS_OBTAINED_DURING_SHOW_TOPIC_30B5D702,
+                fields.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(SubscriptionMessages.FIELD_SEPARATOR))));
       }
       topics.add(new Topic(fields.get(0).getStringValue(), fields.get(1).getStringValue()));
     }
@@ -256,8 +264,11 @@ abstract class AbstractSubscriptionSession {
       if (fields.size() != 4) {
         throw new SubscriptionException(
             String.format(
-                "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
-                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
+                SubscriptionMessages
+                    .EXCEPTION_UNEXPECTED_FIELDS_ARG_WAS_OBTAINED_DURING_SHOW_SUBSCRIPTION_71F9C549,
+                fields.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(SubscriptionMessages.FIELD_SEPARATOR))));
       }
       subscriptions.add(
           new Subscription(

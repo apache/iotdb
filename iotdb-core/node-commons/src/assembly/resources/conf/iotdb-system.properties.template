@@ -36,7 +36,7 @@ cluster_name=defaultCluster
 # For other ConfigNodes that to join the cluster, cn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this ConfigNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 cn_seed_config_node=127.0.0.1:10710
@@ -44,7 +44,7 @@ cn_seed_config_node=127.0.0.1:10710
 # dn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this DataNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 dn_seed_config_node=127.0.0.1:10710
@@ -54,7 +54,7 @@ dn_seed_config_node=127.0.0.1:10710
 ####################
 
 # Used for RPC communication inside cluster.
-# Could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 cn_internal_address=127.0.0.1
@@ -70,7 +70,7 @@ cn_internal_port=10710
 cn_consensus_port=10720
 
 # Used for connection of IoTDB native clients(Session)
-# Could set 127.0.0.1(for local test) or ipv4 address
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: restart
 # Datatype: String
 dn_rpc_address=127.0.0.1
@@ -82,7 +82,7 @@ dn_rpc_address=127.0.0.1
 dn_rpc_port=6667
 
 # Used for communication inside cluster.
-# could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 dn_internal_address=127.0.0.1
@@ -444,6 +444,13 @@ dn_metric_internal_reporter_type=MEMORY
 # Privilege: SECURITY
 enable_thrift_ssl=false
 
+# Whether client authentication is required for Thrift SSL connections.
+# This only takes effect when enable_thrift_ssl=true.
+# effectiveMode: restart
+# Datatype: boolean
+# Privilege: SECURITY
+thrift_ssl_client_auth=false
+
 # Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
@@ -600,7 +607,9 @@ rest_service_port=18080
 # Datatype: boolean
 enable_swagger=false
 
-# the default row limit to a REST query response when the rowSize parameter is not given in request
+# The maximum row limit for REST and Grafana query responses.
+# The request rowLimit/row_limit value cannot exceed this limit.
+# A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
 # effectiveMode: restart
 # Datatype: int
 rest_query_default_row_size_limit=10000
@@ -745,6 +754,23 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# A DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, templates, TTL,
+# permissions, ...) if it has not received a ConfigNode heartbeat within this duration, so a
+# partitioned DataNode stops trusting stale caches. Kept aligned with
+# failure_detector_fixed_threshold_in_ms so a DataNode fences itself around the same time the
+# cluster would consider it down. The ConfigNode also uses this to decide how long it must wait
+# before treating an unreachable DataNode as safely fenced.
+# effectiveMode: restart
+# Datatype: long
+metadata_lease_fence_ms=20000
+
+# Interval at which a DataNode checks whether its metadata lease has expired and self-fences local
+# metadata caches. Keep this value smaller than the ConfigNode-side safe-fence wait so the DataNode
+# can finish self-isolation before the ConfigNode treats it as fenced.
+# effectiveMode: restart
+# Datatype: long
+check_dn_lease_status_interval_ms=500
+
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
@@ -761,7 +787,7 @@ topology_probing_base_interval_in_ms=5000
 topology_probing_timeout_ratio=0.5
 
 # Disk remaining threshold at which DataNode is set to ReadOnly status
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
@@ -787,7 +813,7 @@ partition_table_recover_worker_num=10
 # Limit the number of bytes read per second from a file, the unit is MB
 # effectiveMode: restart
 # Datatype: Integer
-partition_table_recover_max_read_megabytes_per_second=10
+partition_table_recover_max_read_mb_per_sec=10
 
 ####################
 ### Memory Control Configuration
@@ -796,8 +822,15 @@ partition_table_recover_max_read_megabytes_per_second=10
 # Memory Allocation Ratio: StorageEngine, QueryEngine, SchemaEngine, Consensus, StreamingEngine and Free Memory.
 # The parameter form is a:b:c:d:e:f, where a, b, c, d, e and f are integers. for example: 1:1:1:1:1:1 , 6:2:1:1:1:1
 # If you have high level of writing pressure and low level of reading pressure, please adjust it to for example 6:1:1:1:1:1
+# 50% of Free Memory is used by AutoResizingBuffer memory control.
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
+
+# ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
+# effectiveMode: restart
+confignode_memory_proportion=1:9
 
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
@@ -1405,6 +1438,14 @@ recovery_log_interval_in_ms=5000
 # Datatype: boolean
 enable_tsfile_validation=false
 
+# Whether to enable the TopK runtime filter optimization for table-model
+# "ORDER BY time LIMIT k" queries. When enabled, the TopK operator feeds the current
+# heap-top time back to table scans so scans can skip files/rows that cannot enter the
+# final result. Set to false to fall back to the original execution path without restart.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_topk_runtime_filter=true
+
 # Default tier TTL. When the survival time of the data exceeds the threshold, it will be migrated to the next tier.
 # Negative value means the tier TTL is unlimited.
 # effectiveMode: restart
@@ -1717,11 +1758,26 @@ data_region_iot_max_pending_batches_num = 5
 # Datatype: double
 data_region_iot_max_memory_ratio_for_queue = 0.6
 
-# The maximum transit size in byte per second for region migration
+# The maximum size in byte per second for region migration transfer.
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
+
+# The maximum estimated remove cost in byte per second for region migration file cleanup.
+# Each regular file remove costs 64 KiB, and each directory remove costs 4 KiB.
+# The default value equals about 256 regular file removes per second.
+# values less than or equal to 0 means no limit
+# effectiveMode: hot_reload
+# Datatype: long
+region_migration_file_remove_speed_limit_bytes_per_second = 16777216
+
+# The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
+# IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is
+# costly; this throttles it to at most once per interval. A value <= 0 logs every file.
+# effectiveMode: hot_reload
+# Datatype: long
+data_region_iot_snapshot_transmission_progress_log_interval_ms = 5000
 
 # When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
 # This may reduce file copies but may also result in a worse disk load-balance
@@ -2170,12 +2226,12 @@ zombie_tsfile_writer_threshold=600000
 procedure_core_worker_thread_count=4
 
 # Default time interval of completed procedure cleaner work in, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_clean_interval=30
 
 # Default ttl of completed procedure, time unit is second
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 procedure_completed_evict_ttl=60
 

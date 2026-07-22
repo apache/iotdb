@@ -35,11 +35,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-public abstract class IDPredicate implements StreamSerializable, BufferSerializable, Accountable {
+public abstract class TagPredicate implements StreamSerializable, BufferSerializable, Accountable {
 
   public int serializedSize() {
     // type
@@ -47,11 +50,13 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
   }
 
   @SuppressWarnings("java:S6548")
-  public enum IDPredicateType {
+  public enum TagPredicateType {
     NOP,
     FULL_EXACT_MATCH,
     SEGMENT_EXACT_MATCH,
-    AND;
+    AND,
+    DEVICE_IN,
+    SEGMENT_NOT_NULL;
 
     public long serialize(OutputStream stream) throws IOException {
       stream.write((byte) ordinal());
@@ -63,7 +68,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
       return 1;
     }
 
-    public static IDPredicateType deserialize(InputStream stream) throws IOException {
+    public static TagPredicateType deserialize(InputStream stream) throws IOException {
       int typeNum = stream.read();
       if (typeNum == -1) {
         throw new EOFException();
@@ -71,14 +76,14 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
       return values()[typeNum];
     }
 
-    public static IDPredicateType deserialize(ByteBuffer buffer) {
+    public static TagPredicateType deserialize(ByteBuffer buffer) {
       return values()[buffer.get()];
     }
   }
 
-  protected final IDPredicateType type;
+  protected final TagPredicateType type;
 
-  protected IDPredicate(IDPredicateType type) {
+  protected TagPredicate(TagPredicateType type) {
     this.type = type;
   }
 
@@ -94,17 +99,21 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return type.serialize(buffer);
   }
 
-  public static IDPredicate createFrom(ByteBuffer buffer) {
-    IDPredicateType type = IDPredicateType.deserialize(buffer);
-    IDPredicate predicate;
-    if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+  public static TagPredicate createFrom(ByteBuffer buffer) {
+    TagPredicateType type = TagPredicateType.deserialize(buffer);
+    TagPredicate predicate;
+    if (Objects.requireNonNull(type) == TagPredicateType.NOP) {
       predicate = new NOP();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.FULL_EXACT_MATCH) {
       predicate = new FullExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_EXACT_MATCH) {
       predicate = new SegmentExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
+      predicate = new DeviceIn();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_NOT_NULL) {
+      predicate = new SegmentNotNull();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -112,17 +121,21 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return predicate;
   }
 
-  public static IDPredicate createFrom(InputStream stream) throws IOException {
-    IDPredicateType type = IDPredicateType.deserialize(stream);
-    IDPredicate predicate;
-    if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+  public static TagPredicate createFrom(InputStream stream) throws IOException {
+    TagPredicateType type = TagPredicateType.deserialize(stream);
+    TagPredicate predicate;
+    if (Objects.requireNonNull(type) == TagPredicateType.NOP) {
       predicate = new NOP();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.FULL_EXACT_MATCH) {
       predicate = new FullExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_EXACT_MATCH) {
       predicate = new SegmentExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.DEVICE_IN) {
+      predicate = new DeviceIn();
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_NOT_NULL) {
+      predicate = new SegmentNotNull();
     } else {
       throw new IllegalArgumentException(StorageEngineMessages.UNRECOGNIZED_PREDICATE_TYPE + type);
     }
@@ -130,11 +143,11 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return predicate;
   }
 
-  public static class NOP extends IDPredicate {
+  public static class NOP extends TagPredicate {
     public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(NOP.class);
 
     public NOP() {
-      super(IDPredicateType.NOP);
+      super(TagPredicateType.NOP);
     }
 
     @Override
@@ -173,19 +186,19 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
   }
 
-  public static class FullExactMatch extends IDPredicate {
+  public static class FullExactMatch extends TagPredicate {
 
     public static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FullExactMatch.class);
     private IDeviceID deviceID;
 
     public FullExactMatch(IDeviceID deviceID) {
-      super(IDPredicateType.FULL_EXACT_MATCH);
+      super(TagPredicateType.FULL_EXACT_MATCH);
       this.deviceID = deviceID;
     }
 
     public FullExactMatch() {
-      super(IDPredicateType.FULL_EXACT_MATCH);
+      super(TagPredicateType.FULL_EXACT_MATCH);
     }
 
     @Override
@@ -250,7 +263,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
   }
 
-  public static class SegmentExactMatch extends IDPredicate {
+  public static class SegmentExactMatch extends TagPredicate {
 
     public static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(SegmentExactMatch.class);
@@ -258,13 +271,13 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     private int segmentIndex;
 
     public SegmentExactMatch(String pattern, int segmentIndex) {
-      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+      super(TagPredicateType.SEGMENT_EXACT_MATCH);
       this.pattern = pattern;
       this.segmentIndex = segmentIndex;
     }
 
     public SegmentExactMatch() {
-      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+      super(TagPredicateType.SEGMENT_EXACT_MATCH);
     }
 
     @Override
@@ -341,17 +354,187 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
   }
 
-  public static class And extends IDPredicate {
+  public static class DeviceIn extends TagPredicate {
+
+    public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(DeviceIn.class);
+    private final Set<IDeviceID> deviceIDs = new HashSet<>();
+
+    public DeviceIn(Collection<IDeviceID> deviceIDs) {
+      super(TagPredicateType.DEVICE_IN);
+      this.deviceIDs.addAll(deviceIDs);
+    }
+
+    public DeviceIn() {
+      super(TagPredicateType.DEVICE_IN);
+    }
+
+    @Override
+    public int serializedSize() {
+      int serializedSize = super.serializedSize();
+      serializedSize += ReadWriteForEncodingUtils.varIntSize(deviceIDs.size());
+      for (IDeviceID deviceID : deviceIDs) {
+        serializedSize += deviceID.serializedSize();
+      }
+      return serializedSize;
+    }
+
+    @Override
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(deviceIDs.size(), stream);
+      for (IDeviceID deviceID : deviceIDs) {
+        size += deviceID.serialize(stream);
+      }
+      return size;
+    }
+
+    @Override
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(deviceIDs.size(), buffer);
+      for (IDeviceID deviceID : deviceIDs) {
+        size += deviceID.serialize(buffer);
+      }
+      return size;
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      int size = ReadWriteForEncodingUtils.readVarInt(stream);
+      for (int i = 0; i < size; i++) {
+        deviceIDs.add(Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream));
+      }
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+      for (int i = 0; i < size; i++) {
+        deviceIDs.add(Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer));
+      }
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return deviceIDs.contains(deviceID);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      DeviceIn deviceIn = (DeviceIn) o;
+      return Objects.equals(deviceIDs, deviceIn.deviceIDs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(deviceIDs);
+    }
+
+    @Override
+    public String toString() {
+      return "DeviceIn{" + "deviceIDs=" + deviceIDs + '}';
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOfHashSet(deviceIDs);
+    }
+  }
+
+  public static class SegmentNotNull extends TagPredicate {
+
+    public static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(SegmentNotNull.class);
+    private int segmentIndex;
+
+    public SegmentNotNull(int segmentIndex) {
+      super(TagPredicateType.SEGMENT_NOT_NULL);
+      this.segmentIndex = segmentIndex;
+    }
+
+    public SegmentNotNull() {
+      super(TagPredicateType.SEGMENT_NOT_NULL);
+    }
+
+    @Override
+    public int serializedSize() {
+      return super.serializedSize() + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
+    }
+
+    @Override
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
+      return size;
+    }
+
+    @Override
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
+      return size;
+    }
+
+    @Override
+    public void deserialize(InputStream stream) throws IOException {
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(stream);
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      segmentIndex = ReadWriteForEncodingUtils.readVarInt(buffer);
+    }
+
+    @Override
+    public boolean matches(IDeviceID deviceID) {
+      return deviceID.segment(segmentIndex) != null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      SegmentNotNull that = (SegmentNotNull) o;
+      return segmentIndex == that.segmentIndex;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(segmentIndex);
+    }
+
+    @Override
+    public String toString() {
+      return "SegmentNotNull{" + "segmentIndex=" + segmentIndex + '}';
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE;
+    }
+  }
+
+  public static class And extends TagPredicate {
 
     public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(And.class);
-    private final List<IDPredicate> predicates = new ArrayList<>();
+    private final List<TagPredicate> predicates = new ArrayList<>();
 
-    public And(IDPredicate... predicates) {
-      super(IDPredicateType.AND);
+    public And(TagPredicate... predicates) {
+      super(TagPredicateType.AND);
       Collections.addAll(this.predicates, predicates);
     }
 
-    public void add(IDPredicate predicate) {
+    public void add(TagPredicate predicate) {
       predicates.add(predicate);
     }
 
@@ -359,7 +542,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public int serializedSize() {
       int serializedSize = super.serializedSize();
       serializedSize += ReadWriteForEncodingUtils.varIntSize(predicates.size());
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         serializedSize += predicate.serializedSize();
       }
       return serializedSize;
@@ -369,7 +552,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public long serialize(OutputStream stream) throws IOException {
       long size = super.serialize(stream);
       size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         size += predicate.serialize(stream);
       }
       return size;
@@ -379,7 +562,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public long serialize(ByteBuffer buffer) {
       long size = super.serialize(buffer);
       size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         size += predicate.serialize(buffer);
       }
       return size;
@@ -389,7 +572,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public void deserialize(InputStream stream) throws IOException {
       int size = ReadWriteForEncodingUtils.readVarInt(stream);
       for (int i = 0; i < size; i++) {
-        predicates.add(IDPredicate.createFrom(stream));
+        predicates.add(TagPredicate.createFrom(stream));
       }
     }
 
@@ -397,7 +580,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public void deserialize(ByteBuffer buffer) {
       int size = ReadWriteForEncodingUtils.readVarInt(buffer);
       for (int i = 0; i < size; i++) {
-        predicates.add(IDPredicate.createFrom(buffer));
+        predicates.add(TagPredicate.createFrom(buffer));
       }
     }
 

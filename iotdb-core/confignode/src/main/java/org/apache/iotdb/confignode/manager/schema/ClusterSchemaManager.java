@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -149,10 +150,10 @@ public class ClusterSchemaManager {
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
-      "Failed in the read API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public ClusterSchemaManager(
       final IManager configManager,
@@ -233,7 +234,9 @@ public class ClusterSchemaManager {
       // Reject if Database doesn't exist
       result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(
-          "Failed to alter database. The Database " + databaseSchema.getName() + " doesn't exist.");
+          ManagerMessages.MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F
+              + databaseSchema.getName()
+              + ManagerMessages.MESSAGE_DOESN_T_EXIST_EED8C92E);
       return result;
     }
 
@@ -600,7 +603,9 @@ public class ClusterSchemaManager {
                 ? dataNodeNum
                 : (CONF.getDataRegionPerDataNode() == 0 ? totalCpuCoreNum : dataNodeNum),
             databaseNum,
-            databaseSchema.getSchemaReplicationFactor(),
+            (consensusGroupType == TConsensusGroupType.SchemaRegion)
+                ? databaseSchema.getSchemaReplicationFactor()
+                : databaseSchema.getDataReplicationFactor(),
             allocatedRegionGroupCount);
     LOGGER.info(
         (consensusGroupType == TConsensusGroupType.SchemaRegion)
@@ -869,7 +874,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C);
     }
 
     if (!databaseSchema.isSetDataReplicationFactor()) {
@@ -879,7 +885,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The dataReplicationFactor should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E);
     }
 
     if (!databaseSchema.isSetTimePartitionOrigin()) {
@@ -889,7 +896,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9);
     }
 
     if (!databaseSchema.isSetTimePartitionInterval()) {
@@ -899,7 +907,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The timePartitionInterval should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -911,7 +920,8 @@ public class ClusterSchemaManager {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to create database. The schemaRegionGroupNum should be positive.");
+                  ManagerMessages
+                      .MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -927,16 +937,16 @@ public class ClusterSchemaManager {
                       .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
-    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxSchemaRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.SchemaRegion);
     }
-    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+    if (!isErrorStatus(errorResp) && databaseSchema.isSetMaxDataRegionGroupNum()) {
       errorResp =
           validateMaxRegionGroupNumOnCreation(databaseSchema, TConsensusGroupType.DataRegion);
     }
 
-    if (errorResp != null) {
+    if (isErrorStatus(errorResp)) {
       LOGGER.warn(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
@@ -949,6 +959,10 @@ public class ClusterSchemaManager {
     }
 
     return StatusUtils.OK;
+  }
+
+  private static boolean isErrorStatus(final TSStatus status) {
+    return status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private static TSStatus validateMaxRegionGroupNumOnCreation(
@@ -1014,8 +1028,23 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to current min %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", minRegionGroupNum));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  minRegionGroupNum));
+    }
+
+    final int currentMaxRegionGroupNum = getMaxRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < currentMaxRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  currentMaxRegionGroupNum));
     }
 
     final int allocatedRegionGroupCount;
@@ -1030,8 +1059,11 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to allocated %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", allocatedRegionGroupCount));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  allocatedRegionGroupCount));
     }
 
     return StatusUtils.OK;
@@ -1369,10 +1401,13 @@ public class ClusterSchemaManager {
     }
   }
 
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, Set<TableNodeStatus> tableNodeStatus) {
     try {
       return ((FetchTableResp)
-              configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))
+              configManager
+                  .getConsensusManager()
+                  .read(new FetchTablePlan(fetchTableMap, tableNodeStatus)))
           .convertToTFetchTableResp();
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
@@ -1391,23 +1426,42 @@ public class ClusterSchemaManager {
     final Map<String, List<String>> alteringTables =
         configManager.getProcedureManager().getAllExecutingTables();
     final Map<String, List<TsTable>> usingTableMap = clusterSchemaInfo.getAllUsingTables();
-    final Map<String, List<TsTable>> preCreateTableMap = clusterSchemaInfo.getAllPreCreateTables();
-    alteringTables.forEach(
-        (k, v) -> {
-          final List<TsTable> preCreateList =
-              preCreateTableMap.computeIfAbsent(k, database -> new ArrayList<>());
-          if (Objects.isNull(v)) {
-            usingTableMap
-                .remove(k)
-                .forEach(
-                    table -> preCreateList.add(new NonCommittableTsTable(table.getTableName())));
-          } else {
-            preCreateList.addAll(
-                v.stream().map(NonCommittableTsTable::new).collect(Collectors.toList()));
-          }
-        });
-    return TsTableInternalRPCUtil.serializeTableInitializationInfo(
-        usingTableMap, preCreateTableMap);
+    final Map<String, List<TsTable>> allPreDeleteTables = clusterSchemaInfo.getAllPreDeleteTables();
+    // the specialStatusMap will hold the PreCreate/PreDelete/altering table(NonCommittableTsTable)
+    final Map<String, List<TsTable>> specialStatusMap = clusterSchemaInfo.getAllPreCreateTables();
+
+    for (Map.Entry<String, List<String>> databaseEntry : alteringTables.entrySet()) {
+      String databaseName = databaseEntry.getKey();
+      List<String> alteringTableList = databaseEntry.getValue();
+      List<TsTable> speicalMapList =
+          specialStatusMap.computeIfAbsent(databaseName, name -> new ArrayList<>());
+
+      // 1. if the alteringTableList is null, means that executing the drop database is going on
+      if (Objects.isNull(alteringTableList)) {
+        List<TsTable> relatedTables = usingTableMap.remove(databaseName);
+        relatedTables.forEach(
+            table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+      } else {
+        // 2. if the table has existed, the procedure is modifying it.
+        // so the usingTableMap and specialStatusMap both hold it
+        speicalMapList.addAll(
+            alteringTableList.stream()
+                .map(NonCommittableTsTable::new)
+                .collect(Collectors.toList()));
+      }
+    }
+    // 3. deal with the pre_delete status table, add the PreDeleteTsTable table
+    for (Map.Entry<String, List<TsTable>> entry : allPreDeleteTables.entrySet()) {
+      String databaseName = entry.getKey();
+      List<TsTable> preDeleteTables = entry.getValue();
+      specialStatusMap
+          .computeIfAbsent(databaseName, name -> new ArrayList<>())
+          .addAll(
+              preDeleteTables.stream()
+                  .map(tsTable -> new PreDeleteTsTable(tsTable.getTableName()))
+                  .collect(Collectors.toList()));
+    }
+    return TsTableInternalRPCUtil.serializeTableInitializationInfo(usingTableMap, specialStatusMap);
   }
 
   // endregion

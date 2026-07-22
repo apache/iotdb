@@ -294,6 +294,66 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
+  public void testShowCreateDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create database test_show_create_db with (ttl=300, max_schema_region_group_num=DEFAULT, max_data_region_group_num=DEFAULT, time_partition_interval=100000)");
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("show create database test_show_create_db")) {
+        assertTrue(resultSet.next());
+        assertEquals("test_show_create_db", resultSet.getString("Database"));
+        final String createDatabaseSQL = resultSet.getString("Create Database");
+        assertTrue(
+            createDatabaseSQL,
+            createDatabaseSQL.startsWith("CREATE DATABASE \"test_show_create_db\" WITH ("));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("ttl=300"));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("time_partition_interval=100000"));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_schema_region_group_num="));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_data_region_group_num="));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testShowCreatePipe() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create pipe test_show_create_pipe ('sink'='do-nothing-sink')");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create pipe test_show_create_pipe"),
+          "Pipe,Create Pipe,",
+          Collections.singleton(
+              "test_show_create_pipe,CREATE PIPE \"test_show_create_pipe\" WITH SINK ('sink'='do-nothing-sink'),"));
+    }
+  }
+
+  @Test
+  public void testShowCreateInformationSchemaDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      assertShowCreateSystemDatabaseFails(statement, "information_schema");
+      assertShowCreateSystemDatabaseFails(statement, "__audit");
+    }
+  }
+
+  private static void assertShowCreateSystemDatabaseFails(
+      final Statement statement, final String database) throws SQLException {
+    try {
+      statement.executeQuery("show create database " + database);
+      fail("show create database " + database + " shouldn't succeed");
+    } catch (final SQLException e) {
+      assertEquals("701: The system database does not support show create.", e.getMessage());
+    }
+  }
+
+  @Test
   public void testDatabaseWithSpecificCharacters() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -491,7 +551,8 @@ public class IoTDBDatabaseIT {
                   "pipe_sink,STRING,ATTRIBUTE,",
                   "exception_message,STRING,ATTRIBUTE,",
                   "remaining_event_count,INT64,ATTRIBUTE,",
-                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
+                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,",
+                  "is_degraded,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -613,7 +674,7 @@ public class IoTDBDatabaseIT {
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from pipes"),
-          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,",
+          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,is_degraded,",
           Collections.emptySet());
 
       // No auth needed

@@ -211,8 +211,13 @@ public abstract class TabletInsertionEventParser {
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
-    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
-    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
+    final int originRowCount = insertTabletNode.getRowCount();
+    final long[] actualTimestampColumn =
+        originTimestampColumn.length == originRowCount
+            ? originTimestampColumn
+            : Arrays.copyOf(originTimestampColumn, originRowCount);
+    final List<Integer> rowIndexList = generateRowIndexList(actualTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> actualTimestampColumn[i]).toArray();
 
     final MeasurementSchema[] originMeasurementSchemaList =
         insertTabletNode.getMeasurementSchemas();
@@ -434,6 +439,9 @@ public abstract class TabletInsertionEventParser {
 
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
     final int rowCount = originTimestampColumn.length;
+    if (rowCount == 0) {
+      return generateFullRowIndexList(rowCount);
+    }
     if (Objects.isNull(sourceEvent) || !sourceEvent.shouldParseTime()) {
       return generateFullRowIndexList(rowCount);
     }
@@ -617,7 +625,8 @@ public abstract class TabletInsertionEventParser {
         }
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
     }
   }
 
@@ -662,7 +671,8 @@ public abstract class TabletInsertionEventParser {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
     }
   }
 

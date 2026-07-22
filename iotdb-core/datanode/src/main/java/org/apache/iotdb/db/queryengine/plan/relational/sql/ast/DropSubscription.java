@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,7 +38,10 @@ public class DropSubscription extends SubscriptionStatement {
   private final boolean ifExistsCondition;
 
   public DropSubscription(final String subscriptionId, final boolean ifExistsCondition) {
-    this.subscriptionId = requireNonNull(subscriptionId, "subscription id can not be null");
+    this.subscriptionId =
+        requireNonNull(
+            subscriptionId,
+            DataNodeQueryMessages.EXCEPTION_SUBSCRIPTION_ID_CAN_NOT_BE_NULL_0CDFFD7D);
     this.ifExistsCondition = ifExistsCondition;
   }
 

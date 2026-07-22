@@ -37,11 +37,13 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -52,8 +54,10 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -261,6 +265,63 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
+  public void markAsNeedToReportShouldInheritSourceTsFileGeneratedReportSkipping()
+      throws Exception {
+    final PipeTsFileInsertionEvent sourceEvent = Mockito.mock(PipeTsFileInsertionEvent.class);
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(true);
+    final PipeRawTabletInsertionEvent tabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    tabletEvent.markAsNeedToReport();
+    Assert.assertTrue(tabletEvent.isShouldReportOnCommit());
+
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(false);
+    final PipeRawTabletInsertionEvent skippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    skippedTabletEvent.markAsNeedToReport();
+    Assert.assertFalse(skippedTabletEvent.isShouldReportOnCommit());
+
+    final PipeRawTabletInsertionEvent constructorSkippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            true);
+
+    Assert.assertFalse(constructorSkippedTabletEvent.isShouldReportOnCommit());
+  }
+
+  @Test
   public void convertToTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
@@ -322,6 +383,30 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void processAlignedTabletWithCollectPreservesAlignmentForTest() {
+    final PipeRawTabletInsertionEvent event =
+        new PipeRawTabletInsertionEvent(
+            tabletForInsertTabletNode, true, new PrefixTreePattern(pattern));
+
+    final List<TabletInsertionEvent> events = new ArrayList<>();
+    event
+        .processTabletWithCollect(
+            (tablet, collector) -> {
+              try {
+                collector.collectTablet(tablet);
+              } catch (final Exception e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .forEach(events::add);
+
+    Assert.assertEquals(1, events.size());
+    final PipeRawTabletInsertionEvent collectedEvent = (PipeRawTabletInsertionEvent) events.get(0);
+    Assert.assertEquals(tabletForInsertTabletNode, collectedEvent.convertToTablet());
+    Assert.assertTrue(collectedEvent.isAligned());
   }
 
   @Test
@@ -523,6 +608,78 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void isEventTimeOverlappedWithTimeRangeUsesActualRowSizeForTest() throws Exception {
+    final long[] timestamps = new long[] {110L, 111L, 112L, 0L, 0L};
+
+    final Tablet partialTablet = new Tablet(deviceId, Arrays.asList(schemas), times.length);
+    partialTablet.setTimestamps(timestamps);
+    partialTablet.setRowSize(3);
+
+    PipeRawTabletInsertionEvent rawEvent =
+        new PipeRawTabletInsertionEvent(partialTablet, 111L, 112L);
+    Assert.assertTrue(rawEvent.mayEventTimeOverlappedWithTimeRange());
+    rawEvent = new PipeRawTabletInsertionEvent(partialTablet, 113L, Long.MAX_VALUE);
+    Assert.assertFalse(rawEvent.mayEventTimeOverlappedWithTimeRange());
+
+    final InsertTabletNode partialInsertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("partial tablet node"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            timestamps,
+            null,
+            insertTabletNode.getColumns(),
+            3);
+
+    final Tablet convertedTablet =
+        new TabletInsertionEventTreePatternParser(
+                partialInsertTabletNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    Assert.assertEquals(3, convertedTablet.getRowSize());
+    Assert.assertArrayEquals(
+        new long[] {110L, 111L, 112L},
+        Arrays.copyOf(convertedTablet.getTimestamps(), convertedTablet.getRowSize()));
+
+    PipeInsertNodeTabletInsertionEvent insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.sg",
+            partialInsertTabletNode,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            111L,
+            112L);
+    Assert.assertTrue(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
+    insertNodeEvent =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.sg",
+            partialInsertTabletNode,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            113L,
+            Long.MAX_VALUE);
+    Assert.assertFalse(insertNodeEvent.mayEventTimeOverlappedWithTimeRange());
   }
 
   @Test

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
@@ -207,6 +208,24 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s8", 0) < ROW_COUNT_PER_DEVICE);
     Assert.assertTrue(
         pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s12", 0) < ROW_COUNT_PER_DEVICE);
+  }
+
+  @Test
+  public void testPipeOutOfMemoryIsTemporaryUnavailable() throws Exception {
+    tsFile = File.createTempFile("oom", ".tsfile");
+
+    final LoadTreeConvertedInsertTabletStatementExceptionVisitor visitor =
+        new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+    final TSStatus status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            new IllegalStateException(
+                "wrapped memory pressure",
+                new PipeRuntimeOutOfMemoryCriticalException("pipe tablet memory is not enough")));
+
+    Assert.assertEquals(
+        TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(), status.getCode());
+    Assert.assertNotEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
   }
 
   private void writeTsFile(final File file) throws Exception {

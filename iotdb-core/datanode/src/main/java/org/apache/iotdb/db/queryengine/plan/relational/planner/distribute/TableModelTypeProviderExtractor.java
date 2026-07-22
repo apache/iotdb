@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -95,8 +96,10 @@ public class TableModelTypeProviderExtractor {
         if (!feTypeProvider.isSymbolExist(symbol)) {
           throw new IllegalStateException(
               String.format(
-                  "Symbol: %s is not exist in feTypeProvider with %s",
-                  symbol, node.getClass().getSimpleName()));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_SYMBOL_S_IS_NOT_EXIST_IN_FETYPEPROVIDER_WITH_S_5CBBFB8B,
+                  symbol,
+                  node.getClass().getSimpleName()));
         }
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }

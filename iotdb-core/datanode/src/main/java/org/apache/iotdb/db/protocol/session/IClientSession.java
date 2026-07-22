@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
@@ -193,9 +194,7 @@ public abstract class IClientSession {
     this.databaseName = databaseName;
     if (Objects.nonNull(databaseName) && !PathUtils.isTableModelDatabase(databaseName)) {
       throw new SemanticException(
-          "The database name "
-              + databaseName
-              + " is a tree model database, which is not allowed to set in the client session.");
+          String.format(DataNodeMiscMessages.DATABASE_NAME_IS_TREE_MODEL_DATABASE, databaseName));
     }
   }
 

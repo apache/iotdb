@@ -146,9 +146,16 @@ public class SnapshotLoader {
     try {
       deleteAllFilesInDataDirs();
       LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
+      // IoTConsensus may spread the fragments of one snapshot across several receive folders.
+      // The fileTarget map must be shared across all of them so that a tsfile and its companion
+      // files (resource, exclusive mods, etc.) are relinked to the same data dir even when their
+      // fragments were received on different disks.
+      Map<String, String> fileTarget = new HashMap<>();
       for (String path : snapshotPaths) {
         File snapshotDir = new File(path);
-        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
+        // IoTConsensus fragments arrive under different recv folders; do not map each
+        // fragment back to the same disk as its recv path, rely on fileTarget instead.
+        createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget, false);
         loadCompressionRatio(snapshotDir);
       }
       return loadSnapshot();
@@ -170,7 +177,7 @@ public class SnapshotLoader {
       }
       LOGGER.info(StorageEngineMessages.MOVING_SNAPSHOT_FILE_TO_DATA_DIRS);
       File snapshotDir = new File(snapshotPath);
-      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
+      createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>(), true);
       loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -294,7 +301,8 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
+  private void createLinksFromSnapshotDirToDataDirWithoutLog(
+      File sourceDir, Map<String, String> fileTarget, boolean preferKeepSameDiskWhenLoading)
       throws IOException, DiskSpaceInsufficientException {
     if (!sourceDir.exists()) {
       throw new IOException(
@@ -340,7 +348,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
 
@@ -359,7 +368,8 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
+        createLinksFromSnapshotToSourceDir(
+            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
   }
@@ -406,8 +416,12 @@ public class SnapshotLoader {
   }
 
   private void createLinksFromSnapshotToSourceDir(
-      String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
-    Map<String, String> fileTarget = new HashMap<>();
+      String targetSuffix,
+      File[] files,
+      FolderManager folderManager,
+      Map<String, String> fileTarget,
+      boolean preferKeepSameDiskWhenLoading)
+      throws IOException {
     for (File file : files) {
       checkTsFileResourceExists(file);
 
@@ -421,7 +435,8 @@ public class SnapshotLoader {
 
       try {
         String firstFolderOfSameDisk =
-            IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+            preferKeepSameDiskWhenLoading
+                    && IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
                 ? folderManager.getFirstFolderOfSameDisk(file.getAbsolutePath())
                 : null;
 
@@ -452,7 +467,10 @@ public class SnapshotLoader {
 
     String resourceFileName = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
     if (!new File(resourceFileName).exists()) {
-      LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
+      LOGGER.warn(
+          StorageEngineMessages
+              .MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5,
+          file);
     }
   }
 
