@@ -50,8 +50,8 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
       "PipeTsFileParserInFlightMaxNum: {}";
-  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE =
-      "PipeTsFileParserInFlightMaxNumPerPipe: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";

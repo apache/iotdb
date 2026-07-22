@@ -248,12 +248,12 @@ public class CommonConfig {
   // Note: Pipes that do not decompose pattern/time do not need this part of memory
   private long pipeTsFileParserMemory = 17 * MB;
 
-  // Limit concurrently active TsFile parsers globally and for each pipe. The per-pipe limit also
-  // serves as an approximate parser memory quota because every admitted parser reserves
-  // pipeTsFileParserMemory bytes.
+  // Limit concurrently active TsFile parsers globally and for each region task of a pipe. The
+  // per-pipe-region limit also serves as an approximate parser memory quota because every admitted
+  // parser reserves pipeTsFileParserMemory bytes.
   private int pipeTsFileParserInFlightMaxNum =
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-  private int pipeTsFileParserInFlightMaxNumPerPipe = 1;
+  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 1;
 
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
@@ -1059,19 +1059,21 @@ public class CommonConfig {
     logger.info(ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserInFlightMaxNum", validatedValue);
   }
 
-  public int getPipeTsFileParserInFlightMaxNumPerPipe() {
-    return pipeTsFileParserInFlightMaxNumPerPipe;
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return pipeTsFileParserInFlightMaxNumPerPipeRegion;
   }
 
-  public void setPipeTsFileParserInFlightMaxNumPerPipe(
-      final int pipeTsFileParserInFlightMaxNumPerPipe) {
-    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipe);
-    if (this.pipeTsFileParserInFlightMaxNumPerPipe == validatedValue) {
+  public void setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+      final int pipeTsFileParserInFlightMaxNumPerPipeRegion) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipeRegion);
+    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion == validatedValue) {
       return;
     }
-    this.pipeTsFileParserInFlightMaxNumPerPipe = validatedValue;
+    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = validatedValue;
     logger.info(
-        ConfigMessages.CONFIG_SET_TO, "pipeTsFileParserInFlightMaxNumPerPipe", validatedValue);
+        ConfigMessages.CONFIG_SET_TO,
+        "pipeTsFileParserInFlightMaxNumPerPipeRegion",
+        validatedValue);
   }
 
   public long getPipeSinkBatchMemoryInsertNode() {

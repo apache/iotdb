@@ -44,13 +44,13 @@ public class PipeMemoryManagerTest {
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final List<Reservation> reservations = new ArrayList<>();
   private int originalGlobalLimit;
-  private int originalPerPipeLimit;
+  private int originalPerPipeRegionLimit;
   private long originalParserMemoryInBytes;
 
   @Before
   public void setUp() {
     originalGlobalLimit = commonConfig.getPipeTsFileParserInFlightMaxNum();
-    originalPerPipeLimit = commonConfig.getPipeTsFileParserInFlightMaxNumPerPipe();
+    originalPerPipeRegionLimit = commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
     originalParserMemoryInBytes = commonConfig.getPipeTsFileParserMemory();
     commonConfig.setPipeTsFileParserMemory(1);
   }
@@ -59,20 +59,24 @@ public class PipeMemoryManagerTest {
   public void tearDown() {
     for (final Reservation reservation : reservations) {
       memoryManager.cancelTsFileParserMemoryReservation(
-          reservation.pipeName, reservation.creationTime, reservation.key);
+          reservation.pipeName,
+          reservation.creationTime,
+          reservation.dataRegionId,
+          reservation.key);
       if (reservation.acquired) {
-        memoryManager.releaseTsFileParserMemory(reservation.pipeName, reservation.creationTime);
+        memoryManager.releaseTsFileParserMemory(
+            reservation.pipeName, reservation.creationTime, reservation.dataRegionId);
       }
     }
     commonConfig.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
-    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(originalPerPipeLimit);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalPerPipeRegionLimit);
     commonConfig.setPipeTsFileParserMemory(originalParserMemoryInBytes);
   }
 
   @Test
   public void testWaitingPipesAreAdmittedInRoundRobinOrder() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(1);
-    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
 
     final Reservation pipeAActive = new Reservation("pipeA", 1);
     final Reservation pipeAFirstWaiting = new Reservation("pipeA", 1);
@@ -97,9 +101,9 @@ public class PipeMemoryManagerTest {
   }
 
   @Test
-  public void testGlobalAndPerPipeLimitsAreBothEnforced() {
+  public void testGlobalAndPerPipeRegionLimitsAreBothEnforced() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(2);
-    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
 
     final Reservation pipeAFirst = new Reservation("pipeA", 1);
     final Reservation pipeASecond = new Reservation("pipeA", 1);
@@ -120,9 +124,77 @@ public class PipeMemoryManagerTest {
   }
 
   @Test
+  public void testDifferentRegionsOfSamePipeCanRunConcurrently() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+
+    final Reservation pipeARegion1First = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion1Second = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion2 = new Reservation("pipeA", 1, "2");
+
+    Assert.assertTrue(tryAcquire(pipeARegion1First));
+    Assert.assertFalse(tryAcquire(pipeARegion1Second));
+    Assert.assertTrue(tryAcquire(pipeARegion2));
+  }
+
+  @Test
+  public void testWaitingRegionsWithinPipeAreAdmittedInRoundRobinOrder() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+
+    final Reservation blocker = new Reservation("blocker", 0);
+    final Reservation pipeARegion1First = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion1Second = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion2 = new Reservation("pipeA", 1, "2");
+
+    Assert.assertTrue(tryAcquire(blocker));
+    Assert.assertFalse(tryAcquire(pipeARegion1First));
+    Assert.assertFalse(tryAcquire(pipeARegion1Second));
+    Assert.assertFalse(tryAcquire(pipeARegion2));
+
+    release(blocker);
+    Assert.assertTrue(tryAcquire(pipeARegion1First));
+    release(pipeARegion1First);
+
+    Assert.assertFalse(tryAcquire(pipeARegion1Second));
+    Assert.assertTrue(tryAcquire(pipeARegion2));
+    release(pipeARegion2);
+
+    Assert.assertTrue(tryAcquire(pipeARegion1Second));
+  }
+
+  @Test
+  public void testPipeFairnessIsNotWeightedByRegionCount() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+
+    final Reservation blocker = new Reservation("blocker", 0);
+    final Reservation pipeARegion1 = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion2 = new Reservation("pipeA", 1, "2");
+    final Reservation pipeARegion3 = new Reservation("pipeA", 1, "3");
+    final Reservation pipeBRegion1 = new Reservation("pipeB", 2, "1");
+
+    Assert.assertTrue(tryAcquire(blocker));
+    Assert.assertFalse(tryAcquire(pipeARegion1));
+    Assert.assertFalse(tryAcquire(pipeARegion2));
+    Assert.assertFalse(tryAcquire(pipeARegion3));
+    Assert.assertFalse(tryAcquire(pipeBRegion1));
+
+    release(blocker);
+    Assert.assertTrue(tryAcquire(pipeARegion1));
+    release(pipeARegion1);
+
+    Assert.assertFalse(tryAcquire(pipeARegion2));
+    Assert.assertTrue(tryAcquire(pipeBRegion1));
+    release(pipeBRegion1);
+
+    Assert.assertTrue(tryAcquire(pipeARegion2));
+  }
+
+  @Test
   public void testSoftMemoryHeadroomIsReservedForPipeWithoutParser() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(2);
-    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(2);
 
     final double tabletMemoryLimit =
         (commonConfig.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
@@ -135,9 +207,9 @@ public class PipeMemoryManagerTest {
     commonConfig.setPipeTsFileParserMemory(
         Math.max(1, (long) (Math.min(tabletMemoryLimit, tabletAndTsFileMemoryLimit) * 0.49)));
 
-    final Reservation pipeAActive = new Reservation("pipeA", 1);
-    final Reservation pipeAWaiting = new Reservation("pipeA", 1);
-    final Reservation pipeBWaiting = new Reservation("pipeB", 2);
+    final Reservation pipeAActive = new Reservation("pipeA", 1, "1");
+    final Reservation pipeAWaiting = new Reservation("pipeA", 1, "2");
+    final Reservation pipeBWaiting = new Reservation("pipeB", 2, "1");
 
     Assert.assertTrue(tryAcquire(pipeAActive));
     Assert.assertFalse(tryAcquire(pipeAWaiting));
@@ -150,7 +222,7 @@ public class PipeMemoryManagerTest {
   @Test
   public void testConcurrentTsFilesFromMultiplePipesAreNotStarved() throws Exception {
     commonConfig.setPipeTsFileParserInFlightMaxNum(1);
-    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipe(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
 
     final Reservation blocker = new Reservation("blocker", 0);
     Assert.assertTrue(tryAcquire(blocker));
@@ -223,14 +295,20 @@ public class PipeMemoryManagerTest {
     }
     reservation.acquired =
         memoryManager.tryReserveTsFileParserMemory(
-            reservation.pipeName, reservation.creationTime, reservation.key);
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
     return reservation.acquired;
   }
 
   private boolean tryAcquireWithoutTracking(final Reservation reservation) {
     reservation.acquired =
         memoryManager.tryReserveTsFileParserMemory(
-            reservation.pipeName, reservation.creationTime, reservation.key);
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
     return reservation.acquired;
   }
 
@@ -238,7 +316,8 @@ public class PipeMemoryManagerTest {
     if (!reservation.acquired) {
       return;
     }
-    memoryManager.releaseTsFileParserMemory(reservation.pipeName, reservation.creationTime);
+    memoryManager.releaseTsFileParserMemory(
+        reservation.pipeName, reservation.creationTime, reservation.dataRegionId);
     reservation.acquired = false;
   }
 
@@ -246,12 +325,18 @@ public class PipeMemoryManagerTest {
 
     private final String pipeName;
     private final long creationTime;
+    private final String dataRegionId;
     private final Object key = new Object();
     private volatile boolean acquired;
 
     private Reservation(final String pipeName, final long creationTime) {
+      this(pipeName, creationTime, "0");
+    }
+
+    private Reservation(final String pipeName, final long creationTime, final String dataRegionId) {
       this.pipeName = pipeName;
       this.creationTime = creationTime;
+      this.dataRegionId = dataRegionId;
     }
   }
 }

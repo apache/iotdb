@@ -88,8 +88,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNum();
   }
 
-  public int getPipeTsFileParserInFlightMaxNumPerPipe() {
-    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipe();
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
   }
 
   public long getSinkBatchMemoryInsertNode() {
@@ -518,8 +518,8 @@ public class PipeConfig {
         PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM,
         getPipeTsFileParserInFlightMaxNum());
     LOGGER.info(
-        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE,
-        getPipeTsFileParserInFlightMaxNumPerPipe());
+        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION,
+        getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_INSERT_NODE, getSinkBatchMemoryInsertNode());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_TSFILE, getSinkBatchMemoryTsFile());
     LOGGER.info(PipeMessages.CONFIG_SEND_TSFILE_READ_BUFFER, getSendTsFileReadBuffer());
