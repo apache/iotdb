@@ -497,7 +497,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree treeMTree = new ConfigMTree(false);
-      treeMTree.deserialize(inputStream);
+      treeMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : treeMTree.getAllDatabasePaths(false)) {
@@ -515,7 +515,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree tableMTree = new ConfigMTree(true);
-      tableMTree.deserialize(inputStream);
+      tableMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : tableMTree.getAllDatabasePaths(true)) {
