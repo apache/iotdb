@@ -46,7 +46,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -74,9 +73,7 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 public abstract class AlignedTVList extends TVList {
 
   private static final long BITMAP_RAM_COST_PER_BLOCK =
-      RamUsageEstimator.shallowSizeOfInstance(BitMap.class)
-          + RamUsageEstimator.sizeOfByteArray(BitMap.getSizeOfBytes(ARRAY_SIZE))
-          + NUM_BYTES_OBJECT_REF;
+      BitMap.createBitMapDynamically(ARRAY_SIZE).ramBytesUsed() + NUM_BYTES_OBJECT_REF;
 
   // Data types of this aligned tvList
   protected List<TSDataType> dataTypes;
@@ -426,7 +423,7 @@ public abstract class AlignedTVList extends TVList {
         default:
           break;
       }
-      BitMap bitMap = new BitMap(ARRAY_SIZE);
+      BitMap bitMap = BitMap.createBitMapDynamically(ARRAY_SIZE);
       // The following code is for these 2 kinds of scenarios.
 
       // Eg1: If rowCount=5 and ARRAY_SIZE=2, we need to supply 3 bitmaps for the extending column.
@@ -734,13 +731,13 @@ public abstract class AlignedTVList extends TVList {
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>(values.get(columnIndex).size());
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+        columnBitMaps.add(BitMap.createBitMapDynamically(ARRAY_SIZE));
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
     for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
       if (bitMaps.get(columnIndex).get(i) == null) {
-        bitMaps.get(columnIndex).set(i, new BitMap(ARRAY_SIZE));
+        bitMaps.get(columnIndex).set(i, BitMap.createBitMapDynamically(ARRAY_SIZE));
       }
       bitMaps.get(columnIndex).get(i).markAll();
     }
@@ -832,12 +829,9 @@ public abstract class AlignedTVList extends TVList {
    */
   private boolean markRowNull(int i) {
     if (timeColDeletedMap == null) {
-      timeColDeletedMap = new BitMap(rowCount);
+      timeColDeletedMap = BitMap.createBitMapDynamically(rowCount);
     } else if (timeColDeletedMap.getSize() < rowCount) {
-      byte[] prevBytes = timeColDeletedMap.getByteArray();
-      byte[] newBytes = new byte[rowCount / 8 + 1];
-      System.arraycopy(prevBytes, 0, newBytes, 0, prevBytes.length);
-      timeColDeletedMap = new BitMap(rowCount, newBytes);
+      timeColDeletedMap.extend(rowCount);
     }
     // use value index so that sorts will not change the nullability
     if (timeColDeletedMap.isMarked(getValueIndex(i))) {
@@ -930,9 +924,9 @@ public abstract class AlignedTVList extends TVList {
       int arrayIndex) {
 
     /* 1. Build result-level bitmap (1 = failure row) */
-    byte[] resultBitMap =
+    BitMap resultBitMap =
         results != null && containsFailedStatus(results, idx, len)
-            ? buildResultBitMapBytes(results, idx, elementIdx, len)
+            ? buildResultBitMap(results, idx, elementIdx, len)
             : null;
 
     for (int j = 0; j < values.length; j++) {
@@ -949,7 +943,7 @@ public abstract class AlignedTVList extends TVList {
 
       /* 3. Overlay result bitmap (failure rows) */
       if (resultBitMap != null) {
-        markNullValue(j, arrayIndex, elementIdx, resultBitMap);
+        getBitMap(j, arrayIndex).merge(resultBitMap, elementIdx & 7, elementIdx, len);
       }
     }
   }
@@ -990,13 +984,18 @@ public abstract class AlignedTVList extends TVList {
 
   public static byte[] buildResultBitMapBytes(
       TSStatus[] results, int idx, int elementIdx, int length) {
+    int totalBits = (elementIdx & 7) + length;
+    return Arrays.copyOf(
+        buildResultBitMap(results, idx, elementIdx, length).getByteArray(), (totalBits + 7) >> 3);
+  }
+
+  private static BitMap buildResultBitMap(TSStatus[] results, int idx, int elementIdx, int length) {
     int start = elementIdx & 7;
     int totalBits = start + length;
-    int size = (totalBits + 7) >> 3;
-    BitMap bitmap = new BitMap(totalBits, new byte[size]);
+    BitMap bitmap = BitMap.createBitMapDynamically(totalBits);
 
     if (results == null) {
-      return bitmap.getByteArray();
+      return bitmap;
     }
 
     for (int i = 0; i < length; i++) {
@@ -1005,7 +1004,7 @@ public abstract class AlignedTVList extends TVList {
         bitmap.mark(start + i);
       }
     }
-    return bitmap.getByteArray();
+    return bitmap;
   }
 
   private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
@@ -1077,19 +1076,10 @@ public abstract class AlignedTVList extends TVList {
 
     // if the bitmap in arrayIndex is null, init the bitmap
     if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
-      bitMaps.get(columnIndex).set(arrayIndex, new BitMap(ARRAY_SIZE));
+      bitMaps.get(columnIndex).set(arrayIndex, BitMap.createBitMapDynamically(ARRAY_SIZE));
     }
 
     return bitMaps.get(columnIndex).get(arrayIndex);
-  }
-
-  private void markNullValue(
-      int columnIndex, int arrayIndex, int elementIndex, byte[] resultBitMap) {
-    byte[] bitMap = getBitMap(columnIndex, arrayIndex).getByteArray();
-    int start = elementIndex >>> 3;
-    for (byte b : resultBitMap) {
-      bitMap[start++] |= b;
-    }
   }
 
   private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
@@ -1548,7 +1538,7 @@ public abstract class AlignedTVList extends TVList {
     Object[] values = new Object[dataTypeNum];
     BitMap[] bitMaps = new BitMap[dataTypeNum];
     for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
-      BitMap bitMap = new BitMap(rowCount);
+      BitMap bitMap = BitMap.createBitMapDynamically(rowCount);
       Object valuesOfOneColumn;
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
@@ -1702,8 +1692,9 @@ public abstract class AlignedTVList extends TVList {
           }
 
           byte bits = (byte) 0X00;
+          byte[] bitMapBytes = bitMap.getByteArray();
           for (int j = 0; j < size; j++) {
-            rowBitsArr[index] &= bitMap.getByteArray()[j];
+            rowBitsArr[index] &= bitMapBytes[j];
             bits |= rowBitsArr[index++];
             isEnd = false;
           }
@@ -1946,7 +1937,8 @@ public abstract class AlignedTVList extends TVList {
                         valueColumnsDeletionList.get(columnIndex),
                         valueColumnDeleteCursor.get(columnIndex),
                         scanOrder))) {
-              bitMap = bitMap == null ? new BitMap(dataTypeList.size()) : bitMap;
+              bitMap =
+                  bitMap == null ? BitMap.createBitMapDynamically(dataTypeList.size()) : bitMap;
               bitMap.mark(columnIndex);
             }
           }

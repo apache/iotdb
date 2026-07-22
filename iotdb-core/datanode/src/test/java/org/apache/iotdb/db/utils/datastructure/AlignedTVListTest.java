@@ -167,8 +167,39 @@ public class AlignedTVListTest {
     Assert.assertNotNull(firstColumnBitMaps.get(2));
     Assert.assertEquals(
         BitMap.getSizeOfBytes(ARRAY_SIZE), firstColumnBitMaps.get(2).getByteArray().length);
+    Assert.assertTrue(
+        firstColumnBitMaps.get(2).ramBytesUsed() < new BitMap(ARRAY_SIZE).ramBytesUsed());
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
+  }
+
+  @Test
+  public void testFailedStatusBitmapWithNonByteAlignedOffset() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    long[] times = new long[ARRAY_SIZE + 3];
+    long[][] values = new long[2][ARRAY_SIZE + 3];
+    TSStatus[] results = new TSStatus[ARRAY_SIZE + 3];
+    for (int i = 0; i < times.length; i++) {
+      times[i] = i;
+      values[0][i] = i;
+      values[1][i] = i;
+    }
+    results[ARRAY_SIZE - 1] = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    results[ARRAY_SIZE + 1] = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+
+    tvList.putAlignedValues(times, values, null, 0, 3, results);
+    tvList.putAlignedValues(times, values, null, 3, times.length, results);
+
+    for (int column = 0; column < 2; column++) {
+      Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE - 2, column));
+      Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE - 1, column));
+      Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE, column));
+      Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE + 1, column));
+      Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, column));
+    }
+
+    Assert.assertEquals(1, AlignedTVList.buildResultBitMapBytes(new TSStatus[8], 0, 0, 8).length);
   }
 
   @Test
