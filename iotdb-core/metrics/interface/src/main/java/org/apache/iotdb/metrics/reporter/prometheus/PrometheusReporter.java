@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.reporter.prometheus;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
@@ -85,7 +86,7 @@ public class PrometheusReporter implements Reporter {
   @SuppressWarnings("java:S1181")
   public boolean start() {
     if (httpServer != null) {
-      LOGGER.warn("PrometheusReporter already start!");
+      LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_ALREADY_START);
       return false;
     }
     try {
@@ -125,11 +126,12 @@ public class PrometheusReporter implements Reporter {
       // catch Throwable rather than Exception here because the code above might cause a
       // NoClassDefFoundError
       httpServer = null;
-      LOGGER.warn("PrometheusReporter failed to start, because ", e);
+      LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_START_FAILED, e);
       return false;
     }
     LOGGER.info(
-        "PrometheusReporter started, use port {}", METRIC_CONFIG.getPrometheusReporterPort());
+        MetricsMessages.LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8,
+        METRIC_CONFIG.getPrometheusReporterPort());
     return true;
   }
 
@@ -151,7 +153,7 @@ public class PrometheusReporter implements Reporter {
         new String(Base64.getDecoder().decode(base64String), StandardCharsets.UTF_8);
     int dividerIndex = decodedString.indexOf(DIVIDER_BETWEEN_USERNAME_AND_DIVIDER);
     if (dividerIndex < 0) {
-      LOGGER.warn("Unexpected auth string: {}", decodedString);
+      LOGGER.warn(MetricsMessages.PROMETHEUS_UNEXPECTED_AUTH, decodedString);
       return authenticateFailed(res);
     }
 
@@ -226,7 +228,8 @@ public class PrometheusReporter implements Reporter {
           HistogramSnapshot snapshot = timer.takeSnapshot();
           if (Objects.isNull(snapshot)) {
             LOGGER.warn(
-                "Detected an error when taking metric timer snapshot, will discard this metric");
+                MetricsMessages
+                    .LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169);
             continue;
           }
           name += "_seconds";
@@ -308,7 +311,7 @@ public class PrometheusReporter implements Reporter {
       sslContextBuilder.trustManager(tmf);
     }
     if (sslContextBuilder == null) {
-      throw new Exception("Keystore or Truststore is null");
+      throw new Exception(MetricsMessages.KEYSTORE_OR_TRUSTSTORE_NULL);
     }
     sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
     return sslContextBuilder.build();
@@ -321,11 +324,11 @@ public class PrometheusReporter implements Reporter {
         httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
-        LOGGER.error("Prometheus Reporter failed to stop, because ", e);
+        LOGGER.error(MetricsMessages.PROMETHEUS_REPORTER_STOP_FAILED, e);
         return false;
       }
     }
-    LOGGER.info("PrometheusReporter stop!");
+    LOGGER.info(MetricsMessages.PROMETHEUS_REPORTER_STOP);
     return true;
   }
 

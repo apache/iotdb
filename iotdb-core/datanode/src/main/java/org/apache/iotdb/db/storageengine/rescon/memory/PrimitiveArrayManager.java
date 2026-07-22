@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
@@ -92,7 +93,8 @@ public class PrimitiveArrayManager {
   }
 
   private static void init() {
-    LOGGER.info("BufferedArraySizeThreshold is {}", POOLED_ARRAYS_MEMORY_THRESHOLD);
+    LOGGER.info(
+        StorageEngineMessages.BUFFERED_ARRAY_SIZE_THRESHOLD, POOLED_ARRAYS_MEMORY_THRESHOLD);
 
     // POOLED_ARRAYS_MEMORY_THRESHOLD = ∑(datatype[i].getDataTypeSize() * ARRAY_SIZE * LIMITS[i])
     // we init all LIMITS[i] with the same value, so we have
@@ -199,7 +201,7 @@ public class PrimitiveArrayManager {
 
       if (LOGGER.isDebugEnabled() && oldLimit != newLimit) {
         LOGGER.debug(
-            "limit of {} array deque size updated: {} -> {}",
+            StorageEngineMessages.STORAGE_LOG_LIMIT_OF_ARRAY_DEQUE_SIZE_UPDATED_05DBA95E,
             TSDataType.deserialize((byte) i).name(),
             oldLimit,
             newLimit);
@@ -214,7 +216,8 @@ public class PrimitiveArrayManager {
     }
     if (LOGGER.isDebugEnabled() && oldLimitUpdateThreshold != limitUpdateThreshold) {
       LOGGER.debug(
-          "limitUpdateThreshold of PrimitiveArrayManager updated: {} -> {}",
+          StorageEngineMessages
+              .STORAGE_LOG_LIMITUPDATETHRESHOLD_OF_PRIMITIVEARRAYMANAGER_UPDATED_394801AE,
           oldLimitUpdateThreshold,
           limitUpdateThreshold);
     }
@@ -249,6 +252,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
@@ -342,6 +346,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           binaries[i] = new Binary[ARRAY_SIZE];

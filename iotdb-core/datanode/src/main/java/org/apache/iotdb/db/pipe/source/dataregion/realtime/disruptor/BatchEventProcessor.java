@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +71,6 @@ public final class BatchEventProcessor<T> implements Runnable {
 
   @Override
   public void run() {
-    T event = null;
     long nextSequence = sequence.get() + 1L;
 
     while (running) {
@@ -78,43 +79,78 @@ public final class BatchEventProcessor<T> implements Runnable {
         final long availableSequence = sequenceBarrier.waitFor(nextSequence);
 
         // Batch process all available events
-        while (nextSequence <= availableSequence) {
-          event = ringBuffer.get(nextSequence);
-          eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
-          nextSequence++;
-        }
-
-        // Update sequence
-        sequence.set(availableSequence);
+        nextSequence = processAvailableEvents(nextSequence, availableSequence);
 
       } catch (final InterruptedException ex) {
-        Thread.currentThread().interrupt();
-        LOGGER.info("Processor interrupted");
-        break;
+        if (!running) {
+          break;
+        }
+        // A transient interrupt should not permanently stop the consumer thread. Otherwise the
+        // gating sequence will stop advancing and producers may block forever on a full ring
+        // buffer, making the later close path appear stuck.
+        Thread.interrupted();
+        LOGGER.warn(DataNodePipeMessages.PROCESSOR_INTERRUPTED_UNEXPECTEDLY);
       } catch (final Throwable ex) {
-        exceptionHandler.handleEventException(ex, nextSequence, event);
+        exceptionHandler.handleEventException(ex, nextSequence, ringBuffer.get(nextSequence));
         sequence.set(nextSequence);
         nextSequence++;
       }
     }
 
-    LOGGER.info("Processor stopped");
+    if (!running) {
+      drainRemainingPublishedEvents(nextSequence);
+    }
+    LOGGER.info(DataNodePipeMessages.PROCESSOR_STOPPED);
+  }
+
+  private long processAvailableEvents(long nextSequence, long availableSequence) throws Throwable {
+    while (nextSequence <= availableSequence) {
+      final T event = ringBuffer.get(nextSequence);
+      eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
+      nextSequence++;
+    }
+
+    sequence.set(availableSequence);
+    return nextSequence;
+  }
+
+  private void drainRemainingPublishedEvents(long nextSequence) {
+    final long availableSequence = sequenceBarrier.getCursor();
+    if (availableSequence < nextSequence) {
+      return;
+    }
+
+    final long highestPublishedSequence =
+        sequenceBarrier.getHighestPublishedSequence(nextSequence, availableSequence);
+    while (nextSequence <= highestPublishedSequence) {
+      final T event = ringBuffer.get(nextSequence);
+      try {
+        eventHandler.onEvent(event, nextSequence, nextSequence == highestPublishedSequence);
+      } catch (final Throwable ex) {
+        exceptionHandler.handleEventException(ex, nextSequence, event);
+      } finally {
+        sequence.set(nextSequence);
+      }
+      nextSequence++;
+    }
   }
 
   private static class DefaultExceptionHandler<T> implements ExceptionHandler<T> {
     @Override
     public void handleEventException(Throwable ex, long sequence, T event) {
-      LoggerFactory.getLogger(getClass()).error("Exception processing: {} {}", sequence, event, ex);
+      LoggerFactory.getLogger(getClass())
+          .error(DataNodePipeMessages.EXCEPTION_PROCESSING, sequence, event, ex);
     }
 
     @Override
     public void handleOnStartException(Throwable ex) {
-      LoggerFactory.getLogger(getClass()).error("Exception during onStart()", ex);
+      LoggerFactory.getLogger(getClass()).error(DataNodePipeMessages.EXCEPTION_DURING_ONSTART, ex);
     }
 
     @Override
     public void handleOnShutdownException(Throwable ex) {
-      LoggerFactory.getLogger(getClass()).error("Exception during onShutdown()", ex);
+      LoggerFactory.getLogger(getClass())
+          .error(DataNodePipeMessages.EXCEPTION_DURING_ONSHUTDOWN, ex);
     }
   }
 }

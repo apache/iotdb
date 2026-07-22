@@ -12,6 +12,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
@@ -22,6 +26,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -41,19 +49,19 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
         run: |
-          mvn -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
+          mvn -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true -DforkCount=4
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
       - name: Upload coverage reports to codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./code-coverage/target/jacoco-merged-reports/jacoco.xml
@@ -62,16 +70,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 17
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}

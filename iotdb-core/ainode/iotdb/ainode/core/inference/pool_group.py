@@ -19,7 +19,7 @@ from typing import Dict, Tuple
 
 import torch.multiprocessing as mp
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.dispatcher.basic_dispatcher import BasicDispatcher
 from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
@@ -90,14 +90,14 @@ class PoolGroup:
 
     def get_request_pool(self, pool_id) -> InferenceRequestPool:
         if pool_id not in self.pool_group:
-            raise InferenceModelInternalError(
+            raise InferenceModelInternalException(
                 f"[Inference][Pool-{pool_id}] Pool not found for model {self.model_id}"
             )
         return self.pool_group[pool_id][0]
 
     def get_request_queue(self, pool_id) -> mp.Queue:
         if pool_id not in self.pool_group:
-            raise InferenceModelInternalError(
+            raise InferenceModelInternalException(
                 f"[Inference][Pool-{pool_id}] Pool not found for model {self.model_id}"
             )
         return self.pool_group[pool_id][1]

@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
@@ -179,7 +181,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of CreateAlignedTimeSeriesNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_CREATEALIGNEDTIMESERIESNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -193,8 +196,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitCreateAlignedTimeSeries(this, schemaRegion);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C schemaRegion) {
+    return ((PlanVisitor<R, C>) visitor).visitCreateAlignedTimeSeries(this, schemaRegion);
   }
 
   public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
@@ -214,7 +217,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
     try {
       devicePath = DataNodeDevicePathCache.getInstance().getPartialPath(new String(bytes));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Can not deserialize CreateAlignedTimeSeriesNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CAN_NOT_DESERIALIZE_CREATEALIGNEDTIMESERIESNODE, e);
     }
 
     measurements = new ArrayList<>();

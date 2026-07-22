@@ -20,18 +20,20 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
-import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +42,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RelationalAuthorStatement extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalAuthorStatement.class);
 
   private final AuthorRType authorType;
 
@@ -216,8 +220,8 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitRelationalAuthorPlan(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitRelationalAuthorPlan(this, context);
   }
 
   @Override
@@ -262,14 +266,15 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_ROLE:
       case RENAME_USER:
       case ACCOUNT_UNLOCK:
-        return QueryType.WRITE;
+        return QueryType.OTHER;
       case LIST_ROLE:
       case LIST_USER:
       case LIST_ROLE_PRIV:
       case LIST_USER_PRIV:
         return QueryType.READ;
       default:
-        throw new IllegalArgumentException("Unknown authorType:" + this.authorType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_AUTHORTYPE_2 + this.authorType);
     }
   }
 
@@ -297,53 +302,6 @@ public class RelationalAuthorStatement extends Statement {
    * @return null if the post-process succeeds, a status otherwise.
    */
   public TSStatus onSuccess() {
-    if (authorType == AuthorRType.CREATE_USER) {
-      return onCreateUserSuccess();
-    } else if (authorType == AuthorRType.UPDATE_USER) {
-      return onUpdateUserSuccess();
-    } else if (authorType == AuthorRType.DROP_USER) {
-      return onDropUserSuccess();
-    }
-    return null;
-  }
-
-  private TSStatus onCreateUserSuccess() {
-    associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
-    // the old password is expected to be encrypted during updates, so we also encrypt it here to
-    // keep consistency
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            associatedUserId,
-            password,
-            AuthUtils.encryptPassword(password),
-            CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
-    return null;
-  }
-
-  private TSStatus onUpdateUserSuccess() {
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            associatedUserId, password, oldPassword, CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
-    return null;
-  }
-
-  private TSStatus onDropUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUserId);
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
     return null;
   }
 
@@ -377,7 +335,7 @@ public class RelationalAuthorStatement extends Statement {
         }
         break;
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(roleName)) {
           return AuthorityChecker.getTSStatus(false, "Cannot drop role with admin name");
         }
         break;
@@ -456,5 +414,21 @@ public class RelationalAuthorStatement extends Statement {
 
   public long getAssociatedUserId() {
     return associatedUserId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(userName);
+    size += RamUsageEstimator.sizeOf(roleName);
+    size += RamUsageEstimator.sizeOf(password);
+    size += RamUsageEstimator.sizeOf(oldPassword);
+    size += RamUsageEstimator.sizeOf(newUsername);
+    size += RamUsageEstimator.sizeOf(loginAddr);
+    size += RamUsageEstimator.sizeOfCollection(privilegeType);
+    return size;
   }
 }

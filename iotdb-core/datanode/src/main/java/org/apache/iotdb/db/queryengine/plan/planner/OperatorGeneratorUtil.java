@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 
 public class OperatorGeneratorUtil {
 

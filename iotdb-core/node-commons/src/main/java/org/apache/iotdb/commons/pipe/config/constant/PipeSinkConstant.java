@@ -20,7 +20,10 @@
 package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import com.github.luben.zstd.Zstd;
 
@@ -28,6 +31,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
@@ -46,18 +50,56 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
+  public static final String CONNECTOR_IOTDB_SSL_ENABLE_KEY = "connector.ssl.enable";
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY =
+      "connector.ssl.trust-store-path";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY =
+      "connector.ssl.trust-store-pwd";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY = "sink.ssl.trust-store-pwd";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY =
+      "connector.ssl.key-store-path";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PATH_KEY = "sink.ssl.key-store-path";
+  public static final String CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY = "connector.ssl.key-store-pwd";
+  public static final String SINK_IOTDB_SSL_KEY_STORE_PWD_KEY = "sink.ssl.key-store-pwd";
 
   public static final String CONNECTOR_IOTDB_PARALLEL_TASKS_KEY = "connector.parallel.tasks";
   public static final String SINK_IOTDB_PARALLEL_TASKS_KEY = "sink.parallel.tasks";
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
+  public static final Set<String> SINGLE_THREAD_DEFAULT_SINK =
+      new HashSet<>(
+          Arrays.asList(
+              BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(),
+              BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(),
+              BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(),
+              BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName()));
 
   public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
   public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
+  public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
+
+  public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
+    return parameters.getBooleanOrDefault(
+        Arrays.asList(CONNECTOR_SERIALIZE_BY_REGION_KEY, SINK_SERIALIZE_BY_REGION_KEY),
+        CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE);
+  }
+
+  public static String getConnectorOrSinkNameWithDefault(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(CONNECTOR_KEY, SINK_KEY), getDefaultConnectorOrSinkName(parameters));
+  }
+
+  private static String getDefaultConnectorOrSinkName(final PipeParameters parameters) {
+    return isSerializeByRegionEnabled(parameters)
+        ? BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName()
+        : BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName();
+  }
 
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
@@ -165,6 +207,10 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_HTTPS_BIND_PORT_KEY = "sink.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
+  public static final String CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY =
+      "connector.opcua.advertised-host";
+  public static final String SINK_OPC_UA_ADVERTISED_HOST_KEY = "sink.opcua.advertised-host";
+
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
   public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
@@ -180,7 +226,68 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_PLACEHOLDER_KEY = "connector.opcua.placeholder";
   public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
-  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
+  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE = "null";
+
+  public static final String CONNECTOR_OPC_UA_WITH_QUALITY_KEY = "connector.opcua.with-quality";
+  public static final String SINK_OPC_UA_WITH_QUALITY_KEY = "sink.opcua.with-quality";
+  public static final boolean CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE = false;
+
+  public static final String CONNECTOR_OPC_UA_VALUE_NAME_KEY = "connector.opcua.value-name";
+  public static final String SINK_OPC_UA_VALUE_NAME_KEY = "sink.opcua.value-name";
+  public static final String CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE = "value";
+
+  public static final String CONNECTOR_OPC_UA_QUALITY_NAME_KEY = "connector.opcua.quality-name";
+  public static final String SINK_OPC_UA_QUALITY_NAME_KEY = "sink.opcua.quality-name";
+  public static final String CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE = "quality";
+
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY =
+      "connector.opcua.default-quality";
+  public static final String SINK_OPC_UA_DEFAULT_QUALITY_KEY = "sink.opcua.default-quality";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE = "GOOD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE = "BAD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE = "UNCERTAIN";
+
+  public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
+  public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
+  public static final String CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "connector.opcua.allow-endpoint-redirect";
+  public static final String SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "sink.opcua.allow-endpoint-redirect";
+  public static final boolean CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE = false;
+
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_KEY =
+      "connector.opcua.security-policy";
+  public static final String SINK_OPC_UA_SECURITY_POLICY_KEY = "sink.opcua.security-policy";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_NONE_VALUE = "NONE";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_128_RSA_15_VALUE =
+      "BASIC128RSA15";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_VALUE = "BASIC256";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE =
+      "BASIC256SHA256";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE =
+      "AES128_SHA256_RSAOAEP";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE =
+      "AES256_SHA256_RSAPSS";
+
+  public static final List<String> CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES =
+      Arrays.asList(
+          CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE,
+          CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE,
+          CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE);
+
+  public static final String CONNECTOR_OPC_UA_HISTORIZING_KEY = "connector.opcua.historizing";
+  public static final String SINK_OPC_UA_HISTORIZING_KEY = "sink.opcua.historizing";
+  public static final boolean CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE = false;
+
+  public static final String SINK_OPC_UA_TIMEOUT_SECONDS_KEY = "sink.opcua.timeout-seconds";
+  public static final String CONNECTOR_OPC_UA_TIMEOUT_SECONDS_KEY =
+      "connector.opcua.timeout-seconds";
+  public static final long CONNECTOR_OPC_UA_TIMEOUT_SECONDS_DEFAULT_VALUE = 10L;
+
+  public static final String CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_KEY =
+      "connector.opcua.debounce-time-ms";
+  public static final String SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY = "sink.opcua.debounce-time-ms";
+  public static final long CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE = 50L;
 
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
@@ -291,6 +398,6 @@ public class PipeSinkConstant {
   public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
 
   private PipeSinkConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

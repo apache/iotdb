@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -68,6 +69,8 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   // the extractor is closed and then be reused by processor.
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
+  protected PipeWritePlanEvent lastEvent = null;
+
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
   @Override
@@ -82,7 +85,8 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         && (((IoTDBTreePatternOperations) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              PipeMessages
+                  .EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8,
               pattern.getPattern()));
     }
     treePattern = (IoTDBTreePatternOperations) pattern;
@@ -116,7 +120,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         triggerSnapshot();
         nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
-          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+          throw new PipeException(PipeMessages.CANNOT_GET_NEWEST_SNAPSHOT);
         }
       }
     } else {
@@ -163,7 +167,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     }
 
     // Check whether snapshot being parsed exists
-    PipeWritePlanEvent realtimeEvent = null;
+    PipeWritePlanEvent realtimeEvent = lastEvent;
     if (hasNextEventInCurrentSnapshot()) {
       realtimeEvent = getNextEventInCurrentSnapshot();
     }
@@ -178,7 +182,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      (TreePattern) treePattern,
+                      treePattern,
                       tablePattern,
                       userId,
                       userName,
@@ -211,17 +215,17 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
     // Realtime
     if (Objects.isNull(realtimeEvent)) {
-      realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
+      realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
     }
     if (Objects.isNull(realtimeEvent)) {
       return null;
     }
+    lastEvent = realtimeEvent;
 
     realtimeEvent =
         trimRealtimeEventByPipePattern(realtimeEvent)
             .flatMap(this::trimRealtimeEventByPrivilege)
             .orElse(null);
-    iterator.next(0);
 
     if (Objects.isNull(realtimeEvent)
         || !isTypeListened(realtimeEvent)
@@ -232,6 +236,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       }
       event.increaseReferenceCount(IoTDBNonDataRegionSource.class.getName());
+      lastEvent = null;
       return event;
     }
 
@@ -241,7 +246,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                (TreePattern) treePattern,
+                treePattern,
                 tablePattern,
                 userId,
                 userName,
@@ -253,6 +258,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     }
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionSource.class.getName());
+    lastEvent = null;
     return realtimeEvent;
   }
 
@@ -287,6 +293,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public long getUnTransferredEventCount() {
+    if (Objects.isNull(pipeTaskMeta)) {
+      return 0L;
+    }
     return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
         ? getListeningQueue().getTailIndex()
             - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()

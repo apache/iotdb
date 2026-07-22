@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.concurrent.threadpool;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.service.JMXService;
 
 import org.slf4j.Logger;
@@ -121,7 +122,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
           future.get();
         }
       } catch (CancellationException ce) {
-        logger.info("task is cancelled in thread pool {}", mbeanName);
+        logger.info(CommonMessages.TASK_CANCELLED_IN_POOL, mbeanName);
       } catch (ExecutionException ee) {
         t = ee.getCause();
       } catch (InterruptedException ie) {
@@ -129,7 +130,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       }
     }
     if (t != null && !disableErrorLog) {
-      logger.error("Exception in thread pool {}", mbeanName, t);
+      logger.error(CommonMessages.EXCEPTION_IN_THREAD_POOL, mbeanName, t);
     }
   }
 

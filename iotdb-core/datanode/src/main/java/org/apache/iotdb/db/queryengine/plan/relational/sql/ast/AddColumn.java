@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +37,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AddColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AddColumn.class);
 
   private final QualifiedName tableName;
   private final ColumnDefinition column;
@@ -42,10 +54,11 @@ public class AddColumn extends Statement {
       final boolean tableIfExists,
       final boolean columnIfNotExists,
       final boolean view) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.column = requireNonNull(column, "column is null");
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+    this.column = requireNonNull(column, DataNodeQueryMessages.EXCEPTION_COLUMN_IS_NULL_0C404041);
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
@@ -72,8 +85,8 @@ public class AddColumn extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitAddColumn(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitAddColumn(this, context);
   }
 
   @Override
@@ -111,5 +124,14 @@ public class AddColumn extends Statement {
         .add("columnIfNotExists", columnIfNotExists)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += column == null ? 0L : column.ramBytesUsed();
+    return size;
   }
 }

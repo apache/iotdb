@@ -23,7 +23,45 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.security.Identity;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -33,43 +71,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatement
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
-import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -116,12 +119,17 @@ public class Analysis implements IAnalysis {
   private List<TEndPoint> redirectNodeList;
 
   @Nullable private Statement root;
+  private boolean needSetHighestPriority;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
   private String updateType;
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
+
+  // WITH clause stored during analyze phase. Required for constant folding and CTE materialization
+  // subqueries, which cannot directly access the WITH clause
+  private With with;
 
   // map expandable query to the node being the inner recursive reference
   private final Map<NodeRef<Query>, Node> expandableNamedQueries = new LinkedHashMap<>();
@@ -252,9 +260,25 @@ public class Analysis implements IAnalysis {
 
   private boolean isQuery = false;
 
+  // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
+  // in advance (predicate folding). The planner needs to parse and execute these subqueries
+  // independently to utilize predicate pushdown optimization.
+  private SqlParser sqlParser;
+
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
-    this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
+    this.parameters =
+        ImmutableMap.copyOf(
+            requireNonNull(
+                parameters, DataNodeQueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892));
+  }
+
+  public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {
+    if (needSetHighestPriority) {
+      return;
+    }
+    //  the database of table has been judged to be 'information_schema' in outer
+    needSetHighestPriority = InformationSchema.QUERIES.equals(tableName.getObjectName());
   }
 
   public Map<NodeRef<Parameter>, Expression> getParameters() {
@@ -274,8 +298,28 @@ public class Analysis implements IAnalysis {
     this.updateType = updateType;
   }
 
+  public SqlParser getSqlParser() {
+    return sqlParser;
+  }
+
+  public void setSqlParser(SqlParser sqlParser) {
+    this.sqlParser = sqlParser;
+  }
+
   public Query getNamedQuery(Table table) {
     return namedQueries.get(NodeRef.of(table));
+  }
+
+  public Map<NodeRef<Table>, Query> getNamedQueries() {
+    return namedQueries;
+  }
+
+  public With getWith() {
+    return with;
+  }
+
+  public void setWith(With with) {
+    this.with = with;
   }
 
   public boolean isAnalyzed(Expression expression) {
@@ -283,15 +327,16 @@ public class Analysis implements IAnalysis {
   }
 
   public void registerNamedQuery(Table tableReference, Query query) {
-    requireNonNull(tableReference, "tableReference is null");
-    requireNonNull(query, "query is null");
+    requireNonNull(tableReference, DataNodeQueryMessages.EXCEPTION_TABLEREFERENCE_IS_NULL_C02D3A8F);
+    requireNonNull(query, DataNodeQueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
 
     namedQueries.put(NodeRef.of(tableReference), query);
   }
 
   public void registerExpandableQuery(Query query, Node recursiveReference) {
-    requireNonNull(query, "query is null");
-    requireNonNull(recursiveReference, "recursiveReference is null");
+    requireNonNull(query, DataNodeQueryMessages.EXCEPTION_QUERY_IS_NULL_689B7978);
+    requireNonNull(
+        recursiveReference, DataNodeQueryMessages.EXCEPTION_RECURSIVEREFERENCE_IS_NULL_24B9D5DC);
 
     expandableNamedQueries.put(NodeRef.of(query), recursiveReference);
   }
@@ -301,7 +346,9 @@ public class Analysis implements IAnalysis {
   }
 
   public Node getRecursiveReference(Query query) {
-    checkArgument(isExpandableQuery(query), "query is not registered as expandable");
+    checkArgument(
+        isExpandableQuery(query),
+        DataNodeQueryMessages.EXCEPTION_QUERY_IS_NOT_REGISTERED_AS_EXPANDABLE_FAAD8FC9);
     return expandableNamedQueries.get(NodeRef.of(query));
   }
 
@@ -318,7 +365,9 @@ public class Analysis implements IAnalysis {
         .orElseThrow(
             () ->
                 new IllegalArgumentException(
-                    format("Analysis does not contain information for node: %s", node)));
+                    format(
+                        DataNodeQueryMessages.ANALYSIS_DOES_NOT_CONTAIN_INFORMATION_FOR_NODE_FMT,
+                        node)));
   }
 
   public void setImplicitFromScope(QuerySpecification node, Scope scope) {
@@ -403,7 +452,10 @@ public class Analysis implements IAnalysis {
 
   public Type getType(Expression expression) {
     Type type = types.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    checkArgument(
+        type != null,
+        DataNodeQueryMessages.EXCEPTION_EXPRESSION_NOT_ANALYZED_COLON_ARG_D397B665,
+        expression);
     return type;
   }
 
@@ -523,7 +575,10 @@ public class Analysis implements IAnalysis {
   }
 
   public FillAnalysis getFill(Fill node) {
-    checkState(fill.containsKey(NodeRef.of(node)), "missing FillAnalysis for node %s", node);
+    checkState(
+        fill.containsKey(NodeRef.of(node)),
+        DataNodeQueryMessages.EXCEPTION_MISSING_FILLANALYSIS_FOR_NODE_ARG_7E5B19A4,
+        node);
     return fill.get(NodeRef.of(node));
   }
 
@@ -532,7 +587,10 @@ public class Analysis implements IAnalysis {
   }
 
   public long getOffset(Offset node) {
-    checkState(offset.containsKey(NodeRef.of(node)), "missing OFFSET value for node %s", node);
+    checkState(
+        offset.containsKey(NodeRef.of(node)),
+        DataNodeQueryMessages.EXCEPTION_MISSING_OFFSET_VALUE_FOR_NODE_ARG_4B107520,
+        node);
     return offset.get(NodeRef.of(node));
   }
 
@@ -545,7 +603,10 @@ public class Analysis implements IAnalysis {
   }
 
   public OptionalLong getLimit(Node node) {
-    checkState(limit.containsKey(NodeRef.of(node)), "missing LIMIT value for node %s", node);
+    checkState(
+        limit.containsKey(NodeRef.of(node)),
+        DataNodeQueryMessages.EXCEPTION_MISSING_LIMIT_VALUE_FOR_NODE_ARG_DD5FD777,
+        node);
     return limit.get(NodeRef.of(node));
   }
 
@@ -639,7 +700,9 @@ public class Analysis implements IAnalysis {
         .get(NodeRef.of(table))
         .getHandle()
         .orElseThrow(
-            () -> new IllegalArgumentException(format("%s is not a table reference", table)));
+            () ->
+                new IllegalArgumentException(
+                    format(DataNodeQueryMessages.S_IS_NOT_A_TABLE_REFERENCE, table)));
   }
 
   public Collection<TableSchema> getTables() {
@@ -656,12 +719,14 @@ public class Analysis implements IAnalysis {
 
   public ResolvedField getResolvedField(Expression expression) {
     checkArgument(
-        isColumnReference(expression), "Expression is not a column reference: %s", expression);
+        isColumnReference(expression),
+        DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NOT_A_COLUMN_REFERENCE_COLON_ARG_7957E705,
+        expression);
     return columnReferences.get(NodeRef.of(expression));
   }
 
   public boolean isColumnReference(Expression expression) {
-    requireNonNull(expression, "expression is null");
+    requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
     return columnReferences.containsKey(NodeRef.of(expression));
   }
 
@@ -714,7 +779,10 @@ public class Analysis implements IAnalysis {
 
   public Range getRange(RangeQuantifier quantifier) {
     Range range = ranges.get(NodeRef.of(quantifier));
-    checkNotNull(range, "missing range for quantifier %s", quantifier);
+    checkNotNull(
+        range,
+        DataNodeQueryMessages.EXCEPTION_MISSING_RANGE_FOR_QUANTIFIER_ARG_03461228,
+        quantifier);
     return range;
   }
 
@@ -728,7 +796,8 @@ public class Analysis implements IAnalysis {
 
   public Set<String> getUndefinedLabels(RowPattern pattern) {
     Set<String> labels = undefinedLabels.get(NodeRef.of(pattern));
-    checkNotNull(labels, "missing undefined labels for %s", pattern);
+    checkNotNull(
+        labels, DataNodeQueryMessages.EXCEPTION_MISSING_UNDEFINED_LABELS_FOR_ARG_CA615EC2, pattern);
     return labels;
   }
 
@@ -910,7 +979,9 @@ public class Analysis implements IAnalysis {
 
   @Override
   public TsBlock constructResultForMemorySource(final MPPQueryContext context) {
-    requireNonNull(getStatement(), "root statement is analysis is null");
+    requireNonNull(
+        getStatement(),
+        DataNodeQueryMessages.EXCEPTION_ROOT_STATEMENT_IS_ANALYSIS_IS_NULL_36BCD4D1);
     final StatementMemorySource memorySource =
         new TableModelStatementMemorySourceVisitor()
             .process(getStatement(), new TableModelStatementMemorySourceContext(context, this));
@@ -929,8 +1000,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    return root instanceof ShowStatement
-        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
+    return needSetHighestPriority;
   }
 
   @Override
@@ -1011,8 +1081,11 @@ public class Analysis implements IAnalysis {
     private final Identity identity;
 
     public AccessControlInfo(AccessControl accessControl, Identity identity) {
-      this.accessControl = requireNonNull(accessControl, "accessControl is null");
-      this.identity = requireNonNull(identity, "identity is null");
+      this.accessControl =
+          requireNonNull(
+              accessControl, DataNodeQueryMessages.EXCEPTION_ACCESSCONTROL_IS_NULL_F534EBDD);
+      this.identity =
+          requireNonNull(identity, DataNodeQueryMessages.EXCEPTION_IDENTITY_IS_NULL_846265BA);
     }
 
     public AccessControl getAccessControl() {
@@ -1049,8 +1122,8 @@ public class Analysis implements IAnalysis {
     private final QualifiedObjectName name;
 
     public TableEntry(Optional<TableSchema> handle, QualifiedObjectName name) {
-      this.handle = requireNonNull(handle, "handle is null");
-      this.name = requireNonNull(name, "name is null");
+      this.handle = requireNonNull(handle, DataNodeQueryMessages.EXCEPTION_HANDLE_IS_NULL_E82FA480);
+      this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     }
 
     public Optional<TableSchema> getHandle() {
@@ -1067,8 +1140,10 @@ public class Analysis implements IAnalysis {
     private final String columnName;
 
     public SourceColumn(QualifiedObjectName tableName, String columnName) {
-      this.tableName = requireNonNull(tableName, "tableName is null");
-      this.columnName = requireNonNull(columnName, "columnName is null");
+      this.tableName =
+          requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+      this.columnName =
+          requireNonNull(columnName, DataNodeQueryMessages.EXCEPTION_COLUMNNAME_IS_NULL_81635BA6);
     }
 
     public QualifiedObjectName getTableName() {
@@ -1114,10 +1189,24 @@ public class Analysis implements IAnalysis {
     // referencing each field of the row.
     private final Expression expression;
     private final Optional<List<Expression>> unfoldedExpressions;
+    private final Map<NodeRef<Expression>, Expression> lateralColumnAliasReferences;
 
     public SelectExpression(Expression expression, Optional<List<Expression>> unfoldedExpressions) {
-      this.expression = requireNonNull(expression, "expression is null");
+      this(expression, unfoldedExpressions, ImmutableMap.of());
+    }
+
+    public SelectExpression(
+        Expression expression,
+        Optional<List<Expression>> unfoldedExpressions,
+        Map<NodeRef<Expression>, Expression> lateralColumnAliasReferences) {
+      this.expression =
+          requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
       this.unfoldedExpressions = requireNonNull(unfoldedExpressions);
+      this.lateralColumnAliasReferences =
+          ImmutableMap.copyOf(
+              requireNonNull(
+                  lateralColumnAliasReferences,
+                  DataNodeQueryMessages.EXCEPTION_LATERALCOLUMNALIASREFERENCES_IS_NULL_0CC58C78));
     }
 
     public Expression getExpression() {
@@ -1126,6 +1215,10 @@ public class Analysis implements IAnalysis {
 
     public Optional<List<Expression>> getUnfoldedExpressions() {
       return unfoldedExpressions;
+    }
+
+    public Map<NodeRef<Expression>, Expression> getLateralColumnAliasReferences() {
+      return lateralColumnAliasReferences;
     }
   }
 
@@ -1147,7 +1240,8 @@ public class Analysis implements IAnalysis {
 
       checkArgument(
           leftJoinFields.size() == rightJoinFields.size(),
-          "Expected join fields for left and right to have the same size");
+          DataNodeQueryMessages
+              .EXCEPTION_EXPECTED_JOIN_FIELDS_FOR_LEFT_AND_RIGHT_TO_HAVE_THE_SAME_SIZE_21BFD449);
     }
 
     public List<Integer> getLeftJoinFields() {
@@ -1222,8 +1316,11 @@ public class Analysis implements IAnalysis {
     private final String authorization;
 
     public RoutineEntry(ResolvedFunction function, String authorization) {
-      this.function = requireNonNull(function, "function is null");
-      this.authorization = requireNonNull(authorization, "authorization is null");
+      this.function =
+          requireNonNull(function, DataNodeQueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
+      this.authorization =
+          requireNonNull(
+              authorization, DataNodeQueryMessages.EXCEPTION_AUTHORIZATION_IS_NULL_7CCA692F);
     }
 
     public ResolvedFunction getFunction() {
@@ -1286,9 +1383,14 @@ public class Analysis implements IAnalysis {
 
     public PredicateCoercions(
         Type valueType, Optional<Type> valueCoercion, Optional<Type> subqueryCoercion) {
-      this.valueType = requireNonNull(valueType, "valueType is null");
-      this.valueCoercion = requireNonNull(valueCoercion, "valueCoercion is null");
-      this.subqueryCoercion = requireNonNull(subqueryCoercion, "subqueryCoercion is null");
+      this.valueType =
+          requireNonNull(valueType, DataNodeQueryMessages.EXCEPTION_VALUETYPE_IS_NULL_A8582B5F);
+      this.valueCoercion =
+          requireNonNull(
+              valueCoercion, DataNodeQueryMessages.EXCEPTION_VALUECOERCION_IS_NULL_E1A004BF);
+      this.subqueryCoercion =
+          requireNonNull(
+              subqueryCoercion, DataNodeQueryMessages.EXCEPTION_SUBQUERYCOERCION_IS_NULL_33646290);
     }
 
     public Type getValueType() {
@@ -1361,9 +1463,11 @@ public class Analysis implements IAnalysis {
         boolean partitionByInherited,
         boolean orderByInherited,
         boolean frameInherited) {
-      this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-      this.orderBy = requireNonNull(orderBy, "orderBy is null");
-      this.frame = requireNonNull(frame, "frame is null");
+      this.partitionBy =
+          requireNonNull(partitionBy, DataNodeQueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B);
+      this.orderBy =
+          requireNonNull(orderBy, DataNodeQueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+      this.frame = requireNonNull(frame, DataNodeQueryMessages.EXCEPTION_FRAME_IS_NULL_5A92D609);
       this.partitionByInherited = partitionByInherited;
       this.orderByInherited = orderByInherited;
       this.frameInherited = frameInherited;
@@ -1422,8 +1526,9 @@ public class Analysis implements IAnalysis {
     private final Optional<Integer> atMost;
 
     public Range(Optional<Integer> atLeast, Optional<Integer> atMost) {
-      this.atLeast = requireNonNull(atLeast, "atLeast is null");
-      this.atMost = requireNonNull(atMost, "atMost is null");
+      this.atLeast =
+          requireNonNull(atLeast, DataNodeQueryMessages.EXCEPTION_ATLEAST_IS_NULL_2FE8D701);
+      this.atMost = requireNonNull(atMost, DataNodeQueryMessages.EXCEPTION_ATMOST_IS_NULL_778B3B3A);
     }
 
     public Optional<Integer> getAtLeast() {
@@ -1452,7 +1557,7 @@ public class Analysis implements IAnalysis {
 
     public ValueFillAnalysis(Literal filledValue) {
       super(FillPolicy.CONSTANT);
-      requireNonNull(filledValue, "filledValue is null");
+      requireNonNull(filledValue, DataNodeQueryMessages.EXCEPTION_FILLEDVALUE_IS_NULL_1FA907D6);
       this.filledValue = filledValue;
     }
 
@@ -1487,13 +1592,40 @@ public class Analysis implements IAnalysis {
     }
   }
 
+  public static class NextFillAnalysis extends FillAnalysis {
+    @Nullable private final TimeDuration timeBound;
+    @Nullable private final FieldReference fieldReference;
+    @Nullable private final List<FieldReference> groupingKeys;
+
+    public NextFillAnalysis(
+        TimeDuration timeBound, FieldReference fieldReference, List<FieldReference> groupingKeys) {
+      super(FillPolicy.NEXT);
+      this.timeBound = timeBound;
+      this.fieldReference = fieldReference;
+      this.groupingKeys = groupingKeys;
+    }
+
+    public Optional<TimeDuration> getTimeBound() {
+      return Optional.ofNullable(timeBound);
+    }
+
+    public Optional<FieldReference> getFieldReference() {
+      return Optional.ofNullable(fieldReference);
+    }
+
+    public Optional<List<FieldReference>> getGroupingKeys() {
+      return Optional.ofNullable(groupingKeys);
+    }
+  }
+
   public static class LinearFillAnalysis extends FillAnalysis {
     private final FieldReference fieldReference;
     @Nullable private final List<FieldReference> groupingKeys;
 
     public LinearFillAnalysis(FieldReference fieldReference, List<FieldReference> groupingKeys) {
       super(FillPolicy.LINEAR);
-      requireNonNull(fieldReference, "fieldReference is null");
+      requireNonNull(
+          fieldReference, DataNodeQueryMessages.EXCEPTION_FIELDREFERENCE_IS_NULL_0B07EA50);
       this.fieldReference = fieldReference;
       this.groupingKeys = groupingKeys;
     }
@@ -1530,9 +1662,11 @@ public class Analysis implements IAnalysis {
     private final List<ColumnSchema> columns;
 
     public Insert(Table table, List<ColumnSchema> columns) {
-      this.table = requireNonNull(table, "table is null");
-      this.columns = requireNonNull(columns, "columns is null");
-      checkArgument(!columns.isEmpty(), "No columns given to insert");
+      this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+      this.columns =
+          requireNonNull(columns, DataNodeQueryMessages.EXCEPTION_COLUMNS_IS_NULL_6C8F32B3);
+      checkArgument(
+          !columns.isEmpty(), DataNodeQueryMessages.EXCEPTION_NO_COLUMNS_GIVEN_TO_INSERT_52C42E47);
     }
 
     public Table getTable() {

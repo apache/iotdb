@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -164,19 +165,10 @@ public class IoTDBDeviceIT {
       }
 
       try {
-        statement.executeQuery("show devices from table0 where temperature = 37.6");
-        fail("Show devices shall fail for measurement predicate");
-      } catch (final Exception e) {
-        assertEquals(
-            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
-            e.getMessage());
-      }
-
-      try {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("616: Column 'a' cannot be resolved", e.getMessage());
+        assertEquals("701: Column 'a' is not an attribute or tag column", e.getMessage());
       }
 
       // Test fully qualified name
@@ -222,6 +214,34 @@ public class IoTDBDeviceIT {
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals("701: Update's attribute value must be STRING, TEXT or null.", e.getMessage());
+      }
+
+      try {
+        statement.execute("show devices from table0 where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'humidity' is not an attribute or tag column", e.getMessage());
+      }
+
+      try {
+        statement.execute("count devices from table0 where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'humidity' is not an attribute or tag column", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set model = '1' where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'humidity' is not an attribute or tag column", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set model = humidity");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
       }
 
       // Test filter with no effect
@@ -270,9 +290,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("delete devices from table0 where time = 1");
         fail("Delete devices shall fail when specifies non tag column");
       } catch (final Exception e) {
-        assertEquals(
-            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
-            e.getMessage());
+        assertEquals("701: Column 'time' is not an attribute or tag column", e.getMessage());
       }
     }
   }

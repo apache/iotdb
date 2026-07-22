@@ -20,16 +20,19 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
@@ -40,7 +43,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDist
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
 public class AddExchangeNodes
-    extends PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
+    implements PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
 
   private final MPPQueryContext queryContext;
 
@@ -68,7 +71,7 @@ public class AddExchangeNodes
               SAME_WITH_ALL_CHILDREN,
               context
                   .nodeDistributionMap
-                  .get(node.getChildren().get(0).getPlanNodeId())
+                  .get(newNode.getChildren().get(0).getPlanNodeId())
                   .getRegion()));
       return newNode;
     }
@@ -96,6 +99,14 @@ public class AddExchangeNodes
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
+    return node;
+  }
+
+  @Override
+  public PlanNode visitCteScan(
+      CteScanNode node, TableDistributedPlanGenerator.PlanContext context) {
+    context.nodeDistributionMap.put(
+        node.getPlanNodeId(), new NodeDistribution(NO_CHILD, DataPartition.NOT_ASSIGNED));
     return node;
   }
 
@@ -129,6 +140,9 @@ public class AddExchangeNodes
 
     ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
     exchangeNode.setChild(child);
+    context.nodeDistributionMap.put(
+        exchangeNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
     exchangeNode.setOutputSymbols(child.getOutputSymbols());
     newNode.setChild(exchangeNode);
 
@@ -136,6 +150,63 @@ public class AddExchangeNodes
         newNode.getPlanNodeId(),
         new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
     context.hasExchangeNode = true;
+    return newNode;
+  }
+
+  @Override
+  public PlanNode visitCopyTo(CopyToNode node, TableDistributedPlanGenerator.PlanContext context) {
+    CopyToNode newNode = (CopyToNode) node.clone();
+
+    PlanNode child = newNode.getChild();
+    child = child.accept(this, context);
+
+    ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+    exchangeNode.setChild(child);
+    context.nodeDistributionMap.put(
+        exchangeNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    exchangeNode.setOutputSymbols(child.getOutputSymbols());
+    newNode.setChild(exchangeNode);
+
+    context.nodeDistributionMap.put(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    context.hasExchangeNode = true;
+    return newNode;
+  }
+
+  @Override
+  public PlanNode visitCollect(
+      CollectNode node, TableDistributedPlanGenerator.PlanContext context) {
+    PlanNode newNode = node.clone();
+    if (node.getChildren().size() == 1) {
+      newNode.addChild(node.getChildren().get(0).accept(this, context));
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(),
+          new NodeDistribution(
+              SAME_WITH_ALL_CHILDREN,
+              context
+                  .nodeDistributionMap
+                  .get(newNode.getChildren().get(0).getPlanNodeId())
+                  .getRegion()));
+      return newNode;
+    }
+
+    for (PlanNode child : node.getChildren()) {
+      PlanNode rewriteNode = child.accept(this, context);
+      ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.addChild(rewriteNode);
+      exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
+      newNode.addChild(exchangeNode);
+      context.hasExchangeNode = true;
+      context.nodeDistributionMap.put(
+          exchangeNode.getPlanNodeId(),
+          new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    }
+    context.nodeDistributionMap.put(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+
     return newNode;
   }
 

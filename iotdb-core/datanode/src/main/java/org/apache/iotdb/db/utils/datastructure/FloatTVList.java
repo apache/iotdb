@@ -64,6 +64,15 @@ public abstract class FloatTVList extends TVList {
   }
 
   @Override
+  public synchronized TVList cloneForFlushSort() {
+    FloatTVList cloneList = FloatTVList.newList();
+    cloneAs(cloneList);
+    cloneList.bitMap = this.bitMap;
+    cloneList.values = this.values;
+    return cloneList;
+  }
+
+  @Override
   public synchronized FloatTVList clone() {
     FloatTVList cloneList = FloatTVList.newList();
     cloneAs(cloneList);

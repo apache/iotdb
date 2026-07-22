@@ -33,15 +33,16 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,28 +55,75 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
-import java.util.Objects;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLoadTsFileWithModIT {
-  private File tmpDir;
+  private static File tmpDir;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     try {
-      for (final File file : Objects.requireNonNull(tmpDir.listFiles())) {
-        Files.delete(file.toPath());
+      if (tmpDir != null && tmpDir.exists()) {
+        File[] files = tmpDir.listFiles();
+        if (files != null) {
+          for (File file : files) {
+            try {
+              Files.delete(file.toPath());
+            } catch (IOException ignored) {
+              // ignore
+            }
+          }
+        }
+        try {
+          Files.delete(tmpDir.toPath());
+        } catch (IOException ignored) {
+          // ignore
+        }
       }
-      Files.delete(tmpDir.toPath());
     } finally {
       EnvFactory.getEnv().cleanClusterEnvironment();
+    }
+  }
+
+  private static void clearTmpDir() {
+    if (tmpDir == null || !tmpDir.exists()) {
+      return;
+    }
+    File[] files = tmpDir.listFiles();
+    if (files == null) {
+      return;
+    }
+    for (File file : files) {
+      try {
+        Files.delete(file.toPath());
+      } catch (IOException ignored) {
+        // ignore
+      }
+    }
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupTestDb() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.test.**");
+      executeQuietly(statement, "DELETE DATABASE root.test");
+    } catch (SQLException ignored) {
+      // ignore
     }
   }
 
@@ -131,17 +179,22 @@ public class IoTDBLoadTsFileWithModIT {
           DataRegionException,
           WriteProcessException,
           IllegalPathException {
-    generateFileWithNewModFile();
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
+    try {
+      generateFileWithNewModFile();
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
+        statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet =
-          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(3, resultSet.getLong("c"));
+        try (final ResultSet resultSet =
+            statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(3, resultSet.getLong("c"));
+        }
       }
+    } finally {
+      clearTmpDir();
+      cleanupTestDb();
     }
   }
 
@@ -152,44 +205,56 @@ public class IoTDBLoadTsFileWithModIT {
           DataRegionException,
           WriteProcessException,
           IllegalPathException {
-    generateFileWithNewModFile();
-    final String databaseName = "root.test.d1";
+    try {
+      generateFileWithNewModFile();
+      final String databaseName = "root.test.d1";
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
 
-      statement.execute(
-          String.format(
-              "load \'%s\' with ("
-                  + "'database-name'='%s',"
-                  + "'database-level'='2',"
-                  + "'verify'='true',"
-                  + "'on-success'='none',"
-                  + "'async'='true')",
-              tmpDir.getAbsolutePath(), databaseName));
+        statement.execute(
+            String.format(
+                "load \'%s\' with ("
+                    + "'database-name'='%s',"
+                    + "'database-level'='2',"
+                    + "'verify'='true',"
+                    + "'on-success'='none',"
+                    + "'async'='true')",
+                tmpDir.getAbsolutePath(), databaseName));
 
-      boolean databaseFound = false;
-      out:
-      for (int i = 0; i < 10; i++) {
-        try (final ResultSet resultSet = statement.executeQuery("show databases")) {
-          while (resultSet.next()) {
-            final String currentDatabase = resultSet.getString(1);
-            if (databaseName.equalsIgnoreCase(currentDatabase)) {
-              databaseFound = true;
-              break out;
+        boolean databaseFound = false;
+        for (int i = 0; i < 10; i++) {
+          try (final ResultSet resultSet = statement.executeQuery("show databases")) {
+            while (resultSet.next()) {
+              final String currentDatabase = resultSet.getString(1);
+              if (databaseName.equalsIgnoreCase(currentDatabase)) {
+                databaseFound = true;
+                break;
+              }
             }
+          } catch (InconsistentDataException ignored) {
+            // Async load propagates the new database metadata to different DataNodes at
+            // slightly different times, so "show databases" may be inconsistent transiently.
+          }
+
+          if (databaseFound) {
+            break;
           }
 
           try {
             Thread.sleep(1000);
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             break;
           }
         }
+        Assert.assertTrue(
+            "The `database-level` parameter is not working; the generated database does not contain 'root.test.d1'.",
+            databaseFound);
       }
-      Assert.assertTrue(
-          "The `database-level` parameter is not working; the generated database does not contain 'root.test.d1'.",
-          databaseFound);
+    } finally {
+      clearTmpDir();
+      cleanupTestDb();
     }
   }
 
@@ -200,21 +265,26 @@ public class IoTDBLoadTsFileWithModIT {
           DataRegionException,
           WriteProcessException,
           IllegalPathException {
-    generateFileWithOldModFile();
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
+    try {
+      generateFileWithOldModFile();
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
+        statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet =
-          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(3, resultSet.getLong("c"));
-        Assert.assertTrue(
-            new File(tmpDir, "1-1-0-0.tsfile" + ModificationFileV1.FILE_SUFFIX).exists());
-        Assert.assertFalse(
-            new File(tmpDir, "1-1-0-0.tsfile" + ModificationFile.FILE_SUFFIX).exists());
+        try (final ResultSet resultSet =
+            statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(3, resultSet.getLong("c"));
+          Assert.assertTrue(
+              new File(tmpDir, "1-1-0-0.tsfile" + ModificationFileV1.FILE_SUFFIX).exists());
+          Assert.assertFalse(
+              new File(tmpDir, "1-1-0-0.tsfile" + ModificationFile.FILE_SUFFIX).exists());
+        }
       }
+    } finally {
+      clearTmpDir();
+      cleanupTestDb();
     }
   }
 }

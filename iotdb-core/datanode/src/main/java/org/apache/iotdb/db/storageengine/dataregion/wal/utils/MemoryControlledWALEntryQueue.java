@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -55,12 +56,13 @@ public class MemoryControlledWALEntryQueue {
         if (elementSize
             > SystemInfo.getInstance().getWalBufferQueueMemoryBlock().getTotalMemorySizeInBytes()) {
           throw new IoTDBRuntimeException(
-              "The element size of WALEntry "
-                  + elementSize
-                  + " is larger than the total memory size of wal buffer queue "
-                  + SystemInfo.getInstance()
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_THE_ELEMENT_SIZE_OF_WALENTRY_S_IS_LARGER_THAN_THE_TOTAL_E494520D,
+                  elementSize,
+                  SystemInfo.getInstance()
                       .getWalBufferQueueMemoryBlock()
-                      .getTotalMemorySizeInBytes(),
+                      .getTotalMemorySizeInBytes()),
               WAL_ENTRY_TOO_LARGE.getStatusCode());
         }
         nonFullCondition.wait();

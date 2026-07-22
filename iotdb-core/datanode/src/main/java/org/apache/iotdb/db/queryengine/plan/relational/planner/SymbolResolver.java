@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+
 public interface SymbolResolver {
   Object getValue(Symbol symbol);
 }

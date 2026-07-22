@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -65,7 +66,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
   @Override
   public void directOffer(final Event event) {
-    inputPendingQueue.directOffer(event);
+    inputPendingQueue.offer(event);
   }
 
   private synchronized Event filter(final Event event) { // make it synchronized
@@ -114,7 +115,8 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
       return false;
     }
     LOGGER.info(
-        "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_DETECT_DUPLICATED_PIPETSFILEINSERTIONEVENT_23A4740C,
         event.coreReportMessage());
     return true;
   }

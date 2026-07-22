@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +55,9 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     File dir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOGGER.info("create schema folder {}.", dir);
+        LOGGER.info(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER, dir);
       } else {
-        LOGGER.warn("create schema folder {} failed.", dir);
+        LOGGER.warn(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER_FAILED, dir);
       }
     }
 

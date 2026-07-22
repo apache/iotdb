@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -36,6 +39,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgent {
@@ -54,10 +61,20 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseType.ACK.getType());
 
   private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
+  private final Set<SubscriptionReceiver> activeReceivers = ConcurrentHashMap.newKeySet();
+  private final ScheduledExecutorService receiverTimeoutChecker =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          SubscriptionReceiverAgent.class.getSimpleName() + "-Timeout-Checker");
 
   SubscriptionReceiverAgent() {
     RECEIVER_CONSTRUCTORS.put(
         PipeSubscribeRequestVersion.VERSION_1.getVersion(), SubscriptionReceiverV1::new);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        receiverTimeoutChecker,
+        this::checkReceiverTimeouts,
+        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+        TimeUnit.MILLISECONDS);
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
@@ -67,14 +84,19 @@ public class SubscriptionReceiverAgent {
 
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      return getReceiver(reqVersion).handle(req);
+      final SubscriptionReceiver receiver = getReceiver(reqVersion);
+      activeReceivers.add(receiver);
+      receiver.handleTimeout();
+      return receiver.handle(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_VERSION_ERROR,
               String.format("Unknown PipeSubscribeRequestVersion %s.", reqVersion));
       LOGGER.warn(
-          "Subscription: Unknown PipeSubscribeRequestVersion, response status = {}.", status);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_RESPONSE_56E5D93F,
+          status);
       return new TPipeSubscribeResp(
           status,
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
@@ -102,8 +124,8 @@ public class SubscriptionReceiverAgent {
     final byte receiverThreadLocalVersion = receiverThreadLocal.get().getVersion().getVersion();
     if (receiverThreadLocalVersion != reqVersion) {
       LOGGER.warn(
-          "The subscription request version {} is different from the client request version {},"
-              + " the receiver will be reset to the client request version.",
+          DataNodePipeMessages
+              .PIPE_LOG_THE_SUBSCRIPTION_REQUEST_VERSION_IS_DIFFERENT_FROM_THE_CLIENT_324A125F,
           receiverThreadLocalVersion,
           reqVersion);
       receiverThreadLocal.remove();
@@ -118,7 +140,10 @@ public class SubscriptionReceiverAgent {
       receiverThreadLocal.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
       throw new UnsupportedOperationException(
-          String.format("Unsupported subscription request version %d", reqVersion));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNSUPPORTED_SUBSCRIPTION_REQUEST_VERSION_D_1E7C211A,
+              reqVersion));
     }
     return receiverThreadLocal.get();
   }
@@ -126,8 +151,13 @@ public class SubscriptionReceiverAgent {
   public final void handleClientExit() {
     final SubscriptionReceiver receiver = receiverThreadLocal.get();
     if (receiver != null) {
+      activeReceivers.remove(receiver);
       receiver.handleExit();
       receiverThreadLocal.remove();
     }
+  }
+
+  private void checkReceiverTimeouts() {
+    activeReceivers.forEach(SubscriptionReceiver::handleTimeout);
   }
 }

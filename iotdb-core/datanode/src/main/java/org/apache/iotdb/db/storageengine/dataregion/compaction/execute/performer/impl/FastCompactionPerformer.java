@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionSeriesContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
@@ -162,6 +165,7 @@ public class FastCompactionPerformer
                 ? new FastCrossCompactionWriter(
                     targetFiles, seqFiles, readerCacheMap, encryptParameter)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
+      compactionWriter.setCompactionTaskSummary(subTaskSummary);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());
@@ -181,8 +185,7 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(unseqFiles);
         boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl = deviceIterator.getTTLForCurrentDevice();
-        sortedSourceFiles.removeIf(
-            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
+        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
@@ -279,10 +282,9 @@ public class FastCompactionPerformer
     // timeseries metadata, in order to facilitate the reading of chunkMetadata directly by this
     // offset later. Here we don't need to deserialize chunk metadata, we can deserialize them and
     // get their schema later.
-    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
-
-    List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+    Map<String, CompactionSeriesContext> compactionSeriesContextMap =
+        deviceIterator.getCompactionSeriesContextOfCurrentDevice();
+    List<String> allMeasurements = new ArrayList<>(compactionSeriesContextMap.keySet());
     allMeasurements.sort((String::compareTo));
 
     int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);
@@ -305,8 +307,8 @@ public class FastCompactionPerformer
           CompactionTaskManager.getInstance()
               .submitSubTask(
                   new FastCompactionPerformerSubTask(
+                      compactionSeriesContextMap,
                       fastCrossCompactionWriter,
-                      timeseriesMetadataOffsetMap,
                       readerCacheMap,
                       modificationCache,
                       sortedSourceFiles,
@@ -326,11 +328,12 @@ public class FastCompactionPerformer
         Throwable cause = e.getCause();
         if (cause instanceof CompactionLastTimeCheckFailedException) {
           throw (CompactionLastTimeCheckFailedException) cause;
-        }
-        if (cause instanceof StopReadTsFileByInterruptException) {
+        } else if (cause instanceof StopReadTsFileByInterruptException) {
           throw (StopReadTsFileByInterruptException) cause;
+        } else if (cause instanceof ChunkTypeInconsistentException) {
+          throw (ChunkTypeInconsistentException) cause;
         }
-        throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
+        throw new IOException(StorageEngineMessages.SUB_COMPACTION_TASK_MEET_ERRORS, e);
       } catch (InterruptedException e) {
         abortAllSubTasks(futures);
         throw e;
@@ -359,8 +362,8 @@ public class FastCompactionPerformer
   public void setSummary(CompactionTaskSummary summary) {
     if (!(summary instanceof FastCompactionTaskSummary)) {
       throw new IllegalCompactionTaskSummaryException(
-          "CompactionTaskSummary for FastCompactionPerformer "
-              + "should be FastCompactionTaskSummary");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_COMPACTIONTASKSUMMARY_FOR_FASTCOMPACTIONPERFORMER_SHOULD_F5710AA8);
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
   }
@@ -375,7 +378,9 @@ public class FastCompactionPerformer
     if (Thread.interrupted() || subTaskSummary.isCancel()) {
       throw new InterruptedException(
           String.format(
-              "[Compaction] compaction for target file %s abort", targetFiles.toString()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILE_S_ABORT_46ECFF41,
+              targetFiles.toString()));
     }
   }
 

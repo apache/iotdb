@@ -34,6 +34,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.ObjectType.OBJECT;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
@@ -89,6 +90,9 @@ public class CompatibleResolver {
     addCondition(BLOB, BLOB, BLOB);
     addCondition(BLOB, UNKNOWN, BLOB);
 
+    addCondition(OBJECT, OBJECT, OBJECT);
+    addCondition(OBJECT, UNKNOWN, OBJECT);
+
     addCondition(UNKNOWN, INT32, INT32);
     addCondition(UNKNOWN, INT64, INT64);
     addCondition(UNKNOWN, FLOAT, FLOAT);
@@ -99,6 +103,7 @@ public class CompatibleResolver {
     addCondition(UNKNOWN, TEXT, TEXT);
     addCondition(UNKNOWN, STRING, STRING);
     addCondition(UNKNOWN, BLOB, BLOB);
+    addCondition(UNKNOWN, OBJECT, OBJECT);
     addCondition(UNKNOWN, UNKNOWN, UNKNOWN);
   }
 

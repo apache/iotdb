@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -32,19 +41,22 @@ import static java.util.Objects.requireNonNull;
 
 public class ShowTables extends Statement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowTables.class);
+
   @Nullable private final Identifier dbName;
 
   private final boolean isDetails;
 
   public ShowTables(final NodeLocation location, final boolean isDetails) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.dbName = null;
     this.isDetails = isDetails;
   }
 
   public ShowTables(final NodeLocation location, final Identifier dbName, final boolean isDetails) {
-    super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.dbName = requireNonNull(dbName, DataNodeQueryMessages.EXCEPTION_DBNAME_IS_NULL_4521C4EE);
     this.isDetails = isDetails;
   }
 
@@ -57,8 +69,8 @@ public class ShowTables extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitShowTables(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowTables(this, context);
   }
 
   @Override
@@ -86,5 +98,13 @@ public class ShowTables extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("dbName", dbName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(dbName);
+    return size;
   }
 }

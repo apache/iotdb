@@ -26,9 +26,10 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -175,8 +176,10 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
-              mTreeSnapshotPath, tagLogSnapshotPath, holderMessage),
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT,
+              mTreeSnapshotPath,
+              tagLogSnapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -196,8 +199,10 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
-              mTreeSnapshotPath, tagLogSnapshotPath, holderMessage),
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT,
+              mTreeSnapshotPath,
+              tagLogSnapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -355,7 +360,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Decrease reference count for mTree snapshot {} or tLog {} or attribute snapshot {} error.",
+            DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_MTREE_SNAPSHOT_OR,
             mTreeSnapshotPath,
             tagLogSnapshotPath,
             attributeSnapshotPath,

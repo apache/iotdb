@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -35,12 +39,15 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
@@ -68,9 +75,19 @@ public class LoadTsFileStatement extends Statement {
   private List<Boolean> isTableModel;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
-    this.file = new File(filePath);
+    this(filePath, true);
+  }
+
+  public static LoadTsFileStatement createUnchecked(String filePath) throws FileNotFoundException {
+    return new LoadTsFileStatement(filePath, false);
+  }
+
+  private LoadTsFileStatement(String filePath, boolean validateSourcePath)
+      throws FileNotFoundException {
+    this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
@@ -79,7 +96,7 @@ public class LoadTsFileStatement extends Statement {
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
 
-    this.tsFiles = processTsFile(file);
+    this.tsFiles = processTsFile(file, validateSourcePath);
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
@@ -87,6 +104,15 @@ public class LoadTsFileStatement extends Statement {
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
+    return processTsFile(file, true);
+  }
+
+  public static List<File> processTsFile(final File file, final boolean validateSourcePath)
+      throws FileNotFoundException {
+    if (validateSourcePath) {
+      validateLoadSourcePath(file);
+    }
+
     final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
@@ -94,10 +120,11 @@ public class LoadTsFileStatement extends Statement {
       if (file.listFiles() == null) {
         throw new FileNotFoundException(
             String.format(
-                "Can not find %s on this machine, notice that load can only handle files on this machine.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
                 file.getPath()));
       }
-      tsFiles.addAll(findAllTsFile(file));
+      tsFiles.addAll(findAllTsFile(file, validateSourcePath));
     }
     sortTsFiles(tsFiles);
     return tsFiles;
@@ -119,7 +146,8 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private static List<File> findAllTsFile(File file) {
+  private static List<File> findAllTsFile(File file, boolean validateSourcePath)
+      throws FileNotFoundException {
     final File[] files = file.listFiles();
     if (files == null) {
       return Collections.emptyList();
@@ -127,13 +155,57 @@ public class LoadTsFileStatement extends Statement {
 
     final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
+      if (validateSourcePath) {
+        validateLoadSourcePath(nowFile);
+      }
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        tsFiles.addAll(findAllTsFile(nowFile));
+        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath));
       }
     }
     return tsFiles;
+  }
+
+  public static void validateLoadSourcePath(final String filePath) throws FileNotFoundException {
+    validateLoadSourcePath(new File(filePath));
+  }
+
+  private static void validateLoadSourcePath(final File file) throws FileNotFoundException {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isLoadTsFileSourcePathCheckEnabled()) {
+      return;
+    }
+
+    final Path sourcePath = canonicalPath(file);
+    final String[] allowedDirs = config.getLoadTsFileAllowedDirs();
+    final Path[] allowedDirCanonicalPaths = config.getLoadTsFileAllowedDirCanonicalPaths();
+
+    for (final Path allowedDirCanonicalPath : allowedDirCanonicalPaths) {
+      if (sourcePath.startsWith(allowedDirCanonicalPath)) {
+        return;
+      }
+    }
+
+    throw new FileNotFoundException(
+        String.format(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F,
+            sourcePath,
+            Arrays.toString(allowedDirs)));
+  }
+
+  private static Path canonicalPath(final File file) throws FileNotFoundException {
+    try {
+      return file.getCanonicalFile().toPath();
+    } catch (final IOException e) {
+      throw new FileNotFoundException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6,
+              file.getPath(),
+              e.getMessage()));
+    }
   }
 
   private static void sortTsFiles(List<File> files) {
@@ -223,6 +295,14 @@ public class LoadTsFileStatement extends Statement {
     return isGeneratedByPipe;
   }
 
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -266,6 +346,28 @@ public class LoadTsFileStatement extends Statement {
     }
   }
 
+  public void updateDatabaseLevelByTreeDatabase() {
+    final Integer databaseLevel = getDatabaseLevelByTreeDatabase(database);
+    if (databaseLevel != null) {
+      this.databaseLevel = databaseLevel;
+    }
+  }
+
+  public static Integer getDatabaseLevelByTreeDatabase(final String database) {
+    if (database == null) {
+      return null;
+    }
+    try {
+      final String[] nodes = PathUtils.splitPathToDetachedNodes(database);
+      if (nodes.length > 1 && PATH_ROOT.equals(nodes[0])) {
+        return nodes.length - 1;
+      }
+    } catch (final IllegalPathException ignored) {
+      // Keep the configured database level when database is not a legal tree path.
+    }
+    return null;
+  }
+
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
     int lastNonMiniTsFileIndex = -1;
 
@@ -307,14 +409,63 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
+  public boolean shouldSplit() {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
+  }
+
+  /**
+   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @return the list of sub-statements
+   */
+  @Override
+  public List<LoadTsFileStatement> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFileStatement> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement();
+      statement.databaseLevel = this.databaseLevel;
+      statement.database = this.database;
+      statement.verifySchema = this.verifySchema;
+      statement.deleteAfterLoad = this.deleteAfterLoad;
+      statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      statement.autoCreateDatabase = this.autoCreateDatabase;
+      statement.isAsyncLoad = this.isAsyncLoad;
+      statement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      statement.tsFiles = new ArrayList<>(batchFiles);
+      statement.resources = new ArrayList<>(batchFiles.size());
+      statement.writePointCountList = new ArrayList<>(batchFiles.size());
+      statement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        statement.isTableModel.add(false);
+      }
+
+      subStatements.add(statement);
+    }
+
+    return subStatements;
+  }
+
+  @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
-      MPPQueryContext context) {
+  public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+      toRelationalStatement(MPPQueryContext context) {
     final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
@@ -331,7 +482,7 @@ public class LoadTsFileStatement extends Statement {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }
 
-    return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
+    return LoadTsFile.createUnchecked(null, file.getAbsolutePath(), loadAttributes);
   }
 
   @Override

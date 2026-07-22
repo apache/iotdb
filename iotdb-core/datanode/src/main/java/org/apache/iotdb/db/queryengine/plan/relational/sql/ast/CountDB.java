@@ -19,7 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
@@ -27,17 +35,19 @@ import static java.util.Objects.requireNonNull;
 
 public class CountDB extends Statement {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(CountDB.class);
+
   public CountDB(final NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCountDB(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitCountDB(this, context);
   }
 
   @Override
-  public List<? extends Node> getChildren() {
+  public List<Node> getChildren() {
     return ImmutableList.of();
   }
 
@@ -47,7 +57,7 @@ public class CountDB extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
@@ -57,5 +67,12 @@ public class CountDB extends Statement {
   @Override
   public String toString() {
     return "COUNT DATABASES";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

@@ -19,7 +19,6 @@ import secrets
 import string
 
 import torch
-from transformers.modeling_outputs import MoeCausalLMOutputWithPast
 
 
 def generate_req_id(length=10, charset=string.ascii_letters + string.digits) -> str:
@@ -56,25 +55,25 @@ def _slice_pkv(pkv, s, e):
     return out
 
 
-def split_moe_output(batch_out: MoeCausalLMOutputWithPast, split_sizes):
-    """
-    split batch_out with type: MoeCausalLMOutputWithPast into len(split_sizes)
-    split_sizes[i] = ith request's batch_size。
-    """
-    outs = []
-    start = 0
-    for bsz in split_sizes:
-        end = start + bsz
-        outs.append(
-            MoeCausalLMOutputWithPast(
-                loss=_slice_tensor(batch_out.loss, start, end),
-                logits=batch_out.logits[start:end],
-                past_key_values=_slice_pkv(batch_out.past_key_values, start, end),
-                hidden_states=_slice_tuple_of_tensors(
-                    batch_out.hidden_states, start, end
-                ),
-                attentions=_slice_tuple_of_tensors(batch_out.attentions, start, end),
-            )
-        )
-        start = end
-    return outs
+# def split_moe_output(batch_out: MoeCausalLMOutputWithPast, split_sizes):
+#     """
+#     split batch_out with type: MoeCausalLMOutputWithPast into len(split_sizes)
+#     split_sizes[i] = ith request's batch_size。
+#     """
+#     outs = []
+#     start = 0
+#     for bsz in split_sizes:
+#         end = start + bsz
+#         outs.append(
+#             MoeCausalLMOutputWithPast(
+#                 loss=_slice_tensor(batch_out.loss, start, end),
+#                 logits=batch_out.logits[start:end],
+#                 past_key_values=_slice_pkv(batch_out.past_key_values, start, end),
+#                 hidden_states=_slice_tuple_of_tensors(
+#                     batch_out.hidden_states, start, end
+#                 ),
+#                 attentions=_slice_tuple_of_tensors(batch_out.attentions, start, end),
+#             )
+#         )
+#         start = end
+#     return outs

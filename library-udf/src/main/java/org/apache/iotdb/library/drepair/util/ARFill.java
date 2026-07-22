@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.drepair.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.exception.UDFException;
 
@@ -51,7 +52,7 @@ public class ARFill extends ValueFill {
     if (factor == 0d || this.theta >= 1) {
       this.time = new long[] {0};
       this.repaired = new double[] {0D};
-      throw new UDFException("Cannot fit AR(1) model. Please try another method.");
+      throw new UDFException(LibraryUdfMessages.CANNOT_FIT_AR1_MODEL);
     }
     this.theta = acf / factor;
     double meanEpsilon = 0;
@@ -69,7 +70,7 @@ public class ARFill extends ValueFill {
     if (cntEpsilon == 0d) {
       this.time = new long[] {0};
       this.repaired = new double[] {0D};
-      throw new UDFException("Cannot fit AR(1) model. Please try another method.");
+      throw new UDFException(LibraryUdfMessages.CANNOT_FIT_AR1_MODEL);
     }
     meanEpsilon /= cntEpsilon;
     for (int i = 0; i < original.length; i++) {

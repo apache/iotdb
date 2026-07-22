@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -32,7 +33,8 @@ public enum CrossCompactionSelector {
     if (REWRITE.toString().equalsIgnoreCase(name)) {
       return REWRITE;
     }
-    throw new IllegalCompactionSelectorNameException("Illegal Cross Compaction Selector " + name);
+    throw new IllegalCompactionSelectorNameException(
+        StorageEngineMessages.ILLEGAL_CROSS_COMPACTION_SELECTOR + name);
   }
 
   @SuppressWarnings("squid:S1301")

@@ -30,14 +30,13 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.WrappedVoidSupplier;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
@@ -300,8 +299,7 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
         break;
       }
       for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
+        for (final Iterator<Tablet> it = message.getRecordTabletIterator(); it.hasNext(); ) {
           final Tablet tablet = it.next();
           LOGGER.info(
               "Inserting a tablet, device {}, times {}, measurements {}",
@@ -343,12 +341,13 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
       for (final SubscriptionMessage message : messages) {
         onReceived.incrementAndGet();
         // System.out.println(FORMAT.format(new Date()) + " onReceived=" + onReceived.get());
-        final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
-        try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+        final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
+        try (final ITsFileTreeReader tsFileReader = tsFileHandler.openTreeReader()) {
           for (int i = 0; i < devices.size(); i++) {
             final Path path = new Path(devices.get(i), "s_0", true);
-            final QueryDataSet dataSet =
-                tsFileReader.query(QueryExpression.create(Collections.singletonList(path), null));
+            final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                SubscriptionTreeReaderTestUtils.query(
+                    tsFileReader, Collections.singletonList(path));
             while (dataSet.hasNext()) {
               RowRecord next = dataSet.next();
               rowCounts.get(i).addAndGet(1);
@@ -382,8 +381,7 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
             session_src.executeNonQueryStatement("flush");
           }
           for (final SubscriptionMessage message : messages) {
-            for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-                it.hasNext(); ) {
+            for (final Iterator<Tablet> it = message.getRecordTabletIterator(); it.hasNext(); ) {
               final Tablet tablet = it.next();
               session.insertTablet(tablet);
             }
@@ -411,13 +409,13 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
             session_src.executeNonQueryStatement("flush");
           }
           for (final SubscriptionMessage message : messages) {
-            final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
-            try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+            final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
+            try (final ITsFileTreeReader tsFileReader = tsFileHandler.openTreeReader()) {
               for (int i = 0; i < devices.size(); i++) {
                 final Path path = new Path(devices.get(i), "s_0", true);
-                final QueryDataSet dataSet =
-                    tsFileReader.query(
-                        QueryExpression.create(Collections.singletonList(path), null));
+                final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                    SubscriptionTreeReaderTestUtils.query(
+                        tsFileReader, Collections.singletonList(path));
                 while (dataSet.hasNext()) {
                   dataSet.next();
                   counters.get(i).addAndGet(1);
@@ -462,13 +460,13 @@ public abstract class AbstractSubscriptionTreeRegressionIT extends AbstractSubsc
           }
           for (final SubscriptionMessage message : messages) {
             onReceived.incrementAndGet();
-            final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
-            try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+            final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
+            try (final ITsFileTreeReader tsFileReader = tsFileHandler.openTreeReader()) {
               for (int i = 0; i < devices.size(); i++) {
                 final Path path = new Path(devices.get(i), "s_0", true);
-                final QueryDataSet dataSet =
-                    tsFileReader.query(
-                        QueryExpression.create(Collections.singletonList(path), null));
+                final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                    SubscriptionTreeReaderTestUtils.query(
+                        tsFileReader, Collections.singletonList(path));
                 while (dataSet.hasNext()) {
                   dataSet.next();
                   counters.get(i).addAndGet(1);

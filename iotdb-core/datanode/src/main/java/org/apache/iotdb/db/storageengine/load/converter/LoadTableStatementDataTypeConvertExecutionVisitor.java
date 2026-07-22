@@ -21,15 +21,14 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,7 +43,7 @@ import java.util.Optional;
 import static org.apache.iotdb.db.storageengine.load.converter.LoadTreeStatementDataTypeConvertExecutionVisitor.handleTSStatus;
 
 public class LoadTableStatementDataTypeConvertExecutionVisitor
-    extends AstVisitor<Optional<TSStatus>, String> {
+    implements AstVisitor<Optional<TSStatus>, String> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTableStatementDataTypeConvertExecutionVisitor.class);
@@ -74,7 +73,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(errorMsg));
     }
 
-    LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION_DOT, loadTsFileStatement);
 
     // TODO: Use batch insert after Table model supports insertMultiTablets
     for (final File file : loadTsFileStatement.getTsFiles()) {
@@ -85,7 +84,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MIN_VALUE,
               Long.MAX_VALUE,
               null,
-              "root",
+              null,
               null,
               true)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
@@ -111,7 +110,10 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+            loadTsFileStatement,
+            e);
         return Optional.of(
             LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
                 loadTsFileStatement, e));
@@ -125,14 +127,16 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               tsfile -> {
                 FileUtils.deleteQuietly(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 
     LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        StorageEngineMessages
+            .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

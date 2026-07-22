@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.calc.execution.operator.AbstractOperator;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
 public abstract class AbstractSourceOperator extends AbstractOperator implements SourceOperator {
 

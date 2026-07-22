@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.drepair;
 
 import org.apache.iotdb.library.drepair.util.TimestampRepair;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -51,7 +52,7 @@ public class UDTFTimestampRepair implements UDTF {
         try {
           interval = Util.parseTime(intervalString, validator.getParameters());
         } catch (Exception ex) {
-          throw new UDFException("Invalid time format for interval.");
+          throw new UDFException(LibraryUdfMessages.INVALID_TIME_FORMAT_FOR_INTERVAL);
         }
       }
       validator.validate(
@@ -89,7 +90,7 @@ public class UDTFTimestampRepair implements UDTF {
     } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
       intervalMode = -3L;
     } else {
-      throw new UDFException("Illegal method.");
+      throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD_WITH_DOT);
     }
   }
 

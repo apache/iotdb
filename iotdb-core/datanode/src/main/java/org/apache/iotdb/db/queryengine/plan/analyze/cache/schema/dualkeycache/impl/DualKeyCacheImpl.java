@@ -144,26 +144,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void update(
       final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater) {
-    final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-    if (Objects.nonNull(entryGroup)) {
-      entryGroup
-          .getAllCacheEntries()
-          .forEachRemaining(
-              entry -> {
-                if (!secondKeyChecker.test(entry.getKey())) {
-                  return;
-                }
-                entryGroup.computeCacheEntry(
-                    entry.getKey(),
-                    memory ->
-                        (secondKey, cacheEntry) -> {
-                          if (Objects.nonNull(cacheEntry)) {
-                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                          }
-                          return cacheEntry;
-                        });
-              });
-    }
+    clearSecondEntry(firstKeyMap.get(firstKey), secondKeyChecker, updater);
     mayEvict();
   }
 
@@ -176,25 +157,31 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       if (!firstKeyChecker.test(firstKey)) {
         continue;
       }
-      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-      if (Objects.nonNull(entryGroup)) {
-        entryGroup
-            .getAllCacheEntries()
-            .forEachRemaining(
-                entry -> {
-                  if (!secondKeyChecker.test(entry.getKey())) {
-                    return;
-                  }
-                  entryGroup.computeCacheEntry(
-                      entry.getKey(),
-                      memory ->
-                          (secondKey, cacheEntry) -> {
-                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                            return cacheEntry;
-                          });
-                });
-      }
-      mayEvict();
+      clearSecondEntry(firstKeyMap.get(firstKey), secondKeyChecker, updater);
+    }
+    mayEvict();
+  }
+
+  public void clearSecondEntry(
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater) {
+    if (Objects.nonNull(entryGroup)) {
+      entryGroup
+          .getAllCacheEntries()
+          .forEachRemaining(
+              entry -> {
+                if (!secondKeyChecker.test(entry.getKey())) {
+                  return;
+                }
+                entryGroup.computeCacheEntryIfPresent(
+                    entry.getKey(),
+                    memory ->
+                        (secondKey, cacheEntry) -> {
+                          memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+                          return cacheEntry;
+                        });
+              });
     }
   }
 

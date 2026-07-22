@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.metrics.file;
 
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -91,21 +92,32 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   // region external update tsfile related metrics
-  public void addTsFile(String database, String regionId, long size, boolean seq, String name) {
-    updateGlobalTsFileCountAndSize(database, regionId, 1, size, seq);
+  public void addTsFile(TsFileResource tsFileResource) {
+    if (!tsFileResource.markAsRecordedByMetric()) {
+      return;
+    }
+    long size = tsFileResource.getTsFileSize();
+    boolean seq = tsFileResource.isSeq();
+    updateGlobalTsFileCountAndSize(
+        tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), 1, size, seq);
     try {
-      TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
       int level = tsFileName.getInnerCompactionCnt();
       updateLevelTsFileCountAndSize(size, 1, seq, level);
     } catch (IOException e) {
-      LOGGER.warn("Unexpected error occurred when getting tsfile name", e);
+      LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_ERROR_GETTING_TSFILE_NAME, e);
     }
   }
 
-  public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
+  public void deleteFile(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      if (!tsFileResource.markAsUnrecordedByMetric()) {
+        continue;
+      }
       String name = tsFileResource.getTsFile().getName();
       long size = tsFileResource.getTsFileSize();
+      boolean seq = tsFileResource.isSeq();
       updateGlobalTsFileCountAndSize(
           tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), -1, -size, seq);
       try {
@@ -113,7 +125,7 @@ public class TsFileMetrics implements IMetricSet {
         int level = tsFileName.getInnerCompactionCnt();
         updateLevelTsFileCountAndSize(-size, -1, seq, level);
       } catch (IOException e) {
-        LOGGER.warn("Unexpected error occurred when getting tsfile name", e);
+        LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_ERROR_GETTING_TSFILE_NAME, e);
       }
     }
   }

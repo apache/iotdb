@@ -52,16 +52,18 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // ExternalService
+    | createService | startService | stopService | dropService | showService
     // Pipe Task
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | alterTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
@@ -74,6 +76,8 @@ ddlStatement
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
     | createTableView
+    // for calculation point
+    | createCalcPoint | alterCalcPoint | dropCalcPoint | showCalcPoint
     ;
 
 dmlStatement
@@ -89,9 +93,10 @@ dclStatement
 utilityStatement
     : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
+    | repairDataPartitionTable | showRepairDataPartitionTableProgress
     ;
 
 /**
@@ -116,8 +121,8 @@ databaseAttributeClause
 databaseAttributeKey
     : TTL
     | TIME_PARTITION_INTERVAL
-    | SCHEMA_REGION_GROUP_NUM
-    | DATA_REGION_GROUP_NUM
+    | MAX_SCHEMA_REGION_GROUP_NUM
+    | MAX_DATA_REGION_GROUP_NUM
     ;
 
 // ---- Drop Database
@@ -170,6 +175,8 @@ alterTimeseries
 
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
+    // Change into new data type
+    | SET DATA TYPE newType=attributeValue
     | SET attributePair (COMMA attributePair)*
     | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
@@ -196,7 +203,12 @@ showDevices
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? orderByTimeseriesClause? rowPaginationClause?
+    ;
+
+// order by timeseries for SHOW TIMESERIES
+orderByTimeseriesClause
+    : ORDER BY TIMESERIES (ASC | DESC)?
     ;
 
 // ---- Show Child Paths
@@ -435,6 +447,28 @@ stopTrigger
     : STOP TRIGGER triggerName=identifier
     ;
 
+// ExternalService =========================================================================================
+createService
+    : CREATE SERVICE serviceName=identifier
+        AS className=STRING_LITERAL
+    ;
+
+startService
+    : START SERVICE serviceName=identifier
+    ;
+
+stopService
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropService
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+
+    ;
+
+showService
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_LITERAL)?
+    ;
 
 // CQ ==============================================================================================
 // ---- Create Continuous Query
@@ -491,6 +525,11 @@ showDataNodes
     : SHOW DATANODES
     ;
 
+// ---- Show Available Urls
+showAvailableUrls
+    : SHOW AVAILABLE URLS
+    ;
+
 // ---- Show Config Nodes
 showConfigNodes
     : SHOW CONFIGNODES
@@ -538,7 +577,7 @@ getSeriesSlotList
 
 // ---- Migrate Region
 migrateRegion
-    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    : MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
 reconstructRegion
@@ -559,7 +598,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
+    : REMOVE DATANODE dataNodeIds+=INTEGER_LITERAL (COMMA dataNodeIds+=INTEGER_LITERAL)*
     ;
 
 // ---- Remove ConfigNode
@@ -575,21 +614,21 @@ removeAINode
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        ((extractorAttributesClause?
+        ((sourceAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause)
-        |connectorAttributesWithoutWithSinkClause)
+        sinkAttributesClause)
+        |sinkAttributesWithoutWithSinkClause)
     ;
 
-extractorAttributesClause
+sourceAttributesClause
     : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
-extractorAttributeClause
-    : extractorKey=STRING_LITERAL OPERATOR_SEQ extractorValue=STRING_LITERAL
+sourceAttributeClause
+    : sourceKey=STRING_LITERAL OPERATOR_SEQ sourceValue=STRING_LITERAL
     ;
 
 processorAttributesClause
@@ -603,32 +642,32 @@ processorAttributeClause
     : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
     ;
 
-connectorAttributesClause
+sinkAttributesClause
     : WITH (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 
-connectorAttributesWithoutWithSinkClause
-    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+sinkAttributesWithoutWithSinkClause
+    : LR_BRACKET (sinkAttributeClause COMMA)* sinkAttributeClause? RR_BRACKET
     ;
 
-connectorAttributeClause
-    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+sinkAttributeClause
+    : sinkKey=STRING_LITERAL OPERATOR_SEQ sinkValue=STRING_LITERAL
     ;
 
 alterPipe
     : ALTER PIPE (IF EXISTS)? pipeName=identifier
-        alterExtractorAttributesClause?
+        alterSourceAttributesClause?
         alterProcessorAttributesClause?
-        alterConnectorAttributesClause?
+        alterSinkAttributesClause?
     ;
 
-alterExtractorAttributesClause
+alterSourceAttributesClause
     : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
@@ -639,10 +678,10 @@ alterProcessorAttributesClause
         RR_BRACKET
     ;
 
-alterConnectorAttributesClause
+alterSinkAttributesClause
     : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 
@@ -679,6 +718,10 @@ showPipePlugins
 // Subscription =========================================================================================
 createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+alterTopic
+    : ALTER TOPIC topicName=identifier topicAttributesClause
     ;
 
 topicAttributesClause
@@ -816,6 +859,39 @@ createTableView
         (RESTRICT)?
         (WITH properties)?
         AS prefixPath
+    ;
+
+createCalcPoint
+    : CREATE CALCULATION POINT fullPath
+        AS expression
+        STRING_LITERAL
+        comment?
+    ;
+
+alterCalcPoint
+    : ALTER CALCULATION POINT fullPath
+       (AS expression)?
+       (STRING_LITERAL)?
+       comment?
+       (DROP COMMENT)?
+    ;
+
+dropCalcPoint
+    : DROP CALCULATION POINTS prefixPath
+    ;
+
+showCalcPoint
+    : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
+      rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
     ;
 
 viewColumnDefinition
@@ -967,6 +1043,10 @@ sortKey
     | DATANODEID
     | ELAPSEDTIME
     | STATEMENT
+    | DATABASE
+    | REGIONID
+    | TIMEPARTITION
+    | SIZEINBYTES
     ;
 
 // ---- Fill Clause
@@ -1171,7 +1251,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR (SCHEMA | QUERY | ALL)? CACHE (ON (LOCAL | CLUSTER))?
+    : CLEAR (SCHEMA | QUERY | AUTH | ALL)? CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Set Configuration
@@ -1196,6 +1276,16 @@ startRepairData
 // Stop Repair Data
 stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
+    ;
+
+// Show Repair Data Partition Table Progress
+showRepairDataPartitionTableProgress
+    : SHOW REPAIR DATA PARTITION TABLE PROGRESS
     ;
 
 // Explain
@@ -1232,6 +1322,13 @@ showQueryResource
 // Show Queries / Show Query Processlist
 showQueries
     : SHOW (QUERIES | QUERY PROCESSLIST)
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
+    ;
+
+showDiskUsage
+    : SHOW DISK_USAGE FROM prefixPath
     whereClause?
     orderByClause?
     rowPaginationClause?
@@ -1430,6 +1527,7 @@ expression
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
+
 
 caseWhenThenExpression
     : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END

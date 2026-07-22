@@ -80,6 +80,8 @@ public class IoTDBFromBase32ColumnFunctionIT {
         // Case 10: Optional padding test (decoder should handle missing padding)
         // 'foo' (0x666f6f) -> Base32 without padding: MZXW6
         "INSERT INTO table1(time, c_text, c_string) VALUES (10, 'MZXW6', 'MZXW6')",
+        // case 11: lower case
+        "INSERT INTO table1(time, c_text, c_string) VALUES (11, 'mzxw6', 'mzxw6')",
       };
 
   @BeforeClass
@@ -119,6 +121,8 @@ public class IoTDBFromBase32ColumnFunctionIT {
           "1970-01-01T00:00:00.009Z,0x666f6f6201,0x666f6f6201,",
           // 10. Optional padding
           "1970-01-01T00:00:00.010Z,0x666f6f,0x666f6f,",
+          // 11. lower case will be considered as upper case
+          "1970-01-01T00:00:00.011Z,0x666f6f,0x666f6f,",
         };
 
     tableResultSetEqualTest(

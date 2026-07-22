@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 
@@ -78,5 +78,39 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
         PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(node, InsertRowsOfOneDeviceNode.deserialize(byteBuffer));
+  }
+
+  @Test
+  public void testStoreMeasurementsSkipsFailedMeasurements() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d");
+    InsertRowsOfOneDeviceNode node = new InsertRowsOfOneDeviceNode(new PlanNodeId("plan node 1"));
+
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+    InsertRowNode firstRow =
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            device,
+            false,
+            new String[] {"s1", "failed"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT},
+            1000L,
+            new Object[] {1.0, 2f},
+            false);
+    firstRow.markFailedMeasurement(1);
+    insertRowNodeList.add(firstRow);
+    insertRowNodeList.add(
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            device,
+            false,
+            new String[] {"s2"},
+            new TSDataType[] {TSDataType.INT64},
+            2000L,
+            new Object[] {300L},
+            false));
+
+    node.setInsertRowNodeList(insertRowNodeList);
+
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, node.getMeasurements());
   }
 }

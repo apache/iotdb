@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.template;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -64,7 +66,8 @@ public enum TemplateInternalRPCUpdateType {
       case 4:
         return UPDATE_TEMPLATE_INFO;
       default:
-        throw new IllegalArgumentException("Unknown template update operation type" + type);
+        throw new IllegalArgumentException(
+            DataNodeSchemaMessages.UNKNOWN_TEMPLATE_UPDATE_OPERATION_TYPE + type);
     }
   }
 }

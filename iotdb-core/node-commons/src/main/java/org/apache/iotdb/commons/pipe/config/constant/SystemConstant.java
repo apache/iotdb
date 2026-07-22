@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
@@ -36,11 +37,17 @@ public class SystemConstant {
 
   // This can be arbitrarily changed since it's only a memory key and not stored
   public static final String RESTART_OR_NEWLY_ADDED_KEY = "__system.restart_or_newly_added";
-  public static final boolean RESTART_DEFAULT_VALUE = false;
+  public static final boolean RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE = false;
 
   public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
   public static final String SQL_DIALECT_TABLE_VALUE = "table";
+  public static final String PIPE_VISIBILITY_KEY = "__system.pipe-visibility";
+  public static final String PIPE_VISIBILITY_STRICT_VALUE = "strict";
+  public static final String SOURCE_AUTHENTICATION_INJECTED_KEY =
+      "__system.source-authentication-injected";
+  public static final String SINK_AUTHENTICATION_INJECTED_KEY =
+      "__system.sink-authentication-injected";
 
   /////////////////////////////////// Utility ///////////////////////////////////
 
@@ -49,6 +56,9 @@ public class SystemConstant {
   static {
     SYSTEM_KEYS.add(RESTART_OR_NEWLY_ADDED_KEY);
     SYSTEM_KEYS.add(SQL_DIALECT_KEY);
+    SYSTEM_KEYS.add(PIPE_VISIBILITY_KEY);
+    SYSTEM_KEYS.add(SOURCE_AUTHENTICATION_INJECTED_KEY);
+    SYSTEM_KEYS.add(SINK_AUTHENTICATION_INJECTED_KEY);
   }
 
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
@@ -57,9 +67,16 @@ public class SystemConstant {
     return new PipeParameters(attributes);
   }
 
+  public static PipeParameters addStrictPipeVisibilityIfNecessary(
+      final PipeParameters givenPipeParameters) {
+    final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttribute());
+    attributes.put(PIPE_VISIBILITY_KEY, PIPE_VISIBILITY_STRICT_VALUE);
+    return new PipeParameters(attributes);
+  }
+
   /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

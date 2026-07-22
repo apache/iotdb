@@ -51,7 +51,7 @@ public interface IWALBuffer extends AutoCloseable {
    *
    * @throws InterruptedException when interrupted by the flush thread
    */
-  void waitForFlush() throws InterruptedException;
+  void waitForRollFile() throws InterruptedException;
 
   /**
    * Wait for next flush operation done, if the predicate == true after entering a locked
@@ -60,14 +60,14 @@ public interface IWALBuffer extends AutoCloseable {
    * @param waitPredicate the condition which should be satisfied before waiting.
    * @throws InterruptedException when interrupted by the flush thread
    */
-  public void waitForFlush(Predicate<WALBuffer> waitPredicate) throws InterruptedException;
+  public void waitForRollFile(Predicate<WALBuffer> waitPredicate) throws InterruptedException;
 
   /**
    * Wait for next flush operation done.
    *
    * @throws InterruptedException when interrupted by the flush thread
    */
-  boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException;
+  boolean waitForRollFile(long time, TimeUnit unit) throws InterruptedException;
 
   /** Return true when all wal entries all consumed and flushed. */
   boolean isAllWALEntriesConsumed();

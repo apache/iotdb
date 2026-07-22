@@ -19,27 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -57,6 +60,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 class ClusterSchemaFetchExecutor {
 
@@ -98,7 +103,8 @@ class ClusterSchemaFetchExecutor {
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
         timeout,
-        false);
+        false,
+        statement.isDebug());
   }
 
   /**
@@ -261,33 +267,48 @@ class ClusterSchemaFetchExecutor {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new QuerySchemaFetchFailedException(
-            String.format("Fetch Schema failed, because %s", executionResult.status.getMessage()),
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_BECAUSE_S_BE584DCE,
+                executionResult.status.getMessage()),
             executionResult.status.getCode());
       }
+      IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
       try (SetThreadName ignored = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
         ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer =
             new ClusterSchemaTree.SchemaNodeBatchDeserializer();
         Set<String> databaseSet = new HashSet<>();
-        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-          // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock;
-          try {
-            tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-          } catch (IoTDBException e) {
-            t = e;
-            throw new QuerySchemaFetchFailedException(
-                String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
+        if (queryExecution != null) {
+          while (queryExecution.hasNextResult()) {
+            // The query will be transited to FINISHED when invoking getBatchResult() at the last
+            // time
+            // So we don't need to clean up it manually
+            Optional<TsBlock> tsBlock;
+            try {
+              tsBlock = queryExecution.getBatchResult();
+            } catch (IoTDBException e) {
+              t = e;
+              throw new QuerySchemaFetchFailedException(
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_S_1C7B0050,
+                      e.getMessage()),
+                  e.getErrorCode());
+            }
+            if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+              break;
+            }
+            Column column = tsBlock.get().getColumn(0);
+            for (int i = 0; i < column.getPositionCount(); i++) {
+              parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
+            }
           }
-          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-            break;
-          }
-          Column column = tsBlock.get().getColumn(0);
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
-          }
+        } else {
+          throw new IoTDBRuntimeException(
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXECUTION_MISSING, executionResult.queryId.getId()),
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }
+
         result.setDatabases(databaseSet);
         return result;
       }
@@ -295,7 +316,7 @@ class ClusterSchemaFetchExecutor {
       t = throwable;
       throw throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
   }
 
@@ -317,6 +338,8 @@ class ClusterSchemaFetchExecutor {
         // for data from old version
         ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
         if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializedSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left.size());
           context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
         }
         resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
@@ -327,14 +350,20 @@ class ClusterSchemaFetchExecutor {
             context.reserveMemoryForSchemaTree(memCost);
           }
         }
+        long measurementCountBeforeDeserialization = deserializer.getMeasurementCount();
         deserializer.deserializeFromBatch(inputStream);
+        if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializer.getMeasurementCount() - measurementCountBeforeDeserialization);
+        }
         if (type == 3) {
           // 'type == 3' indicates this batch is finished
           resultSchemaTree.mergeSchemaTree(deserializer.finish());
         }
       } else {
         throw new RuntimeException(
-            new MetadataException("Failed to fetch schema because of unrecognized data"));
+            new MetadataException(
+                DataNodeQueryMessages.FAILED_TO_FETCH_SCHEMA_BECAUSE_OF_UNRECOGNIZED_DATA));
       }
     } catch (MemoryNotEnoughException e) {
       throw e;

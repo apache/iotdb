@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -99,7 +100,8 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (!new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()) {
       // resource file does not exist, tsfile may not be flushed yet
       LOGGER.warn(
-          "{} does not exist ,skip it.", file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+          DataNodeMiscMessages.MISC_LOG_DOES_NOT_EXIST_SKIP_IT_EFB94454,
+          file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
       return false;
     } else {
       resource.deserialize();
@@ -334,7 +336,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
 
   @Override
   protected void onException(Throwable t) {
-    LOGGER.error("Meet errors in reading file {} , skip it.", file.getAbsolutePath(), t);
+    LOGGER.error(DataNodeMiscMessages.MEET_ERRORS_READING_FILE, file.getAbsolutePath(), t);
     if (!Boolean.TRUE.equals(isBadFileMap.get(file.getName()))) {
       if (printDetails) {
         printBoth(

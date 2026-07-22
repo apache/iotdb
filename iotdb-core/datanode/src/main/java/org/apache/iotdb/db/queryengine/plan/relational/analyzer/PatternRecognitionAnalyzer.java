@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExcludedPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.MeasureDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExcludedPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -48,8 +50,8 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 
 public class PatternRecognitionAnalyzer {
@@ -80,17 +82,22 @@ public class PatternRecognitionAnalyzer {
       if (primaryLabels.contains(label)) {
         throw new SemanticException(
             String.format(
-                "union pattern variable name: %s is a duplicate of primary pattern variable name",
+                DataNodeQueryMessages
+                    .UNION_PATTERN_VARIABLE_NAME_S_IS_A_DUPLICATE_OF_PRIMARY_PATTERN_VARIABLE_NAME,
                 subset.getName()));
       }
       if (!unique.add(label)) {
         throw new SemanticException(
-            String.format("union pattern variable name: %s is declared twice", subset.getName()));
+            String.format(
+                DataNodeQueryMessages.UNION_PATTERN_VARIABLE_NAME_S_IS_DECLARED_TWICE,
+                subset.getName()));
       }
       for (Identifier element : subset.getIdentifiers()) {
         if (!primaryLabels.contains(label(element))) {
           throw new SemanticException(
-              String.format("subset element: %s is not a primary pattern variable", element));
+              String.format(
+                  DataNodeQueryMessages.SUBSET_ELEMENT_S_IS_NOT_A_PRIMARY_PATTERN_VARIABLE,
+                  element));
         }
       }
     }
@@ -102,11 +109,14 @@ public class PatternRecognitionAnalyzer {
       if (!primaryLabels.contains(label)) {
         throw new SemanticException(
             String.format(
-                "defined variable: %s is not a primary pattern variable", definition.getName()));
+                DataNodeQueryMessages.DEFINED_VARIABLE_S_IS_NOT_A_PRIMARY_PATTERN_VARIABLE,
+                definition.getName()));
       }
       if (!unique.add(label)) {
         throw new SemanticException(
-            String.format("pattern variable with name: %s is defined twice", definition.getName()));
+            String.format(
+                DataNodeQueryMessages.PATTERN_VARIABLE_WITH_NAME_S_IS_DEFINED_TWICE,
+                definition.getName()));
       }
       // DEFINE clause only supports RUNNING semantics which is default
       Expression expression = definition.getExpression();
@@ -121,7 +131,8 @@ public class PatternRecognitionAnalyzer {
           .ifPresent(
               functionCall -> {
                 throw new SemanticException(
-                    String.format("FINAL semantics is not supported in DEFINE clause"));
+                    String.format(
+                        DataNodeQueryMessages.FINAL_SEMANTICS_IS_NOT_SUPPORTED_IN_DEFINE_CLAUSE));
               });
     }
     // record primary labels without definitions. they are implicitly associated with `true`
@@ -140,11 +151,13 @@ public class PatternRecognitionAnalyzer {
                   value -> {
                     if (value < 0) {
                       throw new SemanticException(
-                          "Pattern quantifier lower bound must be greater than or equal to 0");
+                          DataNodeQueryMessages
+                              .PATTERN_QUANTIFIER_LOWER_BOUND_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0);
                     }
                     if (value > Integer.MAX_VALUE) {
                       throw new SemanticException(
-                          "Pattern quantifier lower bound must not exceed " + Integer.MAX_VALUE);
+                          DataNodeQueryMessages.PATTERN_QUANTIFIER_LOWER_BOUND_MUST_NOT_EXCEED
+                              + Integer.MAX_VALUE);
                     }
                   });
               Optional<Long> atMost = quantifier.getAtMost().map(LongLiteral::getParsedValue);
@@ -152,17 +165,20 @@ public class PatternRecognitionAnalyzer {
                   value -> {
                     if (value < 1) {
                       throw new SemanticException(
-                          "Pattern quantifier upper bound must be greater than or equal to 1");
+                          DataNodeQueryMessages
+                              .PATTERN_QUANTIFIER_UPPER_BOUND_MUST_BE_GREATER_THAN_OR_EQUAL_TO_1);
                     }
                     if (value > Integer.MAX_VALUE) {
                       throw new SemanticException(
-                          "Pattern quantifier upper bound must not exceed " + Integer.MAX_VALUE);
+                          DataNodeQueryMessages.PATTERN_QUANTIFIER_UPPER_BOUND_MUST_NOT_EXCEED
+                              + Integer.MAX_VALUE);
                     }
                   });
               if (atLeast.isPresent() && atMost.isPresent()) {
                 if (atLeast.get() > atMost.get()) {
                   throw new SemanticException(
-                      "Pattern quantifier lower bound must not exceed upper bound");
+                      DataNodeQueryMessages
+                          .PATTERN_QUANTIFIER_LOWER_BOUND_MUST_NOT_EXCEED_UPPER_BOUND);
                 }
               }
               ranges.put(
@@ -180,7 +196,9 @@ public class PatternRecognitionAnalyzer {
               String label = label(identifier);
               if (!allLabels.contains(label)) {
                 throw new SemanticException(
-                    String.format("%s is not a primary or union pattern variable", identifier));
+                    String.format(
+                        DataNodeQueryMessages.S_IS_NOT_A_PRIMARY_OR_UNION_PATTERN_VARIABLE,
+                        identifier));
               }
             });
 
@@ -200,7 +218,8 @@ public class PatternRecognitionAnalyzer {
                 .ifPresent(
                     nested -> {
                       throw new SemanticException(
-                          "nested row pattern recognition in row pattern recognition");
+                          DataNodeQueryMessages
+                              .NESTED_ROW_PATTERN_RECOGNITION_IN_ROW_PATTERN_RECOGNITION);
                     }));
 
     return new PatternRecognitionAnalysis(allLabels, undefinedLabels, ranges.buildOrThrow());
@@ -217,7 +236,8 @@ public class PatternRecognitionAnalyzer {
           .ifPresent(
               exclusion -> {
                 throw new SemanticException(
-                    "Pattern exclusion syntax is not allowed when ALL ROWS PER MATCH WITH UNMATCHED ROWS is specified");
+                    DataNodeQueryMessages
+                        .PATTERN_EXCLUSION_SYNTAX_IS_NOT_ALLOWED_WHEN_ALL_ROWS_PER_MATCH_WITH_UNMATCHED_ROWS_IS);
               });
     }
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -81,15 +82,16 @@ public class BasicAuthorityCache implements IAuthorCache {
   @Override
   public boolean invalidateCache(final String userName, final String roleName) {
     if (userName != null) {
-      if (userCache.getIfPresent(userName) != null) {
-        Set<String> roleSet = userCache.getIfPresent(userName).getRoleSet();
+      final User user = userCache.getIfPresent(userName);
+      if (user != null) {
+        final Set<String> roleSet = user.getRoleSet();
         if (!roleSet.isEmpty()) {
           roleCache.invalidateAll(roleSet);
         }
         userCache.invalidate(userName);
       }
       if (userCache.getIfPresent(userName) != null) {
-        LOGGER.error("datanode cache initialization failed");
+        LOGGER.error(DataNodeMiscMessages.DATANODE_CACHE_INIT_FAILED);
         return false;
       }
     }
@@ -98,7 +100,7 @@ public class BasicAuthorityCache implements IAuthorCache {
         roleCache.invalidate(roleName);
       }
       if (roleCache.getIfPresent(roleName) != null) {
-        LOGGER.error("datanode cache initialization failed");
+        LOGGER.error(DataNodeMiscMessages.DATANODE_CACHE_INIT_FAILED);
         return false;
       }
     }

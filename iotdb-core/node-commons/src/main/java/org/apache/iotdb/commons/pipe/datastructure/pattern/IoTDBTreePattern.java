@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -31,6 +32,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +55,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
     try {
       patternPartialPath = new PartialPath(getPattern());
     } catch (final IllegalPathException e) {
-      throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
+      throw new PipeException(PipeMessages.ILLEGAL_IOTDB_PIPE_PATTERN + getPattern(), e);
     }
   }
 
@@ -65,6 +69,34 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
 
   //////////////////////////// Tree Pattern Operations ////////////////////////////
 
+  public static <T> List<T> applyReversedIndexesOnList(
+      final List<Integer> filteredIndexes, final @Nullable List<T> originalList) {
+    if (Objects.isNull(originalList)) {
+      return null;
+    }
+    // No need to sort, the caller guarantees that the filtered sequence == original sequence
+    final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
+    int filteredIndexPos = 0;
+    int processingIndex = 0;
+    for (; processingIndex < originalList.size(); processingIndex++) {
+      if (filteredIndexPos >= filteredIndexes.size()) {
+        // all filteredIndexes processed, add remaining to the filteredList
+        filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
+        break;
+      } else {
+        int filteredIndex = filteredIndexes.get(filteredIndexPos);
+        if (filteredIndex == processingIndex) {
+          // the index is filtered, move to the next filtered pos
+          filteredIndexPos++;
+        } else {
+          // the index is not filtered, add to the filteredList
+          filteredList.add(originalList.get(processingIndex));
+        }
+      }
+    }
+    return filteredList;
+  }
+
   @Override
   public String getPattern() {
     return pattern;
@@ -73,6 +105,11 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   @Override
   public boolean isRoot() {
     return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
+  }
+
+  @Override
+  public boolean isSingle() {
+    return true;
   }
 
   @Override
@@ -103,7 +140,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   public boolean coversDevice(final IDeviceID device) {
     try {
       return patternPartialPath.include(
-          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -124,6 +161,16 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
       return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    try {
+      return patternPartialPath.overlapWith(
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }

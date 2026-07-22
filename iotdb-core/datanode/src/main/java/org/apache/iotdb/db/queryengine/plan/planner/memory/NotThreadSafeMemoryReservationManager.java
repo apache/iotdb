@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
+import org.apache.tsfile.utils.Pair;
+
 import javax.annotation.concurrent.NotThreadSafe;
+
+import static com.google.common.base.Preconditions.checkState;
 
 @NotThreadSafe
 public class NotThreadSafeMemoryReservationManager implements MemoryReservationManager {
@@ -36,7 +42,15 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   private final String contextHolder;
 
+  private boolean isHighestPriority;
+
   private long reservedBytesInTotal = 0;
+
+  /**
+   * Bytes logically reserved but not taken from the operators pool due to highest-priority
+   * fallback.
+   */
+  private long fallbackBytesInTotal = 0;
 
   private long bytesToBeReserved = 0;
 
@@ -45,6 +59,21 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   public NotThreadSafeMemoryReservationManager(final QueryId queryId, final String contextHolder) {
     this.queryId = queryId;
     this.contextHolder = contextHolder;
+  }
+
+  @Override
+  public void setHighestPriority(boolean isHighestPriority) {
+    this.isHighestPriority = isHighestPriority;
+  }
+
+  @TestOnly
+  public long getReservedBytesInTotalForTest() {
+    return reservedBytesInTotal;
+  }
+
+  @TestOnly
+  public long getFallbackBytesInTotalForTest() {
+    return fallbackBytesInTotal;
   }
 
   @Override
@@ -58,28 +87,75 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   @Override
   public void reserveMemoryImmediately() {
     if (bytesToBeReserved != 0) {
-      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
-          bytesToBeReserved, reservedBytesInTotal, queryId.getId(), contextHolder);
-      reservedBytesInTotal += bytesToBeReserved;
+      long actualReserved =
+          LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+              bytesToBeReserved,
+              reservedBytesInTotal,
+              queryId.getId(),
+              contextHolder,
+              isHighestPriority);
+      if (actualReserved == 0) {
+        fallbackBytesInTotal += bytesToBeReserved;
+      } else {
+        reservedBytesInTotal += actualReserved;
+      }
       bytesToBeReserved = 0;
     }
   }
 
   @Override
+  public void reserveMemoryImmediately(final long size) {
+    if (size != 0) {
+      long actualReserved =
+          LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+              size, reservedBytesInTotal, queryId.getId(), contextHolder, isHighestPriority);
+      if (actualReserved == 0) {
+        fallbackBytesInTotal += size;
+      } else {
+        reservedBytesInTotal += actualReserved;
+      }
+    }
+  }
+
+  @Override
   public void releaseMemoryCumulatively(final long size) {
+    if (size <= 0) {
+      return;
+    }
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
-      long bytesToRelease;
-      if (bytesToBeReleased <= bytesToBeReserved) {
-        bytesToBeReserved -= bytesToBeReleased;
-      } else {
-        bytesToRelease = bytesToBeReleased - bytesToBeReserved;
-        bytesToBeReserved = 0;
-        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
-        reservedBytesInTotal -= bytesToRelease;
-      }
+      releaseBytesImmediately(bytesToBeReleased);
       bytesToBeReleased = 0;
     }
+  }
+
+  private void releaseBytesImmediately(final long size) {
+    long poolBytes = deductReleaseAccounting(size);
+    if (poolBytes > 0) {
+      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(poolBytes);
+    }
+  }
+
+  /** Deduct release size from pending reserve, fallback quota, then pool reservation in order. */
+  private long deductReleaseAccounting(final long size) {
+    long remaining = size;
+    if (remaining <= bytesToBeReserved) {
+      bytesToBeReserved -= remaining;
+      return 0L;
+    }
+    remaining -= bytesToBeReserved;
+    bytesToBeReserved = 0;
+
+    if (remaining <= fallbackBytesInTotal) {
+      fallbackBytesInTotal -= remaining;
+      return 0L;
+    }
+    remaining -= fallbackBytesInTotal;
+    fallbackBytesInTotal = 0;
+
+    reservedBytesInTotal -= remaining;
+    checkState(reservedBytesInTotal >= 0, "Released bytes has been larger than reserved!");
+    return remaining;
   }
 
   @Override
@@ -87,8 +163,22 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     if (reservedBytesInTotal != 0) {
       LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotal);
       reservedBytesInTotal = 0;
-      bytesToBeReserved = 0;
-      bytesToBeReleased = 0;
     }
+    fallbackBytesInTotal = 0;
+    bytesToBeReserved = 0;
+    bytesToBeReleased = 0;
+  }
+
+  @Override
+  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
+    long poolBytes = deductReleaseAccounting(size);
+    return new Pair<>(size - poolBytes, poolBytes);
+  }
+
+  @Override
+  public void reserveMemoryVirtually(
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    reservedBytesInTotal += bytesAlreadyReserved;
+    reserveMemoryCumulatively(bytesToBeReserved);
   }
 }

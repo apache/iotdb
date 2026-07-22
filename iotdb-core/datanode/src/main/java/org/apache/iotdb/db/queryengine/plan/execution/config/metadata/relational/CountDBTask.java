@@ -19,26 +19,64 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.function.Predicate;
+
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 
 public class CountDBTask implements IConfigTask {
 
-  // judge whether the specific database can be seen, dbName should be without `root.` prefix
-  private final Predicate<String> canSeenDB;
+  private final CountDB node;
+  private final Predicate<String> canSeeDB;
 
-  public CountDBTask(final Predicate<String> canSeenDB) {
-    this.canSeenDB = canSeenDB;
+  public CountDBTask(final CountDB node, final Predicate<String> canSeeDB) {
+    this.node = node;
+    this.canSeeDB = canSeeDB;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.countDatabases(canSeenDB);
+    return configTaskExecutor.countDatabases(node, canSeeDB);
+  }
+
+  public static void buildTSBlock(
+      final Map<String, ?> databaseInfoMap,
+      final SettableFuture<ConfigTaskResult> future,
+      final Predicate<String> canSeeDB) {
+    // information_schema is synthesized in table model rather than returned from ConfigNode.
+    final long databaseCount =
+        databaseInfoMap.keySet().stream()
+                .filter(databaseName -> !INFORMATION_DATABASE.equals(databaseName))
+                .filter(canSeeDB::test)
+                .count()
+            + (canSeeDB.test(INFORMATION_DATABASE) ? 1 : 0);
+
+    final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeInt((int) databaseCount);
+    builder.declarePosition();
+
+    final DatasetHeader datasetHeader =
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(IoTDBConstant.COLUMN_COUNT, TSDataType.INT32)),
+            true);
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;

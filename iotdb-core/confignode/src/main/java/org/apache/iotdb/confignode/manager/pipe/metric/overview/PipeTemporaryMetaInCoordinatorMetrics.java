@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -94,7 +95,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::deregister);
     if (!pipeTemporaryMetaMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty");
+          ManagerMessages.FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP);
     }
   }
 
@@ -136,7 +137,8 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   public void deregister(final String pipeID) {
     if (!pipeTemporaryMetaMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist",
+          ManagerMessages
+              .FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT,
           pipeID);
       return;
     }

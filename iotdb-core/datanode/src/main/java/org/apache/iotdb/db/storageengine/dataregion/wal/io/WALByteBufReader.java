@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import java.io.Closeable;
@@ -27,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * This reader returns {@link WALEntry} as {@link ByteBuffer}, the usage of WALByteBufReader is like
@@ -34,15 +36,32 @@ import java.util.Iterator;
  */
 public class WALByteBufReader implements Closeable {
   private WALMetaData metaData;
+  private WALInputStream walInputStream;
   private DataInputStream logStream;
   private Iterator<Integer> sizeIterator;
+  // V3: track current entry index to provide per-entry progress metadata
+  private int currentEntryIndex = -1;
 
   public WALByteBufReader(File logFile) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
     try {
+      this.walInputStream = walInputStream;
       this.logStream = new DataInputStream(walInputStream);
       this.metaData = walInputStream.getWALMetaData();
       this.sizeIterator = metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+      throw e;
+    }
+  }
+
+  public WALByteBufReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
+    WALInputStream walInputStream = new WALInputStream(logFile);
+    try {
+      this.walInputStream = walInputStream;
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = metaDataSnapshot == null ? new WALMetaData() : metaDataSnapshot;
+      this.sizeIterator = this.metaData.getBuffersSize().iterator();
     } catch (Exception e) {
       walInputStream.close();
       throw e;
@@ -60,6 +79,7 @@ public class WALByteBufReader implements Closeable {
    * @throws IOException when failing to read from channel.
    */
   public ByteBuffer next() throws IOException {
+    currentEntryIndex++;
     int size = sizeIterator.next();
     // TODO: Reuse this buffer
     ByteBuffer buffer = ByteBuffer.allocate(size);
@@ -70,6 +90,22 @@ public class WALByteBufReader implements Closeable {
     */
     logStream.readFully(buffer.array(), 0, size);
     return buffer;
+  }
+
+  public boolean skipToEntryIndex(int entryIndex) throws IOException {
+    if (entryIndex < 0 || entryIndex > metaData.getBuffersSize().size()) {
+      return false;
+    }
+    long logicalPosition = 0L;
+    for (int i = 0; i < entryIndex; i++) {
+      logicalPosition += metaData.getBuffersSize().get(i);
+    }
+    if (entryIndex < metaData.getBuffersSize().size()) {
+      walInputStream.skipToGivenLogicalPosition(logicalPosition);
+    }
+    sizeIterator = metaData.getBuffersSize().listIterator(entryIndex);
+    currentEntryIndex = entryIndex - 1;
+    return true;
   }
 
   public WALMetaData getMetaData() {
@@ -83,5 +119,42 @@ public class WALByteBufReader implements Closeable {
 
   public long getFirstSearchIndex() {
     return metaData.getFirstSearchIndex();
+  }
+
+  public long getCurrentEntryPhysicalTime() {
+    List<Long> physicalTimes = metaData.getPhysicalTimes();
+    if (currentEntryIndex >= 0 && currentEntryIndex < physicalTimes.size()) {
+      return physicalTimes.get(currentEntryIndex);
+    }
+    return 0L;
+  }
+
+  public int getCurrentEntryNodeId() {
+    List<Short> nodeIds = metaData.getNodeIds();
+    if (currentEntryIndex >= 0 && currentEntryIndex < nodeIds.size()) {
+      return nodeIds.get(currentEntryIndex);
+    }
+    return -1;
+  }
+
+  public long getCurrentEntryLocalSeq() {
+    List<Long> localSeqs = metaData.getLocalSeqs();
+    if (currentEntryIndex >= 0 && currentEntryIndex < localSeqs.size()) {
+      return localSeqs.get(currentEntryIndex);
+    }
+    return metaData.getFirstSearchIndex() + currentEntryIndex;
+  }
+
+  public long getCurrentEntrySearchIndex() {
+    final long firstSearchIndex = metaData.getFirstSearchIndex();
+    if (firstSearchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
+      return ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+    }
+    return firstSearchIndex + currentEntryIndex;
+  }
+
+  /** Returns the current entry index (0-based). */
+  public int getCurrentEntryIndex() {
+    return currentEntryIndex;
   }
 }

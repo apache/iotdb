@@ -30,7 +30,9 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
@@ -98,7 +101,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAligne
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -209,9 +211,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
-            "Total allocated memory for direct buffer will be "
+            DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_EXCEEDED
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
-                + ", which is greater than limit mem cost: "
+                + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
     }
@@ -246,10 +248,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
       isRecovering = false;
     } catch (IOException e) {
-      logger.error(
-          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupFullPath,
-          e);
+      logger.error(DataNodeSchemaMessages.CANNOT_RECOVER_ALL_MTREE, storageGroupFullPath, e);
     }
     initialized = true;
   }
@@ -268,7 +267,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
       } catch (IOException e) {
         logger.error(
-            "Failed to recover tagIndex for {} in schemaRegion {}.",
+            DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
             storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
             schemaRegionId);
       }
@@ -291,7 +290,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         regionStatistics.setMlogCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
-            "Update {} failed because {}",
+            DataNodeSchemaMessages.UPDATE_MLOG_DESCRIPTION_FAILED,
             SchemaConstant.METADATA_LOG_DESCRIPTION,
             e.getMessage(),
             e);
@@ -303,10 +302,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", storageGroupDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER, storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", storageGroupDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER_FAILED, storageGroupDirPath);
           throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
@@ -315,10 +315,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
-        logger.info("create schema region folder {}", schemaRegionDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER, schemaRegionDirPath);
       } else {
         if (!schemaRegionFolder.exists()) {
-          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER_FAILED, schemaRegionDirPath);
           throw new SchemaDirCreationFailureException(schemaRegionDirPath);
         }
       }
@@ -357,7 +358,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           logWriter.force();
         }
       } catch (IOException e) {
-        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+        logger.error(DataNodeSchemaMessages.CANNOT_FORCE_MLOG, schemaRegionId, e);
       }
     }
   }
@@ -390,11 +391,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         MLogDescriptionReader mLogDescriptionReader =
             new MLogDescriptionReader(schemaRegionDirPath, SchemaConstant.METADATA_LOG_DESCRIPTION);
         mLogOffset = mLogDescriptionReader.readCheckPoint();
-        logger.info("MLog recovery check point: {}", mLogOffset);
+        logger.info(DataNodeSchemaMessages.MLOG_RECOVERY_CHECK_POINT, mLogOffset);
       } catch (IOException e) {
-        logger.warn(
-            "Can not get check point in MLogDescription file because {}, use default value 0.",
-            e.getMessage());
+        logger.warn(DataNodeSchemaMessages.CANNOT_GET_MLOG_CHECKPOINT, e.getMessage());
       }
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
@@ -403,11 +402,15 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
         applyMLog(mLogReader, mLogOffset);
         logger.debug(
-            "spend {} ms to deserialize {} mtree from mlog.bin",
+            DataNodeSchemaMessages.SPEND_TIME_DESERIALIZE_MTREE,
             System.currentTimeMillis() - time,
             storageGroupFullPath);
       } catch (Exception e) {
-        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin", e);
+        throw new IOException(
+            DataNodeSchemaMessages.FAILED_TO_PARSE_MLOG
+                + storageGroupFullPath
+                + DataNodeSchemaMessages.MLOG_BIN_SUFFIX,
+            e);
       }
     }
   }
@@ -424,22 +427,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       mLogReader.skip(offset);
     } catch (IOException e) {
-      logger.error("Failed to skip {} from {}", offset, schemaRegionDirPath, e);
+      logger.error(DataNodeSchemaMessages.FAILED_TO_SKIP_MLOG, offset, schemaRegionDirPath, e);
     }
     while (mLogReader.hasNext()) {
       plan = mLogReader.next();
       operationResult = plan.accept(recoverPlanOperator, this);
       if (operationResult.isFailed()) {
         logger.error(
-            "Can not operate cmd {} for err:",
+            DataNodeSchemaMessages.CANNOT_OPERATE_CMD,
             plan.getPlanType().name(),
             operationResult.getException());
       }
     }
 
     if (mLogReader.isFileCorrupted()) {
-      throw new IllegalStateException(
-          "The mlog.bin has been corrupted. Please remove it or fix it, and then restart IoTDB");
+      throw new IllegalStateException(DataNodeSchemaMessages.MLOG_BIN_CORRUPTED);
     }
   }
 
@@ -465,7 +467,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       isRecovering = true;
       initialized = false;
     } catch (IOException e) {
-      logger.error("Cannot close metadata log writer, because:", e);
+      logger.error(DataNodeSchemaMessages.CANNOT_CLOSE_METADATA_LOG_WRITER, e);
     }
     isClearing = false;
   }
@@ -490,7 +492,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
@@ -501,44 +504,42 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public boolean createSnapshot(File snapshotDir) {
     if (!initialized) {
-      logger.warn(
-          "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
-          schemaRegionId);
+      logger.warn(DataNodeSchemaMessages.FAILED_TO_CREATE_SNAPSHOT_NOT_INITIALIZED, schemaRegionId);
       return false;
     }
-    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_CREATE_SNAPSHOT, schemaRegionId);
     boolean isSuccess = true;
     long startTime = System.currentTimeMillis();
 
     long mtreeSnapshotStartTime = System.currentTimeMillis();
     isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
     logger.info(
-        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        DataNodeSchemaMessages.MTREE_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - mtreeSnapshotStartTime);
 
     long tagSnapshotStartTime = System.currentTimeMillis();
     isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
     logger.info(
-        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        DataNodeSchemaMessages.TAG_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - tagSnapshotStartTime);
 
     logger.info(
-        "Snapshot creation of schemaRegion {} costs {}ms.",
+        DataNodeSchemaMessages.SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - startTime);
-    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.SUCCESSFULLY_CREATE_SNAPSHOT, schemaRegionId);
 
     return isSuccess;
   }
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
     clear();
 
-    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
     long startTime = System.currentTimeMillis();
 
     try {
@@ -550,7 +551,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
-          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.TAG_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - tagSnapshotStartTime);
 
@@ -568,7 +569,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               tagManager::readAttributes,
               this::flushCallback);
       logger.info(
-          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.MTREE_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - mtreeSnapshotStartTime);
 
@@ -576,26 +577,27 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       initialized = true;
 
       logger.info(
-          "Snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - startTime);
-      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (IOException | MetadataException e) {
       logger.error(
-          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
-          schemaRegionId,
-          e.getMessage(),
-          e);
+          DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
       try {
         initialized = false;
         isRecovering = true;
         init();
       } catch (MetadataException metadataException) {
         logger.error(
-            "Error occurred during initializing schemaRegion {}",
+            DataNodeSchemaMessages.ERROR_DURING_INIT_SCHEMA_REGION,
             schemaRegionId,
             metadataException);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 
@@ -645,7 +647,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               plan.getProps(),
               plan.getAlias(),
               (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       try {
         // Should merge
@@ -756,7 +761,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       try {
         // Update statistics and schemaDataTypeNumMap
@@ -874,7 +882,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
@@ -949,7 +957,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
       throws MetadataException {
     throw new UnsupportedOperationException(
-        "PBTree does not support altering encoding and compressor yet.");
+        DataNodeSchemaMessages.PBTREE_NOT_SUPPORT_ALTER_ENCODING);
   }
 
   @Override
@@ -1332,7 +1340,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+            String.format(DataNodeSchemaMessages.TIMESERIES_NO_TAG_ATTRIBUTE, fullPath));
       }
 
       // tags, attributes
@@ -1362,7 +1370,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
+            String.format(
+                DataNodeSchemaMessages.TIMESERIES_NO_SPECIFIC_TAG_ATTRIBUTE, fullPath, oldKey),
             true);
       }
       // tags, attributes
@@ -1370,6 +1379,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } finally {
       mtree.unPinMNode(leafMNode.getAsMNode());
     }
+  }
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException {
+    throw new UnsupportedOperationException(
+        DataNodeSchemaMessages.PBTREE_NOT_SUPPORT_ALTER_DATA_TYPE);
   }
 
   /** remove the node from the tag inverted index */
@@ -1458,47 +1482,48 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void createOrUpdateTableDevice(
       final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public long constructTableDevicesBlackList(
       final ConstructTableDevicesBlackListNode constructTableDevicesBlackListNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public void rollbackTableDevicesBlackList(
       final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public void deleteTableDevicesInBlackList(
       final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode) {
-    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.TABLE_MODEL_NOT_SUPPORT_PBTREE);
   }
 
   @Override
   public int fillLastQueryMap(
-      PartialPath pattern,
-      Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill) {
-    throw new UnsupportedOperationException("Not implemented");
+      final PartialPath pattern,
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill,
+      final PathPatternTree scope) {
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.NOT_IMPLEMENTED);
   }
 
   @Override
@@ -1521,7 +1546,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             try {
               return tagManager.readTagFile(offset);
             } catch (IOException e) {
-              logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+              logger.error(DataNodeSchemaMessages.FAILED_TO_READ_TAG_ATTRIBUTE, e.getMessage(), e);
               return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
             }
           });
@@ -1542,7 +1567,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
+      String table, List<Object[]> devicePathList) {
     throw new UnsupportedOperationException();
   }
 
@@ -1591,7 +1616,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         ISchemaRegionPlan plan, SchemaRegionPBTreeImpl context) {
       throw new UnsupportedOperationException(
           String.format(
-              "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionPBTreeImpl.",
+              DataNodeSchemaMessages.SCHEMA_REGION_PLAN_NOT_SUPPORT_RECOVER_PBTREE,
               plan.getPlanType().name()));
     }
 

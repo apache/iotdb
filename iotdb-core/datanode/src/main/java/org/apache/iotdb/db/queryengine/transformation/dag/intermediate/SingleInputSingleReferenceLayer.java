@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
+import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -26,8 +29,6 @@ import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSerializableTVListBackedSingleColumnWindow;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
@@ -91,7 +92,8 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              DataNodeQueryMessages
+                  .LAYERROWWINDOWREADER_INDEX_OVERFLOW_BEGININDEX_ARG_ENDINDEX_ARG_WINDOWSIZE_ARG,
               beginIndex,
               endIndex,
               windowSize);

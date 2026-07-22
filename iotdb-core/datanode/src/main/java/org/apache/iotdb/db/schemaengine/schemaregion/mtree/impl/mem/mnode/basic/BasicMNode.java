@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
@@ -46,6 +47,12 @@ public class BasicMNode implements IMemMNode {
   private IMemMNode parent;
   private final BasicMNodeInfo basicMNodeInfo;
 
+  /** Cached count of measurements in this node's subtree, rebuilt on restart. */
+  private long subtreeMeasurementCount = 0L;
+
+  /** Cached flag showing whether there is any device in the subtree below this node. */
+  private boolean hasDeviceDescendant = false;
+
   /** from root to this node, only be set when used once for InternalMNode */
   private String fullPath;
 
@@ -53,6 +60,11 @@ public class BasicMNode implements IMemMNode {
   public BasicMNode(IMemMNode parent, String name) {
     this.parent = parent;
     this.basicMNodeInfo = new BasicMNodeInfo(name);
+  }
+
+  @Override
+  public BasicMNode getBasicMNode() {
+    return this;
   }
 
   @Override
@@ -97,6 +109,26 @@ public class BasicMNode implements IMemMNode {
   @Override
   public void setFullPath(final String fullPath) {
     this.fullPath = fullPath;
+  }
+
+  @Override
+  public long getSubtreeMeasurementCount() {
+    return subtreeMeasurementCount;
+  }
+
+  @Override
+  public void setSubtreeMeasurementCount(final long subtreeMeasurementCount) {
+    this.subtreeMeasurementCount = subtreeMeasurementCount;
+  }
+
+  @Override
+  public boolean hasDeviceDescendant() {
+    return hasDeviceDescendant;
+  }
+
+  @Override
+  public void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
+    this.hasDeviceDescendant = hasDeviceDescendant;
   }
 
   @Override
@@ -192,22 +224,22 @@ public class BasicMNode implements IMemMNode {
 
   @Override
   public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IInternalMNode<IMemMNode> getAsInternalMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IMeasurementMNode<IMemMNode> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
@@ -225,6 +257,8 @@ public class BasicMNode implements IMemMNode {
    *         <li>basicMNodeInfo reference, 8B
    *         <li>parent reference, 8B
    *         <li>fullPath reference, 8B
+   *         <li>subtreeMeasurementCount, 8B
+   *         <li>hasDeviceDescendant, 1B
    *       </ol>
    *   <li>MapEntry in parent
    *       <ol>
@@ -236,7 +270,7 @@ public class BasicMNode implements IMemMNode {
    */
   @Override
   public int estimateSize() {
-    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + basicMNodeInfo.estimateSize();
+    return 8 + 8 + 8 + 8 + 8 + 1 + 8 + 8 + 28 + basicMNodeInfo.estimateSize();
   }
 
   @Override

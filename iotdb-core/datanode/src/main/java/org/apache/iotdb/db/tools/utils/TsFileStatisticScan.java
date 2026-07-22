@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -265,6 +267,6 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
 
   @Override
   protected void onException(Throwable t) {
-    LOGGER.warn("meet error.", t);
+    LOGGER.warn(DataNodeMiscMessages.MEET_ERROR, t);
   }
 }

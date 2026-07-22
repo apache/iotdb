@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.AbstractFillOperator;
+import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -33,7 +34,7 @@ public class TreeFillOperator extends AbstractFillOperator {
   }
 
   @Override
-  Column getHelperColumn(TsBlock tsBlock) {
+  protected Column getHelperColumn(TsBlock tsBlock) {
     return tsBlock.getTimeColumn();
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -76,7 +77,7 @@ public class UDTFDeconv implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (list2.isEmpty()) { // Exception: divided by zero
-      throw new ArithmeticException("Divided by zero.");
+      throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
     } else if (list2.size() > list1.size()) { // order of divisor is larger than dividend
       if (result.equalsIgnoreCase(QUOTINENT_RESULT)) { // quotient
         collector.putDouble(0, 0);

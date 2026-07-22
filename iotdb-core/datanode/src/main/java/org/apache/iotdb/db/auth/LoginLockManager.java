@@ -21,6 +21,7 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,7 @@ public class LoginLockManager {
     // Set and validate failedLoginAttempts (IP level)
     if (failedLoginAttempts <= 0) {
       this.failedLoginAttempts = -1; // Completely disable IP-level restrictions
-      LOGGER.info("IP-level login attempts disabled (set to {})", failedLoginAttempts);
+      LOGGER.info(DataNodeMiscMessages.IP_LOGIN_ATTEMPTS_DISABLED, failedLoginAttempts);
     } else {
       this.failedLoginAttempts = failedLoginAttempts;
     }
@@ -78,13 +79,14 @@ public class LoginLockManager {
     // Set and validate failedLoginAttemptsPerUser (user level)
     if (failedLoginAttemptsPerUser <= 0) {
       this.failedLoginAttemptsPerUser = -1; // Disable user-level restrictions
-      LOGGER.info("User-level login attempts disabled (set to {})", failedLoginAttemptsPerUser);
+      LOGGER.info(DataNodeMiscMessages.USER_LOGIN_ATTEMPTS_DISABLED, failedLoginAttemptsPerUser);
 
       // Additional check: if IP-level is enabled (>1), enable user-level with default 1000
       if (this.failedLoginAttempts > 1) {
         this.failedLoginAttemptsPerUser = 1000;
         LOGGER.warn(
-            "User-level attempts auto-enabled with default 1000 because IP-level is enabled (set to {})",
+            DataNodeMiscMessages
+                .MISC_LOG_USER_LEVEL_ATTEMPTS_AUTO_ENABLED_WITH_DEFAULT_1000_BECAUSE_FAB86B7D,
             this.failedLoginAttempts);
       }
     } else {
@@ -95,12 +97,15 @@ public class LoginLockManager {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes >= 1 ? passwordLockTimeMinutes : 10;
     if (passwordLockTimeMinutes < 1) {
       LOGGER.warn(
-          "Invalid lock time value ({}), reset to default (10 minutes)", passwordLockTimeMinutes);
+          DataNodeMiscMessages
+              .MISC_LOG_INVALID_LOCK_TIME_VALUE_RESET_TO_DEFAULT_10_MINUTES_8DCE21EF,
+          passwordLockTimeMinutes);
     }
 
     // Log final effective configuration
     LOGGER.info(
-        "Login lock manager initialized with: IP-level attempts={}, User-level attempts={}, Lock time={} minutes",
+        DataNodeMiscMessages
+            .MISC_LOG_LOGIN_LOCK_MANAGER_INITIALIZED_WITH_IP_LEVEL_ATTEMPTS_USER_57AE7966,
         this.failedLoginAttempts == -1 ? "disabled" : this.failedLoginAttempts,
         this.failedLoginAttemptsPerUser == -1 ? "disabled" : this.failedLoginAttemptsPerUser,
         this.passwordLockTimeMinutes);
@@ -214,7 +219,7 @@ public class LoginLockManager {
             // Check if threshold reached (log only when it just reaches)
             int failCountIp = existing.getFailureCount();
             if (failCountIp >= failedLoginAttempts) {
-              LOGGER.info("IP '{}' locked for user ID '{}'", ip, userId);
+              LOGGER.info(DataNodeMiscMessages.IP_LOCKED, ip, userId);
             }
             return existing;
           });
@@ -237,7 +242,7 @@ public class LoginLockManager {
             int failCountUser = existing.getFailureCount();
             if (failCountUser >= failedLoginAttemptsPerUser) {
               LOGGER.info(
-                  "User ID '{}' locked due to {} failed attempts",
+                  DataNodeMiscMessages.MISC_LOG_USER_ID_LOCKED_DUE_TO_FAILED_ATTEMPTS_743CFB3A,
                   userId,
                   failedLoginAttemptsPerUser);
             }
@@ -275,12 +280,12 @@ public class LoginLockManager {
       userLocks.remove(userId);
       // Also remove all IP locks for this user
       userIpLocks.keySet().removeIf(key -> key.startsWith(userId + "@"));
-      LOGGER.info("User ID '{}' unlocked (manual)", userId);
+      LOGGER.info(DataNodeMiscMessages.USER_UNLOCKED_MANUAL, userId);
     } else {
       // Unlock specific user@ip lock
       String userIpKey = buildUserIpKey(userId, ip);
       userIpLocks.remove(userIpKey);
-      LOGGER.info("IP '{}' for user ID '{}' unlocked (manual)", ip, userId);
+      LOGGER.info(DataNodeMiscMessages.IP_UNLOCKED_MANUAL, ip, userId);
     }
   }
 
@@ -298,7 +303,7 @@ public class LoginLockManager {
               // Remove outdated failures
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
-                LOGGER.info("User ID '{}' unlocked (expired)", entry.getKey());
+                LOGGER.info(DataNodeMiscMessages.USER_UNLOCKED_EXPIRED, entry.getKey());
                 return true;
               }
               return false;
@@ -313,8 +318,11 @@ public class LoginLockManager {
               // Remove outdated failures
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
-                String[] parts = entry.getKey().split("@");
-                LOGGER.info("IP '{}' for user ID '{}' unlocked (expired)", parts[1], parts[0]);
+                final String[] parts = entry.getKey().split("@", 2);
+                LOGGER.info(
+                    DataNodeMiscMessages.IP_UNLOCKED_EXPIRED,
+                    parts.length == 2 ? parts[1] : "",
+                    parts.length >= 1 ? parts[0] : "");
                 return true;
               }
               return false;
@@ -336,7 +344,7 @@ public class LoginLockManager {
     }
 
     if (usersForIp.size() > 50) {
-      LOGGER.warn("IP '{}' locked by {} different users → potential attack", ip, usersForIp.size());
+      LOGGER.warn(DataNodeMiscMessages.IP_LOCKED_MULTIPLE_USERS, ip, usersForIp.size());
     }
 
     // Check if user has many IP locks
@@ -348,7 +356,7 @@ public class LoginLockManager {
     }
 
     if (ipsForUser.size() > 100) {
-      LOGGER.warn("User ID '{}' has {} IP locks → potential attack", userId, ipsForUser.size());
+      LOGGER.warn(DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS, userId, ipsForUser.size());
     }
   }
 
@@ -397,7 +405,7 @@ public class LoginLockManager {
         }
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to check if IP address={} is up", ip, e);
+      LOGGER.warn(DataNodeMiscMessages.FAILED_CHECK_IP_UP, ip, e);
       return false; // In case of error, assume non-local
     }
     return false;

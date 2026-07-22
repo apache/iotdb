@@ -137,6 +137,10 @@ CACHE
     : C A C H E
     ;
 
+CALCULATION
+    : C A L C U L A T I O N
+    ;
+
 CALL
     : C A L L
     ;
@@ -233,6 +237,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -252,6 +260,14 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
     ;
 
 DATASET
@@ -300,6 +316,10 @@ DISABLE
 
 DISCARD
     : D I S C A R D
+    ;
+
+DISK_USAGE
+    : D I S K '_' U S A G E
     ;
 
 DROP
@@ -369,6 +389,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -642,6 +667,14 @@ PIPEPLUGINS
     : P I P E P L U G I N S
     ;
 
+POINT
+    : P O I N T
+    ;
+
+POINTS
+    : P O I N T S
+    ;
+
 POLICY
     : P O L I C Y
     ;
@@ -774,6 +807,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -796,6 +837,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -1162,8 +1207,16 @@ AUDIT
     : A U D I T
     ;
 
+AUTH
+    : A U T H
+    ;
+
 REPAIR
     : R E P A I R
+    ;
+
+PROGRESS
+    : P R O G R E S S
     ;
 
 SCHEMA_REPLICATION_FACTOR
@@ -1178,12 +1231,12 @@ TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
     ;
 
-SCHEMA_REGION_GROUP_NUM
-    : S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_SCHEMA_REGION_GROUP_NUM
+    : M A X '_' S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
-DATA_REGION_GROUP_NUM
-    : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+MAX_DATA_REGION_GROUP_NUM
+    : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
 CURRENT_TIMESTAMP

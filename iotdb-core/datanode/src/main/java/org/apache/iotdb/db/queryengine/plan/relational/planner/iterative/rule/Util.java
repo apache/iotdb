@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -37,12 +41,11 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.RANK;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
 
 final class Util {
-  // private static final CatalogSchemaFunctionName ROW_NUMBER_NAME =
-  // builtinFunctionName("row_number");
-  // private static final CatalogSchemaFunctionName RANK_NAME = builtinFunctionName("rank");
-
   private Util() {}
 
   /**
@@ -100,7 +103,8 @@ final class Util {
 
     checkArgument(
         (node.getChildren().size() == permittedChildOutputs.size()),
-        "Mismatched child (%s) and permitted outputs (%s) sizes",
+        DataNodeQueryMessages
+            .EXCEPTION_MISMATCHED_CHILD_LEFT_PAREN_ARG_RIGHT_PAREN_AND_PERMITTED_OUTPUTS_LEFT_PAREN_ARG_57801144,
         node.getChildren().size(),
         permittedChildOutputs.size());
 
@@ -121,22 +125,23 @@ final class Util {
     return Optional.of(node.replaceChildren(newChildrenBuilder.build()));
   }
 
-  /*public static Optional<RankingType> toTopNRankingType(WindowNode node)
-  {
-      if (node.getWindowFunctions().size() != 1 || node.getOrderingScheme().isEmpty()) {
-          return Optional.empty();
-      }
-
-      BoundSignature signature = getOnlyElement(node.getWindowFunctions().values()).getResolvedFunction().getSignature();
-      if (!signature.getArgumentTypes().isEmpty()) {
-          return Optional.empty();
-      }
-      if (signature.getName().equals(ROW_NUMBER_NAME)) {
-          return Optional.of(ROW_NUMBER);
-      }
-      if (signature.getName().equals(RANK_NAME)) {
-          return Optional.of(RANK);
-      }
+  public static Optional<TopKRankingNode.RankingType> toTopNRankingType(WindowNode node) {
+    if (node.getWindowFunctions().size() != 1
+        || !node.getSpecification().getOrderingScheme().isPresent()) {
       return Optional.empty();
-  }*/
+    }
+
+    BoundSignature signature =
+        getOnlyElement(node.getWindowFunctions().values()).getResolvedFunction().getSignature();
+    if (!signature.getArgumentTypes().isEmpty()) {
+      return Optional.empty();
+    }
+    if (signature.getName().equals("row_number")) {
+      return Optional.of(ROW_NUMBER);
+    }
+    if (signature.getName().equals("rank")) {
+      return Optional.of(RANK);
+    }
+    return Optional.empty();
+  }
 }

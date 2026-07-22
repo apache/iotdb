@@ -330,15 +330,13 @@ class NormalSchemaFetcher {
       indexOfDevicesNeedAutoCreateSchema.removeIf(
           i ->
               !schemaComputationWithAutoCreationList
-                  .get(i)
-                  .getDevicePath()
-                  .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
-      indexOfDevicesNeedAutoCreateSchema.removeIf(
-          i ->
-              !schemaComputationWithAutoCreationList
-                  .get(i)
-                  .getDevicePath()
-                  .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
+                      .get(i)
+                      .getDevicePath()
+                      .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+                  && !schemaComputationWithAutoCreationList
+                      .get(i)
+                      .getDevicePath()
+                      .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
     }
 
     // [Step 5] Auto Create and process the missing schema
@@ -360,7 +358,9 @@ class NormalSchemaFetcher {
           schemaComputationWithAutoCreationList.stream()
               .map(
                   o -> {
-                    TSDataType[] dataTypes = new TSDataType[o.getMeasurements().length];
+                    final String[] measurements = o.getMeasurements();
+                    TSDataType[] dataTypes =
+                        new TSDataType[measurements == null ? 0 : measurements.length];
                     for (int i = 0, length = dataTypes.length; i < length; i++) {
                       dataTypes[i] = o.getDataType(i);
                     }

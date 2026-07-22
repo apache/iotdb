@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -30,6 +39,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class SetProperties extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SetProperties.class);
 
   public enum Type {
     TABLE,
@@ -48,10 +59,13 @@ public class SetProperties extends Statement {
       final QualifiedName name,
       final List<Property> properties,
       final boolean ifExists) {
-    super(requireNonNull(location, "location is null"));
-    this.type = requireNonNull(type, "type is null");
-    this.name = requireNonNull(name, "name is null");
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.type = requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.properties =
+        ImmutableList.copyOf(
+            requireNonNull(
+                properties, DataNodeQueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49));
     this.ifExists = ifExists;
   }
 
@@ -72,8 +86,8 @@ public class SetProperties extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitSetProperties(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitSetProperties(this, context);
   }
 
   @Override
@@ -109,5 +123,14 @@ public class SetProperties extends Statement {
         .add("properties", properties)
         .add("ifExists", ifExists)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
+    return size;
   }
 }

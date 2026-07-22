@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.Driver;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 
 import static java.util.Objects.requireNonNull;
@@ -40,7 +41,8 @@ public class PipelineDriverFactory {
 
   public PipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
-    this.operation = requireNonNull(operation, "rootOperator is null");
+    this.operation =
+        requireNonNull(operation, DataNodeQueryMessages.EXCEPTION_ROOTOPERATOR_IS_NULL_050A1E79);
     this.driverContext = driverContext;
     this.estimatedMemorySize = estimatedMemorySize;
   }
@@ -50,7 +52,7 @@ public class PipelineDriverFactory {
   }
 
   public Driver createDriver() {
-    requireNonNull(driverContext, "driverContext is null");
+    requireNonNull(driverContext, DataNodeQueryMessages.EXCEPTION_DRIVERCONTEXT_IS_NULL_4FEBE55F);
     try {
       Driver driver = null;
       if (driverContext instanceof DataDriverContext) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
@@ -67,7 +68,7 @@ public abstract class AbstractTsFileTool {
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
       ioTPrinter.println(msg);
-      ioTPrinter.println("Use -help for more information");
+      ioTPrinter.println(CliMessages.USE_HELP_FOR_MORE);
       throw new ArgsErrorException(msg);
     }
     return str;

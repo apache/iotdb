@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -72,8 +73,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
             .enableRedirection(false)
             .enableAutoFetch(false);
     if (useSsl) {
-      sessionPoolBuilder =
-          sessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      sessionPoolBuilder = configureSsl(sessionPoolBuilder);
     }
     sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);
@@ -93,7 +93,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromSqlFile(File file) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 
   @Override

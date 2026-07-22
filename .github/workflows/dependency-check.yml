@@ -11,6 +11,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
@@ -20,6 +24,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -43,16 +51,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}

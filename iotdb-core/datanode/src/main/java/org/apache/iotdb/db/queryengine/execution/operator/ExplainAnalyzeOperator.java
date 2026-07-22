@@ -19,20 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
+import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsJsonDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -45,6 +51,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +63,11 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SPACE;
+
 public class ExplainAnalyzeOperator implements ProcessOperator {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
@@ -63,28 +75,43 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(ExplainAnalyzeOperator.class);
   private static final String LOG_TITLE =
       "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
+  private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
+
   private final OperatorContext operatorContext;
   private final Operator child;
   private final boolean verbose;
   private boolean outputResult = false;
   private final List<FragmentInstance> instances;
+  private final ExplainOutputFormat outputFormat;
 
-  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
-      new FragmentInstanceStatisticsDrawer();
+  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer;
+  private final FragmentInstanceStatisticsJsonDrawer fragmentInstanceStatisticsJsonDrawer;
 
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
   private final MPPQueryContext mppQueryContext;
 
+  @Deprecated
   public ExplainAnalyzeOperator(
       OperatorContext operatorContext,
       Operator child,
       long queryId,
       boolean verbose,
       long timeout) {
+    this(operatorContext, child, queryId, verbose, timeout, ExplainOutputFormat.TEXT);
+  }
+
+  public ExplainAnalyzeOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      long queryId,
+      boolean verbose,
+      long timeout,
+      ExplainOutputFormat outputFormat) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
+    this.outputFormat = outputFormat;
     Coordinator coordinator = Coordinator.getInstance();
 
     this.clientManager = coordinator.getInternalServiceClientManager();
@@ -92,7 +119,16 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     mppQueryContext = queryExecution.getContext();
-    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      this.fragmentInstanceStatisticsDrawer = null;
+      this.fragmentInstanceStatisticsJsonDrawer = new FragmentInstanceStatisticsJsonDrawer();
+      fragmentInstanceStatisticsJsonDrawer.renderPlanStatistics(mppQueryContext);
+    } else {
+      this.fragmentInstanceStatisticsDrawer = new FragmentInstanceStatisticsDrawer();
+      this.fragmentInstanceStatisticsJsonDrawer = null;
+      fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+    }
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.
@@ -119,7 +155,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       return null;
     }
 
-    fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
+    } else {
+      fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    }
 
     // fetch statics from all fragment instances
     TsBlock result = buildResult();
@@ -142,11 +182,19 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       for (int i = 0;
           i < fragmentInstanceStatisticsDrawer.getMaxLineLength() - line.getValue().length();
           i++) {
-        sb.append(" ");
+        sb.append(SPACE);
       }
       analyzeResult.add(sb.toString());
     }
     return analyzeResult;
+  }
+
+  private String buildFragmentInstanceStatisticsJson(
+      List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
+        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+    return fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
+        instances, allStatistics, verbose);
   }
 
   // We will log the intermediate result of analyze if timeout
@@ -157,23 +205,32 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             String.format(
                 "%s-Explain-Analyze-Logger",
                 operatorContext.getInstanceContext().getId().getQueryId()))) {
-      List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
-
       StringBuilder logContent = new StringBuilder();
       logContent.append("\n").append(LOG_TITLE).append("\n");
-      for (String line : analyzeResult) {
-        logContent.append(line).append("\n");
+      if (outputFormat == ExplainOutputFormat.JSON) {
+        logContent.append(buildFragmentInstanceStatisticsJson(instances, verbose)).append("\n");
+      } else {
+        List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+        for (String line : analyzeResult) {
+          logContent.append(line).append("\n");
+        }
       }
       String res = logContent.toString();
       logger.info(res);
     } catch (Exception e) {
-      logger.error("Error occurred when logging intermediate result of analyze.", e);
+      logger.error(
+          DataNodeQueryMessages.ERROR_OCCURRED_WHEN_LOGGING_INTERMEDIATE_RESULT_OF_ANALYZE, e);
     }
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
-
-    List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      return buildJsonResult();
+    }
+    Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults =
+        mppQueryContext.getCteExplainResults();
+    List<String> mainAnalyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    List<String> analyzeResult = mergeAnalyzeResults(cteAnalyzeResults, mainAnalyzeResult);
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
@@ -185,6 +242,76 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       builder.declarePosition();
     }
     return builder.build();
+  }
+
+  private TsBlock buildJsonResult() throws FragmentInstanceFetchException {
+    String jsonResult = buildFragmentInstanceStatisticsJson(instances, verbose);
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
+    timeColumnBuilder.writeLong(0);
+    columnBuilder.writeBinary(new Binary(jsonResult.getBytes()));
+    builder.declarePosition();
+    return builder.build();
+  }
+
+  private List<String> mergeAnalyzeResults(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults,
+      List<String> mainAnalyzeResult) {
+    if (cteAnalyzeResults.isEmpty()) {
+      return mainAnalyzeResult;
+    }
+
+    final int maxLineLength =
+        Math.max(
+            cteAnalyzeResults.values().stream().mapToInt(p -> p.left).max().orElse(0),
+            fragmentInstanceStatisticsDrawer.getMaxLineLength());
+
+    List<String> analyzeResult = new ArrayList<>();
+    cteAnalyzeResults.forEach(
+        (table, pair) -> {
+          analyzeResult.add(String.format("%s : '%s'", CTE_QUERY, table.getNode().getName()));
+          for (String line : pair.right) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(line);
+            for (int i = 0; i < maxLineLength - line.length(); i++) {
+              sb.append(SPACE);
+            }
+            analyzeResult.add(sb.toString());
+          }
+          analyzeResult.add(BLANK);
+        });
+
+    analyzeResult.add(MAIN_QUERY);
+    mainAnalyzeResult.forEach(
+        line -> {
+          StringBuilder sb = new StringBuilder();
+          sb.append(line);
+          for (int i = 0; i < maxLineLength - line.length(); i++) {
+            sb.append(SPACE);
+          }
+          analyzeResult.add(sb.toString());
+          if (line.contains("Logical Plan Cost:")) {
+            mppQueryContext
+                .getCteMaterializationCosts()
+                .forEach(
+                    (tableRef, cost) -> {
+                      sb.setLength(0);
+                      sb.append(
+                          String.format(
+                              "  %s Materialization Total Cost: %.3f ms",
+                              tableRef.getNode().getName().toString(), cost * NS_TO_MS_FACTOR));
+                      int currentLength = sb.length();
+                      for (int i = 0; i < maxLineLength - currentLength; i++) {
+                        sb.append(SPACE);
+                      }
+                      analyzeResult.add(sb.toString());
+                    });
+          }
+        });
+
+    return analyzeResult;
   }
 
   @Override
@@ -204,10 +331,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     if (logRecordTask != null) {
       boolean cancelResult = logRecordTask.cancel(true);
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", logRecordTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 

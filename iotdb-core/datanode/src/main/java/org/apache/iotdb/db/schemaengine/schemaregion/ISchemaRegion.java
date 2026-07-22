@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
@@ -55,7 +56,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeactivateTem
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -115,7 +115,15 @@ public interface ISchemaRegion {
 
   boolean createSnapshot(final File snapshotDir);
 
-  void loadSnapshot(final File latestSnapshotRootDir);
+  /**
+   * Load the latest schema snapshot from the given dir.
+   *
+   * @return {@code true} if the snapshot was loaded successfully, {@code false} if loading failed
+   *     (in which case the region falls back to an empty/re-initialized state). Callers rely on
+   *     this to honor the {@link org.apache.iotdb.consensus.IStateMachine#loadSnapshot}
+   *     success/failure contract (e.g. the AddPeer flow and Ratis snapshot install).
+   */
+  boolean loadSnapshot(final File latestSnapshotRootDir);
 
   // endregion
 
@@ -330,6 +338,16 @@ public interface ISchemaRegion {
   void renameTagOrAttributeKey(final String oldKey, final String newKey, final PartialPath fullPath)
       throws MetadataException, IOException;
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException;
+
   // endregion
 
   // region Interfaces for Template operations
@@ -349,7 +367,8 @@ public interface ISchemaRegion {
 
   int fillLastQueryMap(
       final PartialPath pattern,
-      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill,
+      final PathPatternTree scope)
       throws MetadataException;
 
   // endregion

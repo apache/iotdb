@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
@@ -150,6 +151,7 @@ public class ReadPointCompactionPerformer
     summary.setTemporalFileNum(targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
+      compactionWriter.setCompactionTaskSummary(summary);
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
@@ -363,7 +365,9 @@ public class ReadPointCompactionPerformer
     if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
           String.format(
-              "[Compaction] compaction for target file %s abort", targetFiles.toString()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILE_S_ABORT_46ECFF41,
+              targetFiles.toString()));
     }
   }
 

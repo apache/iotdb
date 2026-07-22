@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -104,8 +106,8 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTreeDeviceViewScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitTreeDeviceViewScan(this, context);
   }
 
   @Override
@@ -171,18 +173,24 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "Unsupported to serialize: " + TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TO_SERIALIZE_S_484DAAAF,
+            TreeNonAlignedDeviceViewScanNode.class.getSimpleName()));
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(
-        "Unsupported to serialize: " + TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TO_SERIALIZE_S_484DAAAF,
+            TreeNonAlignedDeviceViewScanNode.class.getSimpleName()));
   }
 
   public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "Unsupported to deserialize: " + TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TO_DESERIALIZE_S_4641CD63,
+            TreeNonAlignedDeviceViewScanNode.class.getSimpleName()));
   }
 
   @Override

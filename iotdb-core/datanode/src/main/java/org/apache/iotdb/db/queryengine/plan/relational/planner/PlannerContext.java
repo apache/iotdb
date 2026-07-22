@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 
 /**
  * A carrier of core, global, non-derived services for planner and analyzer. This is used to ease

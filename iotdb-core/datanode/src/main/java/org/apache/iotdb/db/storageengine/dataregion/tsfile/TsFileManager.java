@@ -146,6 +146,18 @@ public class TsFileManager {
     }
   }
 
+  public Pair<List<TsFileResource>, List<TsFileResource>> getTsFileListSnapshot(
+      long timePartition) {
+    readLock();
+    try {
+      return new Pair<>(
+          new ArrayList<>(sequenceFiles.getOrDefault(timePartition, new TsFileResourceList())),
+          new ArrayList<>(unsequenceFiles.getOrDefault(timePartition, new TsFileResourceList())));
+    } finally {
+      readUnlock();
+    }
+  }
+
   public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
@@ -194,14 +206,7 @@ public class TsFileManager {
   public void remove(TsFileResource tsFileResource, boolean sequence) {
     writeLock("remove");
     try {
-      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
-        if (entry.getValue().contains(tsFileResource)) {
-          entry.getValue().remove(tsFileResource);
-          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
-          break;
-        }
-      }
+      removeFromPartitionFileList(tsFileResource, sequence);
     } finally {
       writeUnlock();
     }
@@ -211,10 +216,18 @@ public class TsFileManager {
     writeLock("removeAll");
     try {
       for (TsFileResource resource : tsFileResourceList) {
-        remove(resource, sequence);
+        removeFromPartitionFileList(resource, sequence);
       }
     } finally {
-      writeLock("removeAll");
+      writeUnlock();
+    }
+  }
+
+  private void removeFromPartitionFileList(TsFileResource tsFileResource, boolean sequence) {
+    Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+    TsFileResourceList tsFileResources = selectedMap.get(tsFileResource.getTimePartition());
+    if (tsFileResources != null && tsFileResources.remove(tsFileResource)) {
+      TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
     }
   }
 

@@ -63,7 +63,7 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   public void setMayDeleteAudit(boolean mayDeleteAudit) {

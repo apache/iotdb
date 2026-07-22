@@ -50,6 +50,13 @@ def _cache_enable() -> bool:
     return AINodeDescriptor().get_config().get_ain_data_storage_cache_size() > 0
 
 
+def _format_endpoint_url(ip: str, port: int) -> str:
+    formatted_ip = ip
+    if ":" in ip and not (ip.startswith("[") and ip.endswith("]")):
+        formatted_ip = f"[{ip}]"
+    return f"{formatted_ip}:{port}"
+
+
 class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
     cache = MemoryLRUCache()
 
@@ -69,9 +76,6 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         password: str = AINodeDescriptor()
         .get_config()
         .get_ain_cluster_ingress_password(),
-        time_zone: str = AINodeDescriptor()
-        .get_config()
-        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
@@ -87,10 +91,9 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         self.TIME_CONDITION = " where time>=%s and time<%s"
 
         self.session = Session.init_from_node_urls(
-            node_urls=[f"{ip}:{port}"],
+            node_urls=[_format_endpoint_url(ip, port)],
             user=username,
             password=password,
-            zone_id=time_zone,
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),
@@ -258,9 +261,6 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         password: str = AINodeDescriptor()
         .get_config()
         .get_ain_cluster_ingress_password(),
-        time_zone: str = AINodeDescriptor()
-        .get_config()
-        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
@@ -269,10 +269,9 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         )
 
         table_session_config = TableSessionConfig(
-            node_urls=[f"{ip}:{port}"],
+            node_urls=[_format_endpoint_url(ip, port)],
             username=username,
             password=password,
-            time_zone=time_zone,
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),

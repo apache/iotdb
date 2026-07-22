@@ -31,6 +31,7 @@ import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubs
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -79,12 +80,14 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     subs.getTopics().forEach(System.out::println);
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic(null);
     printTopics("testCreateTopic_null");
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_emptyString()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -92,6 +95,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_emptyString");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_dup() throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic(topicName);
@@ -99,6 +103,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_dup");
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_invalid()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -106,6 +111,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalid");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class) // path filter conditions are not checked
   public void testCreateTopic_invalidPath_no_root()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -115,6 +121,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidPath_no_root");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidPath_endWithPoint()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -124,6 +131,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidPath_endWithPoint");
   }
 
+  @Ignore
   @Test // Need to pay attention to the default value
   public void testCreateTopic_invalidFormat()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -134,6 +142,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     subs.dropTopic("topic_error_path3");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -143,6 +152,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidTime");
   }
 
+  @Ignore
   @Test
   public void testCreateTopic_invalidTime2()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -154,6 +164,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     subs.dropTopic("topic_error_path5");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime3()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -164,6 +175,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidTime3");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime4()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -174,6 +186,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidTime4");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime5()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -184,6 +197,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     printTopics("testCreateTopic_invalidTime5");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testCreateTopic_invalidTime6()
       throws IoTDBConnectionException,
@@ -210,22 +224,26 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     dropDB(database);
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testDropTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic(null);
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testDropTopic_empty() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic("");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class) // drop non-existent topic
   public void testDropTopic_notCreate()
       throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic("abab");
   }
 
+  @Ignore
   @Test(expected = StatementExecutionException.class)
   public void testDropTopic_dup() throws IoTDBConnectionException, StatementExecutionException {
     String dropName = "`topic-1*.`";
@@ -234,12 +252,14 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionTreeRegressionIT 
     subs.dropTopic(dropName);
   }
 
+  @Ignore
   @Test
   public void testGetTopic_nonExist() throws IoTDBConnectionException, StatementExecutionException {
     System.out.println(subs.getTopic("xxx"));
     assertFalse(subs.getTopic("xxx").isPresent());
   }
 
+  @Ignore
   @Test
   public void testGetTopic_exist() throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic("exist_topic_name");

@@ -1,0 +1,346 @@
+/**
+* Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+#include "Common.h"
+
+#include <cstring>
+#include <ctime>
+#include <typeinfo>
+
+LogLevelType LOG_LEVEL = LEVEL_WARN;
+
+std::string extractExceptionMessage(const std::exception& exception) {
+  const char* what = exception.what();
+  if (what != nullptr) {
+    std::string message(what);
+    if (!message.empty() && message != "std::exception") {
+      return message;
+    }
+  }
+  return std::string("Unhandled exception type: ") + typeid(exception).name();
+}
+
+std::string extractExceptionMessage(const std::exception_ptr& exceptionPtr) {
+  if (exceptionPtr == nullptr) {
+    return "Unknown exception";
+  }
+  try {
+    std::rethrow_exception(exceptionPtr);
+  } catch (const std::exception& exception) {
+    return extractExceptionMessage(exception);
+  } catch (...) {
+    return "Unknown non-std exception";
+  }
+}
+
+std::string getTimePrecision(int32_t timeFactor) {
+  if (timeFactor >= 1000000)
+    return "us";
+  if (timeFactor >= 1000)
+    return "ms";
+  return "s";
+}
+
+std::string formatDatetime(const std::string& format, const std::string& precision,
+                           int64_t timestamp, const std::string& zoneId) {
+  std::time_t time = static_cast<std::time_t>(timestamp);
+  std::tm* tm = std::localtime(&time);
+  char buffer[80];
+  strftime(buffer, sizeof(buffer), format.c_str(), tm);
+  return std::string(buffer);
+}
+
+std::tm convertToTimestamp(int64_t value, int32_t timeFactor) {
+  std::time_t time = static_cast<std::time_t>(value / timeFactor);
+  return *std::localtime(&time);
+}
+
+TSDataType::TSDataType getDataTypeByStr(const std::string& typeStr) {
+  if (typeStr == "BOOLEAN")
+    return TSDataType::BOOLEAN;
+  if (typeStr == "INT32")
+    return TSDataType::INT32;
+  if (typeStr == "INT64")
+    return TSDataType::INT64;
+  if (typeStr == "FLOAT")
+    return TSDataType::FLOAT;
+  if (typeStr == "DOUBLE")
+    return TSDataType::DOUBLE;
+  if (typeStr == "TEXT")
+    return TSDataType::TEXT;
+  if (typeStr == "TIMESTAMP")
+    return TSDataType::TIMESTAMP;
+  if (typeStr == "DATE")
+    return TSDataType::DATE;
+  if (typeStr == "BLOB")
+    return TSDataType::BLOB;
+  if (typeStr == "STRING")
+    return TSDataType::STRING;
+  if (typeStr == "OBJECT")
+    return TSDataType::OBJECT;
+  return TSDataType::UNKNOWN;
+}
+
+std::tm int32ToDate(int32_t value) {
+  std::time_t time = static_cast<std::time_t>(value) * 86400;
+  return *std::localtime(&time);
+}
+
+MyStringBuffer::MyStringBuffer() : pos(0) {
+  checkBigEndian();
+}
+
+MyStringBuffer::MyStringBuffer(const std::string& str) : str(str), pos(0) {
+  checkBigEndian();
+}
+
+void MyStringBuffer::reserve(size_t n) {
+  str.reserve(n);
+}
+
+void MyStringBuffer::clear() {
+  str.clear();
+  pos = 0;
+}
+
+bool MyStringBuffer::hasRemaining() {
+  return pos < str.size();
+}
+
+int MyStringBuffer::getInt() {
+  return *(int*)getOrderedByte(4);
+}
+
+IoTDBDate MyStringBuffer::getDate() {
+  return parseIntToDate(getInt());
+}
+
+int64_t MyStringBuffer::getInt64() {
+#ifdef ARCH32
+  const char* buf_addr = getOrderedByte(8);
+  if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
+    return *(int64_t*)buf_addr;
+  } else {
+    char tmp_buf[8];
+    memcpy(tmp_buf, buf_addr, 8);
+    return *(int64_t*)tmp_buf;
+  }
+#else
+  return *(int64_t*)getOrderedByte(8);
+#endif
+}
+
+float MyStringBuffer::getFloat() {
+  return *(float*)getOrderedByte(4);
+}
+
+double MyStringBuffer::getDouble() {
+#ifdef ARCH32
+  const char* buf_addr = getOrderedByte(8);
+  if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
+    return *(double*)buf_addr;
+  } else {
+    char tmp_buf[8];
+    memcpy(tmp_buf, buf_addr, 8);
+    return *(double*)tmp_buf;
+  }
+#else
+  return *(double*)getOrderedByte(8);
+#endif
+}
+
+char MyStringBuffer::getChar() {
+  if (pos >= str.size()) {
+    throw IoTDBException("MyStringBuffer::getChar: read past end (pos=" + std::to_string(pos) +
+                         ", size=" + std::to_string(str.size()) + ")");
+  }
+  return str[pos++];
+}
+
+bool MyStringBuffer::getBool() {
+  return getChar() == 1;
+}
+
+std::string MyStringBuffer::getString() {
+  const int lenInt = getInt();
+  if (lenInt < 0) {
+    throw IoTDBException("MyStringBuffer::getString: negative length");
+  }
+  const size_t len = static_cast<size_t>(lenInt);
+  if (pos > str.size() || len > str.size() - pos) {
+    throw IoTDBException(
+        "MyStringBuffer::getString: length exceeds buffer (pos=" + std::to_string(pos) +
+        ", len=" + std::to_string(len) + ", size=" + std::to_string(str.size()) + ")");
+  }
+  const size_t tmpPos = pos;
+  pos += len;
+  return str.substr(tmpPos, len);
+}
+
+void MyStringBuffer::putInt(int ins) {
+  putOrderedByte((char*)&ins, 4);
+}
+
+void MyStringBuffer::putDate(IoTDBDate date) {
+  putInt(parseDateExpressionToInt(date));
+}
+
+void MyStringBuffer::putInt64(int64_t ins) {
+  putOrderedByte((char*)&ins, 8);
+}
+
+void MyStringBuffer::putFloat(float ins) {
+  putOrderedByte((char*)&ins, 4);
+}
+
+void MyStringBuffer::putDouble(double ins) {
+  putOrderedByte((char*)&ins, 8);
+}
+
+void MyStringBuffer::putChar(char ins) {
+  str += ins;
+}
+
+void MyStringBuffer::putBool(bool ins) {
+  char tmp = ins ? 1 : 0;
+  str += tmp;
+}
+
+void MyStringBuffer::putString(const std::string& ins) {
+  putInt((int)(ins.size()));
+  str += ins;
+}
+
+void MyStringBuffer::concat(const std::string& ins) {
+  str.append(ins);
+}
+
+void MyStringBuffer::checkBigEndian() {
+  static int chk = 0x0201;
+  isBigEndian = (0x01 != *(char*)(&chk));
+}
+
+const char* MyStringBuffer::getOrderedByte(size_t len) {
+  if (pos > str.size() || len > str.size() - pos) {
+    throw IoTDBException(
+        "MyStringBuffer::getOrderedByte: read past end (pos=" + std::to_string(pos) +
+        ", len=" + std::to_string(len) + ", size=" + std::to_string(str.size()) + ")");
+  }
+  const char* p = nullptr;
+  if (isBigEndian) {
+    p = str.c_str() + pos;
+  } else {
+    const char* tmp = str.c_str();
+    for (size_t i = pos; i < pos + len; i++) {
+      numericBuf[pos + len - 1 - i] = tmp[i];
+    }
+    p = numericBuf;
+  }
+  pos += len;
+  return p;
+}
+
+void MyStringBuffer::putOrderedByte(char* buf, int len) {
+  if (isBigEndian) {
+    str.append(buf, len);
+  } else {
+    for (int i = len - 1; i > -1; i--) {
+      str += buf[i];
+    }
+  }
+}
+
+BitMap::BitMap(size_t size) {
+  resize(size);
+}
+
+void BitMap::resize(size_t size) {
+  this->size = size;
+  this->bits.resize((size >> 3) + 1);
+  reset();
+}
+
+bool BitMap::mark(size_t position) {
+  if (position >= size)
+    return false;
+
+  bits[position >> 3] |= (char)1 << (position % 8);
+  return true;
+}
+
+bool BitMap::unmark(size_t position) {
+  if (position >= size)
+    return false;
+
+  bits[position >> 3] &= ~((char)1 << (position % 8));
+  return true;
+}
+
+void BitMap::markAll() {
+  std::fill(bits.begin(), bits.end(), (char)0XFF);
+}
+
+void BitMap::reset() {
+  std::fill(bits.begin(), bits.end(), (char)0);
+}
+
+bool BitMap::isMarked(size_t position) const {
+  if (position >= size)
+    return false;
+
+  return (bits[position >> 3] & ((char)1 << (position % 8))) != 0;
+}
+
+bool BitMap::isAllUnmarked() const {
+  size_t j;
+  for (j = 0; j < size >> 3; j++) {
+    if (bits[j] != (char)0) {
+      return false;
+    }
+  }
+  for (j = 0; j < size % 8; j++) {
+    if ((bits[size >> 3] & ((char)1 << j)) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool BitMap::isAllMarked() const {
+  size_t j;
+  for (j = 0; j < size >> 3; j++) {
+    if (bits[j] != (char)0XFF) {
+      return false;
+    }
+  }
+  for (j = 0; j < size % 8; j++) {
+    if ((bits[size >> 3] & ((char)1 << j)) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const std::vector<char>& BitMap::getByteArray() const {
+  return this->bits;
+}
+
+size_t BitMap::getSize() const {
+  return this->size;
+}

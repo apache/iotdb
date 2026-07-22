@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -124,11 +125,11 @@ public class IoTDBConnection implements Connection {
 
   public IoTDBConnection(String url, Properties info) throws SQLException, TTransportException {
     if (url == null) {
-      throw new IoTDBURLException("Input url cannot be null");
+      throw new IoTDBURLException(JdbcMessages.INPUT_URL_NULL);
     }
     params = Utils.parseUrl(url, info);
     this.url = url;
-    this.userName = info.get("user").toString();
+    this.userName = params.getUsername();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
@@ -155,17 +156,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException("Does not support isWrapperFor");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_WRAPPER_FOR);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException("Does not support unwrap");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_UNWRAP);
   }
 
   @Override
   public void abort(Executor arg0) throws SQLException {
-    throw new SQLException("Does not support abort");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_ABORT);
   }
 
   @Override
@@ -183,7 +184,8 @@ public class IoTDBConnection implements Connection {
       getClient().closeSession(req);
     } catch (TException e) {
       throw new SQLException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+          JdbcMessages.EXCEPTION_ERROR_OCCURS_CLOSING_SESSION_AT_SERVER_MAYBE_SERVER_DOWN_2BCE63C0,
+          e);
     } finally {
       isClosed = true;
       if (transport != null) {
@@ -197,33 +199,33 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Array createArrayOf(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException("Does not support createArrayOf");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_ARRAY_OF);
   }
 
   @Override
   public Blob createBlob() throws SQLException {
-    throw new SQLException("Does not support createBlob");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_BLOB);
   }
 
   @Override
   public Clob createClob() throws SQLException {
-    throw new SQLException("Does not support createClob");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_CLOB);
   }
 
   @Override
   public NClob createNClob() throws SQLException {
-    throw new SQLException("Does not suppport createNClob");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_NCLOB);
   }
 
   @Override
   public SQLXML createSQLXML() throws SQLException {
-    throw new SQLException("Does not support createSQLXML");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_SQLXML);
   }
 
   @Override
   public Statement createStatement() throws SQLException {
     if (isClosed) {
-      throw new SQLException("Cannot create statement because connection is closed");
+      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
     }
     return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
   }
@@ -234,23 +236,26 @@ public class IoTDBConnection implements Connection {
     if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
       throw new SQLException(
           String.format(
-              "Statements with result set concurrency %d are not supported", resultSetConcurrency));
+              JdbcMessages.EXCEPTION_STATEMENTS_RESULT_SET_CONCURRENCY_ARG_NOT_SUPPORTED_C6043E9A,
+              resultSetConcurrency));
     }
     if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
       throw new SQLException(
-          String.format("Statements with ResultSet type %d are not supported", resultSetType));
+          String.format(
+              JdbcMessages.EXCEPTION_STATEMENTS_RESULTSET_TYPE_ARG_NOT_SUPPORTED_8BE22644,
+              resultSetType));
     }
     return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
   }
 
   @Override
   public Statement createStatement(int arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException("Does not support createStatement");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_STATEMENT);
   }
 
   @Override
   public Struct createStruct(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException("Does not support createStruct");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_CREATE_STRUCT);
   }
 
   @Override
@@ -286,7 +291,7 @@ public class IoTDBConnection implements Connection {
         stmt.execute();
       } catch (SQLException e) {
         stmt.close();
-        logger.error("Use database error: {}", e.getMessage());
+        logger.error(JdbcMessages.USE_DATABASE_ERROR, e.getMessage());
         throw e;
       }
     }
@@ -294,17 +299,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Properties getClientInfo() throws SQLException {
-    throw new SQLException("Does not support getClientInfo");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_CLIENT_INFO);
   }
 
   @Override
   public void setClientInfo(Properties arg0) throws SQLClientInfoException {
-    throw new SQLClientInfoException("Does not support setClientInfo", null);
+    throw new SQLClientInfoException(JdbcMessages.NOT_SUPPORT_SET_CLIENT_INFO, null);
   }
 
   @Override
   public String getClientInfo(String arg0) throws SQLException {
-    throw new SQLException("Does not support getClientInfo");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_CLIENT_INFO);
   }
 
   @Override
@@ -314,13 +319,13 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setHoldability(int arg0) throws SQLException {
-    throw new SQLException("Does not support setHoldability");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_HOLDABILITY);
   }
 
   @Override
   public DatabaseMetaData getMetaData() throws SQLException {
     if (isClosed) {
-      throw new SQLException("Cannot create statement because connection is closed");
+      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
     }
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
@@ -338,7 +343,7 @@ public class IoTDBConnection implements Connection {
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return getDatabase();
     }
-    throw new SQLException("Does not support getSchema");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_SCHEMA);
   }
 
   @Override
@@ -357,7 +362,7 @@ public class IoTDBConnection implements Connection {
         stmt.execute();
       } catch (SQLException e) {
         stmt.close();
-        logger.error("Use database error: {}", e.getMessage());
+        logger.error(JdbcMessages.USE_DATABASE_ERROR, e.getMessage());
         throw e;
       }
     }
@@ -370,17 +375,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setTransactionIsolation(int arg0) throws SQLException {
-    throw new SQLException("Does not support setTransactionIsolation");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_TRANSACTION_ISOLATION);
   }
 
   @Override
   public Map<String, Class<?>> getTypeMap() throws SQLException {
-    throw new SQLException("Does not support getTypeMap");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_TYPE_MAP);
   }
 
   @Override
   public void setTypeMap(Map<String, Class<?>> arg0) throws SQLException {
-    throw new SQLException("Does not support setTypeMap");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_TYPE_MAP);
   }
 
   @Override
@@ -401,7 +406,7 @@ public class IoTDBConnection implements Connection {
   @Override
   public void setReadOnly(boolean readonly) throws SQLException {
     if (readonly) {
-      throw new SQLException("Does not support readOnly");
+      throw new SQLException(JdbcMessages.NOT_SUPPORT_READ_ONLY);
     }
   }
 
@@ -412,7 +417,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String nativeSQL(String arg0) throws SQLException {
-    throw new SQLException("Does not support nativeSQL");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_NATIVE_SQL);
   }
 
   @Override
@@ -433,7 +438,11 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      return new IoTDBTablePreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    } else {
+      return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    }
   }
 
   @Override
@@ -466,7 +475,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void releaseSavepoint(Savepoint arg0) throws SQLException {
-    throw new SQLException("Does not support releaseSavepoint");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_RELEASE_SAVEPOINT);
   }
 
   @Override
@@ -485,18 +494,18 @@ public class IoTDBConnection implements Connection {
       try {
         setTimeZone(value);
       } catch (TException | IoTDBSQLException e) {
-        throw new SQLClientInfoException("Set time_zone error: ", null, e);
+        throw new SQLClientInfoException(JdbcMessages.SET_TIMEZONE_ERROR, null, e);
       }
     } else {
       HashMap<String, ClientInfoStatus> hashMap = new HashMap<>();
       hashMap.put(name, ClientInfoStatus.REASON_UNKNOWN_PROPERTY);
-      throw new SQLClientInfoException("Does not support this type of client info: ", hashMap);
+      throw new SQLClientInfoException(JdbcMessages.NOT_SUPPORT_CLIENT_INFO_TYPE, hashMap);
     }
   }
 
   @Override
   public void setNetworkTimeout(Executor arg0, int arg1) throws SQLException {
-    throw new SQLException("Does not support setNetworkTimeout");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_NETWORK_TIMEOUT);
   }
 
   public int getQueryTimeout() {
@@ -505,19 +514,20 @@ public class IoTDBConnection implements Connection {
 
   public void setQueryTimeout(int seconds) throws SQLException {
     if (seconds < 0) {
-      throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
+      throw new SQLException(
+          String.format(JdbcMessages.QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE, seconds));
     }
     this.queryTimeout = seconds;
   }
 
   @Override
   public Savepoint setSavepoint() throws SQLException {
-    throw new SQLException("Does not support setSavepoint");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_SAVEPOINT);
   }
 
   @Override
   public Savepoint setSavepoint(String arg0) throws SQLException {
-    throw new SQLException("Does not support setSavepoint");
+    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_SAVEPOINT);
   }
 
   public IClientRPCService.Iface getClient() {
@@ -543,7 +553,10 @@ public class IoTDBConnection implements Connection {
               params.getPort(),
               getNetworkTimeout(),
               params.getTrustStore(),
-              params.getTrustStorePwd());
+              params.getTrustStorePwd(),
+              params.getKeyStore(),
+              params.getKeyStorePwd(),
+              params.getSslProtocol());
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -574,14 +587,16 @@ public class IoTDBConnection implements Connection {
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
-            "Protocol differ, Client version is {}, but Server version is {}",
+            JdbcMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_F0AA3D03,
             protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         if (openResp.getServerProtocolVersion().getValue() == 0) { // less than 0.10
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
-                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+                  JdbcMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
+                  protocolVersion.getValue(),
+                  openResp.getServerProtocolVersion().getValue()));
         }
       }
       String expirationInformer = "Your password will expire at ";
@@ -594,7 +609,7 @@ public class IoTDBConnection implements Connection {
         LocalDateTime now = LocalDateTime.now();
         if (now.isAfter(expirationDate.minusDays(3))) {
           logger.warn(
-              "{}{}, please change it in time via 'ALTER USER' statement",
+              JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
               expirationInformer,
               expirationDateStr);
         }
@@ -605,14 +620,17 @@ public class IoTDBConnection implements Connection {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(
-                "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
-                params.getJdbcUriString(), e.getMessage()),
+                JdbcMessages
+                    .EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_YOU_MAY_TRY_CONNECT_OLD_8FC3703E,
+                params.getJdbcUriString(),
+                e.getMessage()),
             e);
       }
       throw new SQLException(
           String.format(
-              "Can not establish connection with %s : %s. ",
-              params.getJdbcUriString(), e.getMessage()),
+              JdbcMessages.EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055,
+              params.getJdbcUriString(),
+              e.getMessage()),
           e);
     } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server
@@ -643,7 +661,7 @@ public class IoTDBConnection implements Connection {
         try {
           Thread.sleep(Config.RETRY_INTERVAL_MS);
         } catch (InterruptedException e1) {
-          logger.error("reconnect is interrupted.", e1);
+          logger.error(JdbcMessages.RECONNECT_INTERRUPTED, e1);
           Thread.currentThread().interrupt();
         }
       }

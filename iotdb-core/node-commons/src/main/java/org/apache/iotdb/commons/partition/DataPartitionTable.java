@@ -282,6 +282,48 @@ public class DataPartitionTable {
     return removedTimePartitionSlots;
   }
 
+  /**
+   * Merge a complete DataPartitionTable from the partition tables received from multiple DataNodes
+   * (supports cross-database merging, which is exactly the logic implemented in the current PR)
+   *
+   * @param sourceMap Map<databaseName, DataPartitionTableFromDN>
+   * @return The complete merged partition table
+   */
+  public DataPartitionTable merge(Map<Integer, DataPartitionTable> sourceMap) {
+    DataPartitionTable merged = new DataPartitionTable(this.dataPartitionMap);
+    for (DataPartitionTable table : sourceMap.values()) {
+      for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry :
+          table.dataPartitionMap.entrySet()) {
+        TSeriesPartitionSlot slot = entry.getKey();
+        SeriesPartitionTable seriesTable = entry.getValue();
+        merged
+            .dataPartitionMap
+            .computeIfAbsent(slot, k -> new SeriesPartitionTable())
+            .merge(seriesTable);
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * Support single table merging Merge another DataPartitionTable into the current object (used for
+   * incremental merging)
+   */
+  public DataPartitionTable merge(DataPartitionTable sourcePartitionTable) {
+    DataPartitionTable merged = new DataPartitionTable(this.dataPartitionMap);
+    if (sourcePartitionTable == null) {
+      return merged;
+    }
+    for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry :
+        sourcePartitionTable.dataPartitionMap.entrySet()) {
+      merged
+          .dataPartitionMap
+          .computeIfAbsent(entry.getKey(), k -> new SeriesPartitionTable())
+          .merge(entry.getValue());
+    }
+    return merged;
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(dataPartitionMap.size(), outputStream);

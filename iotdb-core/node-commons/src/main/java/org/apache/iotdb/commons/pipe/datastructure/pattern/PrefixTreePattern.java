@@ -63,6 +63,11 @@ public class PrefixTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return true;
+  }
+
+  @Override
   public boolean isLegal() {
     if (!pattern.startsWith("root")) {
       return false;
@@ -128,6 +133,11 @@ public class PrefixTreePattern extends TreePattern {
         // in this case, the extractor can be selected as candidate, but the measurements should
         // be checked further
         || (pattern.length() > deviceStr.length() && pattern.startsWith(deviceStr));
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return mayOverlapWithDevice(device);
   }
 
   @Override

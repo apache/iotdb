@@ -19,28 +19,12 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.calc.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList.SerializationRecorder;
-
-import org.apache.tsfile.external.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class TemporaryQueryDataFileService implements IService {
-
-  private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileService.class);
+public class TemporaryQueryDataFileService extends AbstractTemporaryQueryDataFileService {
 
   private static final String TEMPORARY_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
@@ -49,82 +33,9 @@ public class TemporaryQueryDataFileService implements IService {
           + File.separator
           + "tmp";
 
-  private final AtomicLong uniqueDataId;
-  private final Map<String, List<SerializationRecorder>> recorders;
-
-  private TemporaryQueryDataFileService() {
-    uniqueDataId = new AtomicLong(0);
-    recorders = new ConcurrentHashMap<>();
-  }
-
-  public String register(SerializationRecorder recorder) throws IOException {
-    String queryId = recorder.getQueryId();
-    if (!recorders.containsKey(queryId)) {
-      recorders.put(queryId, new ArrayList<>());
-    }
-    recorders.get(queryId).add(recorder);
-
-    String dirName = getDirName(queryId);
-    makeDirIfNecessary(dirName);
-    return getFileName(dirName, uniqueDataId.getAndIncrement());
-  }
-
-  public void deregister(String queryId) {
-    List<SerializationRecorder> recorderList = recorders.remove(queryId);
-    if (recorderList == null) {
-      return;
-    }
-    for (SerializationRecorder recorder : recorderList) {
-      try {
-        recorder.closeFile();
-      } catch (IOException e) {
-        logger.warn(
-            String.format("Failed to close file in method deregister(%s), because %s", queryId, e));
-      }
-    }
-    try {
-      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
-    } catch (IOException e) {
-      logger.warn(
-          String.format("Failed to clean dir in method deregister(%s), because %s", queryId, e));
-    }
-  }
-
-  private void makeDirIfNecessary(String dir) throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(dir);
-    if (file.exists() && file.isDirectory()) {
-      return;
-    }
-    FileUtils.forceMkdir(file);
-  }
-
-  private String getDirName(String queryId) {
-    return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator;
-  }
-
-  private String getFileName(String dir, long index) {
-    return dir + index;
-  }
-
   @Override
-  public void start() throws StartupException {
-    try {
-      makeDirIfNecessary(TEMPORARY_FILE_DIR);
-    } catch (IOException e) {
-      throw new StartupException(e);
-    }
-  }
-
-  @Override
-  public void stop() {
-    for (Object queryId : recorders.keySet().toArray()) {
-      deregister((String) queryId);
-    }
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TEMPORARY_QUERY_DATA_FILE_SERVICE;
+  protected String getTemporaryFileDir() {
+    return TEMPORARY_FILE_DIR;
   }
 
   public static TemporaryQueryDataFileService getInstance() {

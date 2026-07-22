@@ -19,6 +19,7 @@
 package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.it.utils.TSDataTypeTestUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -64,7 +65,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -1466,6 +1466,18 @@ public class IoTDBSessionRelationalIT {
           case DOUBLE:
             assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
             break;
+          case STRING:
+          case TEXT:
+            if (from == TSDataType.DATE) {
+              assertEquals(
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
+            } else {
+              assertEquals(
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
+            }
+            break;
           default:
             assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
         }
@@ -1596,7 +1608,7 @@ public class IoTDBSessionRelationalIT {
   }
 
   @SuppressWarnings("SameParameterValue")
-  private Object genValue(TSDataType dataType, int i) {
+  public static Object genValue(TSDataType dataType, int i) {
     switch (dataType) {
       case INT32:
         return i;
@@ -1626,11 +1638,7 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalTabletWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 14;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
-
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
     try {
       for (TSDataType from : dataTypes) {
         for (TSDataType to : dataTypes) {
@@ -1716,10 +1724,7 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalRowWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 17;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {

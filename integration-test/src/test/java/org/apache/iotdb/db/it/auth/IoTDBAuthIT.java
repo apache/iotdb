@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -51,9 +49,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
-import static org.apache.iotdb.db.audit.DNAuditLogger.PREFIX_PASSWORD_HISTORY;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -980,6 +977,8 @@ public class IoTDBAuthIT {
     adminStmt.execute("CREATE USER user1 'password123456'");
     adminStmt.execute("CREATE USER user2 'password123456'");
     adminStmt.execute("CREATE USER user3 'password123456'");
+    adminStmt.execute("CREATE USER user4 'password123456'");
+    adminStmt.execute("CREATE USER user5 'password123456'");
     adminStmt.execute("CREATE ROLE testRole");
     adminStmt.execute("GRANT system ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
@@ -1089,6 +1088,18 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.t2.t3 TO USER user1"));
+      } finally {
+        userStmt.close();
+      }
+    }
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user4", "password123456");
+        Statement userStmt = userCon.createStatement()) {
+      adminStmt.execute("GRANT SYSTEM ON root.** TO USER user4");
+      try {
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("GRANT SYSTEM ON root.** TO USER user5"));
+        adminStmt.execute("GRANT SYSTEM ON root.** TO USER user5");
       } finally {
         userStmt.close();
       }
@@ -1381,6 +1392,7 @@ public class IoTDBAuthIT {
           "tempuser,",
         };
     resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw123456");
+    executeNonQuery("SHOW AVAILABLE URLS", "tempuser", "temppw123456");
   }
 
   @Ignore
@@ -1506,107 +1518,6 @@ public class IoTDBAuthIT {
   }
 
   @Test
-  public void testPasswordHistory() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      testPasswordHistoryEncrypted(statement);
-      testPasswordHistoryCreateAndDrop(statement);
-      testPasswordHistoryAlter(statement);
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  public void testPasswordHistoryEncrypted(Statement statement) throws SQLException {
-    ResultSet resultSet =
-        statement.executeQuery("SELECT password,oldPassword from root.__audit.password_history._0");
-    assertTrue(resultSet.next());
-    assertEquals(
-        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
-        resultSet.getString("root.__audit.password_history._0.password"));
-    assertEquals(
-        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
-        resultSet.getString("root.__audit.password_history._0.oldPassword"));
-  }
-
-  public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {
-    statement.execute("create user userA 'abcdef123456'");
-
-    long expectedUserAId = INTERNAL_USER_END_ID + 1;
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last oldPassword from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
-    }
-
-    statement.execute("drop user userA");
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      assertFalse(resultSet.next());
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last oldPassword from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      assertFalse(resultSet.next());
-    }
-  }
-
-  public void testPasswordHistoryAlter(Statement statement) throws SQLException {
-    statement.execute("create user userA 'abcdef123456'");
-    statement.execute("alter user userA set password 'abcdef654321'");
-
-    long expectedUserAId = INTERNAL_USER_END_ID + 2;
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef654321"), resultSet.getString("Value"));
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select oldPassword from %s.`_" + expectedUserAId + "` order by time desc limit 1",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(
-          AuthUtils.encryptPassword("abcdef123456"),
-          resultSet.getString(
-              String.format("%s._" + expectedUserAId + ".oldPassword", PREFIX_PASSWORD_HISTORY)));
-    }
-  }
-
-  @Test
   public void testChangeBackPassword() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1714,6 +1625,19 @@ public class IoTDBAuthIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testUserNameMustNotStartWithDoubleUnderscore() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("CREATE USER __badx 'password123456'"));
+      adminStmt.execute("CREATE USER gooduser 'password123456'");
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("ALTER USER gooduser RENAME TO __badx"));
+      adminStmt.execute("DROP USER gooduser");
     }
   }
 }

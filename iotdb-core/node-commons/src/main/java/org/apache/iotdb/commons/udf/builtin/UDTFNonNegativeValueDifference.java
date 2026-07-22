@@ -59,6 +59,7 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
       case STRING:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case DATE:
       default:
         // This will not happen.

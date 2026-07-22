@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -198,7 +199,7 @@ public abstract class PageManager implements IPageManager {
           SchemaFile.setNodeAddress(child, glbIndex);
         } else {
           // new child with a valid segment address could be maliciously modified
-          throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
+          throw new MetadataException(DataNodeSchemaMessages.CHILD_SHALL_NOT_HAVE_SEGMENT_ADDRESS);
         }
       } else {
         alias =
@@ -292,15 +293,22 @@ public abstract class PageManager implements IPageManager {
             .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
-      childBuffer = RecordUtils.node2Buffer(child);
-
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress), cxt);
       if (curPage.getAsSegmentedPage().read(SchemaFile.getSegIndex(actualAddress), entry.getKey())
           == null) {
         throw new MetadataException(
             String.format(
-                "Node[%s] has no child[%s] in pbtree file.", node.getName(), entry.getKey()));
+                DataNodeSchemaMessages.NODE_NO_CHILD_IN_PBTREE_WITH_NAME,
+                node.getName(),
+                entry.getKey()));
       }
+
+      if (!child.isMeasurement() && getNodeAddress(child) < 0) {
+        short estSegSize = estimateSegmentSize(child);
+        long glbIndex = preAllocateSegment(estSegSize, cxt);
+        SchemaFile.setNodeAddress(child, glbIndex);
+      }
+      childBuffer = RecordUtils.node2Buffer(child);
 
       // prepare alias comparison
       if (child.isMeasurement() && child.getAsMeasurementMNode().getAlias() != null) {
@@ -531,7 +539,8 @@ public abstract class PageManager implements IPageManager {
   public ISchemaPage getPageInstance(int pageIdx, SchemaPageContext cxt)
       throws IOException, MetadataException {
     if (pageIdx > lastPageIndex.get()) {
-      throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
+      throw new MetadataException(
+          String.format(DataNodeSchemaMessages.PAGE_INDEX_OUT_OF_RANGE, pageIdx));
     }
 
     // just return from (thread local) context
@@ -647,7 +656,7 @@ public abstract class PageManager implements IPageManager {
       ICachedMNode parent, String key, long newSegAddr, SchemaPageContext cxt)
       throws IOException, MetadataException {
     if (parent == null || parent.getChild(key).isDatabase()) {
-      throw new MetadataException("Root page shall not be migrated.");
+      throw new MetadataException(DataNodeSchemaMessages.ROOT_PAGE_SHALL_NOT_BE_MIGRATED);
     }
     long parSegAddr = parent.getParent() == null ? 0L : getNodeAddress(parent);
     parSegAddr = getTargetSegmentAddress(parSegAddr, key, cxt);
@@ -730,8 +739,7 @@ public abstract class PageManager implements IPageManager {
   private static short reEstimateSegSize(int expSize) throws MetadataException {
     if (expSize > SchemaFileConfig.SEG_MAX_SIZ) {
       // TODO: to support extreme large MNode
-      throw new MetadataException(
-          "Single record larger than half page is not supported in SchemaFile now.");
+      throw new MetadataException(DataNodeSchemaMessages.SINGLE_RECORD_TOO_LARGE);
     }
     for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (expSize < size) {

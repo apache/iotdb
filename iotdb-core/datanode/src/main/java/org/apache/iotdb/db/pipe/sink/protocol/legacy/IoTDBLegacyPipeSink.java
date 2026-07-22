@@ -24,19 +24,24 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -50,6 +55,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -64,6 +72,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +83,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
@@ -83,11 +97,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 @TreeModel
 public class IoTDBLegacyPipeSink implements PipeConnector {
@@ -102,6 +119,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private boolean useSSL;
   private String trustStore;
   private String trustStorePwd;
+  private String keyStore;
+  private String keyStorePwd;
 
   private String user;
   private String password;
@@ -109,7 +128,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private String syncConnectorVersion;
 
   private String pipeName;
-  private String databaseName;
+  private String databaseName = "";
 
   private IoTDBSyncClient client;
 
@@ -139,13 +158,88 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s is specified to true, %s and %s must be specified",
+                DataNodePipeMessages.SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED,
+                CONNECTOR_IOTDB_SSL_ENABLE_KEY,
                 SINK_IOTDB_SSL_ENABLE_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY)),
+            parameters.getBooleanOrDefault(
+                Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
+            hasCompleteAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY))
+        .validate(
+            args -> (boolean) args[0] == (boolean) args[1],
+            String.format(
+                DataNodePipeMessages.SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY)),
+            true,
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+  }
+
+  private static boolean hasCompleteAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasExactAttributePair(parameters, connectorLeftKey, connectorRightKey)
+        || hasExactAttributePair(parameters, sinkLeftKey, sinkRightKey)
+        || hasExactAttributePair(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasNoHalfAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasBothOrNoneExactAttributes(parameters, connectorLeftKey, connectorRightKey)
+        && hasBothOrNoneExactAttributes(parameters, sinkLeftKey, sinkRightKey)
+        && hasBothOrNoneExactAttributes(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasExactAttributePair(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) && hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasBothOrNoneExactAttributes(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) == hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasExactAttribute(final PipeParameters parameters, final String key) {
+    return parameters.getAttribute().containsKey(key);
   }
 
   private Set<TEndPoint> parseNodeUrls(final PipeParameters parameters) {
@@ -198,14 +292,28 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
 
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
 
-    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    useSSL =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false);
+    trustStore =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    trustStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    keyStore =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY);
+    keyStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY);
 
-    databaseName =
+    final DataRegion dataRegion =
         StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()))
-            .getDatabaseName();
+            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
+    if (Objects.nonNull(dataRegion)) {
+      databaseName = dataRegion.getDatabaseName();
+    }
   }
 
   @Override
@@ -223,7 +331,10 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               port,
               useSSL,
               trustStore,
-              trustStorePwd);
+              trustStorePwd,
+              keyStore,
+              keyStorePwd);
+      openClientSession();
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
               pipeName, System.currentTimeMillis(), syncConnectorVersion, databaseName);
@@ -241,7 +352,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
           String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
 
-    sessionPool =
+    final SessionPool.Builder builder =
         new SessionPool.Builder()
             .host(ipAddress)
             .port(port)
@@ -250,8 +361,34 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
             .maxSize(1)
             .useSSL(useSSL)
             .trustStore(trustStore)
-            .trustStorePwd(trustStorePwd)
-            .build();
+            .trustStorePwd(trustStorePwd);
+    if (keyStore != null) {
+      builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
+    }
+    sessionPool = builder.build();
+  }
+
+  private void openClientSession() throws TException {
+    final TSOpenSessionReq openSessionReq = new TSOpenSessionReq();
+    openSessionReq.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+    openSessionReq.setUsername(user);
+    openSessionReq.setPassword(password);
+    openSessionReq.setZoneId(ZoneId.systemDefault().toString());
+    openSessionReq.putToConfiguration("version", IoTDBConstant.ClientVersion.V_1_0.toString());
+    openSessionReq.putToConfiguration("sql_dialect", "tree");
+
+    final TSOpenSessionResp openSessionResp = client.openSession(openSessionReq);
+    if (openSessionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final String errorMsg =
+          String.format(
+              DataNodePipeMessages.FAILED_TO_LOGIN_TO_RECEIVER_FOR_LEGACY_PIPE_TRANSFER,
+              ipAddress,
+              port,
+              openSessionResp.getStatus().getCode(),
+              openSessionResp.getStatus().getMessage());
+      LOGGER.warn(errorMsg);
+      throw new PipeRuntimeCriticalException(errorMsg);
+    }
   }
 
   @Override
@@ -267,8 +404,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
       doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support "
-              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+          DataNodePipeMessages
+              .IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE);
     }
   }
 
@@ -276,12 +413,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
+          DataNodePipeMessages.IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT);
     }
 
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
       return;
     }
@@ -291,7 +428,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsFile insertion event: %s.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_INSERTION_EVENT_S_703A2E9E,
               ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage()),
           e);
     }
@@ -301,7 +439,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   public void transfer(final Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
-          "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
+          DataNodePipeMessages.IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+          event);
     }
   }
 
@@ -325,7 +464,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
       final Tablet tablet = tablets.get(i);
-      if (Objects.isNull(tablet) || tablet.getRowSize() == 0) {
+      if (Objects.isNull(tablet) || isTabletEmpty(tablet)) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {
@@ -337,7 +476,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeRawTabletInsertionEvent.increaseReferenceCount(IoTDBLegacyPipeSink.class.getName())) {
       return;
@@ -351,7 +490,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
@@ -385,8 +524,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+      final byte[] buffer = new byte[readFileBufferSize];
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
         if (dataLength == -1) {
@@ -405,10 +548,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
           randomAccessFile.seek(position);
-          LOGGER.info("Redirect to position {} in transferring tsFile {}.", position, file);
+          LOGGER.info(
+              DataNodePipeMessages.REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE, position, file);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           final String errorMsg =
-              String.format("Network failed to receive tsFile %s, status: %s", file, status);
+              String.format(
+                  DataNodePipeMessages.NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS, file, status);
           LOGGER.warn(errorMsg);
           throw new PipeConnectionException(errorMsg);
         }
@@ -416,10 +561,20 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Cannot send pipe data to receiver %s:%s, because: %s.",
-              ipAddress, port, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_CANNOT_SEND_PIPE_DATA_TO_RECEIVER_S_S_BECAUSE_S_25143D54,
+              ipAddress,
+              port,
+              e.getMessage()),
           e);
     }
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+            Math.max(file.length(), 1L));
   }
 
   @Override

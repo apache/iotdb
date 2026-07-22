@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.CustomizedReadableIntermediateResults;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
@@ -144,7 +145,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.BOOLEAN);
         } else if (entry.getValue().getLeft() != TSDataType.BOOLEAN) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.BOOLEAN);
           return new Pair<>(WindowState.PURGE, null);
@@ -200,7 +201,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.INT32);
         } else if (entry.getValue().getLeft() != TSDataType.INT32) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.INT32);
           return new Pair<>(WindowState.PURGE, null);
@@ -255,7 +256,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.DATE);
         } else if (entry.getValue().getLeft() != TSDataType.DATE) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.DATE);
           return new Pair<>(WindowState.PURGE, null);
@@ -310,7 +311,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.INT64);
         } else if (entry.getValue().getLeft() != TSDataType.INT64) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.INT64);
           return new Pair<>(WindowState.PURGE, null);
@@ -365,7 +366,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.FLOAT);
         } else if (entry.getValue().getLeft() != TSDataType.FLOAT) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.FLOAT);
           return new Pair<>(WindowState.PURGE, null);
@@ -419,7 +420,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.DOUBLE);
         } else if (entry.getValue().getLeft() != TSDataType.DOUBLE) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.DOUBLE);
           return new Pair<>(WindowState.PURGE, null);
@@ -473,7 +474,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.TEXT);
         } else if (entry.getValue().getLeft() != TSDataType.TEXT) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.TEXT);
           return new Pair<>(WindowState.PURGE, null);
@@ -527,7 +528,7 @@ public class TimeSeriesWindow {
           entry.getValue().setLeft(TSDataType.BLOB);
         } else if (entry.getValue().getLeft() != TSDataType.BLOB) {
           LOGGER.warn(
-              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              DataNodePipeMessages.DIFFERENT_DATA_TYPE_ENCOUNTERED_IN_ONE_WINDOW,
               entry.getValue().getLeft(),
               TSDataType.BLOB);
           return new Pair<>(WindowState.PURGE, null);

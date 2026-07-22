@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
@@ -42,7 +45,6 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractOperatorProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -115,6 +117,7 @@ public class AggregateProcessor implements PipeProcessor {
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
+  private String outputDatabase;
   private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
@@ -225,7 +228,7 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    final String outputDatabase =
+    outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
     outputDatabaseWithPathSeparator =
@@ -297,7 +300,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!aggregatorName2OutputNameMap.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The aggregator and output name %s is invalid.", aggregatorName2OutputNameMap));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+              aggregatorName2OutputNameMap));
     }
 
     intermediateResultName2OperatorSupplierMap.keySet().retainAll(declaredIntermediateResultSet);
@@ -305,7 +310,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
-              "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_NEEDED_INTERMEDIATE_VALUES_S_ARE_NOT_DEFINED_3FF0C52D,
+              declaredIntermediateResultSet));
     }
 
     // Set up column name strings
@@ -324,7 +331,10 @@ public class AggregateProcessor implements PipeProcessor {
         agent.getConfiguredProcessor(processorName, parameters, configuration);
     if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
       throw new PipeException(
-          String.format("The processor %s is not a windowing processor.", processorName));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PROCESSOR_S_IS_NOT_A_WINDOWING_PROCESSOR_EA5B59BA,
+              processorName));
     }
     windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
 
@@ -347,7 +357,9 @@ public class AggregateProcessor implements PipeProcessor {
     if (!(index instanceof TimeWindowStateProgressIndex)) {
       throw new PipeException(
           String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_AGGREGATE_PROCESSOR_DOES_NOT_SUPPORT_PROGRESSINDEXTYPE_35351D27,
+              index.getType()));
     }
 
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
@@ -370,7 +382,8 @@ public class AggregateProcessor implements PipeProcessor {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
         } catch (final IOException e) {
-          throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
+          throw new PipeException(
+              DataNodePipeMessages.ENCOUNTERED_EXCEPTION_WHEN_DESERIALIZING_FROM_PIPETASKMETA, e);
         }
       }
     }
@@ -424,6 +437,8 @@ public class AggregateProcessor implements PipeProcessor {
   private Map<String, Pair<Long, ByteBuffer>> processRow(
       final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
+
+    resetOutputDatabaseForGeneratedEvent(rowCollector);
 
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
@@ -498,13 +513,16 @@ public class AggregateProcessor implements PipeProcessor {
                       timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
               break;
             case BLOB:
+            case OBJECT:
               result =
                   state.updateWindows(
                       timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
               break;
             default:
               throw new UnsupportedOperationException(
-                  String.format("The type %s is not supported", row.getDataType(index)));
+                  String.format(
+                      DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_IS_NOT_SUPPORTED_E1A6F05D,
+                      row.getDataType(index)));
           }
           if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
@@ -532,6 +550,8 @@ public class AggregateProcessor implements PipeProcessor {
                 event -> {
                   try {
                     process(event, eventCollector);
+                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                    throw e;
                   } catch (Exception e) {
                     ex.set(e);
                   }
@@ -577,6 +597,7 @@ public class AggregateProcessor implements PipeProcessor {
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector =
                       new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
+                  resetOutputDatabaseForGeneratedEvent(rowCollector);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
@@ -607,6 +628,13 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     eventCollector.collect(event);
+  }
+
+  private void resetOutputDatabaseForGeneratedEvent(final RowCollector rowCollector) {
+    if (!outputDatabase.isEmpty() && rowCollector instanceof PipeRowCollector) {
+      ((PipeRowCollector) rowCollector)
+          .resetDatabaseInfo(outputDatabase, Boolean.FALSE, null, outputDatabase);
+    }
   }
 
   /**
@@ -685,13 +713,15 @@ public class AggregateProcessor implements PipeProcessor {
                 break;
               case TEXT:
               case BLOB:
+              case OBJECT:
               case STRING:
                 valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
                 break;
               default:
                 throw new UnsupportedOperationException(
                     String.format(
-                        "The output tablet does not support column type %s",
+                        DataNodePipeMessages
+                            .PIPE_EXCEPTION_THE_OUTPUT_TABLET_DOES_NOT_SUPPORT_COLUMN_TYPE_S_62F3845C,
                         valueColumnTypes[columnIndex]));
             }
           }
@@ -734,14 +764,16 @@ public class AggregateProcessor implements PipeProcessor {
                           TSFileConfig.STRING_CHARSET);
               break;
             case BLOB:
+            case OBJECT:
               ((Binary[]) valueColumns[columnIndex])[rowIndex] =
                   (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;
             default:
               throw new UnsupportedOperationException(
                   String.format(
-                      "The output tablet does not support column type %s",
-                      valueColumnTypes[rowIndex]));
+                      DataNodePipeMessages
+                          .PIPE_EXCEPTION_THE_OUTPUT_TABLET_DOES_NOT_SUPPORT_COLUMN_TYPE_S_62F3845C,
+                      valueColumnTypes[columnIndex]));
           }
         } else {
           bitMaps[columnIndex].mark(rowIndex);
@@ -755,7 +787,7 @@ public class AggregateProcessor implements PipeProcessor {
     int filteredCount = 0;
     for (int i = 0; i < columnNameStringList.length; ++i) {
       if (!bitMaps[i].isAllMarked()) {
-        originColumnIndex2FilteredColumnIndexMapperList[i] = ++filteredCount;
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
       }
     }
 

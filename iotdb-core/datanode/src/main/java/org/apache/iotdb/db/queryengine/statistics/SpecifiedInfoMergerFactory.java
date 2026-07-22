@@ -41,6 +41,15 @@ public class SpecifiedInfoMergerFactory {
         return first;
       };
 
+  // currently the sink and shuffle operator only have the field of string type,
+  // and the case that two operators contained in one FI do not exist yet
+  private static final SpecifiedInfoMerger SINK_SHUFFLE_MERGER =
+      (first, second) -> {
+        first.replaceAll((k, v) -> v + " " + second.get(k));
+        return first;
+      };
+
+  /** Maintain different merge logic for specified info for different operators. */
   public static SpecifiedInfoMerger getMerger(String operatorType) {
     switch (operatorType) {
       case "TreeSortOperator":
@@ -48,7 +57,11 @@ public class SpecifiedInfoMergerFactory {
       case "TableSortOperator":
       case "TableMergeSortOperator":
       case "FilterAndProjectOperator":
+      case "ExchangeOperator":
         return LONG_MERGER;
+      case "IdentitySinkOperator":
+      case "ShuffleHelperOperator":
+        return SINK_SHUFFLE_MERGER;
       default:
         return DEFAULT_MERGER;
     }

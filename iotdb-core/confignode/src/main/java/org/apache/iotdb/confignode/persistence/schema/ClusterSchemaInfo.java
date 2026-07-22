@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -54,15 +56,18 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -91,13 +96,13 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -122,6 +127,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -172,7 +178,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       templateTable = new TemplateTable();
       templatePreSetTable = new TemplatePreSetTable();
     } catch (final MetadataException e) {
-      LOGGER.error("Can't construct ClusterSchemaInfo", e);
+      LOGGER.error(ConfigNodeMessages.CAN_T_CONSTRUCT_CLUSTERSCHEMAINFO, e);
       throw new IOException(e);
     }
   }
@@ -241,33 +247,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
 
       // TODO: Support alter other fields
-      if (alterSchema.isSetMinSchemaRegionGroupNum()) {
-        currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
-        currentSchema.setMaxSchemaRegionGroupNum(
-            Math.max(
-                currentSchema.getMinSchemaRegionGroupNum(),
-                currentSchema.getMaxSchemaRegionGroupNum()));
+      if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
+        currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
         LOGGER.info(
-            "[AdjustRegionGroupNum] The minimum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-            currentSchema.getName(),
-            currentSchema.getMinSchemaRegionGroupNum());
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
             currentSchema.getName(),
             currentSchema.getMaxSchemaRegionGroupNum());
       }
-      if (alterSchema.isSetMinDataRegionGroupNum()) {
-        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
-        currentSchema.setMaxDataRegionGroupNum(
-            Math.max(
-                currentSchema.getMinDataRegionGroupNum(),
-                currentSchema.getMaxDataRegionGroupNum()));
+      if (alterSchema.isSetMaxDataRegionGroupNum()) {
+        currentSchema.setMaxDataRegionGroupNum(alterSchema.getMaxDataRegionGroupNum());
         LOGGER.info(
-            "[AdjustRegionGroupNum] The minimum number of DataRegionGroups for Database: {} is adjusted to: {}",
-            currentSchema.getName(),
-            currentSchema.getMinDataRegionGroupNum());
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
             currentSchema.getName(),
             currentSchema.getMaxDataRegionGroupNum());
       }
@@ -275,7 +265,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       if (alterSchema.isSetTTL()) {
         currentSchema.setTTL(alterSchema.getTTL());
         LOGGER.info(
-            "[SetTTL] The ttl of Database: {} is adjusted to: {}",
+            ConfigNodeMessages.SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO,
             currentSchema.getName(),
             currentSchema.getTTL());
       }
@@ -318,10 +308,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
-      LOGGER.warn("Database not exist", e);
+      LOGGER.warn(ConfigNodeMessages.DATABASE_NOT_EXIST, e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Database not exist: " + e.getMessage());
+          .setMessage(ConfigNodeMessages.DATABASE_NOT_EXIST + e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
@@ -369,7 +359,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -408,7 +398,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage(ERROR_NAME + ": " + e.getMessage()));
+              .setMessage(ERROR_NAME + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -516,7 +506,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.info(
-          "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans",
+          ConfigNodeMessages
+              .DATABASE_INCONSISTENCY_DETECTED_WHEN_ADJUSTING_MAX_REGION_GROUP_COUNT_MESSAGE,
           e.getMessage());
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
@@ -672,7 +663,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .orElse(Long.MAX_VALUE);
     } catch (final MetadataException e) {
       LOGGER.warn(
-          ERROR_NAME + " when trying to get max ttl under one database, use Long.MAX_VALUE.", e);
+          ERROR_NAME
+              + ConfigNodeMessages.LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2,
+          e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -759,7 +752,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -786,7 +779,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           break;
         } else {
           LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+              ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+              tmpFile.getAbsolutePath());
         }
       }
       databaseReadWriteLock.readLock().unlock();
@@ -821,7 +815,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -849,7 +843,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       matchedPathsInNextLevel =
           treeModelMTree.getNodesListInGivenLevel(partialPath, level, true, scope);
     } catch (MetadataException e) {
-      LOGGER.error("Error get matched paths in given level.", e);
+      LOGGER.error(ConfigNodeMessages.ERROR_GET_MATCHED_PATHS_IN_GIVEN_LEVEL, e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -864,7 +858,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       matchedPathsInNextLevel = treeModelMTree.getChildNodePathInNextLevel(partialPath, scope);
     } catch (MetadataException e) {
-      LOGGER.error("Error get matched paths in next level.", e);
+      LOGGER.error(ConfigNodeMessages.ERROR_GET_MATCHED_PATHS_IN_NEXT_LEVEL, e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1069,7 +1063,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           templateSetInfo.put(id, pathSetInfoList);
         }
       } catch (MetadataException e) {
-        LOGGER.error("Error occurred when get paths set on template {}", id, e);
+        LOGGER.error(ConfigNodeMessages.ERROR_OCCURRED_WHEN_GET_PATHS_SET_ON_TEMPLATE, id, e);
       }
     }
 
@@ -1225,6 +1219,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return executeWithLock(
         () ->
             tableModelMTree.commitCreateTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+  }
+
+  public TSStatus rollbackPreDeleteTable(final RollbackPreDeleteTablePlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.rollbackPreDeleteTable(
                 getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
@@ -1390,7 +1391,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               database2Tables.getKey(),
               tableModelMTree.getSpecificTablesUnderSpecificDatabase(
                   getQualifiedDatabasePartialPath(database2Tables.getKey()),
-                  database2Tables.getValue()));
+                  database2Tables.getValue(),
+                  plan.getTableNodeStatusSet()));
         } catch (final DatabaseNotSetException ignore) {
           // continue
         }
@@ -1409,16 +1411,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (plan.isDetails()) {
-        final Pair<TsTable, Set<String>> pair =
+        final TableSchemaDetails details =
             tableModelMTree.getTableSchemaDetails(databasePath, plan.getTableName());
-        return new DescTableResp(StatusUtils.OK, pair.getLeft(), pair.getRight());
+        return new DescTableResp(
+            StatusUtils.OK, details.table, details.preDeletedColumns, details.preAlteredColumns);
       }
       return new DescTableResp(
           StatusUtils.OK,
           tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          null,
           null);
     } catch (final MetadataException e) {
-      return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
+      return new DescTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null, null);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1447,17 +1452,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                       // Table path must exist because the "getTableSchemaDetails()"
                                       // is called in databaseReadWriteLock.readLock().
                                     }
-                                    return new Pair<TsTable, Set<String>>(null, null);
+                                    return new TableSchemaDetails();
                                   })
                               .collect(
                                   Collectors.toMap(
-                                      pair -> pair.getLeft().getTableName(),
-                                      pair ->
+                                      tableSchemaDetails -> tableSchemaDetails.table.getTableName(),
+                                      tableSchemaDetails ->
                                           new TTableColumnInfo()
                                               .setTableInfo(
                                                   TsTableInternalRPCUtil.serializeSingleTsTable(
-                                                      pair.getLeft()))
-                                              .setPreDeletedColumns(pair.getRight())));
+                                                      tableSchemaDetails.table))
+                                              .setPreDeletedColumns(
+                                                  tableSchemaDetails.preDeletedColumns)
+                                              .setPreAlteredColumns(
+                                                  tableSchemaDetails
+                                                      .preAlteredColumns
+                                                      .entrySet()
+                                                      .stream()
+                                                      .collect(
+                                                          Collectors.toMap(
+                                                              Entry::getKey,
+                                                              e -> e.getValue().serialize())))));
                         } catch (final MetadataException ignore) {
                           // Database path must exist because the "getAllDatabasePaths()" is called
                           // in databaseReadWriteLock.readLock().
@@ -1481,7 +1496,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllPreCreateTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getAllPreCreateTables();
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_CREATE);
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreDeleteTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getAllSpecialStatusTables(TableNodeStatus.PRE_DELETE);
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
@@ -1546,7 +1573,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getTableName(),
           plan.getColumnName(),
           plan instanceof PreDeleteViewColumnPlan)) {
-        status.setMessage("");
+        status.setMessage(ConfigNodeMessages.EMPTY_MESSAGE);
       }
       return status;
     } catch (final MetadataException e) {
@@ -1566,6 +1593,43 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
                 plan.getColumnName()));
+  }
+
+  public TSStatus preAlterColumnDataType(final PreAlterColumnDataTypePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tableModelMTree.preAlterColumnDataType(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getNewType());
+      return status;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (final SemanticException e) {
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus commitAlterColumnDataType(AlterColumnDataTypePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      tableModelMTree.commitAlterColumnDataType(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getNewType());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
   }
 
   public ConfigSchemaStatistics getConfigSchemaStatistics() {

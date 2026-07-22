@@ -21,15 +21,16 @@ package org.apache.iotdb.db.protocol.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.IntoProcessException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -88,11 +89,15 @@ public class DataNodeInternalClient {
           sessionInfo.getZoneId(),
           ClientVersion.V_1_0);
 
-      LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), session);
+      LOGGER.info(
+          DataNodeMiscMessages.USER_OPENS_INTERNAL_SESSION, sessionInfo.getUserName(), session);
     } catch (Exception e) {
-      LOGGER.warn("User {} opens internal Session failed.", sessionInfo.getUserName(), e);
+      LOGGER.warn(
+          DataNodeMiscMessages.USER_OPENS_INTERNAL_SESSION_FAILED, sessionInfo.getUserName(), e);
       throw new IntoProcessException(
-          String.format("User %s opens internal Session failed.", sessionInfo.getUserName()));
+          String.format(
+              DataNodeMiscMessages.USER_OPENS_INTERNAL_SESSION_FAILED_FMT,
+              sessionInfo.getUserName()));
     }
   }
 

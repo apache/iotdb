@@ -27,10 +27,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -41,7 +40,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,6 +53,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -81,7 +80,7 @@ public class DeleteTimeSeriesProcedure
   private transient boolean isAllLogicalView;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public DeleteTimeSeriesProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -106,7 +105,8 @@ public class DeleteTimeSeriesProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schemaEngine black list of timeSeries {}", requestMessage);
+          LOGGER.info(
+              ProcedureMessages.CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_TIMESERIES, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -121,27 +121,29 @@ public class DeleteTimeSeriesProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
           invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, true);
           setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_DATA_OF_TIMESERIES, requestMessage);
           deleteData(env);
           break;
         case DELETE_TIMESERIES_SCHEMA:
-          LOGGER.info("Delete timeSeries schemaEngine of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_TIMESERIES_SCHEMAENGINE_OF, requestMessage);
           deleteTimeSeriesSchema(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeleteTimeSeries-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DELETETIMESERIES_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -153,7 +155,6 @@ public class DeleteTimeSeriesProcedure
       return 0;
     }
     isAllLogicalView = true;
-    final List<TSStatus> successResult = new ArrayList<>();
     final DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
         new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
             "construct schema engine black list",
@@ -167,31 +168,20 @@ public class DeleteTimeSeriesProcedure
               final TDataNodeLocation dataNodeLocation,
               final List<TConsensusGroupId> consensusGroupIdList,
               final TSStatus response) {
-            final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
             if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               isAllLogicalView = false;
-              successResult.add(response);
             } else if (response.getCode() == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
               successResult.add(response);
-            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              final List<TSStatus> subStatusList = response.getSubStatus();
-              for (int i = 0; i < subStatusList.size(); i++) {
-                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(subStatusList.get(i));
-                } else {
-                  failedRegionList.add(consensusGroupIdList.get(i));
-                }
-              }
-            } else {
-              failedRegionList.addAll(consensusGroupIdList);
+              return Collections.emptyList();
             }
-            return failedRegionList;
+            return processResponseOfOneDataNodeWithSuccessResult(
+                dataNodeLocation, consensusGroupIdList, response);
           }
         };
     constructBlackListTask.execute();
 
     return !isFailed()
-        ? successResult.stream()
+        ? constructBlackListTask.getSuccessResult().stream()
             .mapToLong(resp -> Long.parseLong(resp.getMessage()))
             .reduce(Long::sum)
             .orElse(0L)
@@ -204,23 +194,18 @@ public class DeleteTimeSeriesProcedure
       final String requestMessage,
       final Consumer<ProcedureException> setFailure,
       final boolean needLock) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes).setNeedLock(needLock),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // schema cache and resyncs on recovery, so it cannot serve the to-be-deleted/altered series),
+    // instead of hard-failing on the first unreachable DataNode. This runs before the physical
+    // delete in the state machine, so the "delete only after PROCEED" ordering holds.
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
-        setFailure.accept(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
-        return;
-      }
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
+      setFailure.accept(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
     }
   }
 
@@ -379,7 +364,7 @@ public class DeleteTimeSeriesProcedure
     setPatternTree(PathPatternTree.deserialize(byteBuffer));
     if (getCurrentState() == DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE
         || getCurrentState() == DeleteTimeSeriesState.DELETE_DATA) {
-      LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+      LOGGER.info(ProcedureMessages.SUCCESSFULLY_RESTORED_WILL_SET_MODS_TO_THE_DATA_REGIONS_ANYWAY);
     }
     if (byteBuffer.hasRemaining()) {
       mayDeleteAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
@@ -396,7 +381,7 @@ public class DeleteTimeSeriesProcedure
     }
     final DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
         && this.patternTree.equals(that.patternTree);
@@ -446,12 +431,12 @@ public class DeleteTimeSeriesProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete time series %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages.DELETE_TIME_SERIES_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN,
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

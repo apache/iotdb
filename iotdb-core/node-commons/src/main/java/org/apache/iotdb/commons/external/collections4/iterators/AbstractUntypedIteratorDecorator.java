@@ -16,6 +16,8 @@
  */
 package org.apache.iotdb.commons.external.collections4.iterators;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.util.Iterator;
 
 /**
@@ -40,7 +42,7 @@ public abstract class AbstractUntypedIteratorDecorator<I, O> implements Iterator
   protected AbstractUntypedIteratorDecorator(final Iterator<I> iterator) {
     super();
     if (iterator == null) {
-      throw new NullPointerException("Iterator must not be null");
+      throw new NullPointerException(CommonMessages.ITERATOR_MUST_NOT_BE_NULL);
     }
     this.iterator = iterator;
   }

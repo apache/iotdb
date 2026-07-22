@@ -27,10 +27,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -40,7 +39,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,7 +51,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,7 +71,7 @@ public class DeleteLogicalViewProcedure
   private transient String requestMessage;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public DeleteLogicalViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -95,7 +92,8 @@ public class DeleteLogicalViewProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct view schemaengine black list of view {}", requestMessage);
+          LOGGER.info(
+              ProcedureMessages.CONSTRUCT_VIEW_SCHEMAENGINE_BLACK_LIST_OF_VIEW, requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeleteLogicalViewState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -109,22 +107,24 @@ public class DeleteLogicalViewProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of view {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_VIEW, requestMessage);
           invalidateCache(env);
           break;
         case DELETE_VIEW_SCHEMA:
-          LOGGER.info("Delete view schemaengine of {}", requestMessage);
+          LOGGER.info(ProcedureMessages.DELETE_VIEW_SCHEMAENGINE_OF, requestMessage);
           deleteViewSchema(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DeleteLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.DELETELOGICALVIEW_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -135,7 +135,6 @@ public class DeleteLogicalViewProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    List<TSStatus> successResult = new ArrayList<>();
     DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
         new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
             "construct view schema engine black list",
@@ -146,25 +145,11 @@ public class DeleteLogicalViewProcedure
                 new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
-              TDataNodeLocation dataNodeLocation,
-              List<TConsensusGroupId> consensusGroupIdList,
-              TSStatus response) {
-            List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              successResult.add(response);
-            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              List<TSStatus> subStatusList = response.getSubStatus();
-              for (int i = 0; i < subStatusList.size(); i++) {
-                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(subStatusList.get(i));
-                } else {
-                  failedRegionList.add(consensusGroupIdList.get(i));
-                }
-              }
-            } else {
-              failedRegionList.addAll(consensusGroupIdList);
-            }
-            return failedRegionList;
+              final TDataNodeLocation dataNodeLocation,
+              final List<TConsensusGroupId> consensusGroupIdList,
+              final TSStatus response) {
+            return processResponseOfOneDataNodeWithSuccessResult(
+                dataNodeLocation, consensusGroupIdList, response);
           }
         };
     constructBlackListTask.execute();
@@ -173,30 +158,21 @@ public class DeleteLogicalViewProcedure
       return 0;
     }
 
-    return successResult.stream()
+    return constructBlackListTask.getSuccessResult().stream()
         .mapToLong(resp -> Long.parseLong(resp.getMessage()))
         .reduce(0L, Long::sum);
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, false)) {
       // all dataNodes must clear the related schemaengine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaengine cache of view {}", requestMessage);
-        setFailure(
-            new ProcedureException(
-                new MetadataException("Invalidate view schemaengine cache failed")));
-        return;
-      }
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW, requestMessage);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
+      return;
     }
 
     setNextState(DeleteLogicalViewState.DELETE_VIEW_SCHEMA);
@@ -323,7 +299,7 @@ public class DeleteLogicalViewProcedure
     }
     final DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);
@@ -357,8 +333,11 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      ProcedureMessages.DELETE_VIEW_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL,
+                      requestMessage,
+                      taskName,
+                      consensusGroupId.id,
+                      printFailureMap()))));
       interruptTask();
     }
   }

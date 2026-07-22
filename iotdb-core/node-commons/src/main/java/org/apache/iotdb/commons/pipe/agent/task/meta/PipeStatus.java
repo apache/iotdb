@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 public enum PipeStatus {
   RUNNING((byte) 0),
   STOPPED((byte) 1),
@@ -44,7 +46,7 @@ public enum PipeStatus {
       case 2:
         return PipeStatus.DROPPED;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 }

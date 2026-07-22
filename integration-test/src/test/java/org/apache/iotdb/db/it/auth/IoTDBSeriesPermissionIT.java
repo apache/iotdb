@@ -26,9 +26,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,8 +60,8 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSeriesPermissionIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123123456");
@@ -69,16 +69,44 @@ public class IoTDBSeriesPermissionIT {
     createUser("test2", "test123123456");
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupAfterTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.test");
+      executeQuietly(statement, "DELETE DATABASE root.test1");
+      executeQuietly(statement, "DELETE DATABASE root.test3");
+      executeQuietly(statement, "DELETE DATABASE root.sg");
+      // revoke any privileges the tests may have granted
+      for (String user : new String[] {"test", "test1", "test2"}) {
+        executeQuietly(statement, "REVOKE ALL ON root.** FROM USER " + user);
+      }
+    } catch (SQLException ignored) {
+      // ignore
+    }
   }
 
   @Test
   public void testSchema() {
-    testWriteSchema();
+    try {
+      testWriteSchema();
 
-    testReadSchema();
+      testReadSchema();
+    } finally {
+      cleanupAfterTest();
+    }
   }
 
   private void testWriteSchema() {
@@ -112,6 +140,11 @@ public class IoTDBSeriesPermissionIT {
         "803: No permissions for this operation, please add privilege WRITE_SCHEMA",
         "test",
         "test123123456");
+    assertNonQueryTestFail(
+        "alter timeseries root.test.d1.s1 set data type float",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.d1.s1]",
+        "test",
+        "test123123456");
 
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.test.**");
 
@@ -126,6 +159,8 @@ public class IoTDBSeriesPermissionIT {
     executeNonQuery(
         "create timeseries root.test.d1.s1 with dataType = int32", "test", "test123123456");
     executeNonQuery("ALTER timeseries root.test.d1.s1 ADD TAGS tag3=v3", "test", "test123123456");
+    executeNonQuery(
+        "alter timeseries root.test.d1.s1 set data type float", "test", "test123123456");
     executeNonQuery("drop timeseries root.test.d1.s1", "test", "test123123456");
     executeNonQuery("set TTL to root.test.** 10000", "test", "test123123456");
     executeNonQuery("unset TTL to root.test.**", "test", "test123123456");
@@ -254,9 +289,13 @@ public class IoTDBSeriesPermissionIT {
 
   @Test
   public void testData() {
-    testWriteData();
+    try {
+      testWriteData();
 
-    testReadData();
+      testReadData();
+    } finally {
+      cleanupAfterTest();
+    }
   }
 
   private void testWriteData() {
@@ -317,47 +356,51 @@ public class IoTDBSeriesPermissionIT {
 
   @Test
   public void ttlOperationsTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("show all ttl");
-      Assert.assertFalse(resultSet.next());
-      assertNonQueryTestFail(
-          statement,
-          "set ttl to root.test.** 1",
-          "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
-      assertNonQueryTestFail(
-          statement,
-          "unset ttl from root.test.**",
-          "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("show all ttl");
-      Assert.assertTrue(resultSet.next());
-      Assert.assertFalse(resultSet.next());
-      statement.execute("grant WRITE_SCHEMA on root.test.** to user test2");
+    try {
+      try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
+          Statement statement = connection.createStatement()) {
+        ResultSet resultSet = statement.executeQuery("show all ttl");
+        Assert.assertFalse(resultSet.next());
+        assertNonQueryTestFail(
+            statement,
+            "set ttl to root.test.** 1",
+            "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
+        assertNonQueryTestFail(
+            statement,
+            "unset ttl from root.test.**",
+            "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.**]");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        ResultSet resultSet = statement.executeQuery("show all ttl");
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+        statement.execute("grant WRITE_SCHEMA on root.test.** to user test2");
 
-      assertNonQueryTestFail(
-          statement,
-          "set ttl to root.__audit.** 1",
-          "803: The database 'root.__audit' is read-only.");
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
-        Statement statement = connection.createStatement()) {
-      statement.execute("set ttl to root.test.** 1");
-      ResultSet resultSet = statement.executeQuery("show all ttl");
-      Assert.assertTrue(resultSet.next());
-      Assert.assertFalse(resultSet.next());
-      statement.execute("unset ttl from root.test.**");
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+        assertNonQueryTestFail(
+            statement,
+            "set ttl to root.__audit.** 1",
+            "803: The database 'root.__audit' is read-only.");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      try (Connection connection = EnvFactory.getEnv().getConnection("test2", "test123123456");
+          Statement statement = connection.createStatement()) {
+        statement.execute("set ttl to root.test.** 1");
+        ResultSet resultSet = statement.executeQuery("show all ttl");
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+        statement.execute("unset ttl from root.test.**");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    } finally {
+      cleanupAfterTest();
     }
   }
 }

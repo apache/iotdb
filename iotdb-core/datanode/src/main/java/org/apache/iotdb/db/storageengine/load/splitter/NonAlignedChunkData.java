@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -114,10 +116,25 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void writeToFileWriter(final TsFileIOWriter writer) throws IOException {
+    ensureDataReadyForWriting();
     if (chunk != null) {
       writer.writeChunk(chunk);
     } else {
       chunkWriter.writeToFileWriter(writer);
+    }
+  }
+
+  private void ensureDataReadyForWriting() throws IOException {
+    if (chunk != null || chunkWriter != null) {
+      return;
+    }
+
+    try {
+      deserializeTsFileData(
+          new LoadTsFilePieceNode.ByteBufferInputStream(
+              ByteBuffer.wrap(byteStream.getBuf(), 0, byteStream.size())));
+    } catch (final PageException e) {
+      throw new IOException(e);
     }
   }
 
@@ -204,7 +221,9 @@ public class NonAlignedChunkData implements ChunkData {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    chunkHeader.getDataType()));
         }
       }
     }
@@ -266,7 +285,9 @@ public class NonAlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                  String.format(
+                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                      chunkHeader.getDataType()));
           }
         }
 

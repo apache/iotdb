@@ -22,11 +22,15 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -62,7 +66,7 @@ public class PermissionManager {
   public TSStatus operatePermission(AuthorPlan authorPlan, boolean isGeneratedByPipe) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
-    LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
+    LOGGER.info(ManagerMessages.AUTH_RUN_AUTH_PLAN, authorPlan.toString());
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateUser
@@ -82,7 +86,7 @@ public class PermissionManager {
       }
       return tsStatus;
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -99,7 +103,7 @@ public class PermissionManager {
     try {
       return (PermissionInfoResp) getConsensusManager().read(authorPlan);
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PermissionInfoResp(res);
@@ -110,8 +114,9 @@ public class PermissionManager {
     return configManager.getConsensusManager();
   }
 
-  public TPermissionInfoResp login(String username, String password) {
-    return authorInfo.login(username, password);
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorInfo.login(username, password, useEncryptedPassword);
   }
 
   public String login4Pipe(final String userName, final String password) {
@@ -127,10 +132,9 @@ public class PermissionManager {
     return authorInfo.generateAuthorizedPTree(username, permission);
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
+  public PathPatternTree fetchRawAuthorizedPTree(final String userName, final PrivilegeType type)
       throws AuthException {
-    union.setGrantOption(true);
-    return authorInfo.checkUserPrivileges(username, union);
+    return authorInfo.generateRawAuthorizedPTree(userName, type);
   }
 
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
@@ -148,6 +152,7 @@ public class PermissionManager {
 
   public TSStatus enableSeparationOfPowers(
       String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
-    throw new UnsupportedOperationException("Enable separation of powers is not supported");
+    throw new UnsupportedOperationException(
+        ManagerMessages.ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED);
   }
 }

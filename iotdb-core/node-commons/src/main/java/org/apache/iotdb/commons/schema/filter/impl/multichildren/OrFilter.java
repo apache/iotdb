@@ -23,10 +23,14 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class OrFilter extends AbstractMultiChildrenFilter {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(OrFilter.class);
+
   public OrFilter(final List<SchemaFilter> children) {
     super(children);
   }
@@ -43,5 +47,10 @@ public class OrFilter extends AbstractMultiChildrenFilter {
   @Override
   public SchemaFilterType getSchemaFilterType() {
     return SchemaFilterType.OR;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForFields();
   }
 }

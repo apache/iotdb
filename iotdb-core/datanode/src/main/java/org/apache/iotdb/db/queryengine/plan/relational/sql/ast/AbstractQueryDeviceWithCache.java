@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -31,6 +35,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDev
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +46,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AbstractQueryDeviceWithCache.class);
 
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
@@ -54,6 +62,30 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(database, tableName);
   }
 
+  /**
+   * Copies only the parsed input of a device query into a fresh analysis working statement.
+   *
+   * <p>The analyzer and schema fetcher populate {@link AbstractTraverseDevice} with resolved names,
+   * translated predicates, cache results, and partition filters. A parsed statement, however, may
+   * be retained by a prepared statement and analyzed again by another execution or by a dispatch
+   * retry. Cache results, column headers, partition keys, and tag/fuzzy filters are therefore not
+   * carried into the working statement, so every execution starts from the same parsed input.
+   *
+   * <p>The raw {@code where} tree is intentionally shared with the parser-owned statement. This
+   * analysis path treats it as read-only: expression rewriters return a replacement root (possibly
+   * reusing unchanged nodes), and only the working statement's {@code where} reference is replaced.
+   * Schema predicate parsing also only reads the AST and stores derived filters on the working
+   * statement. A deep expression copy would therefore add per-execution cost without improving
+   * retry isolation.
+   */
+  protected AbstractQueryDeviceWithCache(final AbstractQueryDeviceWithCache source) {
+    super(source.getLocation().orElse(null), source.table, source.where);
+    this.database = source.database;
+    this.tableName = source.tableName;
+  }
+
+  public abstract AbstractQueryDeviceWithCache copyForAnalysis();
+
   public boolean parseRawExpression(
       final TsTable tableInstance,
       final List<String> attributeColumns,
@@ -61,15 +93,20 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     if (Objects.isNull(where)) {
       return true;
     }
-    final Map<String, List<DeviceEntry>> entries = new HashMap<>();
-    entries.put(database, new ArrayList<>());
+    final Map<String, List<DeviceEntry>> hitCacheEntries = new HashMap<>();
+    hitCacheEntries.put(database, new ArrayList<>());
 
-    final boolean needFetch = super.parseWhere(entries, tableInstance, attributeColumns, context);
+    final boolean needFetch =
+        super.parseWhere(hitCacheEntries, tableInstance, attributeColumns, context);
     if (!needFetch) {
       context.reserveMemoryForFrontEnd(
-          entries.get(database).stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
+              .map(DeviceEntry::ramBytesUsed)
+              .reduce(0L, Long::sum));
       results =
-          entries.get(database).stream()
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
@@ -111,4 +148,21 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   public abstract DatasetHeader getDataSetHeader();
 
   public abstract TsBlock getTsBlock(final Analysis analysis);
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
+  }
+
+  @Override
+  protected long ramBytesUsedForCommonFields() {
+    long size = super.ramBytesUsedForCommonFields();
+    if (results != null) {
+      size += RamUsageEstimator.shallowSizeOf(results);
+      for (ShowDevicesResult result : results) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(result);
+      }
+    }
+    return size;
+  }
 }

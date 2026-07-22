@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -52,10 +53,17 @@ import java.util.Map;
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_KEY;
@@ -71,7 +79,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
 
   protected IoTDBSyncClientManager getClientManager() {
     if (clientManager == null) {
-      throw new IllegalStateException("IoTDB sync client manager has been closed");
+      throw new IllegalStateException(PipeMessages.SYNC_CLIENT_MANAGER_CLOSED);
     }
     return clientManager;
   }
@@ -89,16 +97,93 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
                 IOTDB_THRIFT_CONNECTOR.getPipePluginName())
             .toLowerCase();
 
-    validator.validate(
-        args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
-        String.format(
-            "When ssl transport is enabled, %s and %s must be specified",
-            SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-        IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-            || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
-            || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+    validator
+        .validate(
+            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                PipeMessages.SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY)),
+            IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+                || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
+                || parameters.getBooleanOrDefault(
+                    Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY),
+                    false),
+            hasCompleteAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY))
+        .validate(
+            args -> (boolean) args[0] == (boolean) args[1],
+            String.format(
+                PipeMessages.SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY),
+                PipeParameters.KeyReducer.reduce(CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY)),
+            true,
+            hasNoHalfAttributePair(
+                parameters,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+  }
+
+  private static boolean hasCompleteAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasExactAttributePair(parameters, connectorLeftKey, connectorRightKey)
+        || hasExactAttributePair(parameters, sinkLeftKey, sinkRightKey)
+        || hasExactAttributePair(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasNoHalfAttributePair(
+      final PipeParameters parameters,
+      final String connectorLeftKey,
+      final String connectorRightKey,
+      final String sinkLeftKey,
+      final String sinkRightKey) {
+    return hasBothOrNoneExactAttributes(parameters, connectorLeftKey, connectorRightKey)
+        && hasBothOrNoneExactAttributes(parameters, sinkLeftKey, sinkRightKey)
+        && hasBothOrNoneExactAttributes(
+            parameters,
+            PipeParameters.KeyReducer.reduce(connectorLeftKey),
+            PipeParameters.KeyReducer.reduce(connectorRightKey));
+  }
+
+  private static boolean hasExactAttributePair(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) && hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasBothOrNoneExactAttributes(
+      final PipeParameters parameters, final String leftKey, final String rightKey) {
+    return hasExactAttribute(parameters, leftKey) == hasExactAttribute(parameters, rightKey);
+  }
+
+  private static boolean hasExactAttribute(final PipeParameters parameters, final String key) {
+    return parameters.getAttribute().containsKey(key);
   }
 
   @Override
@@ -117,9 +202,20 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     final boolean useSSL =
         IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
             || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
-            || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    final String trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    final String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false);
+    final String trustStorePath =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    final String trustStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    final String keyStorePath =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY);
+    final String keyStorePwd =
+        parameters.getStringByKeys(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY);
 
     // leader cache configuration
     final boolean useLeaderCache =
@@ -133,6 +229,8 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             useSSL,
             trustStorePath,
             trustStorePwd,
+            keyStorePath,
+            keyStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
             userEntity,
@@ -149,6 +247,8 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -171,10 +271,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     try {
       handshake();
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
+      LOGGER.warn(PipeMessages.FAILED_TO_RECONNECT, e.getMessage(), e);
     }
   }
 
@@ -184,7 +281,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
@@ -220,7 +317,9 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                  PipeMessages.EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C,
+                  file,
+                  e.getMessage()),
               e);
         }
 
@@ -232,7 +331,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
+          LOGGER.info(PipeMessages.REDIRECT_FILE_POSITION, position);
           continue;
         }
 

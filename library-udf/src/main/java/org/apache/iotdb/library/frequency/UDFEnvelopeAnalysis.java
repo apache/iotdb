@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -234,7 +235,8 @@ public class UDFEnvelopeAnalysis implements UDTF {
       case TIMESTAMP:
       default:
         throw new UDFOutputSeriesDataTypeNotValidException(
-            index, "Fail to get data type in row " + row.getTime());
+            index,
+            LibraryUdfMessages.EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 + row.getTime());
     }
     return ans;
   }
@@ -248,7 +250,7 @@ public class UDFEnvelopeAnalysis implements UDTF {
       case NS_PRECISION:
         return 1_000_000_000.0 / time;
       default:
-        throw new IllegalArgumentException("Unsupported time unit.");
+        throw new IllegalArgumentException(LibraryUdfMessages.UNSUPPORTED_TIME_UNIT);
     }
   }
 }

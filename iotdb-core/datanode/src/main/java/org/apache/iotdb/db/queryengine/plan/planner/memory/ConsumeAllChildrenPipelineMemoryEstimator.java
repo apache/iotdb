@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
 
 public class ConsumeAllChildrenPipelineMemoryEstimator extends PipelineMemoryEstimator {
 

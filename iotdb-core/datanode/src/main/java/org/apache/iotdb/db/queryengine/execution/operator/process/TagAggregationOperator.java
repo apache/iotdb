@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.AbstractConsumeAllOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -122,12 +123,17 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   private void aggregate(List<TreeAggregator> aggregators, TsBlock[] rowBlocks) {
-    for (TreeAggregator aggregator : aggregators) {
-      if (aggregator == null) {
-        continue;
+    long startTime = System.nanoTime();
+    try {
+      for (TreeAggregator aggregator : aggregators) {
+        if (aggregator == null) {
+          continue;
+        }
+        aggregator.reset();
+        aggregator.processTsBlocks(rowBlocks);
       }
-      aggregator.reset();
-      aggregator.processTsBlocks(rowBlocks);
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
     }
   }
 

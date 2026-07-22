@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -52,7 +54,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         scanOrder,
         globalTimeFilter,
@@ -62,7 +65,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         deletionList,
         floatPrecision,
         encoding,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.probeIterators =
         IntStream.range(0, tvListIterators.size()).boxed().collect(Collectors.toList());
     this.heap =
@@ -165,6 +169,7 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           Binary value = currIterator.getTVList().getBinary(row);
           chunkWriterImpl.write(time, value);
@@ -172,7 +177,9 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  tsDataType));
       }
       encodeInfo.pointNumInChunk++;
 

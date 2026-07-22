@@ -54,6 +54,7 @@ public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("inclusion", "all");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("mark-as-pipe-request", "false");
@@ -84,6 +85,7 @@ public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
 
       sourceAttributes.put("inclusion", "all");
       sourceAttributes.put("forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("ip", env3Ip);

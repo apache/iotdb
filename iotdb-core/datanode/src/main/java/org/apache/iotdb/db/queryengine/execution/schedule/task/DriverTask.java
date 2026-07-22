@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.task;
 
+import org.apache.iotdb.calc.execution.schedule.queue.ID;
+import org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -27,8 +29,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.queryengine.execution.schedule.ExecutionContext;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.ID;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IDIndexedAccessible;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.Priority;
 
@@ -60,6 +60,7 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
+  private boolean reservedInReadyQueue;
 
   private long estimatedMemorySize;
 
@@ -77,12 +78,25 @@ public class DriverTask implements IDIndexedAccessible {
       boolean isHighestPriority) {
     this.driver = driver;
     this.setStatus(status);
-    this.ddl = System.currentTimeMillis() + timeoutMs;
+
+    this.ddl = computeDeadlineTimeInMs(timeoutMs);
+
     this.lock = new ReentrantLock();
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
     this.estimatedMemorySize = estimatedMemorySize;
     this.isHighestPriority = isHighestPriority;
+  }
+
+  public static long computeDeadlineTimeInMs(long timeoutMs) {
+    long currentTime = System.currentTimeMillis();
+    long deadlineMs = currentTime + timeoutMs;
+    // avoid infinite timeout check loop, schema fetch query for write operation may pass a very
+    // large timeout here which may causing currentTime + timeoutMs be negative
+    if (deadlineMs < currentTime) {
+      return Long.MAX_VALUE;
+    }
+    return deadlineMs;
   }
 
   @Override
@@ -201,6 +215,18 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setLastEnterBlockQueueTime(long lastEnterBlockQueueTime) {
     this.lastEnterBlockQueueTime = lastEnterBlockQueueTime;
+  }
+
+  public void markReservedInReadyQueue() {
+    reservedInReadyQueue = true;
+  }
+
+  public boolean releaseReservedInReadyQueue() {
+    if (!reservedInReadyQueue) {
+      return false;
+    }
+    reservedInReadyQueue = false;
+    return true;
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.TreeAnalysisMutationJournal;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -57,9 +58,9 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
 public class TreeModelPlanner implements IPlanner {
 
   private final Statement statement;
+  private final TreeAnalysisMutationJournal mutationJournal = new TreeAnalysisMutationJournal();
 
   private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
   private final IPartitionFetcher partitionFetcher;
@@ -75,7 +76,6 @@ public class TreeModelPlanner implements IPlanner {
   public TreeModelPlanner(
       Statement statement,
       ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
@@ -84,7 +84,6 @@ public class TreeModelPlanner implements IPlanner {
           asyncInternalServiceClientManager) {
     this.statement = statement;
     this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -94,7 +93,23 @@ public class TreeModelPlanner implements IPlanner {
 
   @Override
   public IAnalysis analyze(MPPQueryContext context) {
-    return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+    return new Analyzer(context, partitionFetcher, schemaFetcher, mutationJournal)
+        .analyze(statement);
+  }
+
+  @Override
+  public void beginAnalysisAttempt() {
+    mutationJournal.begin();
+  }
+
+  @Override
+  public void rollbackAnalysisAttempt() {
+    mutationJournal.rollback();
+  }
+
+  @Override
+  public void commitAnalysisAttempt() {
+    mutationJournal.commit();
   }
 
   @Override

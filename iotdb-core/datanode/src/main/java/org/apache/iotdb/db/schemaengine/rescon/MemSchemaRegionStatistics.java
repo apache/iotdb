@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.schemaengine.rescon;
 
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Map;
 import java.util.Objects;
@@ -224,7 +225,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   @Override
   public CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics() {
-    throw new UnsupportedOperationException("Wrong SchemaRegionStatistics Type");
+    throw new UnsupportedOperationException(
+        DataNodeSchemaMessages.WRONG_SCHEMA_REGION_STATISTICS_TYPE);
   }
 
   @Override
@@ -236,10 +238,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     memoryUsage.getAndSet(0);
     measurementNumber.getAndSet(0);
     devicesNumber.getAndSet(0);
-    viewNumber.getAndAdd(0);
+    viewNumber.getAndSet(0);
     templateUsage.forEach(
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();
+    tableDeviceNumber.clear();
+    tableAttributeMemory.clear();
   }
 
   @Override

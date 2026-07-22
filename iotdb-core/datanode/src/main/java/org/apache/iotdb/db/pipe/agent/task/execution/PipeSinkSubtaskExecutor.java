@@ -31,7 +31,7 @@ public class PipeSinkSubtaskExecutor extends PipeSubtaskExecutor {
   public PipeSinkSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL.getName() + "-" + id.get(),
+        ThreadName.PIPE_SINK_EXECUTOR_POOL.getName() + "-" + id.get(),
         ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName() + "-" + id.getAndIncrement(),
         true);
   }

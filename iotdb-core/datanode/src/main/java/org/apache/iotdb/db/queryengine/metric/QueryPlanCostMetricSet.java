@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -82,7 +83,8 @@ public class QueryPlanCostMetricSet implements IMetricSet {
         treeSchemaFetcherTimer.updateNanos(costTimeInNanos);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported stage in tree model: " + stage);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_STAGE_IN_TREE_MODEL + stage);
     }
   }
 
@@ -107,7 +109,8 @@ public class QueryPlanCostMetricSet implements IMetricSet {
         tableSchemaFetcherTimer.updateNanos(costTimeInNanos);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported stage in table model: " + stage);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_STAGE_IN_TABLE_MODEL + stage);
     }
   }
 
