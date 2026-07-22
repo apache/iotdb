@@ -61,7 +61,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   }
 
   public List<InsertBaseStatement> constructStatements() {
-    final List<InsertBaseStatement> statements = new ArrayList<>();
+    final List<InsertBaseStatement> statements =
+        new ArrayList<>(insertNodeReqs.size() + tabletReqs.size());
 
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
         new LinkedHashMap<>();

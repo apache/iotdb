@@ -281,6 +281,21 @@ public class TsFileProcessor {
     }
   }
 
+  private static void clearDataRegionReplicaSet(final InsertRowNode insertRowNode) {
+    insertRowNode.setDataRegionReplicaSet(null);
+  }
+
+  private static void clearDataRegionReplicaSet(final InsertRowsNode insertRowsNode) {
+    insertRowsNode.setDataRegionReplicaSet(null);
+    for (final InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+      clearDataRegionReplicaSet(insertRowNode);
+    }
+  }
+
+  private static void clearDataRegionReplicaSet(final InsertTabletNode insertTabletNode) {
+    insertTabletNode.setDataRegionReplicaSet(null);
+  }
+
   /**
    * Insert data in an InsertRowNode into the workingMemtable.
    *
@@ -315,6 +330,7 @@ public class TsFileProcessor {
     // recordScheduleMemoryBlockCost
     infoForMetrics[1] += System.nanoTime() - memControlStartTime;
 
+    clearDataRegionReplicaSet(insertRowNode);
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
     try {
@@ -414,6 +430,7 @@ public class TsFileProcessor {
     // recordScheduleMemoryBlockCost
     infoForMetrics[1] += System.nanoTime() - memControlStartTime;
 
+    clearDataRegionReplicaSet(insertRowsNode);
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
     try {
@@ -586,6 +603,7 @@ public class TsFileProcessor {
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, infoForMetrics);
 
+    clearDataRegionReplicaSet(insertTabletNode);
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
     try {
