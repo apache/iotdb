@@ -2030,7 +2030,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCancelMigrations(
       CancelMigrationsStatement statement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.CONTROL), PrivilegeType.MAINTAIN, () -> "");
   }
 
   @Override

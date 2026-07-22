@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CancelMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -213,5 +215,26 @@ public class TreeAccessTest {
             .getAuthorityScope()
             .getAllPathPatterns()
             .contains(new PartialPath("root.__audit.**")));
+  }
+
+  @Test
+  public void testCancelMigrationsAuditLogOperation() {
+    User user = new User("cancelUser", "password");
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+    TreeAccessCheckVisitor treeAccessCheckVisitor = new TreeAccessCheckVisitor();
+    CancelMigrationsStatement statement = new CancelMigrationsStatement();
+
+    TreeAccessCheckContext deniedContext = new TreeAccessCheckContext(10000L, user.getName(), "");
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        treeAccessCheckVisitor.visitCancelMigrations(statement, deniedContext).getCode());
+    Assert.assertEquals(AuditLogOperation.CONTROL, deniedContext.getAuditLogOperation());
+
+    user.grantSysPrivilege(PrivilegeType.MAINTAIN, false);
+    TreeAccessCheckContext allowedContext = new TreeAccessCheckContext(10000L, user.getName(), "");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor.visitCancelMigrations(statement, allowedContext).getCode());
+    Assert.assertEquals(AuditLogOperation.CONTROL, allowedContext.getAuditLogOperation());
   }
 }
