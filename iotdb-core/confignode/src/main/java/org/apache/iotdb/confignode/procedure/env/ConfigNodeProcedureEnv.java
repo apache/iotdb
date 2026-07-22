@@ -53,8 +53,10 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -115,6 +117,8 @@ public class ConfigNodeProcedureEnv {
   /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
 
+  private final DatabaseLifecycleLockManager databaseLifecycleLockManager;
+
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
   private final ReentrantLock submitRegionMigrateLock = new ReentrantLock(true);
@@ -132,6 +136,7 @@ public class ConfigNodeProcedureEnv {
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
+    this.databaseLifecycleLockManager = new DatabaseLifecycleLockManager(scheduler);
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
@@ -159,9 +164,13 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDeleteDatabase(
+  public TSStatus preDeleteDatabase(
       final PreDeleteDatabasePlan.PreDeleteType preDeleteType, final String deleteSgName) {
-    getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
+    return getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
+  }
+
+  public TSStatus batchRemoveRegionCreateTasks(final String database) {
+    return getPartitionManager().batchRemoveRegionCreateTasks(database);
   }
 
   public boolean invalidateCache(final String databaseName) throws IOException, TException {
@@ -488,6 +497,10 @@ public class ConfigNodeProcedureEnv {
           .setMessage(
               "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
     }
+  }
+
+  public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan createRegionGroupsPlan) {
+    return getPartitionManager().validateCreateRegionGroups(createRegionGroupsPlan);
   }
 
   /**
@@ -1133,6 +1146,27 @@ public class ConfigNodeProcedureEnv {
 
   public LockQueue getNodeLock() {
     return nodeLock;
+  }
+
+  /**
+   * Atomically tries to lock all databases in lexical order.
+   *
+   * @return the first database whose lock is unavailable, or null when all locks are acquired
+   */
+  public String tryLockDatabases(final Procedure<?> procedure, final Set<String> databaseNames) {
+    return databaseLifecycleLockManager.tryLock(procedure, databaseNames);
+  }
+
+  public void waitDatabaseLock(final Procedure<?> procedure, final String databaseName) {
+    databaseLifecycleLockManager.waitProcedure(procedure, databaseName);
+  }
+
+  public void releaseDatabaseLocks(final Procedure<?> procedure, final Set<String> databaseNames) {
+    databaseLifecycleLockManager.releaseLocks(procedure, databaseNames);
+  }
+
+  public DatabaseLifecycleLockManager getDatabaseLifecycleLockManager() {
+    return databaseLifecycleLockManager;
   }
 
   public ProcedureScheduler getScheduler() {

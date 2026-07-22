@@ -111,6 +111,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -454,6 +455,9 @@ public class ConfigPlanExecutor {
       case PollSpecificRegionMaintainTask:
         return partitionInfo.pollSpecificRegionMaintainTask(
             (PollSpecificRegionMaintainTaskPlan) physicalPlan);
+      case BatchRemoveRegionCreateTasks:
+        return partitionInfo.batchRemoveRegionCreateTasks(
+            (BatchRemoveRegionCreateTasksPlan) physicalPlan);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:

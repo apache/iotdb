@@ -134,6 +134,7 @@ import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProc
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager.DatabaseLock;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
@@ -183,6 +184,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -305,34 +307,40 @@ public class ProcedureManager {
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       final String database = databaseSchema.getName();
       boolean hasOverlappedTask = false;
-      synchronized (this) {
-        while (executor.isRunning()
-            && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
-          final Pair<Long, Boolean> procedureIdDuplicatePair =
-              checkDuplicateTableTask(
-                  database, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
-          hasOverlappedTask = procedureIdDuplicatePair.getRight();
+      while (executor.isRunning()
+          && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
+        try (final DatabaseLock ignored = acquireDatabaseLifecycleLock(database)) {
+          synchronized (this) {
+            final Pair<Long, Boolean> procedureIdDuplicatePair =
+                checkDuplicateTableTask(
+                    database, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
+            hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
-          if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
-            DeleteDatabaseProcedure procedure =
-                new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
-            this.executor.submitProcedure(procedure);
-            procedures.add(procedure);
-            break;
+            if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
+              final DeleteDatabaseProcedure procedure =
+                  new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+              this.executor.submitProcedure(procedure);
+              procedures.add(procedure);
+            }
           }
+        }
+        if (!hasOverlappedTask) {
+          break;
+        }
+        synchronized (this) {
           try {
             wait(PROCEDURE_WAIT_RETRY_TIMEOUT);
           } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
           }
         }
-        if (hasOverlappedTask) {
-          return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              String.format(
-                  "Some other task is operating table under the database %s, please retry after the procedure finishes.",
-                  database));
-        }
+      }
+      if (hasOverlappedTask) {
+        return RpcUtils.getStatus(
+            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+            String.format(
+                "Some other task is operating table under the database %s, please retry after the procedure finishes.",
+                database));
       }
     }
     List<TSStatus> results = new ArrayList<>(procedures.size());
@@ -1501,18 +1509,28 @@ public class ProcedureManager {
 
   // endregion
 
-  /**
-   * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
-   *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
-   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
-   */
-  public TSStatus createRegionGroups(
+  public CreateRegionGroupsProcedure submitCreateRegionGroups(
       final TConsensusGroupType consensusGroupType,
       final CreateRegionGroupsPlan createRegionGroupsPlan) {
     final CreateRegionGroupsProcedure procedure =
         new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan);
-    executor.submitProcedure(procedure);
+    // Reentrant for PartitionManager, which holds the same database locks while allocating the
+    // plan. Keeping this guard here also makes a future direct submission visible atomically to
+    // same-name database creation and deletion.
+    try (final DatabaseLock ignored =
+        acquireDatabaseLifecycleLocks(createRegionGroupsPlan.getRegionGroupMap().keySet())) {
+      executor.submitProcedure(procedure);
+    }
+    return procedure;
+  }
+
+  /**
+   * Wait until a {@link CreateRegionGroupsProcedure} finishes.
+   *
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
+   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
+   */
+  public TSStatus waitCreateRegionGroups(final CreateRegionGroupsProcedure procedure) {
     final TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -1520,6 +1538,25 @@ public class ProcedureManager {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(status.getMessage());
     }
+  }
+
+  public DatabaseLock acquireDatabaseLifecycleLock(final String database) {
+    return acquireDatabaseLifecycleLocks(Collections.singleton(database));
+  }
+
+  public DatabaseLock acquireDatabaseLifecycleLocks(final Set<String> databases) {
+    return env.getDatabaseLifecycleLockManager().acquireLocks(databases);
+  }
+
+  public boolean hasUnfinishedDatabaseLifecycleProcedure(final String database) {
+    return executor.getProcedures().values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .anyMatch(
+            procedure ->
+                (procedure instanceof DeleteDatabaseProcedure
+                        && database.equals(((DeleteDatabaseProcedure) procedure).getDatabase()))
+                    || (procedure instanceof CreateRegionGroupsProcedure
+                        && ((CreateRegionGroupsProcedure) procedure).containsDatabase(database)));
   }
 
   /**

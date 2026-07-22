@@ -118,6 +118,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -274,6 +275,19 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void CreateRegionGroupsPlanTest() throws IOException {
+    final CreateRegionGroupsPlan plan = new CreateRegionGroupsPlan();
+    plan.addRegionGroup(
+        "root.sg",
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), Collections.emptyList()));
+
+    final CreateRegionGroupsPlan deserializedPlan =
+        (CreateRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, deserializedPlan);
+  }
+
+  @Test
   public void AlterDatabasePlanTest() throws IOException {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
@@ -419,6 +433,15 @@ public class ConfigPhysicalPlanSerDeTest {
     PollRegionMaintainTaskPlan plan0 = new PollRegionMaintainTaskPlan();
     PollRegionMaintainTaskPlan plan1 =
         (PollRegionMaintainTaskPlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+    Assert.assertEquals(plan0, plan1);
+  }
+
+  @Test
+  public void BatchRemoveRegionCreateTasksPlanTest() throws IOException {
+    final BatchRemoveRegionCreateTasksPlan plan0 = new BatchRemoveRegionCreateTasksPlan("root.sg");
+    final BatchRemoveRegionCreateTasksPlan plan1 =
+        (BatchRemoveRegionCreateTasksPlan)
             ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
   }

@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.AbstractDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -61,7 +61,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class CreateRegionGroupsProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateRegionGroupsState> {
+    extends AbstractDatabaseProcedure<CreateRegionGroupsState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionGroupsProcedure.class);
 
@@ -100,6 +100,23 @@ public class CreateRegionGroupsProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final CreateRegionGroupsState state) {
+    final TSStatus validationStatus = env.validateCreateRegionGroups(createRegionGroupsPlan);
+    if (validationStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Only SHUNT_REGION_REPLICAS can have sent create RPCs without transferring ownership of the
+      // planned RegionGroups to PartitionInfo. Delete every planned replica idempotently; all later
+      // states are already owned and cleaned by DeleteDatabaseProcedure.
+      if (state == CreateRegionGroupsState.SHUNT_REGION_REPLICAS) {
+        addPlannedRegionReplicaCleanup();
+        // The children run before this existing terminal state. Validation is repeated when the
+        // parent resumes there, so the procedure reports the original fence failure only after all
+        // possible pre-persistence replicas have been deleted.
+        setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
+        return Flow.HAS_MORE_STATE;
+      }
+      setFailure(new ProcedureException(new IoTDBException(validationStatus)));
+      return Flow.NO_MORE_STATE;
+    }
+
     switch (state) {
       case CREATE_REGION_GROUPS:
         failedRegionReplicaSets = env.doRegionCreation(consensusGroupType, createRegionGroupsPlan);
@@ -109,10 +126,7 @@ public class CreateRegionGroupsProcedure
         persistPlan = new CreateRegionGroupsPlan();
         final OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // RegionGroups that failed to reach a serving quorum have their redundant (already-created)
-        // replicas removed via an independent root RemoveRegionGroupProcedure. Submitting them as
-        // root procedures (instead of children) keeps this procedure from waiting for or being
-        // failed by the cleanup: each one retries forever until those replicas are deleted, while
-        // this procedure proceeds to activate the region groups that did form a quorum.
+        // replicas removed by child procedures while this procedure retains its database locks.
         final List<RemoveRegionGroupProcedure> removeRegionGroupProcedures = new ArrayList<>();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
@@ -191,35 +205,32 @@ public class CreateRegionGroupsProcedure
 
         final TSStatus persistStatus = env.persistRegionGroup(persistPlan);
         if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          setFailure(new ProcedureException(new IoTDBException(persistStatus)));
-          return Flow.NO_MORE_STATE;
+          // Keep the database locks and retry the idempotent Consensus write. Releasing the lock or
+          // compensating here would create a gap in which the DataNodes may contain replicas but
+          // neither PartitionInfo nor a running lifecycle procedure owns them.
+          setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
+          return Flow.HAS_MORE_STATE;
         }
+        final TSStatus offerStatus;
         try {
-          env.getConfigManager().getConsensusManager().write(offerPlan);
+          offerStatus = env.getConfigManager().getConsensusManager().write(offerPlan);
         } catch (final ConsensusException e) {
           LOGGER.warn(
               ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+          setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
+          return Flow.HAS_MORE_STATE;
         }
-        // Submit the redundant-replica cleanups as independent root procedures. This is
-        // intentionally NOT guarded by isStateDeserialized(): the executor persists a procedure at
-        // a state BEFORE that state's body has run (it advances the state on the previous cycle,
-        // then may stop at the inter-state boundary on a leader switch — see
-        // ProcedureExecutor#executeProcedure), so a recovery that lands on SHUNT_REGION_REPLICAS
-        // means the submissions have NOT happened yet. Skipping them would leave the
-        // already-created
-        // replicas of sub-quorum region groups on disk with no cleanup and no partition-table
-        // record
-        // (the else branch above never persisted them). Re-submitting on recovery is safe instead:
-        // the cleanups are recomputed from the serialized failedRegionReplicaSets, each gets a
-        // fresh
-        // procId and performs an idempotent delete, so a duplicate is harmless whereas a skip
-        // leaks.
-        removeRegionGroupProcedures.forEach(
-            removeRegionGroupProcedure ->
-                env.getConfigManager()
-                    .getProcedureManager()
-                    .getExecutor()
-                    .submitProcedure(removeRegionGroupProcedure));
+        if (offerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
+          return Flow.HAS_MORE_STATE;
+        }
+        // Run redundant-replica cleanups as child procedures. The parent keeps the database locks
+        // until they finish, so database deletion cannot overtake an RPC whose RegionGroup was
+        // never persisted. This is intentionally NOT guarded by isStateDeserialized(): the
+        // executor persists a procedure at a state before that state's body has run, so recovery at
+        // SHUNT_REGION_REPLICAS must add these children. They are recomputed from the serialized
+        // failure map and delete idempotently.
+        removeRegionGroupProcedures.forEach(this::addChildProcedure);
         setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
         break;
       case REBALANCE_DATA_PARTITION_POLICY:
@@ -321,6 +332,22 @@ public class CreateRegionGroupsProcedure
   @Override
   protected CreateRegionGroupsState getInitialState() {
     return CreateRegionGroupsState.CREATE_REGION_GROUPS;
+  }
+
+  @Override
+  protected Set<String> getDatabaseNames() {
+    return createRegionGroupsPlan.getRegionGroupMap().keySet();
+  }
+
+  public boolean containsDatabase(final String database) {
+    return createRegionGroupsPlan.getRegionGroupMap().containsKey(database);
+  }
+
+  private void addPlannedRegionReplicaCleanup() {
+    createRegionGroupsPlan.getRegionGroupMap().values().stream()
+        .flatMap(List::stream)
+        .map(RemoveRegionGroupProcedure::new)
+        .forEach(this::addChildProcedure);
   }
 
   @Override

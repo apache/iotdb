@@ -23,19 +23,24 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -128,6 +133,7 @@ public class ProcedureManagerTest {
 
     when(PROCEDURE_MANAGER.getExecutor()).thenReturn(PROCEDURE_EXECUTOR);
     when(PROCEDURE_EXECUTOR.getProcedures()).thenReturn(procedureMap);
+    PROCEDURE_MANAGER.setExecutor(PROCEDURE_EXECUTOR);
     when(PROCEDURE_MANAGER.getEnv()).thenReturn(ENV);
     when(ENV.getRemoveDataNodeHandler()).thenReturn(REMOVE_DATA_NODE_HANDLER);
   }
@@ -232,5 +238,32 @@ public class ProcedureManagerTest {
         "root.custom.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_KEY));
     Assert.assertFalse(
         topicAttributes.containsKey(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
+  }
+
+  @Test
+  public void testDetectUnfinishedDatabaseLifecycleProcedures() {
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.addRegionGroup(
+        "root.create",
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 10), List.of()));
+    final CreateRegionGroupsProcedure createProcedure =
+        new CreateRegionGroupsProcedure(TConsensusGroupType.DataRegion, createPlan);
+    createProcedure.setProcId(100);
+    final DeleteDatabaseProcedure deleteProcedure =
+        new DeleteDatabaseProcedure(new TDatabaseSchema("root.delete"), false);
+    deleteProcedure.setProcId(101);
+
+    procedureMap.clear();
+    try {
+      procedureMap.put(createProcedure.getProcId(), createProcedure);
+      procedureMap.put(deleteProcedure.getProcId(), deleteProcedure);
+
+      Assert.assertTrue(PROCEDURE_MANAGER.hasUnfinishedDatabaseLifecycleProcedure("root.create"));
+      Assert.assertTrue(PROCEDURE_MANAGER.hasUnfinishedDatabaseLifecycleProcedure("root.delete"));
+      Assert.assertFalse(PROCEDURE_MANAGER.hasUnfinishedDatabaseLifecycleProcedure("root.other"));
+    } finally {
+      procedureMap.clear();
+    }
   }
 }
