@@ -302,6 +302,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       if (isTableModel) {
         configSchemaStatistics.decreaseTableDatabaseNum();
+        configSchemaStatistics.removeTableStatistics(plan.getName());
       } else {
         configSchemaStatistics.decreaseTreeDatabaseNum();
       }
@@ -789,6 +790,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(final File snapshotDir) throws IOException {
+    configSchemaStatistics.clear();
     processMTreeLoadSnapshot(
         snapshotDir,
         TREE_SNAPSHOT_FILENAME,
@@ -1199,6 +1201,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return executeWithLock(
         () -> {
           final PartialPath database = getQualifiedDatabasePartialPath(plan.getDatabase());
+          final String databaseName = plan.getDatabase();
           final String tableName = plan.getTableName();
           tableModelMTree
               .getTableAndStatusIfExists(database, tableName)
@@ -1206,9 +1209,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               .ifPresent(
                   table -> {
                     if (TreeViewSchema.isTreeViewTable(table)) {
-                      configSchemaStatistics.decreaseTreeViewTableNum(tableName);
+                      configSchemaStatistics.decreaseTreeViewTableNum(databaseName);
                     } else {
-                      configSchemaStatistics.decreaseBaseTableNum(tableName);
+                      configSchemaStatistics.decreaseBaseTableNum(databaseName);
                     }
                   });
           tableModelMTree.rollbackCreateTable(database, tableName);
@@ -1642,5 +1645,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void clear() {
     treeModelMTree.clear();
     tableModelMTree.clear();
+    configSchemaStatistics.clear();
   }
 }

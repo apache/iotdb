@@ -35,13 +35,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>3. Be in consistency with SchemaRegionMemMetric in dataNode.
  */
 public class ConfigSchemaStatistics {
-  public AtomicLong treeDatabaseNum = new AtomicLong(0);
+  private final AtomicLong treeDatabaseNum = new AtomicLong(0);
 
   // Add 1 for information_schema
-  public AtomicLong tableDatabaseNum = new AtomicLong(1);
+  private final AtomicLong tableDatabaseNum = new AtomicLong(1);
 
-  public ConcurrentMap<String, Long> treeViewTableNum = new ConcurrentHashMap<>();
-  public ConcurrentMap<String, Long> baseTableNum = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Long> treeViewTableNum = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Long> baseTableNum = new ConcurrentHashMap<>();
 
   // Getter
 
@@ -93,5 +93,17 @@ public class ConfigSchemaStatistics {
 
   public void decreaseBaseTableNum(final String database) {
     baseTableNum.compute(database, (db, num) -> num != null && num > 1 ? num - 1 : null);
+  }
+
+  public void removeTableStatistics(final String database) {
+    treeViewTableNum.remove(database);
+    baseTableNum.remove(database);
+  }
+
+  public void clear() {
+    treeDatabaseNum.set(0);
+    tableDatabaseNum.set(1);
+    treeViewTableNum.clear();
+    baseTableNum.clear();
   }
 }
