@@ -177,7 +177,12 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         insertNodeDataBases.add(databaseName);
       } else {
         final List<Tablet> tablets = pipeInsertNodeTabletInsertionEvent.convertToTablets();
-        estimateSize = calculateTabletsSizeInBytes(tablets);
+        // convertToTablets() has already measured every tablet for the event memory block. Reuse
+        // that exact measurement instead of calling Tablet.ramBytesUsed() (which walks the schema
+        // map) once more while building this batch.
+        estimateSize =
+            pipeInsertNodeTabletInsertionEvent.getTabletsMemoryUsageInBytes()
+                + (long) Integer.BYTES * tablets.size();
         increaseTotalBufferSizeAndUpdateMemoryBlock(estimateSize);
         for (final Tablet tablet : tablets) {
           constructTabletBatchWithoutMemoryReservation(
@@ -227,10 +232,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
             .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0, new ArrayList<>()));
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
-  }
-
-  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
-    return tablets.stream().mapToLong(PipeTabletEventPlainBatch::calculateTabletSizeInBytes).sum();
   }
 
   private static long calculateTabletSizeInBytes(final Tablet tablet) {
