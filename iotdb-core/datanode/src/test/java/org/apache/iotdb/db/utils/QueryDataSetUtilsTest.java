@@ -28,11 +28,16 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -46,6 +51,66 @@ import static org.junit.Assert.assertTrue;
 public class QueryDataSetUtilsTest {
 
   private static final String BINARY_STR = "ty love zm";
+
+  @Test
+  public void testReadTabletValues() throws IOException {
+    TSDataType[] dataTypes = {
+      TSDataType.BOOLEAN,
+      TSDataType.INT32,
+      TSDataType.DATE,
+      TSDataType.INT64,
+      TSDataType.TIMESTAMP,
+      TSDataType.FLOAT,
+      TSDataType.DOUBLE,
+      TSDataType.TEXT,
+      TSDataType.BLOB,
+      TSDataType.STRING,
+      TSDataType.OBJECT
+    };
+    Object[] expected = {
+      new boolean[] {true, false},
+      new int[] {1, 2},
+      new int[] {20260721, 20260722},
+      new long[] {3L, 4L},
+      new long[] {5L, 6L},
+      new float[] {1.25F, 2.5F},
+      new double[] {3.75D, 4.5D},
+      new Binary[] {
+        new Binary("text-1", TSFileConfig.STRING_CHARSET),
+        new Binary("text-2", TSFileConfig.STRING_CHARSET)
+      },
+      new Binary[] {new Binary(new byte[] {1}), new Binary(new byte[] {2})},
+      new Binary[] {
+        new Binary("string-1", TSFileConfig.STRING_CHARSET),
+        new Binary("string-2", TSFileConfig.STRING_CHARSET)
+      },
+      new Binary[] {
+        new Binary("object-1", TSFileConfig.STRING_CHARSET),
+        new Binary("object-2", TSFileConfig.STRING_CHARSET)
+      }
+    };
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
+      for (int i = 0; i < dataTypes.length; i++) {
+        Type.fromTsDataType(dataTypes[i]).serializeArray(expected[i], 2, stream);
+      }
+    }
+    byte[] serializedValues = byteArrayOutputStream.toByteArray();
+
+    assertTrue(
+        Arrays.deepEquals(
+            expected,
+            QueryDataSetUtils.readTabletValuesFromBuffer(
+                ByteBuffer.wrap(serializedValues), dataTypes, dataTypes.length, 2)));
+    try (DataInputStream stream = new DataInputStream(new ByteArrayInputStream(serializedValues))) {
+      assertTrue(
+          Arrays.deepEquals(
+              expected,
+              QueryDataSetUtils.readTabletValuesFromStream(
+                  stream, dataTypes, dataTypes.length, 2)));
+    }
+  }
 
   @Test
   public void testConvertTsBlockByFetchSize() throws IoTDBException, IOException {

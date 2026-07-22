@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.utils.windowing.window;
 
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.windowing.api.Window;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 public class WindowImpl implements Window {
 
@@ -51,51 +52,9 @@ public class WindowImpl implements Window {
       timestamps[i] = list.getTimeByIndex(begin + i);
     }
 
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        intValues = new int[size];
-        for (int i = 0; i < size; ++i) {
-          intValues[i] = list.getIntByIndex(begin + i);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longValues = new long[size];
-        for (int i = 0; i < size; ++i) {
-          longValues[i] = list.getLongByIndex(begin + i);
-        }
-        break;
-      case FLOAT:
-        floatValues = new float[size];
-        for (int i = 0; i < size; ++i) {
-          floatValues[i] = list.getFloatByIndex(begin + i);
-        }
-        break;
-      case DOUBLE:
-        doubleValues = new double[size];
-        for (int i = 0; i < size; ++i) {
-          doubleValues[i] = list.getDoubleByIndex(begin + i);
-        }
-        break;
-      case BOOLEAN:
-        booleanValues = new boolean[size];
-        for (int i = 0; i < size; ++i) {
-          booleanValues[i] = list.getBooleanByIndex(begin + i);
-        }
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        binaryValues = new Binary[size];
-        for (int i = 0; i < size; ++i) {
-          binaryValues[i] = list.getBinaryByIndex(begin + i);
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.toString());
-    }
+    TypeServices.WINDOW_VALUE_ARRAY_BUILDER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .build(this, list, begin, size);
   }
 
   @Override
@@ -206,5 +165,29 @@ public class WindowImpl implements Window {
   @Override
   public void setBinary(int index, Binary value) {
     binaryValues[index] = value;
+  }
+
+  public void setIntValues(int[] intValues) {
+    this.intValues = intValues;
+  }
+
+  public void setLongValues(long[] longValues) {
+    this.longValues = longValues;
+  }
+
+  public void setFloatValues(float[] floatValues) {
+    this.floatValues = floatValues;
+  }
+
+  public void setDoubleValues(double[] doubleValues) {
+    this.doubleValues = doubleValues;
+  }
+
+  public void setBooleanValues(boolean[] booleanValues) {
+    this.booleanValues = booleanValues;
+  }
+
+  public void setBinaryValues(Binary[] binaryValues) {
+    this.binaryValues = binaryValues;
   }
 }

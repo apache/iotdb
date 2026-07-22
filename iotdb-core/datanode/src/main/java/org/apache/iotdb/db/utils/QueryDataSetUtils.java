@@ -28,6 +28,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -620,61 +621,10 @@ public class QueryDataSetUtils {
       ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types[i]) {
-        case BOOLEAN:
-          boolean[] boolValues = new boolean[size];
-          for (int index = 0; index < size; index++) {
-            boolValues[index] = BytesUtils.byteToBool(buffer.get());
-          }
-          values[i] = boolValues;
-          break;
-        case INT32:
-        case DATE:
-          int[] intValues = new int[size];
-          for (int index = 0; index < size; index++) {
-            intValues[index] = buffer.getInt();
-          }
-          values[i] = intValues;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] longValues = new long[size];
-          for (int index = 0; index < size; index++) {
-            longValues[index] = buffer.getLong();
-          }
-          values[i] = longValues;
-          break;
-        case FLOAT:
-          float[] floatValues = new float[size];
-          for (int index = 0; index < size; index++) {
-            floatValues[index] = buffer.getFloat();
-          }
-          values[i] = floatValues;
-          break;
-        case DOUBLE:
-          double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
-          }
-          values[i] = doubleValues;
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary[] binaryValues = new Binary[size];
-          for (int index = 0; index < size; index++) {
-            int binarySize = buffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            buffer.get(binaryValue);
-            binaryValues[index] = new Binary(binaryValue);
-          }
-          values[i] = binaryValues;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
-      }
+      values[i] =
+          TypeServices.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
+              .call(Type.fromTsDataType(types[i]))
+              .apply(buffer, size);
     }
     return values;
   }
@@ -683,92 +633,11 @@ public class QueryDataSetUtils {
       DataInputStream stream, TSDataType[] types, int columns, int size) throws IOException {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types[i]) {
-        case BOOLEAN:
-          parseBooleanColumn(size, stream, values, i);
-          break;
-        case DATE:
-        case INT32:
-          parseInt32Column(size, stream, values, i);
-          break;
-        case TIMESTAMP:
-        case INT64:
-          parseInt64Column(size, stream, values, i);
-          break;
-        case FLOAT:
-          parseFloatColumn(size, stream, values, i);
-          break;
-        case DOUBLE:
-          parseDoubleColumn(size, stream, values, i);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          parseTextColumn(size, stream, values, i);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
-      }
+      values[i] =
+          TypeServices.RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE
+              .call(Type.fromTsDataType(types[i]))
+              .deserialize(stream, size);
     }
     return values;
-  }
-
-  private static void parseBooleanColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    boolean[] boolValues = new boolean[size];
-    for (int index = 0; index < size; index++) {
-      boolValues[index] = BytesUtils.byteToBool(stream.readByte());
-    }
-    values[columnIndex] = boolValues;
-  }
-
-  private static void parseInt32Column(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    int[] intValues = new int[size];
-    for (int index = 0; index < size; index++) {
-      intValues[index] = stream.readInt();
-    }
-    values[columnIndex] = intValues;
-  }
-
-  private static void parseInt64Column(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    long[] longValues = new long[size];
-    for (int index = 0; index < size; index++) {
-      longValues[index] = stream.readLong();
-    }
-    values[columnIndex] = longValues;
-  }
-
-  private static void parseFloatColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    float[] floatValues = new float[size];
-    for (int index = 0; index < size; index++) {
-      floatValues[index] = stream.readFloat();
-    }
-    values[columnIndex] = floatValues;
-  }
-
-  private static void parseDoubleColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    double[] doubleValues = new double[size];
-    for (int index = 0; index < size; index++) {
-      doubleValues[index] = stream.readDouble();
-    }
-    values[columnIndex] = doubleValues;
-  }
-
-  private static void parseTextColumn(
-      int size, DataInputStream stream, Object[] values, int columnIndex) throws IOException {
-    Binary[] binaryValues = new Binary[size];
-    for (int index = 0; index < size; index++) {
-      int binarySize = stream.readInt();
-      byte[] binaryValue = new byte[binarySize];
-      stream.readFully(binaryValue);
-      binaryValues[index] = new Binary(binaryValue);
-    }
-    values[columnIndex] = binaryValues;
   }
 }

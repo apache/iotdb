@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRe
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
+import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
@@ -62,6 +64,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,8 +73,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -657,6 +662,105 @@ public class TypeServices {
                 throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
           };
 
+  public static final TypeService<IntFunction<Object>> EMPTY_TABLET_COLUMN_FACTORY_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::createArray;
+            case DATE ->
+                size -> {
+                  LocalDate[] values = (LocalDate[]) type.createArray(size);
+                  Arrays.fill(values, LocalDate.of(1000, 1, 1));
+                  return values;
+                };
+            case TEXT, BLOB, STRING ->
+                size -> {
+                  Binary[] values = (Binary[]) type.createArray(size);
+                  Arrays.fill(values, Binary.EMPTY_VALUE);
+                  return values;
+                };
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
+          };
+
+  public static final TypeService<WindowValueArrayBuilder> WINDOW_VALUE_ARRAY_BUILDER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (window, list, begin, size) -> {
+                  int[] values = new int[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getIntByIndex(begin + i);
+                  }
+                  window.setIntValues(values);
+                };
+            case INT64, TIMESTAMP ->
+                (window, list, begin, size) -> {
+                  long[] values = new long[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getLongByIndex(begin + i);
+                  }
+                  window.setLongValues(values);
+                };
+            case FLOAT ->
+                (window, list, begin, size) -> {
+                  float[] values = new float[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getFloatByIndex(begin + i);
+                  }
+                  window.setFloatValues(values);
+                };
+            case DOUBLE ->
+                (window, list, begin, size) -> {
+                  double[] values = new double[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getDoubleByIndex(begin + i);
+                  }
+                  window.setDoubleValues(values);
+                };
+            case BOOLEAN ->
+                (window, list, begin, size) -> {
+                  boolean[] values = new boolean[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getBooleanByIndex(begin + i);
+                  }
+                  window.setBooleanValues(values);
+                };
+            case TEXT, BLOB, STRING, OBJECT ->
+                (window, list, begin, size) -> {
+                  Binary[] values = new Binary[size];
+                  for (int i = 0; i < size; i++) {
+                    values[i] = list.getBinaryByIndex(begin + i);
+                  }
+                  window.setBinaryValues(values);
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
+          };
+
+  public static final TypeService<BiFunction<ByteBuffer, Integer, Object>>
+      RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
+                    type::deserializeArray;
+                case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                        .setChecked(true);
+              };
+
+  public static final TypeService<RawArrayInputStreamDeserializer>
+      RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
+                    type::deserializeArray;
+                case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                        .setChecked(true);
+              };
+
   public static final TypeService<ArrayValueGetter> ARRAY_VALUE_GETTER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -800,6 +904,10 @@ public class TypeServices {
     TV_LIST_ARRAY_WRITER_SERVICE.check();
     PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
     TABLET_COLUMN_ALLOCATOR_SERVICE.check();
+    EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
+    WINDOW_VALUE_ARRAY_BUILDER_SERVICE.check();
+    RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE.check();
+    RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE.check();
     ARRAY_VALUE_GETTER_SERVICE.check();
     DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
     SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
@@ -992,6 +1100,16 @@ public class TypeServices {
   @FunctionalInterface
   public interface DecodedArrayValueReader {
     void read(Object values, int index, InputStream stream) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface RawArrayInputStreamDeserializer {
+    Object deserialize(DataInputStream stream, int size) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface WindowValueArrayBuilder {
+    void build(WindowImpl window, EvictableBatchList list, int begin, int size);
   }
 
   @FunctionalInterface

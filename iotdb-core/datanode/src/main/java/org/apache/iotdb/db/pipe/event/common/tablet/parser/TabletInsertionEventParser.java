@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
@@ -36,6 +37,7 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -639,39 +641,10 @@ public abstract class TabletInsertionEventParser {
     if (Objects.isNull(type)) {
       return;
     }
-    switch (type) {
-      case TIMESTAMP:
-      case INT64:
-        valueColumns[columnIndex] = new long[rowSize];
-        break;
-      case INT32:
-        valueColumns[columnIndex] = new int[rowSize];
-        break;
-      case DOUBLE:
-        valueColumns[columnIndex] = new double[rowSize];
-        break;
-      case FLOAT:
-        valueColumns[columnIndex] = new float[rowSize];
-        break;
-      case BOOLEAN:
-        valueColumns[columnIndex] = new boolean[rowSize];
-        break;
-      case DATE:
-        final LocalDate[] dates = new LocalDate[rowSize];
-        Arrays.fill(dates, EMPTY_LOCALDATE);
-        valueColumns[columnIndex] = dates;
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        final Binary[] columns = new Binary[rowSize];
-        Arrays.fill(columns, Binary.EMPTY_VALUE);
-        valueColumns[columnIndex] = columns;
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
-    }
+    valueColumns[columnIndex] =
+        TypeServices.EMPTY_TABLET_COLUMN_FACTORY_SERVICE
+            .call(Type.fromTsDataType(type))
+            .apply(rowSize);
   }
 
   private static BitMap getBitMap(final BitMap[] bitMaps, final int index) {
