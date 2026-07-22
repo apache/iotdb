@@ -70,6 +70,7 @@ public class DatabaseLifecycleLockManager {
    * Tries to acquire database locks for a synchronous manager request within the given timeout.
    *
    * @return the acquired lock, or null if the timeout elapsed before every lock became available
+   * @throws InterruptedException if interrupted while waiting for the locks
    */
   public DatabaseLock tryAcquireLocks(
       final Set<String> databaseNames, final long timeout, final TimeUnit timeUnit)

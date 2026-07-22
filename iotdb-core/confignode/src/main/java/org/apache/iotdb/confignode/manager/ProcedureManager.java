@@ -377,14 +377,12 @@ public class ProcedureManager {
   }
 
   private boolean waitForDeleteDatabaseRetry() {
-    synchronized (this) {
-      try {
-        wait(PROCEDURE_WAIT_RETRY_TIMEOUT);
-        return true;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
+    try {
+      TimeUnit.MILLISECONDS.sleep(PROCEDURE_WAIT_RETRY_TIMEOUT);
+      return true;
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
