@@ -127,7 +127,7 @@ public class RequestSizeLimitFilterTest {
   @Test
   public void testDisabledMemoryLimitDoesNotReserveMemory() throws IOException {
     config.setRestMaxRequestBodySizeInBytes(10);
-    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(0);
+    config.setRestMaxTotalConcurrentRequestBodySizeInBytes(-1);
     TestRequestContext context =
         TestRequestContext.withStream("12345".getBytes(StandardCharsets.UTF_8));
 

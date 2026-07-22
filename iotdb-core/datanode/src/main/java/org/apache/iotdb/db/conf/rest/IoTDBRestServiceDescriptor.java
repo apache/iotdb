@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf.rest;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcSslUtils;
@@ -98,11 +99,17 @@ public class IoTDBRestServiceDescriptor {
             trimProperties.getProperty(
                 "rest_max_request_body_size_in_bytes",
                 Long.toString(conf.getRestMaxRequestBodySizeInBytes()))));
-    conf.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+    long defaultMaxTotalConcurrentRequestBodySizeInBytes =
+        DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(trimProperties);
+    long maxTotalConcurrentRequestBodySizeInBytes =
         Long.parseLong(
             trimProperties.getProperty(
                 "rest_max_total_concurrent_request_body_size_in_bytes",
-                Long.toString(conf.getRestMaxTotalConcurrentRequestBodySizeInBytes()))));
+                Long.toString(defaultMaxTotalConcurrentRequestBodySizeInBytes)));
+    conf.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+        maxTotalConcurrentRequestBodySizeInBytes == 0
+            ? defaultMaxTotalConcurrentRequestBodySizeInBytes
+            : maxTotalConcurrentRequestBodySizeInBytes);
     conf.setRestMaxInsertRows(
         Integer.parseInt(
             trimProperties.getProperty(

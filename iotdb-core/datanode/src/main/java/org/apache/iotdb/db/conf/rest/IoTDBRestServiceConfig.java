@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.conf.rest;
 
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
+
 public class IoTDBRestServiceConfig {
 
   /** If the enableRestService is true, we will start REST Service. */
@@ -66,7 +68,8 @@ public class IoTDBRestServiceConfig {
   private long restMaxRequestBodySizeInBytes = 16 * 1024 * 1024L;
 
   /** Maximum total in-flight REST request body size in bytes across concurrent requests. */
-  private long restMaxTotalConcurrentRequestBodySizeInBytes = 64 * 1024 * 1024L;
+  private long restMaxTotalConcurrentRequestBodySizeInBytes =
+      DataNodeMemoryConfig.getDefaultAutoResizingBufferMemorySizeInBytes();
 
   /** Maximum row count accepted by a single REST write request. */
   private int restMaxInsertRows = 100000;
