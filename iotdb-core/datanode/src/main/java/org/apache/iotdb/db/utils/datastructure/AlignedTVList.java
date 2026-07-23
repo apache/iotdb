@@ -81,6 +81,10 @@ public abstract class AlignedTVList extends TVList {
   // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
+  // Number and memory cost of primitive arrays that have been allocated for each value column
+  private int[] materializedValueArrayCounts;
+  private long materializedValueArrayMemCost;
+
   // Data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<Object>> values;
@@ -103,6 +107,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
+    materializedValueArrayCounts = new int[dataTypes.size()];
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -125,7 +130,9 @@ public abstract class AlignedTVList extends TVList {
     if (!to.isCompatible(from)) {
       return null;
     }
-    return originalValues.stream().map(o -> to.castFromArray(from, o)).collect(Collectors.toList());
+    return originalValues.stream()
+        .map(o -> o == null ? null : to.castFromArray(from, o))
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -167,6 +174,15 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
     alignedTvList.timeColDeletedMap = this.timeColDeletedMap;
     alignedTvList.timeDeletedCnt = this.timeDeletedCnt;
+    for (int i = 0; i < columnIndexList.size(); i++) {
+      int columnIndex = columnIndexList.get(i);
+      if (columnIndex != -1 && values.get(i) != null) {
+        int materializedArrayCount = materializedValueArrayCounts[columnIndex];
+        alignedTvList.materializedValueArrayCounts[i] = materializedArrayCount;
+        alignedTvList.materializedValueArrayMemCost +=
+            (long) materializedArrayCount * primitiveArrayMemCost(dataTypeList.get(i));
+      }
+    }
 
     return alignedTvList;
   }
@@ -180,6 +196,9 @@ public abstract class AlignedTVList extends TVList {
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
     cloneList.timeColDeletedMap = this.timeColDeletedMap;
+    cloneList.materializedValueArrayCounts =
+        Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
+    cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     return cloneList;
   }
 
@@ -215,6 +234,9 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     cloneList.timeColDeletedMap = timeColDeletedMap == null ? null : timeColDeletedMap.clone();
+    cloneList.materializedValueArrayCounts =
+        Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
+    cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     return cloneList;
   }
 
@@ -229,43 +251,35 @@ public abstract class AlignedTVList extends TVList {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
       Object columnValue = value[i];
-      List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
+        continue;
       }
+      Object valueArray = getOrCreateValueArray(i, arrayIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
         case STRING:
         case OBJECT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          memoryBinaryChunkSize[i] +=
-              columnValue != null
-                  ? getBinarySize((Binary) columnValue)
-                  : getBinarySize(Binary.EMPTY_VALUE);
+          ((Binary[]) valueArray)[elementIndex] = (Binary) columnValue;
+          memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
+          ((float[]) valueArray)[elementIndex] = (float) columnValue;
           break;
         case INT32:
         case DATE:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
+          ((int[]) valueArray)[elementIndex] = (int) columnValue;
           break;
         case INT64:
         case TIMESTAMP:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
+          ((long[]) valueArray)[elementIndex] = (long) columnValue;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
+          ((double[]) valueArray)[elementIndex] = (double) columnValue;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null && (boolean) columnValue;
+          ((boolean[]) valueArray)[elementIndex] = (boolean) columnValue;
           break;
         default:
           break;
@@ -396,33 +410,7 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValue = new ArrayList<>(timestamps.size());
     List<BitMap> columnBitMaps = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
-      switch (dataType) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
-          break;
-        case FLOAT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
-          break;
-        case INT32:
-        case DATE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
-          break;
-        case DOUBLE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.DOUBLE));
-          break;
-        case BOOLEAN:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.BOOLEAN));
-          break;
-        default:
-          break;
-      }
+      columnValue.add(null);
       BitMap bitMap = BitMap.createBitMapDynamically(ARRAY_SIZE);
       // The following code is for these 2 kinds of scenarios.
 
@@ -448,6 +436,7 @@ public abstract class AlignedTVList extends TVList {
     memoryBinaryChunkSize = new long[dataTypes.size()];
     System.arraycopy(
         tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
+    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
   }
 
   private Object getObjectByValueIndex(int rowIndex, int columnIndex) {
@@ -621,12 +610,15 @@ public abstract class AlignedTVList extends TVList {
     if (columnIndex < 0 || columnIndex >= values.size() || values.get(columnIndex) == null) {
       return true;
     }
+    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
+    if (values.get(columnIndex).get(arrayIndex) == null) {
+      return true;
+    }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
-        || bitMaps.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null) {
+        || bitMaps.get(columnIndex).get(arrayIndex) == null) {
       return false;
     }
-    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
     int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
@@ -744,6 +736,9 @@ public abstract class AlignedTVList extends TVList {
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
+    if (value == null) {
+      return null;
+    }
     switch (type) {
       case TEXT:
       case BLOB:
@@ -791,12 +786,16 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
         for (Object dataArray : columnValues) {
-          PrimitiveArrayManager.release(dataArray);
+          if (dataArray != null) {
+            PrimitiveArrayManager.release(dataArray);
+          }
         }
         columnValues.clear();
       }
       memoryBinaryChunkSize[i] = 0;
     }
+    Arrays.fill(materializedValueArrayCounts, 0);
+    materializedValueArrayMemCost = 0;
   }
 
   @Override
@@ -817,7 +816,7 @@ public abstract class AlignedTVList extends TVList {
       indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     }
     for (int i = 0; i < dataTypes.size(); i++) {
-      values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
+      values.get(i).add(null);
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
       }
@@ -887,7 +886,7 @@ public abstract class AlignedTVList extends TVList {
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
+        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
@@ -900,7 +899,7 @@ public abstract class AlignedTVList extends TVList {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
+        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
@@ -1007,18 +1006,25 @@ public abstract class AlignedTVList extends TVList {
     return bitmap;
   }
 
-  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
+  private void arrayCopy(
+      Object[] value,
+      BitMap[] bitMaps,
+      TSStatus[] results,
+      int idx,
+      int arrayIndex,
+      int elementIndex,
+      int remaining) {
     for (int i = 0; i < values.size(); i++) {
-      if (value[i] == null) {
+      if (value[i] == null || !containsNonNullValue(bitMaps, results, i, idx, remaining)) {
         continue;
       }
-      List<Object> columnValues = values.get(i);
+      Object valueArray = getOrCreateValueArray(i, arrayIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
         case STRING:
         case OBJECT:
-          Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
+          Binary[] arrayT = (Binary[]) valueArray;
           System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
           // update raw size of Text chunk
@@ -1028,31 +1034,64 @@ public abstract class AlignedTVList extends TVList {
           }
           break;
         case FLOAT:
-          float[] arrayF = ((float[]) columnValues.get(arrayIndex));
+          float[] arrayF = (float[]) valueArray;
           System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
         case DATE:
-          int[] arrayI = ((int[]) columnValues.get(arrayIndex));
+          int[] arrayI = (int[]) valueArray;
           System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
         case TIMESTAMP:
-          long[] arrayL = ((long[]) columnValues.get(arrayIndex));
+          long[] arrayL = (long[]) valueArray;
           System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
-          double[] arrayD = ((double[]) columnValues.get(arrayIndex));
+          double[] arrayD = (double[]) valueArray;
           System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
-          boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
+          boolean[] arrayB = (boolean[]) valueArray;
           System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
           break;
         default:
           break;
       }
     }
+  }
+
+  private static boolean containsNonNullValue(
+      BitMap[] bitMaps, TSStatus[] results, int columnIndex, int start, int length) {
+    BitMap bitMap = bitMaps == null ? null : bitMaps[columnIndex];
+    boolean containsNull = bitMap != null && containsMarkedBit(bitMap, start, length);
+    boolean containsFailure = results != null && containsFailedStatus(results, start, length);
+    if (!containsNull && !containsFailure) {
+      return true;
+    }
+    for (int i = start; i < start + length; i++) {
+      boolean isNull =
+          (bitMap != null && bitMap.isMarked(i))
+              || (results != null
+                  && results[i] != null
+                  && results[i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      if (!isNull) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Object getOrCreateValueArray(int columnIndex, int arrayIndex) {
+    List<Object> columnValues = values.get(columnIndex);
+    Object valueArray = columnValues.get(arrayIndex);
+    if (valueArray == null) {
+      valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
+      columnValues.set(arrayIndex, valueArray);
+      materializedValueArrayCounts[columnIndex]++;
+      materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
+    }
+    return valueArray;
   }
 
   private BitMap getBitMap(int columnIndex, int arrayIndex) {
@@ -1101,7 +1140,12 @@ public abstract class AlignedTVList extends TVList {
   @Override
   public synchronized RamInfo calculateRamSize() {
     return new RamInfo(
-        timestamps.size(), alignedTvListArrayMemCost(), rowCount, new ArrayList<>(dataTypes));
+        timestamps.size(),
+        alignedTvListArrayMemCost(),
+        (long) timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
+            + materializedValueArrayMemCost,
+        rowCount,
+        new ArrayList<>(dataTypes));
   }
 
   /**
@@ -1168,6 +1212,29 @@ public abstract class AlignedTVList extends TVList {
     return size;
   }
 
+  public long alignedTvListArrayMemCostWithoutPrimitiveArrays() {
+    long size = alignedTvListArrayMemCost();
+    for (TSDataType dataType : dataTypes) {
+      if (dataType != null) {
+        size -= primitiveArrayMemCost(dataType);
+      }
+    }
+    return size;
+  }
+
+  public static long alignedTvListArrayMemCostWithoutPrimitiveArrays(
+      TSDataType[] types, TsTableColumnCategory[] columnCategories) {
+    long size = alignedTvListArrayMemCost(types, columnCategories);
+    for (int i = 0; i < types.length; i++) {
+      TSDataType dataType = types[i];
+      if (dataType != null
+          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
+        size -= primitiveArrayMemCost(dataType);
+      }
+    }
+    return size;
+  }
+
   /**
    * Get the single column array mem cost by give type.
    *
@@ -1175,14 +1242,20 @@ public abstract class AlignedTVList extends TVList {
    * @return valueListArrayMemCost
    */
   public static long valueListArrayMemCost(TSDataType type) {
+    return primitiveArrayMemCost(type) + valueListArrayMemCostWithoutPrimitiveArray();
+  }
+
+  public static long primitiveArrayMemCost(TSDataType type) {
+    // value array payload and header
+    return (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize()
+        + NUM_BYTES_ARRAY_HEADER;
+  }
+
+  public static long valueListArrayMemCostWithoutPrimitiveArray() {
     long size = 0;
-    // value array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     // bitmap object, byte array, and reference in the bitmap list
     size += BITMAP_RAM_COST_PER_BLOCK;
-    // array headers mem size
-    size += NUM_BYTES_ARRAY_HEADER;
-    // Object references size in ArrayList
+    // null placeholder reference in the value ArrayList
     size += NUM_BYTES_OBJECT_REF;
     return size;
   }
@@ -1404,7 +1477,13 @@ public abstract class AlignedTVList extends TVList {
         case STRING:
         case OBJECT:
           for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-            size += ReadWriteIOUtils.sizeToWrite(getBinaryByValueIndex(rowIdx, columnIndex));
+            int arrayIndex = rowIdx / ARRAY_SIZE;
+            Object valueArray = values.get(columnIndex).get(arrayIndex);
+            Binary value =
+                valueArray == null
+                    ? Binary.EMPTY_VALUE
+                    : ((Binary[]) valueArray)[rowIdx % ARRAY_SIZE];
+            size += ReadWriteIOUtils.sizeToWrite(value == null ? Binary.EMPTY_VALUE : value);
           }
           break;
         case FLOAT:
@@ -1458,13 +1537,15 @@ public abstract class AlignedTVList extends TVList {
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
         int arrayIndex = rowIndex / ARRAY_SIZE;
         int elementIndex = rowIndex % ARRAY_SIZE;
+        Object valueArray = columnValues.get(arrayIndex);
         // value
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
           case BLOB:
           case STRING:
           case OBJECT:
-            Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+            Binary valueT =
+                valueArray == null ? Binary.EMPTY_VALUE : ((Binary[]) valueArray)[elementIndex];
             // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
             // current row. We need to handle this scenario to get rid of NPE. See the similar issue
             // here: https://github.com/apache/iotdb/pull/9884
@@ -1474,29 +1555,29 @@ public abstract class AlignedTVList extends TVList {
             if (valueT != null) {
               WALWriteUtils.write(valueT, buffer);
             } else {
-              WALWriteUtils.write(new Binary(new byte[0]), buffer);
+              WALWriteUtils.write(Binary.EMPTY_VALUE, buffer);
             }
             break;
           case FLOAT:
-            float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
+            float valueF = valueArray == null ? 0 : ((float[]) valueArray)[elementIndex];
             buffer.putFloat(valueF);
             break;
           case INT32:
           case DATE:
-            int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
+            int valueI = valueArray == null ? 0 : ((int[]) valueArray)[elementIndex];
             buffer.putInt(valueI);
             break;
           case INT64:
           case TIMESTAMP:
-            long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
+            long valueL = valueArray == null ? 0 : ((long[]) valueArray)[elementIndex];
             buffer.putLong(valueL);
             break;
           case DOUBLE:
-            double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
+            double valueD = valueArray == null ? 0 : ((double[]) valueArray)[elementIndex];
             buffer.putDouble(valueD);
             break;
           case BOOLEAN:
-            boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+            boolean valueB = valueArray != null && ((boolean[]) valueArray)[elementIndex];
             WALWriteUtils.write(valueB, buffer);
             break;
           default:

@@ -132,6 +132,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     return measurementIndexMap.containsKey(measurementId);
   }
 
+  int getMeasurementIndex(String measurementId) {
+    return measurementIndexMap.get(measurementId);
+  }
+
   @Override
   public void putLong(long t, long v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);

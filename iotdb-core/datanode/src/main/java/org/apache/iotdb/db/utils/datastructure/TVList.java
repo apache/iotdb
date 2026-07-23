@@ -67,19 +67,30 @@ public abstract class TVList implements WALEntryValue {
   public static class RamInfo {
     private final int timestampsSize;
     private final long arrayMemCost;
+    private final long ramSize;
     private final int rowCount;
     private final List<TSDataType> dataTypes;
 
     public RamInfo(
         int timestampCount, long arrayMemCost, int rowCount, List<TSDataType> dataTypes) {
+      this(timestampCount, arrayMemCost, (long) timestampCount * arrayMemCost, rowCount, dataTypes);
+    }
+
+    public RamInfo(
+        int timestampCount,
+        long arrayMemCost,
+        long ramSize,
+        int rowCount,
+        List<TSDataType> dataTypes) {
       this.timestampsSize = timestampCount;
       this.rowCount = rowCount;
       this.arrayMemCost = arrayMemCost;
+      this.ramSize = ramSize;
       this.dataTypes = dataTypes;
     }
 
     public long getRamSize() {
-      return timestampsSize * arrayMemCost;
+      return ramSize;
     }
 
     public int getTimestampsSize() {

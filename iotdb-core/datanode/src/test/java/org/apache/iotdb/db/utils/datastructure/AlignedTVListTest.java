@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -29,6 +30,10 @@ import org.apache.tsfile.utils.BitMap;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -222,6 +227,144 @@ public class AlignedTVListTest {
     tvList.putAlignedValues(times, values, bitMaps, 0, ARRAY_SIZE, results);
 
     Assert.assertNull(tvList.getBitMaps());
+  }
+
+  @Test
+  public void testPrimitiveArraysAreAllocatedOnFirstWrite() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT64)));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    Assert.assertNotNull(tvList.getValues().get(0).get(0));
+    Assert.assertNotNull(tvList.getValues().get(0).get(1));
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertNull(tvList.getValues().get(1).get(1));
+
+    tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {null, 1L});
+
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertNotNull(tvList.getValues().get(1).get(1));
+    Assert.assertTrue(tvList.isNullValue(0, 1));
+    Assert.assertEquals(1, tvList.getLongByValueIndex(ARRAY_SIZE + 1, 1));
+
+    tvList.extendColumn(TSDataType.INT32);
+
+    Assert.assertNull(tvList.getValues().get(2).get(0));
+    Assert.assertNull(tvList.getValues().get(2).get(1));
+
+    long ramSizeBeforeExtendedColumnMaterialization = tvList.calculateRamSize().getRamSize();
+    tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, null, 2});
+
+    Assert.assertNull(tvList.getValues().get(2).get(0));
+    Assert.assertNotNull(tvList.getValues().get(2).get(1));
+    Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
+    Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
+  }
+
+  @Test
+  public void testCalculateRamSizeCountsMaterializedPrimitiveArrays() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    long ramSizeBeforeMaterialization = tvList.calculateRamSize().getRamSize();
+    tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
+
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
+
+    Assert.assertEquals(
+        tvList.calculateRamSize().getRamSize(), tvList.clone().calculateRamSize().getRamSize());
+    Assert.assertEquals(
+        tvList.calculateRamSize().getRamSize(),
+        tvList.cloneForFlushSort().calculateRamSize().getRamSize());
+
+    AlignedTVList projectedTvList =
+        (AlignedTVList) tvList.getTvListByColumnIndex(List.of(1), List.of(TSDataType.INT64), false);
+    Assert.assertEquals(
+        (long) projectedTvList.getValues().get(0).size()
+                * projectedTvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+        projectedTvList.calculateRamSize().getRamSize());
+
+    tvList.clear();
+    Assert.assertEquals(0, tvList.calculateRamSize().getRamSize());
+  }
+
+  @Test
+  public void testCalculateRamSizeExcludesUnallocatedPrimitiveArrays() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    int blockCount = tvList.getValues().get(0).size();
+    long denseRamSize = blockCount * tvList.alignedTvListArrayMemCost();
+    long expectedRamSize =
+        denseRamSize - blockCount * AlignedTVList.primitiveArrayMemCost(TSDataType.INT64);
+
+    Assert.assertEquals(expectedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  @Test
+  public void testBatchDoesNotAllocateAllNullPrimitiveArray() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    long[] times = new long[ARRAY_SIZE];
+    long[][] values = new long[2][ARRAY_SIZE];
+    BitMap[] bitMaps = new BitMap[] {null, new BitMap(ARRAY_SIZE)};
+    bitMaps[1].markAll();
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      times[i] = i;
+      values[0][i] = i;
+      values[1][i] = i;
+    }
+
+    tvList.putAlignedValues(times, values, bitMaps, 0, ARRAY_SIZE, null);
+
+    Assert.assertNotNull(tvList.getValues().get(0).get(0));
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE - 1, 1));
+  }
+
+  @Test
+  public void testNullPrimitiveArrayCanBeClonedAndSerialized() throws IOException {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {null, null});
+    }
+    tvList.putAlignedValue(
+        ARRAY_SIZE + 1L, new Object[] {new Binary("value", TSFileConfig.STRING_CHARSET), 1L});
+
+    AlignedTVList clonedTvList = tvList.clone();
+    Assert.assertNull(clonedTvList.getValues().get(0).get(0));
+    Assert.assertNull(clonedTvList.getValues().get(1).get(0));
+    Assert.assertEquals("[null, null]", clonedTvList.getAlignedValue(0).toString());
+    Assert.assertEquals("[value, 1]", clonedTvList.getAlignedValue(ARRAY_SIZE + 1).toString());
+
+    WALByteBufferForTest walBuffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(tvList.serializedSize()));
+    tvList.serializeToWAL(walBuffer);
+    AlignedTVList deserializedTvList =
+        AlignedTVList.deserialize(
+            new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array())));
+
+    Assert.assertEquals(tvList.rowCount(), deserializedTvList.rowCount());
+    Assert.assertEquals("[null, null]", deserializedTvList.getAlignedValue(0).toString());
+    Assert.assertEquals(
+        "[value, 1]", deserializedTvList.getAlignedValue(ARRAY_SIZE + 1).toString());
   }
 
   @Test
