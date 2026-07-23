@@ -610,9 +610,34 @@ enable_swagger=false
 # The maximum row limit for REST and Grafana query responses.
 # The request rowLimit/row_limit value cannot exceed this limit.
 # A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 rest_query_default_row_size_limit=10000
+
+# Maximum REST request body size in bytes. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_request_body_size_in_bytes=16777216
+
+# Maximum total in-flight REST request body size in bytes across concurrent requests. When set to 0, use the same budget as AutoResizingBuffer memory control. Set to a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_total_concurrent_request_body_size_in_bytes=0
+
+# Maximum rows accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_rows=100000
+
+# Maximum columns accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_columns=1024
+
+# Maximum values accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_insert_values=1000000
 
 # Is client authentication required
 # effectiveMode: restart

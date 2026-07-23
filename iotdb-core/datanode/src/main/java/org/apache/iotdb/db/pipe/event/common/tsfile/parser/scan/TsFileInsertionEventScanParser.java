@@ -84,6 +84,8 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
+  private static final int TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES = 8 * 1024;
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -92,6 +94,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private BatchData data;
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
+  private PipeMemoryBlock allocatedMemoryBlockForTsFileInput;
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
@@ -190,13 +193,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         isWithMod);
   }
 
-  private static TsFileSequenceReader createTsFileSequenceReader(
+  private TsFileSequenceReader createTsFileSequenceReader(
       final File tsFile, final boolean hasModifications) throws IOException {
     if (hasModifications) {
       return new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
     }
 
-    return new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()), false, false, null);
+    allocatedMemoryBlockForTsFileInput =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+    return new TsFileSequenceReader(
+        new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
+        false,
+        false,
+        null);
   }
 
   @Override
@@ -1103,6 +1113,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     if (allocatedMemoryBlockForChunk != null) {
       allocatedMemoryBlockForChunk.close();
+    }
+
+    if (allocatedMemoryBlockForTsFileInput != null) {
+      allocatedMemoryBlockForTsFileInput.close();
     }
   }
 
