@@ -60,6 +60,19 @@ public class TestProcedureExecutor extends TestProcedureBase {
   }
 
   @Test
+  public void testRestartExecutor() {
+    procExecutor.stop();
+    procExecutor.join();
+
+    procExecutor.init(2);
+    procExecutor.startWorkers();
+
+    long procId = procExecutor.submitProcedure(new NoopProcedure());
+    ProcedureTestUtil.waitForProcedure(procExecutor, procId);
+    Assert.assertTrue(procExecutor.isFinished(procId));
+  }
+
+  @Test
   public void testProcedureFailedDuringSubmissionIsRolledBack() throws InterruptedException {
     TestProcEnv localEnv = new TestProcEnv();
     FailOnFirstUpdateProcedureStore localStore = new FailOnFirstUpdateProcedureStore();

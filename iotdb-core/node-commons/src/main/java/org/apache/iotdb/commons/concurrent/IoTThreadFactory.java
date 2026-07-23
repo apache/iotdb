@@ -31,8 +31,7 @@ public class IoTThreadFactory implements ThreadFactory {
 
   /** Constructor of IoTThreadFactory. */
   public IoTThreadFactory(String poolName) {
-    SecurityManager s = System.getSecurityManager();
-    group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+    group = Thread.currentThread().getThreadGroup();
     // thread pool name format : pool-number-IoTDB-poolName-thread-
     this.namePrefix = "pool-" + poolNumber.getAndIncrement() + "-IoTDB-" + poolName + "-";
   }
