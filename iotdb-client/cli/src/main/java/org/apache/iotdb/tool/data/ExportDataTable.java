@@ -66,9 +66,7 @@ public class ExportDataTable extends AbstractExportData {
   public void init() throws IoTDBConnectionException, StatementExecutionException {
     TableSessionBuilder tableSessionBuilder =
         new TableSessionBuilder()
-            .nodeUrls(
-                Collections.singletonList(
-                    UrlUtils.formatTEndPointIpv4AndIpv6Url(host, Integer.parseInt(port))))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .username(username)
             .password(password)
             .database(database)

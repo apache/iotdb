@@ -243,7 +243,7 @@ public class Cli extends AbstractCli {
   }
 
   private static String formatEndpoint(String host, String port) {
-    return UrlUtils.formatTEndPointIpv4AndIpv6Url(host, Integer.parseInt(port));
+    return UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
   }
 
   private static String buildJdbcUrl(String host, String port) {

@@ -56,9 +56,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
-            .nodeUrls(
-                Collections.singletonList(
-                    UrlUtils.formatTEndPointIpv4AndIpv6Url(host, Integer.parseInt(port))))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
