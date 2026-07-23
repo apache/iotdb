@@ -44,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -183,40 +184,10 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
-  public void testConsumeTabletInsertionEventsWithRetryReleasesParserOnOutOfMemory()
+  public void testConsumeTabletInsertionEventsWithRetryPreservesProgressOnOutOfMemory()
       throws Exception {
-    nonalignedTsFile =
-        TsFileGeneratorUtils.generateNonAlignedTsFile(
-            "nonaligned-consume-oom.tsfile", 1, 1, 10, 0, 100, 10, 10);
-    resource = new TsFileResource(nonalignedTsFile);
-    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
-
-    // The TsFile generator only creates the file, so mark the resource non-empty explicitly.
-    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0");
-    resource.updateStartTime(deviceID, 0);
-    resource.updateEndTime(deviceID, 9);
-
     final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            false,
-            "root",
-            resource,
-            null,
-            false,
-            false,
-            false,
-            null,
-            null,
-            0,
-            null,
-            new PrefixTreePattern("root"),
-            null,
-            null,
-            null,
-            null,
-            true,
-            Long.MIN_VALUE,
-            Long.MAX_VALUE);
+        createPipeTsFileInsertionEventForRetryTest("nonaligned-consume-oom.tsfile");
     final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
         new AtomicReference<>();
 
@@ -233,6 +204,45 @@ public class TsFileInsertionEventParserTest {
 
     Assert.assertEquals("expected oom", exception.getMessage());
     Assert.assertNotNull(parsedEventReference.get());
+    Assert.assertFalse(parsedEventReference.get().isReleased());
+    Assert.assertNotNull(getEventParser(event).get());
+
+    final PipeRawTabletInsertionEvent eventAtFailure = parsedEventReference.get();
+    event.consumeTabletInsertionEventsWithRetry(
+        parsedEvent -> {
+          Assert.assertSame(eventAtFailure, parsedEvent);
+          parsedEvent.clearReferenceCount(getClass().getName());
+        },
+        "test");
+
+    Assert.assertTrue(eventAtFailure.isReleased());
+    event.close();
+  }
+
+  @Test
+  public void testConsumeTabletInsertionEventsWithRetryReleasesProgressWhenClosed()
+      throws Exception {
+    final PipeTsFileInsertionEvent event =
+        createPipeTsFileInsertionEventForRetryTest("nonaligned-consume-close.tsfile");
+    final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
+        new AtomicReference<>();
+
+    Assert.assertThrows(
+        PipeException.class,
+        () ->
+            event.consumeTabletInsertionEventsWithRetry(
+                parsedEvent -> {
+                  parsedEventReference.set(parsedEvent);
+                  throw new PipeException("expected failure");
+                },
+                "test"));
+
+    Assert.assertNotNull(parsedEventReference.get());
+    Assert.assertFalse(parsedEventReference.get().isReleased());
+    Assert.assertNotNull(getEventParser(event).get());
+
+    event.close();
+
     Assert.assertTrue(parsedEventReference.get().isReleased());
     Assert.assertNull(getEventParser(event).get());
   }
@@ -240,37 +250,8 @@ public class TsFileInsertionEventParserTest {
   @Test
   public void testConsumeTabletInsertionEventsWithRetryKeepsParserForTransientOutOfMemory()
       throws Exception {
-    nonalignedTsFile =
-        TsFileGeneratorUtils.generateNonAlignedTsFile(
-            "nonaligned-consume-transient-oom.tsfile", 1, 1, 10, 0, 100, 10, 10);
-    resource = new TsFileResource(nonalignedTsFile);
-    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
-
-    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0");
-    resource.updateStartTime(deviceID, 0);
-    resource.updateEndTime(deviceID, 9);
-
     final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            false,
-            "root",
-            resource,
-            null,
-            false,
-            false,
-            false,
-            null,
-            null,
-            0,
-            null,
-            new PrefixTreePattern("root"),
-            null,
-            null,
-            null,
-            null,
-            true,
-            Long.MIN_VALUE,
-            Long.MAX_VALUE);
+        createPipeTsFileInsertionEventForRetryTest("nonaligned-consume-transient-oom.tsfile");
     final AtomicInteger retryCount = new AtomicInteger(0);
     final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
         new AtomicReference<>();
@@ -291,6 +272,40 @@ public class TsFileInsertionEventParserTest {
     Assert.assertNotNull(getEventParser(event).get());
 
     event.close();
+  }
+
+  private PipeTsFileInsertionEvent createPipeTsFileInsertionEventForRetryTest(final String fileName)
+      throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(fileName, 1, 1, 10, 0, 100, 10, 10);
+    resource = new TsFileResource(nonalignedTsFile);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    // The TsFile generator only creates the file, so mark the resource non-empty explicitly.
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 9);
+
+    return new PipeTsFileInsertionEvent(
+        false,
+        "root",
+        resource,
+        null,
+        false,
+        false,
+        false,
+        null,
+        null,
+        0,
+        null,
+        new PrefixTreePattern("root"),
+        null,
+        null,
+        null,
+        null,
+        true,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @Test

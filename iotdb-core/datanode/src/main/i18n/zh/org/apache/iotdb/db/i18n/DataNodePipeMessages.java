@@ -892,6 +892,9 @@ public final class DataNodePipeMessages {
       "网络接收 TsFile %s 失败，状态：%s";
   public static final String SECURITY_DIR = "security 目录：{}";
   public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "已选择 OPC UA endpoint：configured={}，advertised={}，effective={}，allowEndpointRedirect={}。";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
@@ -1439,6 +1442,13 @@ public final class DataNodePipeMessages {
       "安全目录：{}";
   public static final String OPC_UA_SECURITY_PKI_DIR =
       "安全 PKI 目录：{}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "advertised host 必须是不带 scheme、port 或 path 的 hostname 或 IP 地址。";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "advertised host {} 不在已加载的 OPC UA server 证书 subject alternative names 中。安全客户端可能拒绝该证书；"
+              + "请替换或重新生成证书并重新建立信任。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent

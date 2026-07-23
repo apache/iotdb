@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 
-import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DataNodeMemoryConfigTest {
 
@@ -30,11 +33,37 @@ public class DataNodeMemoryConfigTest {
   public void testRpcMemoryControlIsActivatedOnlyExplicitly() {
     DataNodeMemoryConfig memoryConfig = IoTDBDescriptor.getInstance().getMemoryConfig();
 
-    Assert.assertEquals(
-        0, MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes());
+    assertEquals(0, MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes());
 
     memoryConfig.activateAutoResizingBufferMemoryControl();
 
-    Assert.assertTrue(MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes() > 0);
+    assertTrue(MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes() > 0);
+  }
+
+  @Test
+  public void testDefaultAutoResizingBufferMemorySize() {
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 20,
+        DataNodeMemoryConfig.getDefaultAutoResizingBufferMemorySizeInBytes());
+  }
+
+  @Test
+  public void testCalculateAutoResizingBufferMemorySizeWithDataNodeMemoryProportion() {
+    TrimProperties properties = new TrimProperties();
+    properties.setProperty("datanode_memory_proportion", "1:1:1:1:1:5");
+
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 4,
+        DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
+  }
+
+  @Test
+  public void testCalculateAutoResizingBufferMemorySizeWithDeprecatedMemoryProportion() {
+    TrimProperties properties = new TrimProperties();
+    properties.setProperty("storage_query_schema_consensus_free_memory_proportion", "1:1:1:1:1:2");
+
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 7,
+        DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
   }
 }
