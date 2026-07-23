@@ -1052,15 +1052,6 @@ public class ProcedureExecutor<Env> {
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
     }
-    try {
-      threadGroup.destroy();
-    } catch (IllegalThreadStateException e) {
-      LOG.warn(
-          ProcedureMessages
-              .LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211,
-          this.threadGroup);
-      this.threadGroup.list();
-    }
   }
 
   public boolean isStarted(long procId) {
