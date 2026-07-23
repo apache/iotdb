@@ -55,6 +55,7 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -229,42 +230,12 @@ public abstract class AlignedTVList extends TVList {
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
       }
-      switch (dataTypes.get(i)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          memoryBinaryChunkSize[i] +=
-              columnValue != null
-                  ? getBinarySize((Binary) columnValue)
-                  : getBinarySize(Binary.EMPTY_VALUE);
-          break;
-        case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
-          break;
-        case INT32:
-        case DATE:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
-          break;
-        case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
-          break;
-        case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null && (boolean) columnValue;
-          break;
-        default:
-          break;
+      TSDataType dataType = dataTypes.get(i);
+      Type.fromTsDataType(dataType)
+          .addValue(elementIndex, columnValue, columnValues.get(arrayIndex));
+      if (dataType.isBinary()) {
+        memoryBinaryChunkSize[i] +=
+            getBinarySize(columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE);
       }
     }
     if (indices != null) {
@@ -686,45 +657,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
-    switch (type) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] valueT = (Binary[]) value;
-        Binary[] cloneT = new Binary[valueT.length];
-        System.arraycopy(valueT, 0, cloneT, 0, valueT.length);
-        return cloneT;
-      case FLOAT:
-        float[] valueF = (float[]) value;
-        float[] cloneF = new float[valueF.length];
-        System.arraycopy(valueF, 0, cloneF, 0, valueF.length);
-        return cloneF;
-      case INT32:
-      case DATE:
-        int[] valueI = (int[]) value;
-        int[] cloneI = new int[valueI.length];
-        System.arraycopy(valueI, 0, cloneI, 0, valueI.length);
-        return cloneI;
-      case INT64:
-      case TIMESTAMP:
-        long[] valueL = (long[]) value;
-        long[] cloneL = new long[valueL.length];
-        System.arraycopy(valueL, 0, cloneL, 0, valueL.length);
-        return cloneL;
-      case DOUBLE:
-        double[] valueD = (double[]) value;
-        double[] cloneD = new double[valueD.length];
-        System.arraycopy(valueD, 0, cloneD, 0, valueD.length);
-        return cloneD;
-      case BOOLEAN:
-        boolean[] valueB = (boolean[]) value;
-        boolean[] cloneB = new boolean[valueB.length];
-        System.arraycopy(valueB, 0, cloneB, 0, valueB.length);
-        return cloneB;
-      default:
-        return null;
-    }
+    return Type.fromTsDataType(type).arrayCopyOf(value, Array.getLength(value));
   }
 
   @Override
@@ -1531,6 +1464,7 @@ public abstract class AlignedTVList extends TVList {
     private final int floatPrecision;
     private final List<TSEncoding> encodingList;
     private final boolean ignoreAllNullRows;
+    private final List<TypeServices.AlignedTVListChunkWriter> chunkValueWriters;
 
     // remember the selected index of last not-null value for each column during prepareNext phase
     private final int[] selectedIndices;
@@ -1572,6 +1506,13 @@ public abstract class AlignedTVList extends TVList {
       this.timeColumnDeletion = timeColumnDeletion;
       this.valueColumnsDeletionList = valueColumnsDeletionList;
       this.ignoreAllNullRows = ignoreAllNullRows;
+      this.chunkValueWriters =
+          dataTypeList.stream()
+              .map(
+                  dataType ->
+                      TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+                          Type.fromTsDataType(dataType)))
+              .collect(Collectors.toList());
       this.selectedIndices = new int[dataTypeList.size()];
       timeDeleteCursor[0] =
           (timeColumnDeletion == null || scanOrder.isAscending())
@@ -2110,8 +2051,6 @@ public abstract class AlignedTVList extends TVList {
         ValueChunkWriter valueChunkWriter =
             alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
         int validColumnIndex = columnIndexList.get(columnIndex);
-        Type type = Type.fromTsDataType(dataTypeList.get(columnIndex));
-        List<Object> columnValues = values.get(validColumnIndex);
 
         // Pair of Time and Index
         Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
@@ -2154,9 +2093,9 @@ public abstract class AlignedTVList extends TVList {
           }
 
           boolean isNull = outer.isNullValue(originRowIndex, validColumnIndex);
-          int arrayIndex = originRowIndex / ARRAY_SIZE;
-          int elementIndex = originRowIndex % ARRAY_SIZE;
-          type.write(valueChunkWriter, time, columnValues.get(arrayIndex), elementIndex, isNull);
+          chunkValueWriters
+              .get(columnIndex)
+              .write(valueChunkWriter, time, outer, originRowIndex, validColumnIndex, isNull);
         }
       }
       probeNext = false;

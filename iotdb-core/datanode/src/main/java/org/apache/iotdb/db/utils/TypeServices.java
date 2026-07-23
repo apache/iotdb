@@ -39,6 +39,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
@@ -52,6 +53,7 @@ import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
@@ -424,6 +426,33 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<BatchDataColumnWriter> BATCH_DATA_COLUMN_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (batchData, time, column, index) ->
+                    batchData.putBoolean(time, type.getBoolean(column, index));
+            case INT32, DATE ->
+                (batchData, time, column, index) ->
+                    batchData.putInt(time, type.getInt(column, index));
+            case INT64, TIMESTAMP ->
+                (batchData, time, column, index) ->
+                    batchData.putLong(time, type.getLong(column, index));
+            case FLOAT ->
+                (batchData, time, column, index) ->
+                    batchData.putFloat(time, type.getFloat(column, index));
+            case DOUBLE ->
+                (batchData, time, column, index) ->
+                    batchData.putDouble(time, type.getDouble(column, index));
+            case TEXT, BLOB, STRING, OBJECT ->
+                (batchData, time, column, index) ->
+                    batchData.putBinary(time, type.getBinary(column, index));
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
   public static final TypeService<ValueSerializer<Object>> OBJECT_VALUE_SERIALIZER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -627,6 +656,91 @@ public class TypeServices {
             case TEXT, BLOB, STRING, OBJECT ->
                 (tvList, times, values, bitMap, start, end) ->
                     tvList.putBinaries(times, (Binary[]) values, bitMap, start, end);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<TVListChunkWriter> TV_LIST_CHUNK_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (writer, time, tvList, index) -> {
+                  writer.write(time, tvList.getBoolean(index));
+                  return 8L + 1L;
+                };
+            case INT32, DATE ->
+                (writer, time, tvList, index) -> {
+                  writer.write(time, tvList.getInt(index));
+                  return 8L + 4L;
+                };
+            case INT64, TIMESTAMP ->
+                (writer, time, tvList, index) -> {
+                  writer.write(time, tvList.getLong(index));
+                  return 8L + 8L;
+                };
+            case FLOAT ->
+                (writer, time, tvList, index) -> {
+                  writer.write(time, tvList.getFloat(index));
+                  return 8L + 4L;
+                };
+            case DOUBLE ->
+                (writer, time, tvList, index) -> {
+                  writer.write(time, tvList.getDouble(index));
+                  return 8L + 8L;
+                };
+            case TEXT, BLOB, STRING, OBJECT ->
+                (writer, time, tvList, index) -> {
+                  Binary value = tvList.getBinary(index);
+                  writer.write(time, value);
+                  return 8L + MemUtils.getBinarySize(value);
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  public static final TypeService<AlignedTVListChunkWriter> ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? false : tvList.getBooleanByValueIndex(rowIndex, columnIndex),
+                        isNull);
+            case INT32, DATE ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? 0 : tvList.getIntByValueIndex(rowIndex, columnIndex),
+                        isNull);
+            case INT64, TIMESTAMP ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? 0L : tvList.getLongByValueIndex(rowIndex, columnIndex),
+                        isNull);
+            case FLOAT ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? 0F : tvList.getFloatByValueIndex(rowIndex, columnIndex),
+                        isNull);
+            case DOUBLE ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? 0D : tvList.getDoubleByValueIndex(rowIndex, columnIndex),
+                        isNull);
+            case TEXT, BLOB, STRING, OBJECT ->
+                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                    writer.write(
+                        time,
+                        isNull ? null : tvList.getBinaryByValueIndex(rowIndex, columnIndex),
+                        isNull);
             case ROW, UNKNOWN, VECTOR ->
                 throw new UnSupportedDataTypeException(
                         DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
@@ -902,6 +1016,8 @@ public class TypeServices {
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
+    TV_LIST_CHUNK_WRITER_SERVICE.check();
+    ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
     PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
     TABLET_COLUMN_ALLOCATOR_SERVICE.check();
     EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
@@ -912,6 +1028,7 @@ public class TypeServices {
     DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
     SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
     ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
+    BATCH_DATA_COLUMN_WRITER_SERVICE.check();
     OBJECT_VALUE_SERIALIZER_SERVICE.check();
     TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();
     EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE.check();
@@ -1066,6 +1183,22 @@ public class TypeServices {
   }
 
   @FunctionalInterface
+  public interface TVListChunkWriter {
+    long write(ChunkWriterImpl writer, long time, TVList tvList, int index);
+  }
+
+  @FunctionalInterface
+  public interface AlignedTVListChunkWriter {
+    void write(
+        ValueChunkWriter writer,
+        long time,
+        AlignedTVList tvList,
+        int rowIndex,
+        int columnIndex,
+        boolean isNull);
+  }
+
+  @FunctionalInterface
   public interface ArrayValueGetter {
     Object get(Object array, int index);
   }
@@ -1085,6 +1218,11 @@ public class TypeServices {
   public interface ArrayValueColumnWriter {
     void write(
         ColumnBuilder builder, Object values, int index, int floatPrecision, TSEncoding encoding);
+  }
+
+  @FunctionalInterface
+  public interface BatchDataColumnWriter {
+    void write(BatchData batchData, long time, Column column, int index);
   }
 
   @FunctionalInterface

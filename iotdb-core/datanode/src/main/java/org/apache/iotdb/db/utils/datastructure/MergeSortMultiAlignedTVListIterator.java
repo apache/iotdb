@@ -21,14 +21,15 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
@@ -46,6 +47,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   private final Set<Integer> probeIterators;
   private final int[] iteratorIndices;
   private final int[] rowIndices;
+  private final List<TypeServices.AlignedTVListChunkWriter> valueWriters;
 
   private final BitMap bitMap;
   // Min-Heap: minimal timestamp; if same timestamp, maximum TVList index
@@ -84,6 +86,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.iteratorIndices = new int[tsDataTypeList.size()];
     this.rowIndices = new int[tsDataTypeList.size()];
+    this.valueWriters =
+        tsDataTypeList.stream()
+            .map(
+                dataType ->
+                    TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+                        Type.fromTsDataType(dataType)))
+            .collect(Collectors.toList());
     this.ignoreAllNullRows = ignoreAllNullRows;
     this.heap =
         new PriorityQueue<>(
@@ -242,50 +251,10 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
           continue;
         }
 
-        switch (tsDataTypeList.get(columnIndex)) {
-          case BOOLEAN:
-            valueChunkWriter.write(
-                currentTime,
-                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex),
-                false);
-            break;
-          case INT32:
-          case DATE:
-            valueChunkWriter.write(
-                currentTime, alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex), false);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueChunkWriter.write(
-                currentTime,
-                alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex),
-                false);
-            break;
-          case FLOAT:
-            valueChunkWriter.write(
-                currentTime,
-                alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex),
-                false);
-            break;
-          case DOUBLE:
-            valueChunkWriter.write(
-                currentTime,
-                alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex),
-                false);
-            break;
-          case TEXT:
-          case BLOB:
-          case OBJECT:
-          case STRING:
-            valueChunkWriter.write(
-                currentTime,
-                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex),
-                false);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
-        }
+        valueWriters
+            .get(columnIndex)
+            .write(
+                valueChunkWriter, currentTime, alignedTVList, valueIndex, validColumnIndex, false);
       }
       next();
       encodeInfo.pointNumInPage++;

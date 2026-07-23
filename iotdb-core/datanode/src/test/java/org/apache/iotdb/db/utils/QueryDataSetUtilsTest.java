@@ -121,9 +121,32 @@ public class QueryDataSetUtilsTest {
     compareRes(res);
   }
 
+  @Test
+  public void testConvertTsBlockListByFetchSize() throws IOException {
+    TSQueryDataSet result = QueryDataSetUtils.convertTsBlockByFetchSize(List.of(buildTsBlock()));
+
+    assertEquals(Long.BYTES * 2, result.time.limit());
+    assertEquals(1L, result.time.getLong());
+    assertEquals(2L, result.time.getLong());
+    assertEquals(1, result.valueList.size());
+    assertEquals(1, result.bitmapList.size());
+    assertEquals(Byte.BYTES, result.valueList.get(0).limit());
+    assertEquals((byte) 1, result.valueList.get(0).get());
+    assertEquals((byte) 0x80, result.bitmapList.get(0).get());
+  }
+
   private IQueryExecution buildQueryExecution() throws IoTDBException, IOException {
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
     Mockito.when(queryExecution.getOutputValueColumnCount()).thenReturn(6);
+    TsBlock tsBlock = buildTsBlock();
+    Mockito.when(queryExecution.getBatchResult())
+        .thenReturn(Optional.of(tsBlock), Optional.empty());
+    Mockito.when(queryExecution.getByteBufferBatchResult())
+        .thenReturn(Optional.of(new TsBlockSerde().serialize(tsBlock)), Optional.empty());
+    return queryExecution;
+  }
+
+  private TsBlock buildTsBlock() {
     TsBlockBuilder builder =
         new TsBlockBuilder(
             Arrays.asList(
@@ -149,11 +172,7 @@ public class QueryDataSetUtilsTest {
     builder.getColumnBuilder(4).writeDouble(3.14d);
     builder.getColumnBuilder(5).appendNull();
     builder.declarePosition();
-    Mockito.when(queryExecution.getBatchResult())
-        .thenReturn(Optional.of(builder.build()), Optional.empty());
-    Mockito.when(queryExecution.getByteBufferBatchResult())
-        .thenReturn(Optional.of(new TsBlockSerde().serialize(builder.build())), Optional.empty());
-    return queryExecution;
+    return builder.build();
   }
 
   private void compareRes(Pair<TSQueryDataSet, Boolean> res) {

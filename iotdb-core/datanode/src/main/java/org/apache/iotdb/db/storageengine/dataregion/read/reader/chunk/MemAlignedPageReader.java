@@ -31,12 +31,12 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -284,51 +284,9 @@ public class MemAlignedPageReader implements IPageReader {
       //      timeStatistics.setEmpty(false);
 
       for (int column = 0; column < tsDataTypes.size(); column++) {
-        switch (tsDataTypes.get(column)) {
-          case BOOLEAN:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
-            }
-            break;
-          case INT32:
-          case DATE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
-            }
-            break;
-          case FLOAT:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
-            }
-            break;
-          case DOUBLE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case OBJECT:
-          case STRING:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics[column].update(
-                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypes.get(column)));
+        Type type = Type.fromTsDataType(tsDataTypes.get(column));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          type.update(valueStatistics[column], tsBlock, column, i);
         }
       }
     }

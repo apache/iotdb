@@ -21,14 +21,14 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
@@ -36,8 +36,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public class MergeSortMultiTVListIterator extends MultiTVListIterator {
 
@@ -131,6 +129,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
   @Override
   public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+    TypeServices.TVListChunkWriter valueWriter =
+        TypeServices.TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
     while (hasNextTimeValuePair()) {
       // remember current iterator and row index
       TVList.TVListIterator currIterator = tvListIterators.get(iteratorIndex);
@@ -143,41 +143,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         chunkWriterImpl.setLastPoint(true);
       }
 
-      switch (tsDataType) {
-        case BOOLEAN:
-          chunkWriterImpl.write(time, currIterator.getTVList().getBoolean(row));
-          encodeInfo.dataSizeInChunk += 8L + 1L;
-          break;
-        case INT32:
-        case DATE:
-          chunkWriterImpl.write(time, currIterator.getTVList().getInt(row));
-          encodeInfo.dataSizeInChunk += 8L + 4L;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriterImpl.write(time, currIterator.getTVList().getLong(row));
-          encodeInfo.dataSizeInChunk += 8L + 8L;
-          break;
-        case FLOAT:
-          chunkWriterImpl.write(time, currIterator.getTVList().getFloat(row));
-          encodeInfo.dataSizeInChunk += 8L + 4L;
-          break;
-        case DOUBLE:
-          chunkWriterImpl.write(time, currIterator.getTVList().getDouble(row));
-          encodeInfo.dataSizeInChunk += 8L + 8L;
-          break;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          Binary value = currIterator.getTVList().getBinary(row);
-          chunkWriterImpl.write(time, value);
-          encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
-      }
+      encodeInfo.dataSizeInChunk +=
+          valueWriter.write(chunkWriterImpl, time, currIterator.getTVList(), row);
       encodeInfo.pointNumInChunk++;
 
       if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk

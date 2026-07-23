@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.PageMetadata;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -29,11 +30,11 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -81,40 +82,13 @@ public class MemPageReader implements IPageReader {
 
     BatchData batchData = BatchDataFactory.createBatchData(tsDataType, ascending, false);
     boolean[] satisfyInfo = buildSatisfyInfoArray(null);
+    TypeServices.BatchDataColumnWriter valueWriter =
+        TypeServices.BATCH_DATA_COLUMN_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
+    Column valueColumn = tsBlock.getColumn(0);
 
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       if (satisfyInfo[i]) {
-        switch (tsDataType) {
-          case BOOLEAN:
-            batchData.putBoolean(
-                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBoolean(i));
-            break;
-          case INT32:
-          case DATE:
-            batchData.putInt(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getInt(i));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            batchData.putLong(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getLong(i));
-            break;
-          case DOUBLE:
-            batchData.putDouble(
-                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getDouble(i));
-            break;
-          case FLOAT:
-            batchData.putFloat(
-                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getFloat(i));
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            batchData.putBinary(
-                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.valueOf(tsDataType));
-        }
+        valueWriter.write(batchData, tsBlock.getTimeByIndex(i), valueColumn, i);
       }
     }
     return batchData.flip();
@@ -278,45 +252,9 @@ public class MemPageReader implements IPageReader {
 
   private void updatePageStatisticsFromTsBlock(Statistics statistics) {
     if (!tsBlock.isEmpty()) {
-      switch (tsDataType) {
-        case BOOLEAN:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
-          }
-          break;
-        case FLOAT:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getFloat(i));
-          }
-          break;
-        case INT32:
-        case DATE:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
-          }
-          break;
-        case DOUBLE:
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getDouble(i));
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
+      Type type = Type.fromTsDataType(tsDataType);
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        type.update(statistics, tsBlock, 0, i);
       }
     }
   }

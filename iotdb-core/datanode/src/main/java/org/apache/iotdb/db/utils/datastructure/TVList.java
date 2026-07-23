@@ -28,6 +28,7 @@ import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
@@ -36,6 +37,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -56,7 +58,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
-import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
@@ -1322,8 +1323,9 @@ public abstract class TVList implements WALEntryValue {
 
     @Override
     public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
-      TSDataType dataType = getDataType();
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+      TypeServices.TVListChunkWriter valueWriter =
+          TypeServices.TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(getDataType()));
       for (; index < rows; index++) {
         if (isNullValue(getValueIndex(index))) {
           continue;
@@ -1343,41 +1345,7 @@ public abstract class TVList implements WALEntryValue {
           }
         }
 
-        switch (dataType) {
-          case BOOLEAN:
-            chunkWriterImpl.write(time, getBoolean(index));
-            encodeInfo.dataSizeInChunk += 8L + 1L;
-            break;
-          case INT32:
-          case DATE:
-            chunkWriterImpl.write(time, getInt(index));
-            encodeInfo.dataSizeInChunk += 8L + 4L;
-            break;
-          case INT64:
-          case TIMESTAMP:
-            chunkWriterImpl.write(time, getLong(index));
-            encodeInfo.dataSizeInChunk += 8L + 8L;
-            break;
-          case FLOAT:
-            chunkWriterImpl.write(time, getFloat(index));
-            encodeInfo.dataSizeInChunk += 8L + 4L;
-            break;
-          case DOUBLE:
-            chunkWriterImpl.write(time, getDouble(index));
-            encodeInfo.dataSizeInChunk += 8L + 8L;
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            Binary value = getBinary(index);
-            chunkWriterImpl.write(time, value);
-            encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
+        encodeInfo.dataSizeInChunk += valueWriter.write(chunkWriterImpl, time, TVList.this, index);
         encodeInfo.pointNumInChunk++;
         if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
             || encodeInfo.dataSizeInChunk >= encodeInfo.targetChunkSize) {

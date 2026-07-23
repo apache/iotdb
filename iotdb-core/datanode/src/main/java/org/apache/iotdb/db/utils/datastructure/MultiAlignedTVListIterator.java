@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -35,12 +36,13 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongConsumer;
+
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected List<TSDataType> tsDataTypeList;
@@ -228,48 +230,14 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           continue;
         }
 
-        switch (tsDataTypeList.get(columnIndex)) {
-          case BOOLEAN:
-            valueBuilder.writeBoolean(
-                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case INT32:
-          case DATE:
-            valueBuilder.writeInt(alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueBuilder.writeLong(alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case FLOAT:
-            float valueF = alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex);
-            if (encodingList != null) {
-              valueF =
-                  alignedTVList.roundValueWithGivenPrecision(
-                      valueF, floatPrecision, encodingList.get(columnIndex));
-            }
-            valueBuilder.writeFloat(valueF);
-            break;
-          case DOUBLE:
-            double valueD = alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex);
-            if (encodingList != null) {
-              valueD =
-                  alignedTVList.roundValueWithGivenPrecision(
-                      valueD, floatPrecision, encodingList.get(columnIndex));
-            }
-            valueBuilder.writeDouble(valueD);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            valueBuilder.writeBinary(
-                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
-        }
+        TypeServices.ARRAY_VALUE_COLUMN_WRITER_SERVICE
+            .call(Type.fromTsDataType(tsDataTypeList.get(columnIndex)))
+            .write(
+                valueBuilder,
+                alignedTVList.values.get(validColumnIndex).get(valueIndex / ARRAY_SIZE),
+                valueIndex % ARRAY_SIZE,
+                floatPrecision,
+                encodingList == null ? null : encodingList.get(columnIndex));
       }
       next();
 
