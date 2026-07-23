@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUti
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -57,15 +58,14 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -454,79 +454,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
+        final TSDataType dataType = tablet.getSchemas().get(i).getType();
         if (Objects.isNull(primitiveType)
             || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
-          switch (tablet.getSchemas().get(i).getType()) {
-            case TEXT:
-            case BLOB:
-            case STRING:
-              PipeTabletUtils.putValue(
-                  tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), Binary.EMPTY_VALUE);
+          if (dataType.isBinary()) {
+            ((Binary[]) tablet.getValues()[i])[rowIndex] = Binary.EMPTY_VALUE;
           }
           PipeTabletUtils.markNullValue(tablet, rowIndex, i);
           continue;
         }
 
         isNeedFillTime = true;
-        switch (tablet.getSchemas().get(i).getType()) {
-          case BOOLEAN:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getBoolean());
-            break;
-          case INT32:
-            PipeTabletUtils.putValue(
-                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getInt());
-            break;
-          case DATE:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                DateUtils.parseIntToLocalDate(primitiveType.getInt()));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            PipeTabletUtils.putValue(
-                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getLong());
-            break;
-          case FLOAT:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getFloat());
-            break;
-          case DOUBLE:
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                primitiveType.getDouble());
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            final Binary binary = primitiveType.getBinary();
-            PipeTabletUtils.putValue(
-                tablet,
-                rowIndex,
-                i,
-                tablet.getSchemas().get(i).getType(),
-                Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                    ? Binary.EMPTY_VALUE
-                    : binary);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
-        }
+        TypeServices.PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .write(primitiveType, tablet.getValues()[i], rowIndex);
+        PipeTabletUtils.unmarkNullValue(tablet, rowIndex, i);
       }
     } else {
       if (!modsInfos.isEmpty()
@@ -535,53 +477,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
 
       isNeedFillTime = true;
-      switch (tablet.getSchemas().get(0).getType()) {
-        case BOOLEAN:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getBoolean());
-          break;
-        case INT32:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getInt());
-          break;
-        case DATE:
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              0,
-              tablet.getSchemas().get(0).getType(),
-              DateUtils.parseIntToLocalDate(data.getInt()));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getLong());
-          break;
-        case FLOAT:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getFloat());
-          break;
-        case DOUBLE:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          final Binary binary = data.getBinary();
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              0,
-              tablet.getSchemas().get(0).getType(),
-              Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                  ? Binary.EMPTY_VALUE
-                  : binary);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodePipeMessages.UNSUPPORTED + data.getDataType());
-      }
+      final TSDataType dataType = tablet.getSchemas().get(0).getType();
+      TypeServices.PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE
+          .call(Type.fromTsDataType(dataType))
+          .write(data, tablet.getValues()[0], rowIndex);
+      PipeTabletUtils.unmarkNullValue(tablet, rowIndex, 0);
     }
     return isNeedFillTime;
   }

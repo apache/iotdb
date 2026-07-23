@@ -1204,6 +1204,46 @@ public class TypeServices {
                     };
               };
 
+  public static final TypeService<TsPrimitiveTabletValueWriter>
+      PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
+                case TEXT, BLOB, STRING ->
+                    (value, column, index) -> {
+                      type.write(value, column, index);
+                      final Binary[] binaryColumn = (Binary[]) column;
+                      binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
+                    };
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (value, column, index) -> {
+                      throw new UnSupportedDataTypeException(
+                          DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
+                    };
+              };
+
+  public static final TypeService<BatchDataTabletValueWriter>
+      PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
+                case TEXT, BLOB, STRING ->
+                    (value, column, index) -> {
+                      type.write(value, column, index);
+                      final Binary[] binaryColumn = (Binary[]) column;
+                      binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
+                    };
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (value, column, index) -> {
+                      throw new UnSupportedDataTypeException(
+                          DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
+                    };
+              };
+
+  private static Binary normalizeBinaryValue(final Binary value) {
+    return Objects.isNull(value) || Objects.isNull(value.getValues()) ? Binary.EMPTY_VALUE : value;
+  }
+
   public static final TypeService<TabletValueColumnFilter> PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -1330,6 +1370,8 @@ public class TypeServices {
   static {
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
+    PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
+    PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
     PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
     TV_LIST_OBJECT_WRITER_SERVICE.check();
@@ -1499,6 +1541,16 @@ public class TypeServices {
         boolean isSingleOriginValueColumn,
         BitMap originNullValueColumnBitmap,
         BitMap nullValueColumnBitmap);
+  }
+
+  @FunctionalInterface
+  public interface TsPrimitiveTabletValueWriter {
+    void write(TsPrimitiveType value, Object column, int index);
+  }
+
+  @FunctionalInterface
+  public interface BatchDataTabletValueWriter {
+    void write(BatchData value, Object column, int index);
   }
 
   @FunctionalInterface

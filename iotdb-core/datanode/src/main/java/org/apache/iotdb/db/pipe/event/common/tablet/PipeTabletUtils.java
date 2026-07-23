@@ -170,7 +170,7 @@ public final class PipeTabletUtils {
     unmarkNullValue(tablet, rowIndex, columnIndex);
   }
 
-  private static void unmarkNullValue(
+  public static void unmarkNullValue(
       final Tablet tablet, final int rowIndex, final int columnIndex) {
     final BitMap[] bitMaps = tablet.getBitMaps();
     if (Objects.nonNull(bitMaps)

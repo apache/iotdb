@@ -44,9 +44,8 @@ import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -402,42 +401,20 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       BatchData batchData,
       MeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
+    final Type type = Type.fromTsDataType(schema.getType());
+    long previousPartitionId = 0;
+    ChunkWriterImpl chunkWriter = null;
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
-      Object value = batchData.currentValue();
       long partitionId = TimePartitionUtils.getTimePartitionId(time);
 
-      ChunkWriterImpl chunkWriter =
-          partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
-      getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
-      switch (schema.getType()) {
-        case INT32:
-        case DATE:
-          chunkWriter.write(time, (int) value);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriter.write(time, (long) value);
-          break;
-        case FLOAT:
-          chunkWriter.write(time, (float) value);
-          break;
-        case DOUBLE:
-          chunkWriter.write(time, (double) value);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          chunkWriter.write(time, (Binary) value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", schema.getType()));
+      if (chunkWriter == null || partitionId != previousPartitionId) {
+        previousPartitionId = partitionId;
+        chunkWriter =
+            partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
+        getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       }
+      type.write(chunkWriter, time, batchData);
       batchData.next();
     }
     partitionChunkWriterMap
