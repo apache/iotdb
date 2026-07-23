@@ -300,7 +300,7 @@ public class IoTDBInsertTableSessionPoolIT {
         tablet3.addValue("timestamp", rowIndex, 2L);
         tablet3.addValue("date", rowIndex, LocalDate.parse("2024-08-16"));
       }
-      session.insertTablets(Arrays.asList(tablet2, tablet3));
+      session.insert(Arrays.asList(tablet2, tablet3));
 
       try (SessionDataSet rs2 =
           session.executeQueryStatement("select count(*) from table20 where device_id='2'")) {
@@ -332,7 +332,7 @@ public class IoTDBInsertTableSessionPoolIT {
       final Tablet tablet3 = createTabletForTable1(3, 2);
       final Tablet tablet4 = createTabletForTable3(20, 4);
 
-      session.insertTablets(Arrays.asList(tablet1, tablet2, tablet3, tablet4));
+      session.insert(Arrays.asList(tablet1, tablet2, tablet3, tablet4));
 
       assertCount(session, "SELECT COUNT(*) FROM multi_tablet_table1 WHERE tag1 = 'tag1'", 5);
       assertCount(session, "SELECT COUNT(*) FROM multi_tablet_table2 WHERE tag2 = 'tag2'", 3);

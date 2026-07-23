@@ -690,7 +690,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("USE \"db1\"");
       final List<Tablet> tablets = createTabletPerformanceTablets("auto_create_tablets", 2, 0);
 
-      session.insertTablets(tablets);
+      session.insert(tablets);
 
       assertEquals(
           (long) TABLET_PERFORMANCE_ROWS_PER_TABLET * 2,
@@ -722,7 +722,7 @@ public class IoTDBSessionRelationalIT {
               + tableName
               + " (time, tag1, color, sticky, s1) VALUES (0, 'd1', 'black', 'keep', 0)");
 
-      session.insertTablets(
+      session.insert(
           Arrays.asList(
               createDeviceAttributeTablet(tableName, Arrays.asList("s1", "s2", "s3"), 1, "red"),
               createDeviceAttributeTablet(tableName, Arrays.asList("s4", "s5", "s6"), 2, "blue"),
@@ -756,7 +756,7 @@ public class IoTDBSessionRelationalIT {
               + tableName
               + " (color STRING ATTRIBUTE, sticky STRING ATTRIBUTE, s1 INT64 FIELD)");
 
-      session.insertTablets(
+      session.insert(
           Arrays.asList(
               createNoTagAttributeTablet(
                   tableName,
@@ -772,7 +772,7 @@ public class IoTDBSessionRelationalIT {
                   tableName, Arrays.asList("sticky", "color"), Arrays.asList(null, null), 3)));
       assertDeviceAttributes(session, tableName, "red", "large");
 
-      session.insertTablets(
+      session.insert(
           Arrays.asList(
               createNoTagAttributeTablet(
                   tableName, Arrays.asList("sticky", "color"), Arrays.asList("medium", "blue"), 4),
@@ -808,7 +808,7 @@ public class IoTDBSessionRelationalIT {
               + tableName
               + " (tag1 STRING TAG, color STRING ATTRIBUTE, s1 INT64 FIELD)");
 
-      session.insertTablets(
+      session.insert(
           Arrays.asList(
               createDeviceAttributeTablet(
                   tableName,
@@ -908,7 +908,7 @@ public class IoTDBSessionRelationalIT {
     for (Tablet tablet : singleTablets) {
       session.insert(tablet);
     }
-    session.insertTablets(multiTablets);
+    session.insert(multiTablets);
 
     final long expectedRows =
         (long) TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT * TABLET_PERFORMANCE_ROWS_PER_TABLET;
@@ -933,7 +933,7 @@ public class IoTDBSessionRelationalIT {
   private long insertTabletsPerformanceTest(final ITableSession session, final List<Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     final long startTime = System.nanoTime();
-    session.insertTablets(tablets);
+    session.insert(tablets);
     return System.nanoTime() - startTime;
   }
 

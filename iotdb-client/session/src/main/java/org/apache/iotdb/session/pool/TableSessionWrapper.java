@@ -70,7 +70,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void insertTablets(List<Tablet> tablets)
+  public void insert(List<Tablet> tablets)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalTablets(tablets);

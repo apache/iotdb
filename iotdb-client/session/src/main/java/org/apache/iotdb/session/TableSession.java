@@ -42,7 +42,7 @@ public class TableSession implements ITableSession {
   }
 
   @Override
-  public void insertTablets(List<Tablet> tablets)
+  public void insert(List<Tablet> tablets)
       throws StatementExecutionException, IoTDBConnectionException {
     session.insertRelationalTablets(tablets);
   }
