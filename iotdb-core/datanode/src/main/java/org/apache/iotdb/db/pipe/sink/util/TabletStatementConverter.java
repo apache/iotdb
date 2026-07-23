@@ -27,14 +27,15 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletString
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -478,110 +479,22 @@ public class TabletStatementConverter {
         continue;
       }
 
-      switch (types[i]) {
-        case BOOLEAN:
-          final boolean[] boolValues = new boolean[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              boolValues[index] = readBooleanByte(byteBuffer, "boolean value");
-            }
-          }
-          values[i] = boolValues;
-          // Calculate memory for boolean array: array header + 1 byte per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + rowSize);
-          break;
-        case INT32:
-        case DATE:
-          final int[] intValues = new int[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              intValues[index] = ReadWriteIOUtils.readInt(byteBuffer);
-            }
-          }
-          values[i] = intValues;
-          // Calculate memory for int array: array header + 4 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Integer.BYTES * rowSize);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          final long[] longValues = new long[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              longValues[index] = ReadWriteIOUtils.readLong(byteBuffer);
-            }
-          }
-          values[i] = longValues;
-          // Calculate memory for long array: array header + 8 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Long.BYTES * rowSize);
-          break;
-        case FLOAT:
-          final float[] floatValues = new float[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              floatValues[index] = ReadWriteIOUtils.readFloat(byteBuffer);
-            }
-          }
-          values[i] = floatValues;
-          // Calculate memory for float array: array header + 4 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Float.BYTES * rowSize);
-          break;
-        case DOUBLE:
-          final double[] doubleValues = new double[rowSize];
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              doubleValues[index] = ReadWriteIOUtils.readDouble(byteBuffer);
-            }
-          }
-          values[i] = doubleValues;
-          // Calculate memory for double array: array header + 8 bytes per element (aligned)
-          memorySize +=
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + (long) Double.BYTES * rowSize);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          // Handle object array type: Binary[] is an array of objects
-          final Binary[] binaryValues = new Binary[rowSize];
-          // Calculate memory for Binary array: array header + object references
-          long binaryArrayMemory =
-              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
-                  NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * rowSize);
-
-          if (isValueColumnsNotNull) {
-            for (int index = 0; index < rowSize; index++) {
-              final boolean isNotNull = readBooleanByte(byteBuffer, "binary value existence");
-              if (isNotNull) {
-                binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
-                // Calculate memory for each Binary object during deserialization
-                binaryArrayMemory += binaryValues[index].ramBytesUsed();
-              } else {
-                binaryValues[index] = Binary.EMPTY_VALUE;
-                // EMPTY_VALUE also has memory cost
-                binaryArrayMemory += Binary.EMPTY_VALUE.ramBytesUsed();
-              }
-            }
-          } else {
-            Arrays.fill(binaryValues, Binary.EMPTY_VALUE);
-            // Calculate memory for all EMPTY_VALUE
-            binaryArrayMemory += (long) rowSize * Binary.EMPTY_VALUE.ramBytesUsed();
-          }
-          values[i] = binaryValues;
-          // Add calculated Binary array memory to total
-          memorySize += binaryArrayMemory;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
+      final Type type = Type.fromTsDataType(types[i]);
+      values[i] =
+          isValueColumnsNotNull
+              ? TypeServices.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
+                  .call(type)
+                  .apply(byteBuffer, rowSize)
+              : TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(type).apply(rowSize);
+      final boolean isBinaryType = types[i].isBinary();
+      if (isBinaryType && !isValueColumnsNotNull) {
+        Arrays.fill((Binary[]) values[i], Binary.EMPTY_VALUE);
+      }
+      memorySize += type.estimateArraySize(values[i]);
+      if (isBinaryType) {
+        for (final Binary binary : (Binary[]) values[i]) {
+          memorySize += binary.ramBytesUsed();
+        }
       }
     }
 

@@ -20,15 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 
 public class OperatorGeneratorUtil {
 
@@ -54,25 +53,8 @@ public class OperatorGeneratorUtil {
   }
 
   private static long getValueSizePerLine(TSDataType tsDataType) {
-    switch (tsDataType) {
-      case INT32:
-      case DATE:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return Long.BYTES;
-      case FLOAT:
-        return Float.BYTES;
-      case DOUBLE:
-        return Double.BYTES;
-      case BOOLEAN:
-        return Byte.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
-      default:
-        throw new UnsupportedOperationException(UNKNOWN_DATATYPE + tsDataType);
-    }
+    return TypeServices.STATEMENT_VALUE_SIZE_PER_LINE_SERVICE
+        .call(Type.fromTsDataType(tsDataType))
+        .getAsLong();
   }
 }

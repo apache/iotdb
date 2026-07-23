@@ -41,8 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -568,42 +570,9 @@ public class InsertNodeMemoryEstimator {
           || measurementSchemas[i].getType() == null) {
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
-        case INT64:
-        case TIMESTAMP:
-          {
-            size += RamUsageEstimator.sizeOf((long[]) columns[i]);
-            break;
-          }
-        case DATE:
-        case INT32:
-          {
-            size += RamUsageEstimator.sizeOf((int[]) columns[i]);
-            break;
-          }
-        case DOUBLE:
-          {
-            size += RamUsageEstimator.sizeOf((double[]) columns[i]);
-            break;
-          }
-        case FLOAT:
-          {
-            size += RamUsageEstimator.sizeOf((float[]) columns[i]);
-            break;
-          }
-        case BOOLEAN:
-          {
-            size += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
-            break;
-          }
-        case STRING:
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-          {
-            size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
-            break;
-          }
+      final TSDataType dataType = measurementSchemas[i].getType();
+      if (dataType != TSDataType.UNKNOWN && dataType != TSDataType.VECTOR) {
+        size += Type.fromTsDataType(dataType).estimateArraySize(columns[i]);
       }
     }
     return size;

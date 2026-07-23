@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -30,7 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -39,13 +38,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
@@ -248,28 +243,9 @@ public class AggregationUtil {
   }
 
   public static long getOutputColumnSizePerLine(TSDataType tsDataType) {
-    switch (tsDataType) {
-      case INT32:
-      case DATE:
-        return IntColumn.SIZE_IN_BYTES_PER_POSITION;
-      case INT64:
-      case TIMESTAMP:
-        return LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      case FLOAT:
-        return FloatColumn.SIZE_IN_BYTES_PER_POSITION;
-      case DOUBLE:
-        return DoubleColumn.SIZE_IN_BYTES_PER_POSITION;
-      case BOOLEAN:
-        return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
-      default:
-        throw new UnsupportedOperationException(
-            DataNodeQueryMessages.UNKNOWN_DATA_TYPE_2 + tsDataType);
-    }
+    return TypeServices.OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE
+        .call(Type.fromTsDataType(tsDataType))
+        .getAsLong();
   }
 
   public static String addPartialSuffix(String aggregationName) {

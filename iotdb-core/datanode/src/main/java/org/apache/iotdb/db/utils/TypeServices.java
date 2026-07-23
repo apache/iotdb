@@ -36,6 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -91,6 +92,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 public class TypeServices {
@@ -112,6 +114,33 @@ public class TypeServices {
                 throw new UnSupportedDataTypeException(
                         DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
                     .setChecked(true);
+          };
+
+  public static final TypeService<LongSupplier> OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                () -> type.estimateValueSize() + Byte.BYTES;
+            case TEXT, BLOB, STRING, OBJECT ->
+                () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
+            case ROW, UNKNOWN, VECTOR ->
+                () -> {
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.UNKNOWN_DATA_TYPE_2 + type.getTypeEnum());
+                };
+          };
+
+  public static final TypeService<LongSupplier> STATEMENT_VALUE_SIZE_PER_LINE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::estimateValueSize;
+            case TEXT, BLOB, STRING ->
+                () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                () -> {
+                  throw new UnsupportedOperationException(
+                      CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
+                };
           };
 
   public static final TypeService<IntFunction<ColumnBuilder>>
@@ -1368,6 +1397,8 @@ public class TypeServices {
   }
 
   static {
+    OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
+    STATEMENT_VALUE_SIZE_PER_LINE_SERVICE.check();
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
     PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
