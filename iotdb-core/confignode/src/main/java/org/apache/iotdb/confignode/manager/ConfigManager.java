@@ -1881,6 +1881,7 @@ public class ConfigManager implements IManager {
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
       int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
+      int previousRegionMigrationConcurrencyLimit = CONF.getRegionMigrationConcurrencyLimit();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1936,6 +1937,7 @@ public class ConfigManager implements IManager {
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       handleProcedureCleanerHotReload(
           previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
+      handleRegionMigrationConcurrencyLimitHotReload(previousRegionMigrationConcurrencyLimit);
       if (currentNodeId == req.getNodeId() || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
         return tsStatus;
       }
@@ -2029,6 +2031,17 @@ public class ConfigManager implements IManager {
       return;
     }
     getProcedureManager().updateCompletedProcedureCleaner();
+  }
+
+  void handleRegionMigrationConcurrencyLimitHotReload(int previousConcurrencyLimit) {
+    int currentConcurrencyLimit = CONF.getRegionMigrationConcurrencyLimit();
+    if (previousConcurrencyLimit == currentConcurrencyLimit) {
+      return;
+    }
+    getProcedureManager()
+        .getEnv()
+        .getRegionMigrateSemaphore()
+        .setMaxPermits(currentConcurrencyLimit);
   }
 
   @Override

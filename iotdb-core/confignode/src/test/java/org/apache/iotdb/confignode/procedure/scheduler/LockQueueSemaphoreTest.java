@@ -175,4 +175,16 @@ public class LockQueueSemaphoreTest {
     queue.setMaxPermits(3);
     Assert.assertTrue(queue.tryLock(proc3));
   }
+
+  @Test
+  public void testDynamicPermitAdjustmentFromUnlimited() {
+    LockQueue queue = new LockQueue(0);
+    Procedure<TestProcEnv> proc1 = createProcedureWithId(1);
+    Procedure<TestProcEnv> proc2 = createProcedureWithId(2);
+
+    queue.setMaxPermits(1);
+
+    Assert.assertTrue(queue.tryLock(proc1));
+    Assert.assertFalse(queue.tryLock(proc2));
+  }
 }

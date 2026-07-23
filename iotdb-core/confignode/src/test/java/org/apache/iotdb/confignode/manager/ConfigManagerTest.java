@@ -22,9 +22,13 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -85,5 +89,26 @@ public class ConfigManagerTest {
         .thenReturn(Map.of(regionLeader.getDataNodeId(), regionLeader));
 
     Assert.assertSame(regionLeader, configManager.getRegionLeaderLocation(regionId).orElseThrow());
+  }
+
+  @Test
+  public void testHandleRegionMigrationConcurrencyLimitHotReload() {
+    ConfigManager configManager = mock(ConfigManager.class, CALLS_REAL_METHODS);
+    ProcedureManager procedureManager = mock(ProcedureManager.class);
+    ConfigNodeProcedureEnv procedureEnv = mock(ConfigNodeProcedureEnv.class);
+    LockQueue regionMigrateSemaphore = new LockQueue(0);
+    when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    when(procedureManager.getEnv()).thenReturn(procedureEnv);
+    when(procedureEnv.getRegionMigrateSemaphore()).thenReturn(regionMigrateSemaphore);
+
+    ConfigNodeConfig config = ConfigNodeDescriptor.getInstance().getConf();
+    int originalConcurrencyLimit = config.getRegionMigrationConcurrencyLimit();
+    try {
+      config.setRegionMigrationConcurrencyLimit(1);
+      configManager.handleRegionMigrationConcurrencyLimitHotReload(0);
+      Assert.assertEquals(1, regionMigrateSemaphore.getMaxPermits());
+    } finally {
+      config.setRegionMigrationConcurrencyLimit(originalConcurrencyLimit);
+    }
   }
 }
