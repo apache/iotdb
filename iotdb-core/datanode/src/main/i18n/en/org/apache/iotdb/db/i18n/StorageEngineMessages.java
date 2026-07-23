@@ -755,6 +755,8 @@ public final class StorageEngineMessages {
       "This normal memtable is empty, skip flush. {}: {}";
   public static final String STORAGE_LOG_IS_CLOSED_DURING_FLUSH_ABANDON_FLUSH_TASK_DD47632F =
       "{}: {} is closed during flush, abandon flush task";
+  public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3 =
+      "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}";
   public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_FILE_SIZE_NULL_VALUE_RATIO_46F3B1F7 =
       "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}, null value ratio: {}";
   public static final String STORAGE_LOG_STORAGE_GROUP_CLOSE_AND_REMOVE_EMPTY_FILE_72D42293 =
