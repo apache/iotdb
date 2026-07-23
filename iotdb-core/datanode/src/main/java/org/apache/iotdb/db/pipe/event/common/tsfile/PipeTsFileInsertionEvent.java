@@ -225,7 +225,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         databaseNameFromDataRegion);
 
     this.resource = resource;
-    this.dataRegionId = resource.getDataRegionId();
+    this.dataRegionId = getDataRegionId(resource);
 
     // For events created at assigner or historical extractor, the tsFile is get from the resource
     // For events created for source, the tsFile is inherited from the assigner, because the
@@ -289,6 +289,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             eliminateProgressIndex();
           }
         });
+  }
+
+  private static String getDataRegionId(final TsFileResource resource) {
+    // TsFileResource#getDataRegionId assumes the storage-engine directory structure, while a
+    // synthetic resource may wrap a standalone file.
+    final File timePartitionDir = resource.getTsFile().getParentFile();
+    final File dataRegionDir =
+        Objects.isNull(timePartitionDir) ? null : timePartitionDir.getParentFile();
+    return Objects.isNull(dataRegionDir) ? "" : dataRegionDir.getName();
   }
 
   /**
