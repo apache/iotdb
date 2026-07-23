@@ -345,56 +345,63 @@ public class SnapshotLoader {
                 + storageGroupName
                 + File.separator
                 + dataRegionId);
-    if (!seqFileDir.exists() && !unseqFileDir.exists()) {
+    // Multi-dir IoTConsensus receive may put object/ in a folder without sequence/unsequence.
+    // Only skip when the folder has neither TsFiles nor object data.
+    File snapshotObjectDir = new File(sourceDir, IoTDBConstant.OBJECT_FOLDER_NAME);
+    boolean hasSeqOrUnseq = seqFileDir.exists() || unseqFileDir.exists();
+    boolean hasObject = snapshotObjectDir.exists();
+    if (!hasSeqOrUnseq && !hasObject) {
       LOGGER.warn(StorageEngineMessages.NO_SEQ_OR_UNSEQ_FILES_IN_SNAPSHOT, sourceDir);
       return;
     }
-    FolderManager folderManager =
-        new FolderManager(
-            Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()),
-            DirectoryStrategyType.SEQUENCE_STRATEGY);
-    File[] timePartitionFolders = seqFileDir.listFiles();
-    if (timePartitionFolders != null) {
-      for (File timePartitionFolder : timePartitionFolders) {
-        File[] files = timePartitionFolder.listFiles();
-        if (files == null || files.length == 0) {
-          continue;
+
+    if (hasSeqOrUnseq) {
+      FolderManager folderManager =
+          new FolderManager(
+              Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()),
+              DirectoryStrategyType.SEQUENCE_STRATEGY);
+      File[] timePartitionFolders = seqFileDir.listFiles();
+      if (timePartitionFolders != null) {
+        for (File timePartitionFolder : timePartitionFolders) {
+          File[] files = timePartitionFolder.listFiles();
+          if (files == null || files.length == 0) {
+            continue;
+          }
+          String targetSuffix =
+              IoTDBConstant.SEQUENCE_FOLDER_NAME
+                  + File.separator
+                  + storageGroupName
+                  + File.separator
+                  + dataRegionId
+                  + File.separator
+                  + timePartitionFolder.getName();
+          createLinksFromSnapshotToSourceDir(
+              targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
         }
-        String targetSuffix =
-            IoTDBConstant.SEQUENCE_FOLDER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId
-                + File.separator
-                + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(
-            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
+      }
+
+      timePartitionFolders = unseqFileDir.listFiles();
+      if (timePartitionFolders != null) {
+        for (File timePartitionFolder : timePartitionFolders) {
+          File[] files = timePartitionFolder.listFiles();
+          if (files == null || files.length == 0) {
+            continue;
+          }
+          String targetSuffix =
+              IoTDBConstant.UNSEQUENCE_FOLDER_NAME
+                  + File.separator
+                  + storageGroupName
+                  + File.separator
+                  + dataRegionId
+                  + File.separator
+                  + timePartitionFolder.getName();
+          createLinksFromSnapshotToSourceDir(
+              targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
+        }
       }
     }
 
-    timePartitionFolders = unseqFileDir.listFiles();
-    if (timePartitionFolders != null) {
-      for (File timePartitionFolder : timePartitionFolders) {
-        File[] files = timePartitionFolder.listFiles();
-        if (files == null || files.length == 0) {
-          continue;
-        }
-        String targetSuffix =
-            IoTDBConstant.UNSEQUENCE_FOLDER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId
-                + File.separator
-                + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(
-            targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
-      }
-    }
-
-    File snapshotObjectDir = new File(sourceDir, IoTDBConstant.OBJECT_FOLDER_NAME);
-    if (snapshotObjectDir.exists()) {
+    if (hasObject) {
       FolderManager objectFolderManager =
           new FolderManager(
               TierManager.getInstance().getAllObjectFileFolders(),

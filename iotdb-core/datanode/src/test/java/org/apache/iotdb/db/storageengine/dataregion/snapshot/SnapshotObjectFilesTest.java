@@ -169,6 +169,92 @@ public class SnapshotObjectFilesTest {
     LOGGER.info("testLoadSnapshotWithMixedFiles completed successfully.");
   }
 
+  /**
+   * IoTConsensus receive folders without a snapshot log may contain only object/ (no
+   * sequence/unsequence). Loading must still relink those object files instead of returning early.
+   */
+  @Test
+  public void testLoadObjectOnlySnapshotWithoutLog() throws Exception {
+    Path objectOnlySnapshot = tempFolder.newFolder("object_only_snapshot").toPath();
+    Set<Path> expectedObjectFiles =
+        writeObjectFilesIntoSnapshot(objectOnlySnapshot, Arrays.asList("obj_only_a", "obj_only_b"));
+
+    SnapshotLoader loader =
+        new SnapshotLoader(
+            objectOnlySnapshot.toAbsolutePath().toString(), testSgName, testRegionId);
+    DataRegion restoredRegion = loader.loadSnapshotForStateMachine();
+
+    Assert.assertNotNull("Restored DataRegion should not be null", restoredRegion);
+    for (Path path : expectedObjectFiles) {
+      Assert.assertTrue(
+          "Object-only snapshot file not restored: " + path, existsInStorageTiers(path));
+    }
+  }
+
+  /**
+   * Regression for V2-530: IoTConsensus may spread one snapshot across several receive folders, and
+   * some folders may hold only object/ while others hold only TsFiles. Every fragment must be
+   * loaded; object-only folders must not be skipped because they lack seq/unseq.
+   */
+  @Test
+  public void testLoadSnapshotSpreadAcrossReceiveFoldersWithObjectOnlyDirs() throws Exception {
+    String[][] originDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    Path dataDir0 = tempFolder.newFolder("multi_data_0").toPath();
+    Path dataDir1 = tempFolder.newFolder("multi_data_1").toPath();
+    Path dataDir2 = tempFolder.newFolder("multi_data_2").toPath();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTierDataDirs(
+            new String[][] {
+              {
+                dataDir0.toAbsolutePath().toString(),
+                dataDir1.toAbsolutePath().toString(),
+                dataDir2.toAbsolutePath().toString()
+              }
+            });
+    TierManager.getInstance().resetFolders();
+
+    Path recvFolder0 = tempFolder.newFolder("recv0", "snapshot").toPath();
+    Path recvFolder1 = tempFolder.newFolder("recv1", "snapshot").toPath();
+    Path recvFolder2 = tempFolder.newFolder("recv2", "snapshot").toPath();
+    try {
+      // Folder 0: TsFiles only
+      writeTsFileFragmentIntoSnapshot(recvFolder0, 1);
+      writeTsFileFragmentIntoSnapshot(recvFolder0, 2);
+
+      // Folder 1 & 2: object files only (the buggy path used to skip these entirely)
+      Set<Path> objectFilesDir1 =
+          writeObjectFilesIntoSnapshot(recvFolder1, Arrays.asList("obj_recv1_a", "obj_recv1_b"));
+      Set<Path> objectFilesDir2 =
+          writeObjectFilesIntoSnapshot(recvFolder2, Arrays.asList("obj_recv2_a", "obj_recv2_b"));
+
+      DataRegion restoredRegion =
+          new SnapshotLoader(
+                  Arrays.asList(
+                      recvFolder0.toAbsolutePath().toString(),
+                      recvFolder1.toAbsolutePath().toString(),
+                      recvFolder2.toAbsolutePath().toString()),
+                  testSgName,
+                  testRegionId)
+              .loadSnapshotForStateMachine();
+
+      Assert.assertNotNull(restoredRegion);
+      Assert.assertEquals(2, restoredRegion.getTsFileManager().size(true));
+
+      Set<Path> allExpectedObjects = new HashSet<>();
+      allExpectedObjects.addAll(objectFilesDir1);
+      allExpectedObjects.addAll(objectFilesDir2);
+      for (Path path : allExpectedObjects) {
+        Assert.assertTrue(
+            "Object fragment from object-only receive folder not restored: " + path,
+            existsInStorageTiers(path));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
   // --- Industrial Helper Methods ---
 
   /**
@@ -226,6 +312,50 @@ public class SnapshotObjectFilesTest {
     return absolutePaths;
   }
 
+  /**
+   * Materialize object files under {@code snapshotRoot/object/<region>/<tp>/}, matching the
+   * without-log SnapshotLoader layout used by IoTConsensus receive folders. Returns the relative
+   * paths under the object tier root that {@link #existsInStorageTiers} expects after reload.
+   */
+  private Set<Path> writeObjectFilesIntoSnapshot(Path snapshotRoot, List<String> objectNames)
+      throws IOException {
+    Path objectSnapshotDir =
+        snapshotRoot
+            .resolve(IoTDBConstant.OBJECT_FOLDER_NAME)
+            .resolve(testRegionId)
+            .resolve(timePartition);
+    Files.createDirectories(objectSnapshotDir);
+    Set<Path> expectedRelativePaths = new HashSet<>();
+    for (String name : objectNames) {
+      Path file = objectSnapshotDir.resolve(name + ObjectTypeUtils.OBJECT_FILE_SUFFIX);
+      Files.write(file, ("mock-" + name).getBytes(StandardCharsets.UTF_8));
+      expectedRelativePaths.add(
+          Paths.get(testRegionId, timePartition, name + ObjectTypeUtils.OBJECT_FILE_SUFFIX));
+    }
+    return expectedRelativePaths;
+  }
+
+  private void writeTsFileFragmentIntoSnapshot(Path snapshotRoot, int fileIndex)
+      throws IOException, WriteProcessException {
+    Path tsFileDir =
+        snapshotRoot
+            .resolve(IoTDBConstant.SEQUENCE_FOLDER_NAME)
+            .resolve(testSgName)
+            .resolve(testRegionId)
+            .resolve(timePartition);
+    Files.createDirectories(tsFileDir);
+    String fileName = String.format("%d-%d-0-0.tsfile", fileIndex, fileIndex);
+    Path tsFilePath = tsFileDir.resolve(fileName);
+    TsFileGeneratorUtils.generateMixTsFile(tsFilePath.toString(), 2, 2, 10, 0, 100, 10, 10);
+    TsFileResource resource = new TsFileResource(tsFilePath.toFile());
+    IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(testSgName + PATH_SEPARATOR + "d1");
+    resource.updateStartTime(deviceID, 0);
+    resource.updateEndTime(deviceID, 100);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.serialize();
+  }
+
   private void validateTsFileSnapshotStructure(Path actualRoot) {
     Path tsSnapshotDir =
         actualRoot
@@ -261,12 +391,16 @@ public class SnapshotObjectFilesTest {
     }
   }
 
-  private boolean existsInStorageTiers(Path originalAbsPath) {
-    // Check all configured tiers for the existence of the file relative to the tier root
-    Path relativePath =
-        Paths.get(TierManager.getInstance().getAllObjectFileFolders().get(0))
-            .relativize(originalAbsPath);
-    return TierManager.getInstance().getAllObjectFileFolders().stream()
+  private boolean existsInStorageTiers(Path path) {
+    List<String> objectFolders = TierManager.getInstance().getAllObjectFileFolders();
+    final Path relativePath;
+    if (path.isAbsolute()) {
+      // Absolute paths from prepareObjectFiles are under the first object tier at creation time.
+      relativePath = Paths.get(objectFolders.get(0)).relativize(path);
+    } else {
+      relativePath = path;
+    }
+    return objectFolders.stream()
         .map(folder -> Paths.get(folder).resolve(relativePath))
         .anyMatch(Files::exists);
   }
