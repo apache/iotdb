@@ -55,8 +55,7 @@ public interface ITableSession extends AutoCloseable {
    * @throws StatementExecutionException if an error occurs while executing the statement.
    * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
    */
-  void insert(List<Tablet> tablets)
-      throws StatementExecutionException, IoTDBConnectionException;
+  void insert(List<Tablet> tablets) throws StatementExecutionException, IoTDBConnectionException;
 
   /**
    * Executes a non-query SQL statement, such as a DDL or DML command.
