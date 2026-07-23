@@ -196,6 +196,10 @@ public class TsFileProcessor {
   /** Total memtable size for mem control. */
   private long totalMemTableSize;
 
+  private long totalValueCount;
+
+  private long nullValueCount;
+
   private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
@@ -1652,6 +1656,8 @@ public class TsFileProcessor {
 
     if (!(tobeFlushed.isSignalMemTable() || tobeFlushed.isEmpty())) {
       totalMemTableSize += tobeFlushed.memSize();
+      totalValueCount += tobeFlushed.getTotalValueCount();
+      nullValueCount += tobeFlushed.getNullValueCount();
     }
     WritingMetrics.getInstance()
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
@@ -1942,13 +1948,15 @@ public class TsFileProcessor {
   private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
+      double nullValueRatio = totalValueCount == 0 ? 0 : (double) nullValueCount / totalValueCount;
       logger.info(
           StorageEngineMessages
-              .STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3,
+              .STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_FILE_SIZE_NULL_VALUE_RATIO_46F3B1F7,
           writer.getFile().getAbsolutePath(),
           String.format("%.2f", compressionRatio),
           totalMemTableSize,
-          writer.getPos());
+          writer.getPos(),
+          nullValueRatio);
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionIdString();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);

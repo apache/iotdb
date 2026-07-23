@@ -253,6 +253,7 @@ public class AbstractMemTablePartialInsertTest {
 
     assertEquals(3, points);
     assertEquals(3, memTable.getTotalPointsNum());
+    assertEquals(0, memTable.getNullValueRatio(), 0);
   }
 
   @Test
@@ -334,6 +335,57 @@ public class AbstractMemTablePartialInsertTest {
     assertEquals(6, memTable.getTotalPointsNum());
   }
 
+  /**
+   * Verifies that a non-aligned MemTable accumulates null values across row and tablet writes. The
+   * row contributes one null out of two values, and the tablet contributes one null out of four
+   * values, so the final null value ratio is 2 / 6.
+   */
+  @Test
+  public void testNullValueRatioIsAccumulatedForRowAndTabletWrites()
+      throws IllegalPathException, WriteProcessException {
+    InsertRowNode rowNode =
+        buildInsertRowNode(
+            new String[] {"s0", "s1"}, new Object[] {1, null}, false, -1 /* no failure */);
+    memTable.insert(rowNode);
+
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[1] = new BitMap(2);
+    bitMaps[1].mark(0);
+    InsertTabletNode tabletNode =
+        buildInsertTabletNode(new String[] {"s0", "s1"}, 2, bitMaps, -1 /* no failure */);
+    memTable.insertTablet(tabletNode, 0, 2);
+
+    assertEquals(6, memTable.getTotalValueCount());
+    assertEquals(2, memTable.getNullValueCount());
+    assertEquals(1.0 / 3, memTable.getNullValueRatio(), 0.000001);
+  }
+
+  /**
+   * Verifies that an aligned MemTable accumulates null values across row and tablet writes. The row
+   * contributes one null out of two values, and the tablet contributes two nulls out of four
+   * values, so the final null value ratio is 3 / 6.
+   */
+  @Test
+  public void testNullValueRatioIsAccumulatedForAlignedWrites()
+      throws IllegalPathException, WriteProcessException {
+    InsertRowNode rowNode =
+        buildAlignedInsertRowNode(
+            new String[] {"s0", "s1"}, new Object[] {1, null}, -1 /* no failure */);
+    memTable.insertAlignedRow(rowNode);
+
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[1] = new BitMap(2);
+    bitMaps[1].mark(0);
+    bitMaps[1].mark(1);
+    InsertTabletNode tabletNode =
+        buildInsertTabletNode(new String[] {"s0", "s1"}, 2, bitMaps, -1 /* no failure */);
+    memTable.insertAlignedTablet(tabletNode, 0, 2, null);
+
+    assertEquals(6, memTable.getTotalValueCount());
+    assertEquals(3, memTable.getNullValueCount());
+    assertEquals(0.5, memTable.getNullValueRatio(), 0.000001);
+  }
+
   // =========================================================================
   // Helpers
   // =========================================================================
@@ -344,6 +396,12 @@ public class AbstractMemTablePartialInsertTest {
    */
   private static InsertRowNode buildAlignedInsertRowNode(
       String[] measurementNames, Object[] values, int failedIndex) throws IllegalPathException {
+    return buildInsertRowNode(measurementNames, values, true, failedIndex);
+  }
+
+  private static InsertRowNode buildInsertRowNode(
+      String[] measurementNames, Object[] values, boolean aligned, int failedIndex)
+      throws IllegalPathException {
     int n = measurementNames.length;
     TSDataType[] dataTypes = new TSDataType[n];
     MeasurementSchema[] schemas = new MeasurementSchema[n];
@@ -355,7 +413,7 @@ public class AbstractMemTablePartialInsertTest {
         new InsertRowNode(
             new PlanNodeId("test"),
             new PartialPath("root.sg.d1"),
-            true /* isAligned */,
+            aligned,
             measurementNames,
             dataTypes,
             schemas,
