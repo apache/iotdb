@@ -165,6 +165,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public void clearUselessFieldsAfterRouting() {
+    insertNode.clearUselessFieldsAfterRouting();
+  }
+
+  @Override
   public PartialPath getTargetPath() {
     return insertNode.getTargetPath();
   }

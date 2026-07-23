@@ -152,6 +152,13 @@ public abstract class InsertNode extends SearchNode {
 
   public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
+    memorySize = 0;
+  }
+
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    setDataRegionReplicaSet(null);
   }
 
   public PartialPath getTargetPath() {

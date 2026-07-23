@@ -167,6 +167,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     results.clear();
   }
 
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    insertRowNodeList.forEach(InsertRowNode::clearUselessFieldsAfterRouting);
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
