@@ -92,13 +92,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -142,7 +143,7 @@ public class IoTConsensusServerImpl {
   private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>>
       snapshotReceiveFolderMap = new ConcurrentHashMap<>();
 
-  private final TreeSet<Peer> configuration;
+  private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
@@ -186,7 +187,7 @@ public class IoTConsensusServerImpl {
       List<String> recvSnapshotDirs,
       DirectoryStrategyType recvFolderStrategyType,
       Peer thisNode,
-      TreeSet<Peer> configuration,
+      Collection<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
@@ -209,7 +210,7 @@ public class IoTConsensusServerImpl {
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
-    this.configuration = configuration;
+    this.configuration.addAll(configuration);
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -1117,7 +1118,9 @@ public class IoTConsensusServerImpl {
   }
 
   public List<Peer> getConfiguration() {
-    return new ArrayList<>(configuration);
+    List<Peer> result = new ArrayList<>(configuration);
+    Collections.sort(result);
+    return result;
   }
 
   public long getSearchIndex() {
