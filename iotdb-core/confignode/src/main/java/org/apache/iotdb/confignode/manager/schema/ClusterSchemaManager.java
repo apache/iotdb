@@ -103,6 +103,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.schema.ConfigSchemaStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
@@ -218,6 +219,10 @@ public class ClusterSchemaManager {
           schema.getName(),
           schema.getDataReplicationFactor(),
           schema.getSchemaReplicationFactor());
+      PartitionMetrics.bindDatabaseTableMetrics(
+          MetricService.getInstance(),
+          clusterSchemaInfo.getConfigSchemaStatistics(),
+          schema.getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (final ConsensusException e) {
@@ -662,6 +667,10 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getDatabaseNames(isTableModel).stream()
         .filter(this::isDatabaseExist)
         .collect(Collectors.toList());
+  }
+
+  public ConfigSchemaStatistics getConfigSchemaStatistics() {
+    return clusterSchemaInfo.getConfigSchemaStatistics();
   }
 
   /**

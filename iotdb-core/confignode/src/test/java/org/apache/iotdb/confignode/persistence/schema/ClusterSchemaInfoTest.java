@@ -35,9 +35,11 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
@@ -109,6 +111,10 @@ public class ClusterSchemaInfoTest {
     createUsingBaseTable("db", "source");
     createUsingWritableView("db", "view", "source");
 
+    final ConfigSchemaStatistics statistics = clusterSchemaInfo.getConfigSchemaStatistics();
+    Assert.assertEquals(1, statistics.getBaseTableNum("db"));
+    Assert.assertEquals(1, statistics.getTreeViewTableNum("db"));
+
     assertSuccess(
         clusterSchemaInfo.preDeleteTable(
             new PreDeleteWritableViewPlan("db", "view", "db", "source")));
@@ -124,6 +130,8 @@ public class ClusterSchemaInfoTest {
 
     Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "view").isPresent());
     Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "source").isPresent());
+    Assert.assertEquals(0, statistics.getBaseTableNum("db"));
+    Assert.assertEquals(0, statistics.getTreeViewTableNum("db"));
   }
 
   @Test
@@ -251,6 +259,13 @@ public class ClusterSchemaInfoTest {
     clusterSchemaInfo.clear();
     clusterSchemaInfo.processLoadSnapshot(snapshotDir);
 
+    Assert.assertEquals(4, clusterSchemaInfo.getConfigSchemaStatistics().getTreeDatabaseNum());
+    Assert.assertEquals(1, clusterSchemaInfo.getConfigSchemaStatistics().getTableDatabaseNum());
+
+    clusterSchemaInfo.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(4, clusterSchemaInfo.getConfigSchemaStatistics().getTreeDatabaseNum());
+    Assert.assertEquals(1, clusterSchemaInfo.getConfigSchemaStatistics().getTableDatabaseNum());
+
     Assert.assertEquals(
         storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames(null).size());
 
@@ -264,6 +279,35 @@ public class ClusterSchemaInfoTest {
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+  }
+
+  @Test
+  public void testTableStatisticsRollbackAndDatabaseRecreation() {
+    final String database = "database";
+    final String table = "table";
+    final TDatabaseSchema databaseSchema = new TDatabaseSchema(database).setIsTableModel(true);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+
+    final ConfigSchemaStatistics statistics = clusterSchemaInfo.getConfigSchemaStatistics();
+    Assert.assertEquals(2, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    Assert.assertEquals(1, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.rollbackCreateTable(new RollbackCreateTablePlan(database, table));
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    clusterSchemaInfo.deleteDatabase(new DeleteDatabasePlan(database));
+    Assert.assertEquals(1, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    Assert.assertEquals(2, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
   }
 
   @Test
@@ -356,6 +400,9 @@ public class ClusterSchemaInfoTest {
     Assert.assertEquals(TableNodeStatus.USING, restoredSource.getRight());
     Assert.assertEquals(
         "before-create", restoredSource.getLeft().getPropValue(TsTable.COMMENT_KEY).orElse(null));
+    Assert.assertEquals(1, clusterSchemaInfo.getConfigSchemaStatistics().getBaseTableNum(database));
+    Assert.assertEquals(
+        0, clusterSchemaInfo.getConfigSchemaStatistics().getTreeViewTableNum(database));
   }
 
   private Template newSchemaTemplate(String name) throws IllegalPathException {

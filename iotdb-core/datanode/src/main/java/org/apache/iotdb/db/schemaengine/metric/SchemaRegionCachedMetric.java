@@ -338,6 +338,16 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
                     database));
   }
 
+  @Override
+  public void bindTableMetrics(final String tableName) {
+    memSchemaRegionMetric.bindTableMetrics(tableName);
+  }
+
+  @Override
+  public void unbindTableMetrics(final String tableName) {
+    memSchemaRegionMetric.unbindTableMetrics(tableName);
+  }
+
   public void recordRelease(long time, long mem, long node) {
     releaseTimer.update(time, TimeUnit.MILLISECONDS);
     releaseMem.inc(mem);

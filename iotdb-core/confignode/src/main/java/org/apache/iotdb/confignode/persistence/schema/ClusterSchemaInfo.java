@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -181,6 +182,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock databaseReadWriteLock;
   private final ConfigMTree treeModelMTree;
   private final ConfigMTree tableModelMTree;
+  private final ConfigSchemaStatistics configSchemaStatistics;
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
@@ -202,6 +204,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       treeModelMTree = new ConfigMTree(false);
       tableModelMTree = new ConfigMTree(true);
+      configSchemaStatistics = new ConfigSchemaStatistics();
       templateTable = new TemplateTable();
       templatePreSetTable = new TemplatePreSetTable();
     } catch (final MetadataException e) {
@@ -236,6 +239,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(databaseSchema);
+
+      if (databaseSchema.isIsTableModel()) {
+        configSchemaStatistics.increaseTableDatabaseNum();
+      } else {
+        configSchemaStatistics.increaseTreeDatabaseNum();
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
@@ -326,6 +335,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             getQualifiedDatabasePartialPath(plan.getName()).concatNode(MULTI_LEVEL_PATH_WILDCARD));
         deletedDatabasePatternTree.constructTree();
         treeModelMTree.removePipeRenameTimeSeries(deletedDatabasePatternTree);
+      }
+
+      if (isTableModel) {
+        configSchemaStatistics.decreaseTableDatabaseNum();
+        configSchemaStatistics.removeTableStatistics(plan.getName());
+      } else {
+        configSchemaStatistics.decreaseTreeDatabaseNum();
       }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -927,12 +943,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(final File snapshotDir) throws IOException {
+    configSchemaStatistics.clear();
     processMTreeLoadSnapshot(
         snapshotDir,
         TREE_SNAPSHOT_FILENAME,
         stream -> {
           treeModelMTree.clear();
-          treeModelMTree.deserialize(stream);
+          treeModelMTree.deserialize(stream, configSchemaStatistics);
         });
     processOptionalMTreeLoadSnapshot(
         snapshotDir,
@@ -943,7 +960,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         TABLE_SNAPSHOT_FILENAME,
         stream -> {
           tableModelMTree.clear();
-          tableModelMTree.deserialize(stream);
+          tableModelMTree.deserialize(stream, configSchemaStatistics);
         });
     templateTable.processLoadSnapshot(snapshotDir);
     templatePreSetTable.processLoadSnapshot(snapshotDir);
@@ -1331,25 +1348,47 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus preCreateTable(final PreCreateTablePlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.preCreateTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable()));
+        () -> {
+          tableModelMTree.preCreateTable(
+              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
+          configSchemaStatistics.increaseBaseTableNum(plan.getDatabase());
+        });
   }
 
   public TSStatus preCreateTableView(final PreCreateTableViewPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.preCreateTableView(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTable(),
-                plan.getStatus()));
+        () -> {
+          final PartialPath database = getQualifiedDatabasePartialPath(plan.getDatabase());
+          final boolean isNewView =
+              !tableModelMTree
+                  .getTableAndStatusIfExists(database, plan.getTable().getTableName())
+                  .isPresent();
+          tableModelMTree.preCreateTableView(database, plan.getTable(), plan.getStatus());
+          if (isNewView) {
+            configSchemaStatistics.increaseTreeViewTableNum(plan.getDatabase());
+          }
+        });
   }
 
   public TSStatus rollbackCreateTable(final RollbackCreateTablePlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.rollbackCreateTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+        () -> {
+          final PartialPath database = getQualifiedDatabasePartialPath(plan.getDatabase());
+          final String databaseName = plan.getDatabase();
+          final String tableName = plan.getTableName();
+          tableModelMTree
+              .getTableAndStatusIfExists(database, tableName)
+              .map(Pair::getLeft)
+              .ifPresent(
+                  table -> {
+                    if (ViewTableUtils.isView(table)) {
+                      configSchemaStatistics.decreaseTreeViewTableNum(databaseName);
+                    } else {
+                      configSchemaStatistics.decreaseBaseTableNum(databaseName);
+                    }
+                  });
+          tableModelMTree.rollbackCreateTable(database, tableName);
+        });
   }
 
   public TSStatus rollbackCreateWritableView(final RollbackCreateWritableViewPlan plan) {
@@ -1364,6 +1403,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.rollbackCreateTable(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTable().getTableName());
+            configSchemaStatistics.decreaseTreeViewTableNum(plan.getDatabase());
           }
           if (Objects.nonNull(plan.getOriginalDatabase())
               && Objects.nonNull(plan.getOriginalTable())) {
@@ -1428,14 +1468,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus dropTable(final CommitDeleteTablePlan plan) {
     return executeWithLock(
         () -> {
-          tableModelMTree.dropTable(
-              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+          final PartialPath database = getQualifiedDatabasePartialPath(plan.getDatabase());
+          final Optional<Pair<TsTable, TableNodeStatus>> table =
+              tableModelMTree.getTableAndStatusIfExists(database, plan.getTableName());
+          tableModelMTree.dropTable(database, plan.getTableName());
+          if (table.isPresent() && ViewTableUtils.isView(table.get().getLeft())) {
+            configSchemaStatistics.decreaseTreeViewTableNum(plan.getDatabase());
+          } else {
+            configSchemaStatistics.decreaseBaseTableNum(plan.getDatabase());
+          }
           executeOriginalIfPresent(
               plan,
-              () ->
-                  tableModelMTree.dropTable(
-                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
-                      plan.getOriginalTableName()));
+              () -> {
+                tableModelMTree.dropTable(
+                    getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                    plan.getOriginalTableName());
+                configSchemaStatistics.decreaseBaseTableNum(plan.getOriginalDatabase());
+              });
         });
   }
 
@@ -2101,11 +2150,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         });
   }
 
+  public ConfigSchemaStatistics getConfigSchemaStatistics() {
+    return configSchemaStatistics;
+  }
+
   // endregion
 
   @TestOnly
   public void clear() {
     treeModelMTree.clear();
     tableModelMTree.clear();
+    configSchemaStatistics.clear();
   }
 }
