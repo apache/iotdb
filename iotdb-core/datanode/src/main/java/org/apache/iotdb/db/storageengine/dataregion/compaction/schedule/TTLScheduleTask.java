@@ -26,6 +26,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,7 @@ public class TTLScheduleTask implements Callable<Void> {
   @SuppressWarnings("java:S2142")
   public Void call() throws Exception {
     while (true) {
+      DataRegion currentDataRegion = null;
       try {
         Thread.sleep(ttlCheckInterval);
         if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
@@ -65,7 +67,8 @@ public class TTLScheduleTask implements Callable<Void> {
             throw new InterruptedException();
           }
           if (i % workerNum == workerId) {
-            dataRegionListSnapshot.get(i).executeTTLCheck();
+            currentDataRegion = dataRegionListSnapshot.get(i);
+            currentDataRegion.executeTTLCheck();
           }
         }
         // check for object files
@@ -76,7 +79,8 @@ public class TTLScheduleTask implements Callable<Void> {
           DataRegion region = dataRegionListSnapshot.get(i);
           if (i % workerNum == workerId
               && PathUtils.isTableModelDatabase(region.getDatabaseName())) {
-            dataRegionListSnapshot.get(i).executeTTLCheckForObjectFiles();
+            currentDataRegion = region;
+            currentDataRegion.executeTTLCheckForObjectFiles();
           }
         }
       } catch (StopTTLCheckException | InterruptedException ignored) {
@@ -92,11 +96,19 @@ public class TTLScheduleTask implements Callable<Void> {
         }
       } catch (Exception e) {
         logger.error(StorageEngineMessages.TTL_CHECK_TASK_FAILED, workerId, e);
+        CompactionUtils.logTTLCheckFailedToStart(
+            currentDataRegion == null ? null : currentDataRegion.getDatabaseName(),
+            "Failed to execute ttl schedule task",
+            e);
       } catch (Throwable t) {
         logger.error(
             StorageEngineMessages
                 .STORAGE_LOG_TTLCHECKTASK_FAILED_TO_EXECUTE_TTL_CHECK_AND_CANNOT_RECOVER_6F4E4A13,
             workerId,
+            t);
+        CompactionUtils.logTTLCheckFailedToStart(
+            currentDataRegion == null ? null : currentDataRegion.getDatabaseName(),
+            "Failed to execute ttl schedule task",
             t);
         throw t;
       }

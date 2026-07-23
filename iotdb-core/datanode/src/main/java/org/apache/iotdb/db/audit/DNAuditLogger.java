@@ -83,6 +83,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -717,6 +718,16 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public void log(IAuditEntity auditLogFields, Supplier<String> log) {
+    log(auditLogFields, log, CommonDateTimeUtils::currentTime);
+  }
+
+  /**
+   * Log an audit event with a caller-provided timestamp supplier. The supplier is only invoked
+   * after filtering passes, so CAS-based providers avoid unnecessary contention when the event is
+   * filtered out.
+   */
+  public void log(
+      IAuditEntity auditLogFields, Supplier<String> log, LongSupplier timestampProvider) {
     if (!commonConfig.isEnableAuditLog()) {
       return;
     }
@@ -746,7 +757,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
           generateInsertStatement(
               auditLogFields,
               log.get(),
-              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
+              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)),
+              timestampProvider.getAsLong());
       batchUtils.push(statement);
     } catch (Exception e) {
       logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);

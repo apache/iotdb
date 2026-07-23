@@ -49,6 +49,12 @@ public class User extends Role {
   public static final String BUILTIN_INTERNAL_AUDIT_LOG_USERNAME = "__internal_auditor";
 
   /**
+   * Login name of the built-in TTL audit log writer. Always starts with {@link
+   * #BUILTIN_USERNAME_PREFIX}.
+   */
+  public static final String BUILTIN_INTERNAL_TTL_AUDIT_LOG_USERNAME = "__internal_ttl_auditor";
+
+  /**
    * User names with this prefix are reserved for system-style built-in accounts. New user creation
    * and {@code RENAME USER} targets must reject this prefix; accounts that already use such a name
    * keep working until renamed. See {@link

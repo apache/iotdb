@@ -187,7 +187,13 @@ public final class StorageEngineMessages {
   public static final String COMPACTION_START_DELETE_REAL_FILE = "{} [Compaction] compaction 开始删除实际文件 ";
   public static final String COMPACTION_START_DELETE_SOURCE_MODS = "{} [Compaction] 开始删除源文件的修改记录";
   public static final String COMPACTION_DELETE_FILE = "[Compaction] 删除文件: {}";
+  public static final String MEET_EXCEPTION_WHEN_CHECKING_OBJECT_FILES =
+      "检查表 {}.{}（区域 {}）的对象文件时遇到异常";
   public static final String FAILED_TO_READ_FILE_ATTRIBUTES = "读取文件属性失败: {}";
+  public static final String FAILED_TO_REMOVE_OBJECT_FILE = "移除对象文件 {} 失败";
+  public static final String FAILED_TO_LIST_OBJECT_DIRECTORY = "列出对象目录失败: {}";
+  public static final String EXCEPTION_FAILED_TO_LIST_OBJECT_DIRECTORY_ARG_A483551E =
+      "列出对象目录失败: %s";
   public static final String FAILED_TO_CHECK_TABLE_DIR = "检查表目录失败: {}";
   public static final String REMOVE_OBJECT_FILE_SIZE = "移除对象文件 {}，大小为 {}(字节)";
   public static final String FAILED_TO_DELETE_EXPIRED_OBJECT_FILE = "删除过期对象文件失败: {}";

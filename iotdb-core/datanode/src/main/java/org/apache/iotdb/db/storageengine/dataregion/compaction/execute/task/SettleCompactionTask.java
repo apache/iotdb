@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * This settle task contains fully_dirty files and partially_dirty files. This task will do the
@@ -57,6 +58,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   private int fullyDeletedSuccessNum = 0;
 
   private long totalModsFileSize;
+
+  private Set<String> ttlTables = Collections.emptySet();
 
   public SettleCompactionTask(
       long timePartition,
@@ -75,6 +78,10 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
           totalModsFileSize += x.getTotalModSizeInByte();
         });
     this.hashCode = this.toString().hashCode();
+  }
+
+  public void setTTLTables(Set<String> ttlTables) {
+    this.ttlTables = ttlTables;
   }
 
   public SettleCompactionTask(
@@ -117,6 +124,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
           dataRegionId);
     }
     long startTime = System.currentTimeMillis();
+    Exception settleException = null;
 
     LOGGER.info(
         StorageEngineMessages
@@ -191,6 +199,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
+      settleException = e;
       handleException(LOGGER, e);
       recover();
     } finally {
@@ -204,6 +213,16 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       for (TsFileResource resource : filesView.targetFilesInLog) {
         resource.setStatus(TsFileResourceStatus.NORMAL);
       }
+    }
+    if (!isSuccess && !ttlTables.isEmpty()) {
+      String error =
+          settleException != null
+              ? settleException.getClass().getSimpleName()
+                  + "("
+                  + settleException.getMessage()
+                  + ")"
+              : "settle task did not complete successfully";
+      CompactionUtils.logSettleCompactionFailed(storageGroupName, ttlTables, error);
     }
     return isSuccess;
   }

@@ -4121,6 +4121,7 @@ public class DataRegion implements IDataRegionForQuery {
       throw e;
     } catch (Throwable e) {
       logger.error(StorageEngineMessages.MEET_ERROR_IN_TTL_CHECK, e);
+      CompactionUtils.logTTLCheckFailedToStart(databaseName, "Failed to execute ttl check", e);
     } finally {
       isCompactionSelecting.set(false);
     }
@@ -4147,7 +4148,9 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (StopTTLCheckException e) {
         throw e;
       } catch (Exception e) {
-        objectDeletionLogger.error("Failed to execute object ttl check", e);
+        objectDeletionLogger.error(StorageEngineMessages.FAILED_TO_EXECUTE_OBJECT_TTL_CHECK, e);
+        CompactionUtils.logTTLCheckFailedToStart(
+            databaseName, "Failed to execute object ttl check", e);
       }
     }
     CompactionMetrics.getInstance()

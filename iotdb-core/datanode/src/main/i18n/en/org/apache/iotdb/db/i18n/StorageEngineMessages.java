@@ -187,7 +187,13 @@ public final class StorageEngineMessages {
   public static final String COMPACTION_START_DELETE_REAL_FILE = "{} [Compaction] Compaction starts to delete real file ";
   public static final String COMPACTION_START_DELETE_SOURCE_MODS = "{} [Compaction] Start to delete modifications of source files";
   public static final String COMPACTION_DELETE_FILE = "[Compaction] delete file: {}";
+  public static final String MEET_EXCEPTION_WHEN_CHECKING_OBJECT_FILES =
+      "Meet exception when checking for object files for table {}.{} in region {}";
   public static final String FAILED_TO_READ_FILE_ATTRIBUTES = "Failed to read file attributes: {}";
+  public static final String FAILED_TO_REMOVE_OBJECT_FILE = "Failed to remove object file {}";
+  public static final String FAILED_TO_LIST_OBJECT_DIRECTORY = "Failed to list object directory: {}";
+  public static final String EXCEPTION_FAILED_TO_LIST_OBJECT_DIRECTORY_ARG_A483551E =
+      "Failed to list object directory: %s";
   public static final String FAILED_TO_CHECK_TABLE_DIR = "Failed to check table dir: {}";
   public static final String REMOVE_OBJECT_FILE_SIZE = "Remove object file {}, size is {}(byte)";
   public static final String FAILED_TO_DELETE_EXPIRED_OBJECT_FILE = "Failed to delete expired object file: {}";

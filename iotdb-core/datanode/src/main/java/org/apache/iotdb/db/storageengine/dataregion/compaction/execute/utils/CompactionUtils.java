@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -32,7 +37,10 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -89,6 +97,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -100,6 +109,11 @@ public class CompactionUtils {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final Logger objectDeletionLogger =
       LoggerFactory.getLogger(IoTDBConstant.OBJECT_DELETION_LOGGER_NAME);
+  private static final AtomicLong lastAuditLogTimestamp = new AtomicLong(Long.MIN_VALUE);
+  private static final String INTERNAL_HOST_PORT =
+      IoTDBDescriptor.getInstance().getConfig().getInternalAddress()
+          + ":"
+          + IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   private static final String SYSTEM = "system";
 
   private static ISchemaFetcher schemaFetcherForTest = null;
@@ -538,10 +552,19 @@ public class CompactionUtils {
       File regionObjectDir,
       String databaseName,
       DataRegion dataRegion,
-      boolean isFirstCheckAfterRestart) {
+      boolean isFirstCheckAfterRestart)
+      throws IOException {
     File[] tableDirs = regionObjectDir.listFiles();
     if (tableDirs == null) {
-      return;
+      // Returns null if this abstract pathname does not denote a directory, or if an I/O error
+      // occurs.
+      if (!regionObjectDir.isDirectory()) {
+        return;
+      }
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.EXCEPTION_FAILED_TO_LIST_OBJECT_DIRECTORY_ARG_A483551E,
+              regionObjectDir.getAbsolutePath()));
     }
     boolean restrictObjectLimit =
         CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit();
@@ -569,6 +592,7 @@ public class CompactionUtils {
       }
       // buffer 60s to avoid concurrent issues with querying
       final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS - 60 * 1000;
+      ObjectTTLTaskContext context = new ObjectTTLTaskContext();
       try {
         recursiveTTLCheckForTableDir(
             databaseName,
@@ -579,17 +603,126 @@ public class CompactionUtils {
             tsTable.getTagNum() + 1,
             !restrictObjectLimit,
             timeLowerBoundInMS,
-            isFirstCheckAfterRestart);
+            isFirstCheckAfterRestart,
+            context);
       } catch (StopTTLCheckException e) {
         throw e;
       } catch (Exception e) {
+        context.recordError(e);
         objectDeletionLogger.warn(
-            "Meet exception when checking for object files for table {}.{} in region {}",
+            StorageEngineMessages.MEET_EXCEPTION_WHEN_CHECKING_OBJECT_FILES,
             databaseName,
             tableName,
             regionObjectDir.getName(),
             e);
       }
+      if (!context.getErrorInfos().isEmpty()) {
+        logObjectTTLScanFailed(databaseName, tableName, context);
+      }
+    }
+  }
+
+  /**
+   * Generate a monotonically increasing timestamp for TTL audit log entries sharing the same
+   * device. Uses CAS spin to guarantee uniqueness, following the same pattern as {@code
+   * CNAuditLogger#nextLogTimestamp}.
+   */
+  private static long nextAuditLogTimestamp() {
+    while (true) {
+      long last = lastAuditLogTimestamp.get();
+      long current = CommonDateTimeUtils.currentTime();
+      long next = Math.max(current, last + 1);
+      if (lastAuditLogTimestamp.compareAndSet(last, next)) {
+        return next;
+      }
+    }
+  }
+
+  /**
+   * Whether FAILED_TTL_DELETION under CONTROL is currently auditable. When not enabled, TTL
+   * audit-related collectors skip processing to avoid unnecessary allocation.
+   */
+  public static boolean isFailedTTLDeletionAuditEnabled() {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    if (!config.isEnableAuditLog()) {
+      return false;
+    }
+    List<AuditLogOperation> operationTypes = config.getAuditableOperationType();
+    if (operationTypes == null || !operationTypes.contains(AuditLogOperation.CONTROL)) {
+      return false;
+    }
+    List<AuditEventType> controlEventTypes = config.getAuditableControlEventType();
+    return controlEventTypes != null
+        && controlEventTypes.contains(AuditEventType.FAILED_TTL_DELETION);
+  }
+
+  private static void logObjectTTLScanFailed(
+      String database, String table, ObjectTTLTaskContext context) {
+    AuditLogFields fields =
+        new AuditLogFields(
+            AuthorityChecker.INTERNAL_TTL_AUDIT_USER_ID,
+            AuthorityChecker.INTERNAL_TTL_AUDIT_USER,
+            INTERNAL_HOST_PORT,
+            AuditEventType.FAILED_TTL_DELETION,
+            AuditLogOperation.CONTROL,
+            (PrivilegeType) null,
+            false,
+            database,
+            // sqlString is intentionally set to the table name for filtering convenience
+            table);
+    String logMessage =
+        String.format("TTL object scan failed: errors=%s", context.getErrorSummary());
+    DNAuditLogger.getInstance()
+        .log(fields, () -> logMessage, CompactionUtils::nextAuditLogTimestamp);
+  }
+
+  /**
+   * Record TTL check start failure (settle selection or object scan before entering table dirs).
+   */
+  public static void logTTLCheckFailedToStart(String database, String msg, Throwable t) {
+    AuditLogFields fields =
+        new AuditLogFields(
+            AuthorityChecker.INTERNAL_TTL_AUDIT_USER_ID,
+            AuthorityChecker.INTERNAL_TTL_AUDIT_USER,
+            INTERNAL_HOST_PORT,
+            AuditEventType.FAILED_TTL_DELETION,
+            AuditLogOperation.CONTROL,
+            (PrivilegeType) null,
+            false,
+            database,
+            null);
+    String logMessage =
+        String.format(
+            "TTL check failed to start: %s error=%s",
+            msg, t.getClass().getSimpleName() + "(" + t.getMessage() + ")");
+    DNAuditLogger.getInstance()
+        .log(fields, () -> logMessage, CompactionUtils::nextAuditLogTimestamp);
+  }
+
+  /**
+   * Record settle compaction execution failure, one audit log per TTL-involved table.
+   *
+   * <p>The table name is intentionally written to {@code sqlString} so that queries can filter by
+   * table via {@code WHERE sql_string = 'tableX'}.
+   */
+  public static void logSettleCompactionFailed(
+      String database, Set<String> ttlTables, String error) {
+    for (String table : ttlTables) {
+      String auditLogMessage = String.format("TTL settle compaction failed: error=%s", error);
+      AuditLogFields fields =
+          new AuditLogFields(
+              AuthorityChecker.INTERNAL_TTL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_TTL_AUDIT_USER,
+              INTERNAL_HOST_PORT,
+              AuditEventType.FAILED_TTL_DELETION,
+              AuditLogOperation.CONTROL,
+              (PrivilegeType) null,
+              false,
+              database,
+              // sqlString is intentionally set to the table name for filtering convenience
+              table);
+      DNAuditLogger.getInstance()
+          .log(fields, () -> auditLogMessage, CompactionUtils::nextAuditLogTimestamp);
     }
   }
 
@@ -604,14 +737,15 @@ public class CompactionUtils {
       int maxObjectFileDepth,
       boolean canDistinguishDirectoryByFileName,
       long lowerBoundInMS,
-      boolean isFirstCheckAfterRestart) {
+      boolean isFirstCheckAfterRestart,
+      ObjectTTLTaskContext context) {
     canDistinguishDirectoryByFileName |= depth > maxObjectFileDepth;
     String fileName = currentFile.getName();
     boolean maybeObjectFile = fileName.endsWith(".bin");
     if (maybeObjectFile) {
       if (canDistinguishDirectoryByFileName) {
         checkTTLAndDeleteExpiredObjectFile(
-            database, dataRegion, table, currentFile, null, lowerBoundInMS);
+            database, dataRegion, table, currentFile, null, lowerBoundInMS, context);
         return;
       }
       try {
@@ -619,13 +753,21 @@ public class CompactionUtils {
             Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
         if (!basicFileAttributes.isDirectory()) {
           checkTTLAndDeleteExpiredObjectFile(
-              database, dataRegion, table, currentFile, basicFileAttributes, lowerBoundInMS);
+              database,
+              dataRegion,
+              table,
+              currentFile,
+              basicFileAttributes,
+              lowerBoundInMS,
+              context);
           return;
         }
       } catch (FileNotFoundException | NoSuchFileException ignored) {
         // may be deleted by other thread
       } catch (IOException e) {
-        objectDeletionLogger.warn("Failed to read file attributes: {}", currentFile, e);
+        context.recordError(e);
+        objectDeletionLogger.warn(
+            StorageEngineMessages.FAILED_TO_READ_FILE_ATTRIBUTES, currentFile, e);
       }
     }
     if (isFirstCheckAfterRestart) {
@@ -642,12 +784,24 @@ public class CompactionUtils {
             return;
           }
         } catch (IOException e) {
-          objectDeletionLogger.error("Failed to remove object file {}", currentFile.getPath(), e);
+          context.recordError(e);
+          objectDeletionLogger.error(
+              StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE, currentFile.getPath(), e);
         }
       }
     }
     File[] children = currentFile.listFiles();
     if (children == null) {
+      if (!currentFile.isDirectory()) {
+        return;
+      }
+      context.recordError(
+          new IOException(
+              String.format(
+                  StorageEngineMessages.EXCEPTION_FAILED_TO_LIST_OBJECT_DIRECTORY_ARG_A483551E,
+                  currentFile.getAbsolutePath())));
+      objectDeletionLogger.error(
+          StorageEngineMessages.FAILED_TO_LIST_OBJECT_DIRECTORY, currentFile);
       return;
     }
     // The rate limit may only work on filesystems like ext4, directory File.length() is
@@ -664,11 +818,13 @@ public class CompactionUtils {
             maxObjectFileDepth,
             canDistinguishDirectoryByFileName,
             lowerBoundInMS,
-            isFirstCheckAfterRestart);
+            isFirstCheckAfterRestart,
+            context);
       } catch (StopTTLCheckException e) {
         throw e;
       } catch (Exception e) {
-        objectDeletionLogger.warn("Failed to check table dir: {}", child, e);
+        context.recordError(e);
+        objectDeletionLogger.warn(StorageEngineMessages.FAILED_TO_CHECK_TABLE_DIR, child, e);
       }
     }
   }
@@ -679,7 +835,8 @@ public class CompactionUtils {
       String table,
       File file,
       @Nullable BasicFileAttributes attributes,
-      long timeLowerBoundInMS) {
+      long timeLowerBoundInMS,
+      ObjectTTLTaskContext context) {
     if (!dataRegion.getTsFileManager().isAllowCompaction()) {
       throw new StopTTLCheckException();
     }
@@ -717,11 +874,13 @@ public class CompactionUtils {
               -attributes.size(),
               -1);
       objectDeletionLogger.info(
-          "Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+          StorageEngineMessages.REMOVE_OBJECT_FILE_SIZE, file.getPath(), attributes.size());
     } catch (FileNotFoundException | NoSuchFileException ignored) {
       // may be deleted by other thread
     } catch (Exception e) {
-      objectDeletionLogger.warn("Failed to delete expired object file: {}", file, e);
+      context.recordError(e);
+      objectDeletionLogger.warn(
+          StorageEngineMessages.FAILED_TO_DELETE_EXPIRED_OBJECT_FILE, file, e);
     }
   }
 

@@ -86,8 +86,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.context = context;
-    // this will be enabled in other branches
-    this.ttlAuditEnabled = false;
+    this.ttlAuditEnabled = CompactionUtils.isFailedTTLDeletionAuditEnabled();
   }
 
   static class FileDirtyInfo {
@@ -211,6 +210,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       partiallyDirtyResourceList.add(settleTaskResource);
       return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
+      CompactionUtils.logTTLCheckFailedToStart(
+          storageGroupName, "Failed to select settle tasks", e);
       LOGGER.error(
           StorageEngineMessages.STORAGE_LOG_CANNOT_SELECT_FILE_FOR_SETTLE_COMPACTION_08C958D3,
           storageGroupName,
@@ -346,6 +347,7 @@ public class SettleSelectorImpl implements ISettleSelector {
               isSeq,
               createCompactionPerformer(),
               tsFileManager.getNextCompactionTaskId());
+      task.setTTLTables(settleTaskResource.getTTLTables());
       tasks.add(task);
     }
     return tasks;
