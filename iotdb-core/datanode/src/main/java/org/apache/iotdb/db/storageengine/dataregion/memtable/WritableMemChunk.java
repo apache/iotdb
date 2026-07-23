@@ -61,6 +61,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private TVList list;
   private List<TVList> sortedList;
   private long sortedRowCount = 0;
+  private TypeServices.TVListObjectWriter rowWriter;
   private static final String UNSUPPORTED_TYPE = DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -73,6 +74,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
+    this.rowWriter =
+        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(Type.fromTsDataType(schema.getType()));
     this.encryptParameter = EncryptUtils.getEncryptParameter();
   }
 
@@ -80,6 +83,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
+    this.rowWriter =
+        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(Type.fromTsDataType(schema.getType()));
     this.encryptParameter = encryptParameter;
   }
 
@@ -98,32 +103,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeNonAlignedPoint(long insertTime, Object objectValue) {
-    switch (schema.getType()) {
-      case BOOLEAN:
-        putBoolean(insertTime, (boolean) objectValue);
-        break;
-      case INT32:
-      case DATE:
-        putInt(insertTime, (int) objectValue);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        putLong(insertTime, (long) objectValue);
-        break;
-      case FLOAT:
-        putFloat(insertTime, (float) objectValue);
-        break;
-      case DOUBLE:
-        putDouble(insertTime, (double) objectValue);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        putBinary(insertTime, (Binary) objectValue);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
-    }
+    rowWriter.write(list, insertTime, objectValue);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
     }
@@ -483,6 +463,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   public static WritableMemChunk deserialize(DataInputStream stream) throws IOException {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.rowWriter =
+        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(memChunk.schema.getType()));
     int sortedListSize = stream.readInt();
     memChunk.sortedList = new ArrayList<>();
     for (int i = 0; i < sortedListSize; i++) {
@@ -497,6 +480,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       throws IOException {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.rowWriter =
+        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(memChunk.schema.getType()));
     memChunk.list = TVList.deserialize(stream);
     return memChunk;
   }

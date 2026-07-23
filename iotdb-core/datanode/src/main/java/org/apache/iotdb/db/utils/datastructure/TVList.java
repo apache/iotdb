@@ -155,29 +155,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public static TVList newList(TSDataType dataType) {
-    switch (dataType) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        return BinaryTVList.newList();
-      case FLOAT:
-        return FloatTVList.newList();
-      case INT32:
-        return IntTVList.newList(TSDataType.INT32);
-      case DATE:
-        return IntTVList.newList(TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return LongTVList.newList();
-      case DOUBLE:
-        return DoubleTVList.newList();
-      case BOOLEAN:
-        return BooleanTVList.newList();
-      default:
-        break;
-    }
-    return null;
+    return TypeServices.TV_LIST_PROVIDER_SERVICE.call(Type.fromTsDataType(dataType)).newList();
   }
 
   // get array memory cost of working TVList
@@ -735,56 +713,16 @@ public abstract class TVList implements WALEntryValue {
 
   public static TVList deserialize(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    switch (dataType) {
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return BinaryTVList.deserialize(stream);
-      case FLOAT:
-        return FloatTVList.deserialize(stream);
-      case INT32:
-        return IntTVList.deserialize(stream, TSDataType.INT32);
-      case DATE:
-        return IntTVList.deserialize(stream, TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return LongTVList.deserialize(stream);
-      case DOUBLE:
-        return DoubleTVList.deserialize(stream);
-      case BOOLEAN:
-        return BooleanTVList.deserialize(stream);
-      default:
-        break;
-    }
-    return null;
+    return TypeServices.TV_LIST_PROVIDER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .deserialize(stream);
   }
 
   public static TVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    switch (dataType) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        return BinaryTVList.deserializeWithoutBitMap(stream);
-      case FLOAT:
-        return FloatTVList.deserializeWithoutBitMap(stream);
-      case INT32:
-        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32);
-      case DATE:
-        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return LongTVList.deserializeWithoutBitMap(stream);
-      case DOUBLE:
-        return DoubleTVList.deserializeWithoutBitMap(stream);
-      case BOOLEAN:
-        return BooleanTVList.deserializeWithoutBitMap(stream);
-      default:
-        break;
-    }
-    return null;
+    return TypeServices.TV_LIST_PROVIDER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .deserializeWithoutBitMap(stream);
   }
 
   public List<long[]> getTimestamps() {

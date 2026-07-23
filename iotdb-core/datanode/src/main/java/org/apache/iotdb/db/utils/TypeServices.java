@@ -40,6 +40,12 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRe
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BinaryTVList;
+import org.apache.iotdb.db.utils.datastructure.BooleanTVList;
+import org.apache.iotdb.db.utils.datastructure.DoubleTVList;
+import org.apache.iotdb.db.utils.datastructure.FloatTVList;
+import org.apache.iotdb.db.utils.datastructure.IntTVList;
+import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
@@ -80,6 +86,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -90,6 +97,7 @@ public class TypeServices {
 
   public static final int DEFAULT_DATE =
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
+  private static final LocalDate EMPTY_LOCAL_DATE = LocalDate.of(1000, 1, 1);
 
   public static final TypeService<Function<Object, Column>> CONSTANT_COLUMN_BUILDER_SERVICE =
       type ->
@@ -665,6 +673,66 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<TVListObjectWriter> TV_LIST_OBJECT_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> (tvList, time, value) -> tvList.putBoolean(time, (boolean) value);
+            case INT32, DATE -> (tvList, time, value) -> tvList.putInt(time, (int) value);
+            case INT64, TIMESTAMP -> (tvList, time, value) -> tvList.putLong(time, (long) value);
+            case FLOAT -> (tvList, time, value) -> tvList.putFloat(time, (float) value);
+            case DOUBLE -> (tvList, time, value) -> tvList.putDouble(time, (double) value);
+            case TEXT, BLOB, STRING ->
+                (tvList, time, value) -> tvList.putBinary(time, (Binary) value);
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  private static final TVListProvider UNSUPPORTED_TV_LIST_PROVIDER =
+      new TVListProvider(() -> null, stream -> null, stream -> null);
+
+  public static final TypeService<TVListProvider> TV_LIST_PROVIDER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                new TVListProvider(
+                    BooleanTVList::newList,
+                    BooleanTVList::deserialize,
+                    BooleanTVList::deserializeWithoutBitMap);
+            case INT32 ->
+                new TVListProvider(
+                    () -> IntTVList.newList(TSDataType.INT32),
+                    stream -> IntTVList.deserialize(stream, TSDataType.INT32),
+                    stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32));
+            case DATE ->
+                new TVListProvider(
+                    () -> IntTVList.newList(TSDataType.DATE),
+                    stream -> IntTVList.deserialize(stream, TSDataType.DATE),
+                    stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE));
+            case INT64, TIMESTAMP ->
+                new TVListProvider(
+                    LongTVList::newList,
+                    LongTVList::deserialize,
+                    LongTVList::deserializeWithoutBitMap);
+            case FLOAT ->
+                new TVListProvider(
+                    FloatTVList::newList,
+                    FloatTVList::deserialize,
+                    FloatTVList::deserializeWithoutBitMap);
+            case DOUBLE ->
+                new TVListProvider(
+                    DoubleTVList::newList,
+                    DoubleTVList::deserialize,
+                    DoubleTVList::deserializeWithoutBitMap);
+            case TEXT, BLOB, STRING, OBJECT ->
+                new TVListProvider(
+                    BinaryTVList::newList,
+                    BinaryTVList::deserialize,
+                    BinaryTVList::deserializeWithoutBitMap);
+            case ROW, UNKNOWN, VECTOR -> UNSUPPORTED_TV_LIST_PROVIDER;
+          };
+
   public static final TypeService<TVListChunkWriter> TV_LIST_CHUNK_WRITER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -1136,10 +1204,136 @@ public class TypeServices {
                     };
               };
 
+  public static final TypeService<TabletValueColumnFilter> PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                (originValueColumn,
+                    rowIndexList,
+                    isSingleOriginValueColumn,
+                    originNullValueColumnBitmap,
+                    nullValueColumnBitmap) ->
+                    filterPrimitiveValueColumn(
+                        type,
+                        originValueColumn,
+                        rowIndexList,
+                        isSingleOriginValueColumn,
+                        originNullValueColumnBitmap,
+                        nullValueColumnBitmap);
+            case DATE -> TypeServices::filterDateValueColumn;
+            case TEXT, BLOB, STRING -> TypeServices::filterBinaryValueColumn;
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                (originValueColumn,
+                    rowIndexList,
+                    isSingleOriginValueColumn,
+                    originNullValueColumnBitmap,
+                    nullValueColumnBitmap) -> {
+                  throw new UnSupportedDataTypeException(
+                      String.format("Data type %s is not supported.", type.getTypeEnum()));
+                };
+          };
+
+  private static Object filterPrimitiveValueColumn(
+      final Type type,
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
+      final boolean isSingleOriginValueColumn,
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap) {
+    final Object originValueColumns;
+    if (isSingleOriginValueColumn) {
+      originValueColumns = type.createArray(1);
+      type.addValue(0, originValueColumn, originValueColumns);
+    } else {
+      originValueColumns = originValueColumn;
+    }
+    final Object valueColumns = type.createArray(rowIndexList.size());
+    for (int i = 0; i < rowIndexList.size(); ++i) {
+      final int originRowIndex = rowIndexList.get(i);
+      if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+        nullValueColumnBitmap.mark(i);
+      } else {
+        type.copyArrayElement(originValueColumns, originRowIndex, valueColumns, i);
+      }
+    }
+    return valueColumns;
+  }
+
+  private static LocalDate[] filterDateValueColumn(
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
+      final boolean isSingleOriginValueColumn,
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap) {
+    final LocalDate[] valueColumns = new LocalDate[rowIndexList.size()];
+    final boolean isLocalDateColumn =
+        isSingleOriginValueColumn
+            ? originValueColumn instanceof LocalDate
+            : originValueColumn instanceof LocalDate[];
+    final LocalDate[] dateValueColumns =
+        isLocalDateColumn
+            ? (isSingleOriginValueColumn
+                ? new LocalDate[] {(LocalDate) originValueColumn}
+                : (LocalDate[]) originValueColumn)
+            : null;
+    final int[] intValueColumns =
+        isLocalDateColumn
+            ? null
+            : (isSingleOriginValueColumn
+                ? new int[] {(int) originValueColumn}
+                : (int[]) originValueColumn);
+    for (int i = 0; i < rowIndexList.size(); ++i) {
+      final int originRowIndex = rowIndexList.get(i);
+      if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+        valueColumns[i] = EMPTY_LOCAL_DATE;
+        nullValueColumnBitmap.mark(i);
+      } else {
+        valueColumns[i] =
+            isLocalDateColumn
+                ? dateValueColumns[originRowIndex]
+                : DateUtils.parseIntToLocalDate(intValueColumns[originRowIndex]);
+      }
+    }
+    return valueColumns;
+  }
+
+  private static Binary[] filterBinaryValueColumn(
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
+      final boolean isSingleOriginValueColumn,
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap) {
+    final Binary[] binaryValueColumns =
+        isSingleOriginValueColumn
+            ? new Binary[] {(Binary) originValueColumn}
+            : (Binary[]) originValueColumn;
+    final Binary[] valueColumns = new Binary[rowIndexList.size()];
+    for (int i = 0; i < rowIndexList.size(); ++i) {
+      final int originRowIndex = rowIndexList.get(i);
+      final Binary value = binaryValueColumns[originRowIndex];
+      if (Objects.isNull(value)
+          || Objects.isNull(value.getValues())
+          || isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+        valueColumns[i] = Binary.EMPTY_VALUE;
+        nullValueColumnBitmap.mark(i);
+      } else {
+        valueColumns[i] = new Binary(value.getValues());
+      }
+    }
+    return valueColumns;
+  }
+
+  private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
+    return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
+  }
+
   static {
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
+    PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
+    TV_LIST_OBJECT_WRITER_SERVICE.check();
+    TV_LIST_PROVIDER_SERVICE.check();
     TV_LIST_CHUNK_WRITER_SERVICE.check();
     TV_LIST_BATCH_WRITER_SERVICE.check();
     ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
@@ -1298,6 +1492,16 @@ public class TypeServices {
   }
 
   @FunctionalInterface
+  public interface TabletValueColumnFilter {
+    Object filter(
+        Object originValueColumn,
+        List<Integer> rowIndexList,
+        boolean isSingleOriginValueColumn,
+        BitMap originNullValueColumnBitmap,
+        BitMap nullValueColumnBitmap);
+  }
+
+  @FunctionalInterface
   public interface WALColumnWriter {
     void write(Object column, IWALByteBufferView buffer, int start, int end);
   }
@@ -1305,6 +1509,43 @@ public class TypeServices {
   @FunctionalInterface
   public interface TVListArrayWriter {
     void write(TVList tvList, long[] times, Object values, BitMap bitMap, int start, int end);
+  }
+
+  @FunctionalInterface
+  public interface TVListObjectWriter {
+    void write(TVList tvList, long time, Object value);
+  }
+
+  public static class TVListProvider {
+    private final Supplier<TVList> factory;
+    private final TVListDeserializer deserializer;
+    private final TVListDeserializer noBitmapDeserializer;
+
+    private TVListProvider(
+        Supplier<TVList> factory,
+        TVListDeserializer deserializer,
+        TVListDeserializer noBitmapDeserializer) {
+      this.factory = factory;
+      this.deserializer = deserializer;
+      this.noBitmapDeserializer = noBitmapDeserializer;
+    }
+
+    public TVList newList() {
+      return factory.get();
+    }
+
+    public TVList deserialize(DataInputStream stream) throws IOException {
+      return deserializer.deserialize(stream);
+    }
+
+    public TVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+      return noBitmapDeserializer.deserialize(stream);
+    }
+  }
+
+  @FunctionalInterface
+  private interface TVListDeserializer {
+    TVList deserialize(DataInputStream stream) throws IOException;
   }
 
   @FunctionalInterface

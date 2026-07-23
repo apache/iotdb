@@ -38,17 +38,13 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -63,8 +59,6 @@ import java.util.stream.IntStream;
 public abstract class TabletInsertionEventParser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionEventParser.class);
-
-  private static final LocalDate EMPTY_LOCALDATE = LocalDate.of(1000, 1, 1);
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent
@@ -479,156 +473,14 @@ public abstract class TabletInsertionEventParser {
       final boolean isSingleOriginValueColumn,
       final BitMap originNullValueColumnBitmap,
       final BitMap nullValueColumnBitmap /* output parameters */) {
-    switch (type) {
-      case INT32:
-        {
-          final int[] intValueColumns =
-              isSingleOriginValueColumn
-                  ? new int[] {(int) originValueColumn}
-                  : (int[]) originValueColumn;
-          final int[] valueColumns = new int[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = 0;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = intValueColumns[rowIndexList.get(i)];
-            }
-          }
-          return valueColumns;
-        }
-      case DATE:
-        {
-          // Always store 'LocalDate[]' to help convert to tablet
-          final LocalDate[] valueColumns = new LocalDate[rowIndexList.size()];
-          if (isSingleOriginValueColumn && originValueColumn instanceof LocalDate
-              || !isSingleOriginValueColumn && originValueColumn instanceof LocalDate[]) {
-            // For tablet
-            final LocalDate[] dateValueColumns =
-                isSingleOriginValueColumn
-                    ? new LocalDate[] {(LocalDate) originValueColumn}
-                    : (LocalDate[]) originValueColumn;
-
-            for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-                valueColumns[i] = EMPTY_LOCALDATE;
-                nullValueColumnBitmap.mark(i);
-              } else {
-                valueColumns[i] = dateValueColumns[rowIndexList.get(i)];
-              }
-            }
-          } else {
-            // For insertRowNode / insertTabletNode
-            final int[] intValueColumns =
-                isSingleOriginValueColumn
-                    ? new int[] {(int) originValueColumn}
-                    : (int[]) originValueColumn;
-            for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-                valueColumns[i] = EMPTY_LOCALDATE;
-                nullValueColumnBitmap.mark(i);
-              } else {
-                valueColumns[i] =
-                    DateUtils.parseIntToLocalDate(intValueColumns[rowIndexList.get(i)]);
-              }
-            }
-          }
-          return valueColumns;
-        }
-      case INT64:
-      case TIMESTAMP:
-        {
-          final long[] longValueColumns =
-              isSingleOriginValueColumn
-                  ? new long[] {(long) originValueColumn}
-                  : (long[]) originValueColumn;
-          final long[] valueColumns = new long[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = 0L;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = longValueColumns[rowIndexList.get(i)];
-            }
-          }
-          return valueColumns;
-        }
-      case FLOAT:
-        {
-          final float[] floatValueColumns =
-              isSingleOriginValueColumn
-                  ? new float[] {(float) originValueColumn}
-                  : (float[]) originValueColumn;
-          final float[] valueColumns = new float[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = 0F;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = floatValueColumns[rowIndexList.get(i)];
-            }
-          }
-          return valueColumns;
-        }
-      case DOUBLE:
-        {
-          final double[] doubleValueColumns =
-              isSingleOriginValueColumn
-                  ? new double[] {(double) originValueColumn}
-                  : (double[]) originValueColumn;
-          final double[] valueColumns = new double[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = 0D;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = doubleValueColumns[rowIndexList.get(i)];
-            }
-          }
-          return valueColumns;
-        }
-      case BOOLEAN:
-        {
-          final boolean[] booleanValueColumns =
-              isSingleOriginValueColumn
-                  ? new boolean[] {(boolean) originValueColumn}
-                  : (boolean[]) originValueColumn;
-          final boolean[] valueColumns = new boolean[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = false;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = booleanValueColumns[rowIndexList.get(i)];
-            }
-          }
-          return valueColumns;
-        }
-      case TEXT:
-      case BLOB:
-      case STRING:
-        {
-          final Binary[] binaryValueColumns =
-              isSingleOriginValueColumn
-                  ? new Binary[] {(Binary) originValueColumn}
-                  : (Binary[]) originValueColumn;
-          final Binary[] valueColumns = new Binary[rowIndexList.size()];
-          for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (Objects.isNull(binaryValueColumns[rowIndexList.get(i)])
-                || Objects.isNull(binaryValueColumns[rowIndexList.get(i)].getValues())
-                || isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
-              valueColumns[i] = Binary.EMPTY_VALUE;
-              nullValueColumnBitmap.mark(i);
-            } else {
-              valueColumns[i] = new Binary(binaryValueColumns[rowIndexList.get(i)].getValues());
-            }
-          }
-          return valueColumns;
-        }
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
-    }
+    return TypeServices.PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE
+        .call(Type.fromTsDataType(type))
+        .filter(
+            originValueColumn,
+            rowIndexList,
+            isSingleOriginValueColumn,
+            originNullValueColumnBitmap,
+            nullValueColumnBitmap);
   }
 
   private void fillNullValue(
@@ -649,10 +501,6 @@ public abstract class TabletInsertionEventParser {
 
   private static BitMap getBitMap(final BitMap[] bitMaps, final int index) {
     return Objects.nonNull(bitMaps) && index < bitMaps.length ? bitMaps[index] : null;
-  }
-
-  private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
-    return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
   }
 
   ////////////////////////////  process  ////////////////////////////

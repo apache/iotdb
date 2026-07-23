@@ -166,7 +166,7 @@ public final class PipeTabletUtils {
       final TSDataType dataType,
       final Object value) {
     Type type = Type.fromTsDataType(dataType);
-    type.addValue(rowIndex, tablet.getValues()[columnIndex], value);
+    type.addValue(rowIndex, value, tablet.getValues()[columnIndex]);
     unmarkNullValue(tablet, rowIndex, columnIndex);
   }
 
