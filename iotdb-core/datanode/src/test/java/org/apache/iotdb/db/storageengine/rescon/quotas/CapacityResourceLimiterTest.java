@@ -113,6 +113,46 @@ public class CapacityResourceLimiterTest {
   }
 
   @Test
+  public void testReadAndWriteUsageAreIsolated() {
+    UserResourceQuotaManager manager = UserResourceQuotaManager.getInstance();
+    String user = "readWriteIsolationUser";
+    UserResourceQuota quota = new UserResourceQuota();
+    quota.getReadQuota().put(ResourceType.CPU, new ResourceQuotaRange(0, 1));
+    quota.getWriteQuota().put(ResourceType.CPU, new ResourceQuotaRange(0, 1));
+    manager.updateQuota(user, quota);
+
+    AcquirePolicy policy = AcquirePolicy.defaults();
+    policy.setMaxWaitMs(0);
+    QuotaToken writeToken = null;
+    QuotaToken readToken = null;
+    try {
+      AcquireResult writeResult =
+          manager.acquire(
+              user, OperationType.WRITE, ResourceType.CPU, 1, new AcquireContext(), policy);
+      Assert.assertTrue(writeResult.isSuccess());
+      writeToken = writeResult.getToken();
+
+      AcquireResult readResult =
+          manager.acquire(
+              user, OperationType.READ, ResourceType.CPU, 1, new AcquireContext(), policy);
+      Assert.assertTrue(
+          "Read quota should not include CPU already acquired by writes", readResult.isSuccess());
+      readToken = readResult.getToken();
+
+      Assert.assertEquals(1, manager.getInUse(user, OperationType.READ, ResourceType.CPU));
+      Assert.assertEquals(1, manager.getInUse(user, OperationType.WRITE, ResourceType.CPU));
+    } finally {
+      if (readToken != null) {
+        readToken.close();
+      }
+      if (writeToken != null) {
+        writeToken.close();
+      }
+      manager.clearUserQuota(user);
+    }
+  }
+
+  @Test
   public void testManagerRejectIncludesConcreteReason() {
     UserResourceQuotaManager manager = UserResourceQuotaManager.getInstance();
     UserResourceQuota quota = new UserResourceQuota();
