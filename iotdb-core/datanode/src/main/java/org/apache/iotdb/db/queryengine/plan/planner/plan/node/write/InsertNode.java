@@ -152,7 +152,6 @@ public abstract class InsertNode extends SearchNode {
 
   public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
-    memorySize = 0;
   }
 
   @Override
