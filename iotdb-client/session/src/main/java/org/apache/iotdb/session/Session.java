@@ -2933,19 +2933,30 @@ public class Session implements ISession {
       return;
     }
     final List<SessionConnection> connections = new ArrayList<>(tablet.getRowSize());
-    final Map<SessionConnection, Integer> rowCountByConnection = new LinkedHashMap<>();
+    final List<IDeviceID> deviceIDs = new ArrayList<>(tablet.getRowSize());
+    final Map<SessionConnection, Map<IDeviceID, Integer>> rowCountByDevice = new LinkedHashMap<>();
     for (int row = 0; row < tablet.getRowSize(); row++) {
-      final SessionConnection connection = getTableModelSessionConnection(tablet.getDeviceID(row));
+      final IDeviceID deviceID = tablet.getDeviceID(row);
+      final SessionConnection connection = getTableModelSessionConnection(deviceID);
       connections.add(connection);
-      rowCountByConnection.merge(connection, 1, Integer::sum);
+      deviceIDs.add(deviceID);
+      rowCountByDevice
+          .computeIfAbsent(connection, ignored -> new LinkedHashMap<>())
+          .merge(deviceID, 1, Integer::sum);
     }
-    final Map<SessionConnection, Tablet> subTabletByConnection = new LinkedHashMap<>();
-    rowCountByConnection.forEach(
-        (connection, rowCount) ->
-            subTabletByConnection.put(
-                connection, createEmptyRelationalTabletLike(tablet, rowCount)));
+    final Map<SessionConnection, Map<IDeviceID, Tablet>> subTabletsByConnection =
+        new LinkedHashMap<>();
+    rowCountByDevice.forEach(
+        (connection, rowCountByDeviceID) -> {
+          final Map<IDeviceID, Tablet> subTablets = new LinkedHashMap<>();
+          rowCountByDeviceID.forEach(
+              (deviceID, rowCount) ->
+                  subTablets.put(deviceID, createEmptyRelationalTabletLike(tablet, rowCount)));
+          subTabletsByConnection.put(connection, subTablets);
+        });
     for (int row = 0; row < tablet.getRowSize(); row++) {
-      final Tablet subTablet = subTabletByConnection.get(connections.get(row));
+      final Tablet subTablet =
+          subTabletsByConnection.get(connections.get(row)).get(deviceIDs.get(row));
       for (int column = 0; column < subTablet.getSchemas().size(); column++) {
         subTablet.addValue(
             subTablet.getSchemas().get(column).getMeasurementName(),
@@ -2954,8 +2965,12 @@ public class Session implements ISession {
       }
       subTablet.addTimestamp(subTablet.getRowSize(), tablet.getTimestamp(row));
     }
-    subTabletByConnection.forEach(
-        (connection, subTablet) -> updateRelationalTabletsReq(tabletGroup, connection, subTablet));
+    subTabletsByConnection.forEach(
+        (connection, subTablets) ->
+            subTablets
+                .values()
+                .forEach(
+                    subTablet -> updateRelationalTabletsReq(tabletGroup, connection, subTablet)));
   }
 
   private SessionConnection getTableModelSessionConnection(final IDeviceID deviceID)
@@ -3123,14 +3138,19 @@ public class Session implements ISession {
     List<String> currentMeasurements = new ArrayList<>();
     List<TSDataType> currentDataTypes = new ArrayList<>();
     List<ColumnCategory> currentColumnTypes = new ArrayList<>();
+    boolean currentGroupHasRows = false;
+    long currentGroupMaxTimestamp = Long.MIN_VALUE;
     boolean anyMerged = false;
     for (final Tablet tablet : sortedTablets) {
+      final long[] timestampRange = getTimestampRange(tablet);
       if (currentGroup.isEmpty()) {
         currentGroup.add(tablet);
         currentColumnIndexMap = getColumnIndexMap(tablet);
         currentMeasurements = getMeasurements(tablet);
         currentDataTypes = getDataTypes(tablet);
         currentColumnTypes = new ArrayList<>(tablet.getColumnTypes());
+        currentGroupHasRows = tablet.getRowSize() > 0;
+        currentGroupMaxTimestamp = timestampRange[1];
         continue;
       }
       if (canMergeRelationalTablets(
@@ -3138,6 +3158,9 @@ public class Session implements ISession {
           currentColumnIndexMap,
           currentDataTypes,
           currentColumnTypes,
+          currentGroupHasRows,
+          currentGroupMaxTimestamp,
+          timestampRange[0],
           tablet)) {
         currentGroup.add(tablet);
         addMissingColumns(
@@ -3146,6 +3169,10 @@ public class Session implements ISession {
             currentMeasurements,
             currentDataTypes,
             currentColumnTypes);
+        if (tablet.getRowSize() > 0) {
+          currentGroupHasRows = true;
+          currentGroupMaxTimestamp = Math.max(currentGroupMaxTimestamp, timestampRange[1]);
+        }
         anyMerged = true;
         continue;
       }
@@ -3158,6 +3185,8 @@ public class Session implements ISession {
       currentMeasurements = getMeasurements(tablet);
       currentDataTypes = getDataTypes(tablet);
       currentColumnTypes = new ArrayList<>(tablet.getColumnTypes());
+      currentGroupHasRows = tablet.getRowSize() > 0;
+      currentGroupMaxTimestamp = timestampRange[1];
     }
     if (!currentGroup.isEmpty()) {
       mergedTablets.add(
@@ -3198,8 +3227,14 @@ public class Session implements ISession {
       final Map<String, Integer> leftColumnIndexMap,
       final List<TSDataType> leftDataTypes,
       final List<ColumnCategory> leftColumnTypes,
+      final boolean leftHasRows,
+      final long leftMaxTimestamp,
+      final long rightMinTimestamp,
       final Tablet right) {
     if (!Objects.equals(leftTableName, right.getTableName())) {
+      return false;
+    }
+    if (leftHasRows && right.getRowSize() > 0 && leftMaxTimestamp > rightMinTimestamp) {
       return false;
     }
     final List<IMeasurementSchema> rightSchemas = right.getSchemas();
@@ -3218,6 +3253,16 @@ public class Session implements ISession {
     }
     return (double) duplicatedColumnCount / Math.max(leftDataTypes.size(), rightSchemas.size())
         > 0.5;
+  }
+
+  private long[] getTimestampRange(final Tablet tablet) {
+    long minTimestamp = Long.MAX_VALUE;
+    long maxTimestamp = Long.MIN_VALUE;
+    for (int row = 0; row < tablet.getRowSize(); row++) {
+      minTimestamp = Math.min(minTimestamp, tablet.getTimestamp(row));
+      maxTimestamp = Math.max(maxTimestamp, tablet.getTimestamp(row));
+    }
+    return new long[] {minTimestamp, maxTimestamp};
   }
 
   private Map<String, Integer> getColumnIndexMap(final Tablet tablet) {

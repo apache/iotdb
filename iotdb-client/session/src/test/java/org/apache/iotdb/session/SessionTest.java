@@ -45,6 +45,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -1032,6 +1033,99 @@ public class SessionTest {
   }
 
   @Test
+  public void testMergeRelationalTabletsDoesNotCrossUnmergeableTablet() throws Exception {
+    final List<String> firstMeasurements =
+        Arrays.asList("tag1", "color", "sticky", "s1", "s2", "s3");
+    final List<String> secondMeasurements =
+        Arrays.asList("tag1", "color", "sticky", "s4", "s5", "s6");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.INT64,
+            TSDataType.INT64,
+            TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(
+            ColumnCategory.TAG,
+            ColumnCategory.ATTRIBUTE,
+            ColumnCategory.ATTRIBUTE,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            firstMeasurements,
+            dataTypes,
+            columnTypes,
+            1,
+            "d1",
+            "red",
+            "keep",
+            11L,
+            12L,
+            13L);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            secondMeasurements,
+            dataTypes,
+            columnTypes,
+            2,
+            "d1",
+            "blue",
+            "replace",
+            21L,
+            22L,
+            23L);
+    final Tablet third =
+        createRelationalTablet(
+            "table1",
+            firstMeasurements,
+            dataTypes,
+            columnTypes,
+            3,
+            "d1",
+            "red",
+            "keep",
+            31L,
+            32L,
+            33L);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(
+            session, "mergeRelationalTablets", Arrays.asList(first, second, third));
+
+    assertEquals(3, mergedTablets.size());
+    Assert.assertSame(first, mergedTablets.get(0));
+    Assert.assertSame(second, mergedTablets.get(1));
+    Assert.assertSame(third, mergedTablets.get(2));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsDoesNotReorderTabletTimeRanges() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "color", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1", measurements, dataTypes, columnTypes, 10, "d1", "red", 10L);
+    final Tablet second =
+        createRelationalTablet("table1", measurements, dataTypes, columnTypes, 1, "d1", "blue", 1L);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, second));
+
+    assertEquals(2, mergedTablets.size());
+    Assert.assertSame(first, mergedTablets.get(0));
+    Assert.assertSame(second, mergedTablets.get(1));
+  }
+
+  @Test
   public void testMergeRelationalTabletsChecksColumnsAddedByEarlierTablets() throws Exception {
     final Tablet first =
         createRelationalTablet(
@@ -1420,7 +1514,7 @@ public class SessionTest {
   }
 
   @Test
-  public void testSplitRelationalTabletAllocatesOncePerEndpoint() throws Exception {
+  public void testSplitRelationalTabletAllocatesExactCapacityPerDevice() throws Exception {
     final int rowCount = 1000;
     final List<String> measurements = Arrays.asList("tag1", "s1");
     final Tablet tablet =
@@ -1443,9 +1537,59 @@ public class SessionTest {
     assertEquals(1, tabletGroup.size());
     final List<Tablet> groupedTablets =
         Whitebox.getInternalState(tabletGroup.values().iterator().next(), "tablets");
-    assertEquals(1, groupedTablets.size());
-    assertEquals(rowCount, groupedTablets.get(0).getMaxRowNumber());
-    assertEquals(rowCount, groupedTablets.get(0).getRowSize());
+    assertEquals(rowCount, groupedTablets.size());
+    int totalCapacity = 0;
+    for (final Tablet groupedTablet : groupedTablets) {
+      assertEquals(1, groupedTablet.getMaxRowNumber());
+      assertEquals(1, groupedTablet.getRowSize());
+      totalCapacity += groupedTablet.getMaxRowNumber();
+    }
+    assertEquals(rowCount, totalCapacity);
+  }
+
+  @Test
+  public void testInsertRelationalTabletsPreservesOrderWhenSplittingByDevice() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "color", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            measurements,
+            dataTypes,
+            columnTypes,
+            new long[] {1, 101},
+            new Object[][] {{"d1", "red", 11L}, {"d2", "green", 12L}});
+    final Tablet second =
+        createRelationalTablet(
+            "table1", measurements, dataTypes, columnTypes, 2, "d1", "blue", 21L);
+    final Tablet third =
+        createRelationalTablet(
+            "table1",
+            measurements,
+            dataTypes,
+            columnTypes,
+            new long[] {3, 103},
+            new Object[][] {{"d1", null, 31L}, {"d2", "black", 32L}});
+    Whitebox.setInternalState(session, "enableMergeTablets", false);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+    Whitebox.setInternalState(
+        session, "tableModelDeviceIdToEndpoint", new HashMap<IDeviceID, TEndPoint>());
+
+    ((Session) session).insertRelationalTablets(Arrays.asList(first, second, third));
+
+    final ArgumentCaptor<TSInsertTabletsReq> requestCaptor =
+        ArgumentCaptor.forClass(TSInsertTabletsReq.class);
+    Mockito.verify(sessionConnection).insertTablets(requestCaptor.capture(), anyList());
+    final TSInsertTabletsReq request = requestCaptor.getValue();
+    assertEquals(Arrays.asList(1, 1, 1, 1, 1), request.getSizeList());
+    final List<Long> firstTimestamps = new ArrayList<>();
+    for (int i = 0; i < request.getTimestampsListSize(); i++) {
+      firstTimestamps.add(request.getTimestampsList().get(i).getLong(0));
+    }
+    assertEquals(Arrays.asList(1L, 101L, 2L, 3L, 103L), firstTimestamps);
   }
 
   @Test
@@ -1704,6 +1848,24 @@ public class SessionTest {
     tablet.addTimestamp(0, timestamp);
     for (int i = 0; i < values.length; i++) {
       tablet.addValue(measurements.get(i), 0, values[i]);
+    }
+    return tablet;
+  }
+
+  private Tablet createRelationalTablet(
+      final String tableName,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<ColumnCategory> columnTypes,
+      final long[] timestamps,
+      final Object[][] values) {
+    final Tablet tablet =
+        new Tablet(tableName, measurements, dataTypes, columnTypes, timestamps.length);
+    for (int row = 0; row < timestamps.length; row++) {
+      tablet.addTimestamp(row, timestamps[row]);
+      for (int column = 0; column < values[row].length; column++) {
+        tablet.addValue(measurements.get(column), row, values[row][column]);
+      }
     }
     return tablet;
   }
