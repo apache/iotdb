@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.conf.rest;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
