@@ -86,6 +86,7 @@ for /f "tokens=1,2,5" %%i in ('netstat /ano') do (
            if !is_iotdb!==1 (
              set local_iotdb_occupied_ports=%dn_rpc_port% !local_iotdb_occupied_ports!
            )
+           set dn_rpc_port_occupied=1
          )
 
        ) else if !local_port!==%cn_internal_port% (
@@ -95,6 +96,7 @@ for /f "tokens=1,2,5" %%i in ('netstat /ano') do (
              if !is_iotdb!==1 (
               set local_iotdb_occupied_ports=%cn_internal_port% !local_iotdb_occupied_ports!
              )
+             set cn_internal_port_occupied=1
          )
        )
     )
