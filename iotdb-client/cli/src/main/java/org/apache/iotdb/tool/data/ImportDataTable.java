@@ -25,6 +25,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
@@ -79,7 +80,7 @@ public class ImportDataTable extends AbstractImportData {
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)

@@ -71,24 +71,32 @@ set "operation_dirs="
 set dn_rpc_port_occupied=0
 set cn_internal_port_occupied=0
 
-for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
+for /f "tokens=1,2,5" %%i in ('netstat /ano') do (
+    set "local_endpoint=%%j"
+    if "!local_endpoint:~0,1!"=="[" (
+      set "local_port=!local_endpoint:*]:=!"
+    ) else (
+      set "local_port=!local_endpoint:*:=!"
+    )
     if %%i==TCP (
-       if %%j==%dn_rpc_port% (
+       if !local_port!==%dn_rpc_port% (
          if !dn_rpc_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
            if !is_iotdb!==1 (
              set local_iotdb_occupied_ports=%dn_rpc_port% !local_iotdb_occupied_ports!
            )
+           set dn_rpc_port_occupied=1
          )
 
-       ) else if %%j==%cn_internal_port% (
+       ) else if !local_port!==%cn_internal_port% (
          if !cn_internal_port_occupied!==0 (
              set spid=%%k
              call :checkIfIOTDBProcess !spid! is_iotdb
              if !is_iotdb!==1 (
               set local_iotdb_occupied_ports=%cn_internal_port% !local_iotdb_occupied_ports!
              )
+             set cn_internal_port_occupied=1
          )
        )
     )

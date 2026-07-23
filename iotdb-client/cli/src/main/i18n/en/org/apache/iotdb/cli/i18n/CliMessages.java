@@ -24,6 +24,9 @@ public final class CliMessages {
   // CliContext
   public static final String EXITING_WITH_CODE = "Exiting with code %d";
 
+  // Cli
+  public static final String SUCCESSFULLY_LOGIN_AT = "Successfully login at %s";
+
   // IoTDBDataBackTool
   public static final String TARGET_DIR_EMPTY =
       " -targetdir cannot be empty， The backup folder must be specified";

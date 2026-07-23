@@ -24,6 +24,9 @@ public final class CliMessages {
   // CliContext
   public static final String EXITING_WITH_CODE = "正在退出，退出码 %d";
 
+  // Cli
+  public static final String SUCCESSFULLY_LOGIN_AT = "成功登录到 %s";
+
   // IoTDBDataBackTool
   public static final String TARGET_DIR_EMPTY =
       " -targetdir 不能为空，必须指定备份目录";
