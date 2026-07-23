@@ -20,7 +20,6 @@
 package org.apache.iotdb;
 
 import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
@@ -194,7 +193,7 @@ public class ConsensusTableModelSubscriptionSessionExample {
 
   private static ITableSession openTableSession() throws Exception {
     return new TableSessionBuilder()
-        .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(HOST, PORT)))
+        .nodeUrls(Collections.singletonList(HOST + ":" + PORT))
         .username(USER)
         .password(PASSWORD)
         .build();

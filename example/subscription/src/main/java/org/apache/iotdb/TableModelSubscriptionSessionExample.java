@@ -22,7 +22,6 @@ package org.apache.iotdb;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
@@ -169,7 +168,7 @@ public class TableModelSubscriptionSessionExample {
   public static void main(final String[] args) throws Exception {
     try (final ITableSession session =
         new TableSessionBuilder()
-            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(HOST, PORT)))
+            .nodeUrls(Collections.singletonList(HOST + ":" + PORT))
             .username("root")
             .password("root")
             .build()) {
