@@ -253,7 +253,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     while (retryTime < MAX_WRITE_RETRY_TIMES) {
       result = planNode.accept(new DataExecutionVisitor(), region);
       // Let pipe retry with the original event instead of retrying a possibly mutated node here.
-      if (needRetry(result.getCode()) && !planNode.isGeneratedByPipe()) {
+      if (needRetryForSpecificCases(result.getCode(), planNode)) {
         retryTime++;
         logger.debug(
             DataNodePipeMessages.PIPE_LOG_WRITE_OPERATION_FAILED_BECAUSE_RETRYTIME_34EFBE99,
@@ -330,10 +330,15 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
-  public static boolean needRetry(int statusCode) {
-    // To fix the atomicity problem, we only need to add retry for system reject.
+  public static boolean needRetryForSpecificCases(int statusCode, PlanNode planNode) {
+    // To fix the atomicity problem, retry system rejection and a fenced metadata lease that
+    // explicitly requires retry.
     // In other cases, such as readonly, we can return directly because there are retries at the
     // consensus layer.
-    return statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
+    if (statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        && !planNode.isGeneratedByPipe()) {
+      return true;
+    }
+    return statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode();
   }
 }
