@@ -54,9 +54,12 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -702,6 +705,127 @@ public class TypeServices {
                     .setChecked(true);
           };
 
+  public static final TypeService<TVListBatchWriter> TV_LIST_BATCH_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  boolean value = tvList.getBoolean(index);
+                  if (filter != null && !filter.satisfyBoolean(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeBoolean(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case INT32, DATE ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  int value = tvList.getInt(index);
+                  if (filter != null && !filter.satisfyInteger(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeInt(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case INT64, TIMESTAMP ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  long value = tvList.getLong(index);
+                  if (filter != null && !filter.satisfyLong(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeLong(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case FLOAT ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  float value = tvList.getFloat(index);
+                  if (!Float.isNaN(value)
+                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                  }
+                  if (filter != null && !filter.satisfyFloat(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeFloat(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case DOUBLE ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  double value = tvList.getDouble(index);
+                  if (!Double.isNaN(value)
+                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                  }
+                  if (filter != null && !filter.satisfyDouble(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeDouble(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case TEXT, BLOB, STRING, OBJECT ->
+                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                  Binary value = tvList.getBinary(index);
+                  if (filter != null && !filter.satisfyBinary(time, value)) {
+                    return false;
+                  }
+                  if (consumeOffset(pagination)) {
+                    return true;
+                  }
+                  consumeLimit(pagination);
+                  builder.getTimeColumnBuilder().writeLong(time);
+                  builder.getColumnBuilder(0).writeBinary(value);
+                  builder.declarePosition();
+                  return true;
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                    .setChecked(true);
+          };
+
+  private static boolean consumeOffset(PaginationController paginationController) {
+    if (paginationController != null && paginationController.hasCurOffset()) {
+      paginationController.consumeOffset();
+      return true;
+    }
+    return false;
+  }
+
+  private static void consumeLimit(PaginationController paginationController) {
+    if (paginationController != null) {
+      paginationController.consumeLimit();
+    }
+  }
+
   public static final TypeService<AlignedTVListChunkWriter> ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -1017,6 +1141,7 @@ public class TypeServices {
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
     TV_LIST_CHUNK_WRITER_SERVICE.check();
+    TV_LIST_BATCH_WRITER_SERVICE.check();
     ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
     PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
     TABLET_COLUMN_ALLOCATOR_SERVICE.check();
@@ -1185,6 +1310,19 @@ public class TypeServices {
   @FunctionalInterface
   public interface TVListChunkWriter {
     long write(ChunkWriterImpl writer, long time, TVList tvList, int index);
+  }
+
+  @FunctionalInterface
+  public interface TVListBatchWriter {
+    boolean write(
+        TVList tvList,
+        int index,
+        long time,
+        Filter filter,
+        TsBlockBuilder builder,
+        int floatPrecision,
+        TSEncoding encoding,
+        PaginationController paginationController);
   }
 
   @FunctionalInterface

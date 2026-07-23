@@ -42,7 +42,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
@@ -851,6 +850,7 @@ public abstract class TVList implements WALEntryValue {
     private final int[] deleteCursor;
     private final int floatPrecision;
     private final TSEncoding encoding;
+    private final TypeServices.TVListBatchWriter batchWriter;
 
     // used by nextBatch during query
     protected final int maxNumberOfPointsInPage;
@@ -869,6 +869,11 @@ public abstract class TVList implements WALEntryValue {
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
+      TSDataType dataType = getDataType();
+      this.batchWriter =
+          dataType == TSDataType.VECTOR
+              ? null
+              : TypeServices.TV_LIST_BATCH_WRITER_SERVICE.call(Type.fromTsDataType(dataType));
       this.index = 0;
       this.rows = rowCount;
       this.probeNext = false;
@@ -1082,187 +1087,28 @@ public abstract class TVList implements WALEntryValue {
               : null;
       long filteredRowsByPushDownFilter = 0;
 
-      switch (dataType) {
-        case BOOLEAN:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              boolean aBoolean = getBoolean(getScanOrderIndex(index));
-              if (pushDownFilter == null || pushDownFilter.satisfyBoolean(time, aBoolean)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeBoolean(aBoolean);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
+      while (index < rows
+          && builder.getPositionCount() < maxNumberOfPointsInPage
+          && paginationController.hasCurLimit()) {
+        int scanOrderIndex = getScanOrderIndex(index);
+        long time = getTime(scanOrderIndex);
+        if (isCurrentTimeExceedTimeRange(time)) {
           break;
-        case INT32:
-        case DATE:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              int anInt = getInt(getScanOrderIndex(index));
-              if (pushDownFilter == null || pushDownFilter.satisfyInteger(time, anInt)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeInt(anInt);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              long aLong = getLong(getScanOrderIndex(index));
-              if (pushDownFilter == null || pushDownFilter.satisfyLong(time, aLong)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeLong(aLong);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
-          break;
-        case FLOAT:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              float aFloat =
-                  roundValueWithGivenPrecision(
-                      getFloat(getScanOrderIndex(index)), floatPrecision, encoding);
-              if (pushDownFilter == null || pushDownFilter.satisfyFloat(time, aFloat)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeFloat(aFloat);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
-          break;
-        case DOUBLE:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              double aDouble =
-                  roundValueWithGivenPrecision(
-                      getDouble(getScanOrderIndex(index)), floatPrecision, encoding);
-              if (pushDownFilter == null || pushDownFilter.satisfyDouble(time, aDouble)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeDouble(aDouble);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          while (index < rows
-              && builder.getPositionCount() < maxNumberOfPointsInPage
-              && paginationController.hasCurLimit()) {
-            long time = getTime(getScanOrderIndex(index));
-            if (isCurrentTimeExceedTimeRange(time)) {
-              break;
-            }
-            if (!isInvalidRow(
-                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
-              Binary binary = getBinary(getScanOrderIndex(index));
-              if (pushDownFilter == null || pushDownFilter.satisfyBinary(time, binary)) {
-                if (paginationController.hasCurOffset()) {
-                  paginationController.consumeOffset();
-                  index++;
-                  continue;
-                }
-                paginationController.consumeLimit();
-                builder.getTimeColumnBuilder().writeLong(time);
-                builder.getColumnBuilder(0).writeBinary(binary);
-                builder.declarePosition();
-              } else {
-                filteredRowsByPushDownFilter++;
-              }
-            }
-            index++;
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+        }
+        if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)
+            && !batchWriter.write(
+                outer,
+                scanOrderIndex,
+                time,
+                pushDownFilter,
+                builder,
+                floatPrecision,
+                encoding,
+                paginationController)) {
+          filteredRowsByPushDownFilter++;
+        }
+        index++;
       }
 
       // count the filtered row from time filter and other filter

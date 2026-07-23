@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -37,6 +38,7 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -44,6 +46,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -626,6 +629,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       int maxNumberOfPointsInPage) {
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
     List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
+    List<TypeServices.AlignedTVListChunkWriter> valueWriters = new ArrayList<>(dataTypes.size());
+    for (TSDataType dataType : dataTypes) {
+      valueWriters.add(
+          TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(dataType)));
+    }
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
       AlignedChunkWriterImpl alignedChunkWriter =
@@ -637,7 +645,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
             lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
           }
-          TSDataType tsDataType = dataTypes.get(columnIndex);
+          TypeServices.AlignedTVListChunkWriter valueWriter = valueWriters.get(columnIndex);
+          ValueChunkWriter valueChunkWriter =
+              alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
           for (int sortedRowIndex = pageRange.get(pageNum * 2);
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
@@ -679,68 +689,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             }
 
             boolean isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex);
-            switch (tsDataType) {
-              case BOOLEAN:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    !isNull
-                        && alignedWorkingListForFlush.getBooleanByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case INT32:
-              case DATE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getIntByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case INT64:
-              case TIMESTAMP:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getLongByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case FLOAT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getFloatByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case DOUBLE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getDoubleByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case TEXT:
-              case STRING:
-              case BLOB:
-              case OBJECT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? null
-                        : alignedWorkingListForFlush.getBinaryByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              default:
-                break;
-            }
+            valueWriter.write(
+                valueChunkWriter,
+                time,
+                alignedWorkingListForFlush,
+                originRowIndex,
+                columnIndex,
+                isNull);
           }
           alignedChunkWriter.nextColumn();
         }
