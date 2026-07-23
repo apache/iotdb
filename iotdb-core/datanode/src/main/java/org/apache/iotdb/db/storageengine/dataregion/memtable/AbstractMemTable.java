@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -289,7 +290,8 @@ public abstract class AbstractMemTable implements IMemTable {
   public int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
-      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end, true);
+      int nullPointsNumber =
+          computeTabletNullPointsNumber(insertTabletNode, start, end, true, null);
       writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int validValueCount = insertTabletNode.getValidMeasurementNumber(true) * (end - start);
@@ -314,11 +316,14 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     try {
-      int nullPointsNumber = computeTabletNullPointsNumber(insertTabletNode, start, end, true);
+      int nullPointsNumber =
+          computeTabletNullPointsNumber(insertTabletNode, start, end, true, results);
       writeAlignedTablet(insertTabletNode, start, end, results);
       // TODO-Table: what is the relation between this and TsFileProcessor.checkMemCost
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, results);
-      int validValueCount = insertTabletNode.getValidMeasurementNumber(true) * (end - start);
+      int validValueCount =
+          insertTabletNode.getValidMeasurementNumber(true)
+              * computeSuccessfulRowCount(results, start, end);
       int pointsInserted =
           validValueCount
               - (IoTDBDescriptor.getInstance()
@@ -336,7 +341,11 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private static int computeTabletNullPointsNumber(
-      InsertTabletNode insertTabletNode, int start, int end, boolean countFieldOnly) {
+      InsertTabletNode insertTabletNode,
+      int start,
+      int end,
+      boolean countFieldOnly,
+      TSStatus[] results) {
     Object[] values = insertTabletNode.getBitMaps();
     int nullPointsNumber = 0;
     if (values != null) {
@@ -355,7 +364,7 @@ public abstract class AbstractMemTable implements IMemTable {
         BitMap bitMap = i < values.length ? (BitMap) values[i] : null;
         if (bitMap != null && !bitMap.isAllUnmarked()) {
           for (int j = start; j < end; j++) {
-            if (bitMap.isMarked(j)) {
+            if (!isFailedRow(results, j) && bitMap.isMarked(j)) {
               nullPointsNumber++;
             }
           }
@@ -363,6 +372,22 @@ public abstract class AbstractMemTable implements IMemTable {
       }
     }
     return nullPointsNumber;
+  }
+
+  private static int computeSuccessfulRowCount(TSStatus[] results, int start, int end) {
+    int successfulRowCount = 0;
+    for (int i = start; i < end; i++) {
+      if (!isFailedRow(results, i)) {
+        successfulRowCount++;
+      }
+    }
+    return successfulRowCount;
+  }
+
+  private static boolean isFailedRow(TSStatus[] results, int index) {
+    return results != null
+        && results[index] != null
+        && results[index].getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BitMap;
@@ -383,6 +385,31 @@ public class AbstractMemTablePartialInsertTest {
 
     assertEquals(6, memTable.getTotalValueCount());
     assertEquals(3, memTable.getNullValueCount());
+    assertEquals(0.5, memTable.getNullValueRatio(), 0.000001);
+  }
+
+  /**
+   * Verifies that failed aligned-tablet rows are excluded from null value statistics. The first row
+   * contributes one null out of two values, while the second row fails and contributes no values,
+   * so the final null value ratio is 1 / 2.
+   */
+  @Test
+  public void testNullValueRatioExcludesFailedAlignedTabletRows()
+      throws IllegalPathException, WriteProcessException {
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[1] = new BitMap(2);
+    bitMaps[1].mark(0);
+    InsertTabletNode tabletNode =
+        buildInsertTabletNode(new String[] {"s0", "s1"}, 2, bitMaps, -1 /* no failure */);
+    TSStatus[] results = new TSStatus[2];
+    results[1] = new TSStatus(TSStatusCode.OUT_OF_TTL.getStatusCode());
+
+    int points = memTable.insertAlignedTablet(tabletNode, 0, 2, results);
+
+    assertEquals(1, points);
+    assertEquals(1, memTable.getTotalPointsNum());
+    assertEquals(2, memTable.getTotalValueCount());
+    assertEquals(1, memTable.getNullValueCount());
     assertEquals(0.5, memTable.getNullValueRatio(), 0.000001);
   }
 
