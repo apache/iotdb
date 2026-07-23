@@ -144,6 +144,10 @@ public final class PipeMessages {
           "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
+      "PipeAsyncSinkRetryMaxDurationMs: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS =
+      "PipeAsyncSinkRetryProbeIntervalMs: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER =
       "PipeAsyncSinkSelectorNumber: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_CLIENT_NUMBER =
@@ -186,7 +190,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
-      "PipePeriodicalLogMinIntervalSeconds: {}";
+      "LoggerPeriodicalLogMinIntervalSeconds: {}";
   public static final String CONFIG_PIPE_RETRY_LOCALLY_FOR_PARALLEL_OR_USER_CONFLICT =
       "PipeRetryLocallyForParallelOrUserConflict: {}";
   public static final String CONFIG_PIPE_META_REPORT_MAX_LOG_NUM_PER_ROUND =
@@ -198,7 +202,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PIN_MAX_LOG_INTERVAL_ROUNDS =
       "PipeTsFilePinMaxLogIntervalRounds: {}";
   public static final String CONFIG_PIPE_LOGGER_CACHE_MAX_SIZE_IN_BYTES =
-      "PipeLoggerCacheMaxSizeInBytes: {}";
+      "LoggerCacheMaxSizeInBytes: {}";
   public static final String CONFIG_PIPE_MEMORY_MANAGEMENT_ENABLED =
       "PipeMemoryManagementEnabled: {}";
   public static final String CONFIG_PIPE_MEMORY_ALLOCATE_MAX_RETRIES =
@@ -411,10 +415,10 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "发生非 PipeRuntimeSinkCriticalException，将抛出 PipeRuntimeSinkCriticalException。";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "发生 PipeConnectionException，%s 正在重试与目标系统握手。";
+      "发生 PipeConnectionException，%s 正在重试与目标系统握手。根因：%s。";
   public static final String HANDSHAKE_SUCCESS = "{} 与目标系统握手成功。";
   public static final String HANDSHAKE_FAILED_RETRYING =
-      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。";
+      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。根因：{}。";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "休眠时被中断，将重试与目标系统握手。";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -466,6 +470,10 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "启用 SSL 传输时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store 路径和密码必须在同一别名下同时指定：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync 客户端管理器已关闭";
   public static final String REDIRECT_FILE_POSITION = "重定向文件位置到 {}。";
@@ -483,9 +491,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "连接目标服务器失败（ip：{}，端口：{}），原因：{}。已忽略。";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "握手错误，可能由接收端错误引起。已忽略。";
+      "握手错误，可能由接收端错误引起。已忽略。根因：{}。";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "与目标服务器握手失败，socket：%s";
+      "与目标服务器握手失败，endpoint：%s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "握手成功。Socket：{}";
   public static final String FAILED_TO_CLOSE_CLIENT = "关闭客户端 {} 失败。";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
@@ -877,6 +885,9 @@ public final class PipeMessages {
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "读取 region progress key 时遇到意外 EOF";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "读取 region progress value 长度时遇到意外 EOF";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "读取 region progress value 时遇到意外 EOF";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F = "region progress entry 数量无效：%d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 = "region progress key 长度无效：%d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "region progress value 长度无效：%d";
   public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 = "添加 subscription 到 consumer group meta 失败：consumer %s 不存在于 consumer group %s";
   public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 = "从 consumer group meta 移除 subscription 失败：consumer %s 不存在于 consumer group %s";
   public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "路径模式 %s 对 source 无效。仅允许前缀或完整路径。";
@@ -915,6 +926,5 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
-  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer 已分配 {} 字节。";
 
 }

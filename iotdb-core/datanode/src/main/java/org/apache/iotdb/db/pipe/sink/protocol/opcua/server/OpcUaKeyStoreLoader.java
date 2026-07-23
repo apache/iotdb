@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
-import com.google.common.collect.Sets;
+import com.google.common.net.InetAddresses;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
@@ -41,22 +41,21 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 class OpcUaKeyStoreLoader {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaKeyStoreLoader.class);
-
-  private static final Pattern IP_ADDR_PATTERN =
-      Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
   private static final String SERVER_ALIAS = "server-ai";
 
   private X509Certificate serverCertificate;
   private KeyPair serverKeyPair;
 
-  OpcUaKeyStoreLoader load(final Path baseDir, final char[] password) throws Exception {
+  OpcUaKeyStoreLoader load(
+      final Path baseDir, final char[] password, final Set<String> advertisedHostnames)
+      throws Exception {
     final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
@@ -90,14 +89,14 @@ class OpcUaKeyStoreLoader {
               .setApplicationUri(applicationUri);
 
       // Get as many hostnames and IP addresses as we can list in the certificate.
-      final Set<String> hostnames =
-          Sets.union(
-              Sets.newHashSet(HostnameUtil.getHostname()),
-              HostnameUtil.getHostnames("0.0.0.0", false));
+      final Set<String> hostnames = new LinkedHashSet<>();
+      hostnames.add(HostnameUtil.getHostname());
+      hostnames.addAll(HostnameUtil.getHostnames("0.0.0.0", false));
+      hostnames.addAll(advertisedHostnames);
 
       hostnames.forEach(
           hostname -> {
-            if (IP_ADDR_PATTERN.matcher(hostname).matches()) {
+            if (InetAddresses.isInetAddress(hostname)) {
               builder.addIpAddress(hostname);
             } else {
               builder.addDnsName(hostname);

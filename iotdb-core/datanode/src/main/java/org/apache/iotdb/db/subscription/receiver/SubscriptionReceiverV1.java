@@ -660,7 +660,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
                         commitContext.getTopicName())) {
                       ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
-                          .mark(queueId, size);
+                          .mark(queueId, commitContext.getRegionId(), size);
                     } else {
                       SubscriptionPrefetchingQueueMetrics.getInstance().mark(queueId, size);
                     }

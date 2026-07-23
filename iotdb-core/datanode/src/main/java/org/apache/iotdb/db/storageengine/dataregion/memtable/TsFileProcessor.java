@@ -92,6 +92,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -104,9 +105,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -398,7 +401,13 @@ public class TsFileProcessor {
         }
       }
       long[] alignedMemIncrements = checkAlignedMemCostAndAddToTspInfoForRows(alignedList);
-      long[] nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      final long[] nonAlignedMemIncrements;
+      try {
+        nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      } catch (final WriteProcessException e) {
+        rollbackMemoryInfoIfNeeded(alignedMemIncrements);
+        throw e;
+      }
       memIncrements = new long[3];
       for (int i = 0; i < 3; i++) {
         memIncrements[i] = alignedMemIncrements[i] + nonAlignedMemIncrements[i];
@@ -491,38 +500,41 @@ public class TsFileProcessor {
       InsertTabletNode insertTabletNode,
       List<int[]> rangeList,
       TSStatus[] results,
-      boolean noFailure,
       long[] infoForMetrics)
       throws WriteProcessException {
     long memControlStartTime = System.nanoTime();
     long[] totalMemIncrements = new long[NUM_MEM_TO_ESTIMATE];
-    for (int[] range : rangeList) {
-      int start = range[0];
-      int end = range[1];
-      try {
-        long[] memIncrements = checkMemCost(insertTabletNode, start, end, noFailure, results);
+    try {
+      for (int[] range : rangeList) {
+        int start = range[0];
+        int end = range[1];
+        long[] memIncrements = checkMemCost(insertTabletNode, start, end, results);
         for (int i = 0; i < memIncrements.length; i++) {
           totalMemIncrements[i] += memIncrements[i];
         }
-      } catch (WriteProcessException e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
-        }
-        throw new WriteProcessException(e);
       }
+      return totalMemIncrements;
+    } catch (final WriteProcessException e) {
+      rollbackMemoryInfoIfNeeded(totalMemIncrements);
+      final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      for (final int[] range : rangeList) {
+        for (int i = range[0]; i < range[1]; i++) {
+          results[i] = failureStatus;
+        }
+      }
+      throw e;
+    } finally {
+      // recordScheduleMemoryBlockCost
+      infoForMetrics[1] += System.nanoTime() - memControlStartTime;
     }
-    // recordScheduleMemoryBlockCost
-    infoForMetrics[1] += System.nanoTime() - memControlStartTime;
-
-    return totalMemIncrements;
   }
 
   private long[] checkMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, boolean noFailure, TSStatus[] results)
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     long[] memIncrements;
     if (insertTabletNode.isAligned()) {
-      memIncrements = checkAlignedMemCost(insertTabletNode, start, end, noFailure, results);
+      memIncrements = checkAlignedMemCost(insertTabletNode, start, end, results);
     } else {
       memIncrements =
           checkMemCostAndAddToTspInfoForTablet(
@@ -538,7 +550,7 @@ public class TsFileProcessor {
   }
 
   private long[] checkAlignedMemCost(
-      InsertTabletNode insertTabletNode, int start, int end, boolean noFailure, TSStatus[] results)
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException {
     List<Pair<IDeviceID, Integer>> deviceEndPosList = insertTabletNode.splitByDevice(start, end);
     long[] memIncrements = new long[NUM_MEM_TO_ESTIMATE];
@@ -546,17 +558,23 @@ public class TsFileProcessor {
     for (Pair<IDeviceID, Integer> iDeviceIDIntegerPair : deviceEndPosList) {
       int splitEnd = iDeviceIDIntegerPair.getRight();
       IDeviceID deviceID = iDeviceIDIntegerPair.getLeft();
-      long[] splitMemIncrements =
-          checkAlignedMemCostAndAddToTspForTablet(
-              deviceID,
-              insertTabletNode.getMeasurements(),
-              insertTabletNode.getDataTypes(),
-              insertTabletNode.getColumns(),
-              insertTabletNode.getColumnCategories(),
-              splitStart,
-              splitEnd,
-              noFailure,
-              results);
+      final long[] splitMemIncrements;
+      try {
+        splitMemIncrements =
+            checkAlignedMemCostAndAddToTspForTablet(
+                deviceID,
+                insertTabletNode.getMeasurements(),
+                insertTabletNode.getDataTypes(),
+                insertTabletNode.getColumns(),
+                insertTabletNode.getBitMaps(),
+                insertTabletNode.getColumnCategories(),
+                splitStart,
+                splitEnd,
+                results);
+      } catch (final WriteProcessException e) {
+        rollbackMemoryInfoIfNeeded(memIncrements);
+        throw e;
+      }
       for (int i = 0; i < NUM_MEM_TO_ESTIMATE; i++) {
         memIncrements[i] += splitMemIncrements[i];
       }
@@ -586,7 +604,7 @@ public class TsFileProcessor {
     workMemTable.checkDataType(insertTabletNode);
 
     long[] memIncrements =
-        scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
+        scheduleMemoryBlock(insertTabletNode, rangeList, results, infoForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -630,7 +648,8 @@ public class TsFileProcessor {
             tsFileResource);
 
     int pointInserted = 0;
-    for (int[] rangePair : rangeList) {
+    for (int rangeIndex = 0; rangeIndex < rangeList.size(); rangeIndex++) {
+      final int[] rangePair = rangeList.get(rangeIndex);
       int start = rangePair[0];
       int end = rangePair[1];
       try {
@@ -641,14 +660,23 @@ public class TsFileProcessor {
         } else {
           pointInserted += workMemTable.insertTablet(insertTabletNode, start, end);
         }
-      } catch (WriteProcessException e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      } catch (final WriteProcessException e) {
+        final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        for (int failedRangeIndex = rangeIndex;
+            failedRangeIndex < rangeList.size();
+            failedRangeIndex++) {
+          final int[] failedRange = rangeList.get(failedRangeIndex);
+          for (int i = failedRange[0]; i < failedRange[1]; i++) {
+            results[i] = failureStatus;
+          }
         }
-        throw new WriteProcessException(e);
+        throw e;
       }
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.SUCCESS_STATUS;
+        if (results[i] == null
+            || results[i].getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          results[i] = RpcUtils.SUCCESS_STATUS;
+        }
       }
 
       final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
@@ -690,9 +718,11 @@ public class TsFileProcessor {
       Object[] values,
       TsTableColumnCategory[] columnCategories)
       throws WriteProcessException {
-    // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    // Fixed-size TVList structures and materialized value primitive arrays.
     long memTableIncrement = 0L;
+    // Variable-length payload retained by Binary values.
     long textDataIncrement = 0L;
+    // ChunkMetadata entries created for newly introduced writable fields.
     long chunkMetadataIncrement = 0L;
 
     for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
@@ -784,9 +814,11 @@ public class TsFileProcessor {
       Object[] values,
       TsTableColumnCategory[] columnCategories)
       throws WriteProcessException {
-    // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    // Fixed-size TVList structures and materialized value primitive arrays.
     long memTableIncrement = 0L;
+    // Variable-length payload retained by Binary values.
     long textDataIncrement = 0L;
+    // ChunkMetadata entries created for newly introduced writable fields.
     long chunkMetadataIncrement = 0L;
 
     IWritableMemChunk memChunk =
@@ -794,44 +826,61 @@ public class TsFileProcessor {
     if (memChunk == null) {
       TSDataType[] writableFieldDataTypes =
           getWritableFieldDataTypes(measurements, dataTypes, values, columnCategories);
-      // For new device of this mem table
-      // ChunkMetadataIncrement
+      // A new aligned device creates one value ChunkMetadata entry for each writable field.
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
               * writableFieldDataTypes.length;
+      // The first row creates the first aligned TVList block. All writable fields have a non-null
+      // value, so this includes the timestamp array, value primitive arrays, bitmap reservations,
+      // array headers, and ArrayList references for that block.
       memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(writableFieldDataTypes, null);
     } else {
       // For existed device of this mem table
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      List<TSDataType> dataTypesInTVList = new ArrayList<>();
+      int currentPointNum = alignedMemChunk.alignedListSize();
+      int currentArrayNum =
+          currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
+              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+      int targetArrayIndex = currentPointNum / PrimitiveArrayManager.ARRAY_SIZE;
+      int newColumnCount = 0;
       for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (!isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)) {
           continue;
         }
 
-        // add arrays for new columns
         if (!alignedMemChunk.containsMeasurement(measurements[i])) {
-          int currentArrayNum =
-              alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE
-                  + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE > 0
-                      ? 1
-                      : 0);
-          memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
-          dataTypesInTVList.add(dataTypes[i]);
+          // Extending a column adds one null value-list placeholder and one conservatively reserved
+          // bitmap to every historical block. No value primitive array is allocated there.
+          memTableIncrement +=
+              currentArrayNum * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
+          newColumnCount++;
+        }
+        if (!isValueArrayMaterialized(alignedMemChunk, measurements[i], targetArrayIndex)) {
+          // The non-null value materializes this column's primitive array in the target block.
+          // This cost contains the primitive-array payload and its array header.
+          memTableIncrement += AlignedTVList.primitiveArrayMemCost(dataTypes[i]);
         }
       }
-      // this insertion will result in a new array
-      if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
-        memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+      if ((currentPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+        // Starting a block allocates its timestamp array, optional sort-index array, value-list
+        // null
+        // placeholders, bitmap reservations, array headers, and ArrayList references for all
+        // existing columns. Value primitive arrays are excluded because they were charged above
+        // only for written columns.
+        memTableIncrement +=
+            alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCostWithoutPrimitiveArrays();
+        // The working TVList does not contain newly extended columns yet, so add their value-list
+        // placeholder and bitmap reservation for this new block separately.
+        memTableIncrement +=
+            (long) newColumnCount * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
       }
     }
 
     for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
-      // TEXT data mem size
       if (isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)
           && dataTypes[i].isBinary()) {
+        // Binary values keep their variable-length content outside the fixed Binary[] array.
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
@@ -842,12 +891,15 @@ public class TsFileProcessor {
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private long[] checkAlignedMemCostAndAddToTspInfoForRows(List<InsertRowNode> insertRowNodeList)
       throws WriteProcessException {
-    // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    // Fixed-size TVList structures and materialized value primitive arrays.
     long memTableIncrement = 0L;
+    // Variable-length payload retained by Binary values.
     long textDataIncrement = 0L;
+    // ChunkMetadata entries created for newly introduced writable fields.
     long chunkMetadataIncrement = 0L;
     // device -> (measurements -> datatype, adding aligned TVList size)
     Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo = new HashMap<>();
+    Map<IDeviceID, Map<String, Set<Integer>>> materializedArraysInCurrentBatch = new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
@@ -862,11 +914,13 @@ public class TsFileProcessor {
                 measurements, dataTypes, values, insertRowNode.getColumnCategories());
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
-        // For new device of this mem table
-        // ChunkMetadataIncrement
+        // The first row of a new aligned device creates one value ChunkMetadata entry for each
+        // writable field.
         chunkMetadataIncrement +=
             ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
                 * writableFieldDataTypes.length;
+        // The first row creates the first complete aligned TVList block: timestamp array, value
+        // primitive arrays for the writable fields, bitmap reservations, headers, and references.
         memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(writableFieldDataTypes, null);
         for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
           // Skip failed Measurements
@@ -875,6 +929,10 @@ public class TsFileProcessor {
             continue;
           }
           addingPointNumInfo.left.put(measurements[i], dataTypes[i]);
+          materializedArraysInCurrentBatch
+              .computeIfAbsent(deviceId, key -> new HashMap<>())
+              .computeIfAbsent(measurements[i], key -> new HashSet<>())
+              .add(0);
         }
         addingPointNumInfo.setRight(1);
 
@@ -882,9 +940,11 @@ public class TsFileProcessor {
         // For existed device of this mem table
         AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
         int currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
-        List<TSDataType> dataTypesInTVList = new ArrayList<>();
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
+        int addingPointNum = addingPointNumInfo.getRight();
+        int pointNumBeforeCurrentRow = currentChunkPointNum + addingPointNum;
+        int targetArrayIndex = pointNumBeforeCurrentRow / PrimitiveArrayManager.ARRAY_SIZE;
         for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
           // Skip failed Measurements
           if (!isWritableFieldMeasurement(
@@ -892,7 +952,6 @@ public class TsFileProcessor {
             continue;
           }
 
-          int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
           boolean currentMemChunkContainsMeasurement =
               alignedMemChunk != null && alignedMemChunk.containsMeasurement(measurements[i]);
@@ -900,27 +959,46 @@ public class TsFileProcessor {
               && !addingPointNumInfo.left.containsKey(measurements[i])) {
             addingPointNumInfo.left.put(measurements[i], dataTypes[i]);
             int currentArrayNum =
-                (currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE
-                    + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
-                            > 0
-                        ? 1
-                        : 0);
+                pointNumBeforeCurrentRow / PrimitiveArrayManager.ARRAY_SIZE
+                    + (pointNumBeforeCurrentRow % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+            // A column first seen in this batch adds a null value-list placeholder and a bitmap
+            // reservation to every block that already exists before the current row.
             memTableIncrement +=
-                currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+                currentArrayNum * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
+          }
+          Set<Integer> materializedArrayIndexes =
+              materializedArraysInCurrentBatch
+                  .computeIfAbsent(deviceId, key -> new HashMap<>())
+                  .computeIfAbsent(measurements[i], key -> new HashSet<>());
+          if (!isValueArrayMaterialized(alignedMemChunk, measurements[i], targetArrayIndex)
+              && materializedArrayIndexes.add(targetArrayIndex)) {
+            // Charge the payload and header of a value primitive array exactly once when this
+            // batch first writes a non-null value to the column in the target block.
+            memTableIncrement += AlignedTVList.primitiveArrayMemCost(dataTypes[i]);
           }
         }
-        int addingPointNum = addingPointNumInfo.right;
-        // Here currentChunkPointNum + addingPointNum >= 1
-        if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-          if (alignedMemChunk != null) {
-            dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
+        if ((pointNumBeforeCurrentRow % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+          if (alignedMemChunk == null) {
+            // A device created earlier in this batch starts another block. Charge the timestamp
+            // array, value-list placeholders, bitmap reservations, headers, and references for all
+            // columns discovered in the batch, excluding their value primitive arrays.
+            memTableIncrement +=
+                AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                    addingPointNumInfo.left.values().toArray(new TSDataType[0]), null);
+          } else {
+            // An existing aligned TVList starts another block. Charge its timestamp array, optional
+            // sort-index array, value-list placeholders, bitmap reservations, headers, and
+            // references for columns that were already present before this batch.
+            memTableIncrement +=
+                alignedMemChunk
+                    .getWorkingTVList()
+                    .alignedTvListArrayMemCostWithoutPrimitiveArrays();
+            // Columns first introduced by this batch are absent from the working TVList's type
+            // list, so add one value-list placeholder and bitmap reservation for each of them.
+            memTableIncrement +=
+                (long) addingPointNumInfo.left.size()
+                    * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
           }
-          dataTypesInTVList.addAll(addingPointNumInfo.left.values());
-          memTableIncrement +=
-              alignedMemChunk != null
-                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
-                  : AlignedTVList.alignedTvListArrayMemCost(
-                      dataTypesInTVList.toArray(new TSDataType[0]), null);
         }
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
@@ -931,8 +1009,8 @@ public class TsFileProcessor {
             measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
           continue;
         }
-        // TEXT data mem size
         if (dataTypes[i].isBinary() && values[i] != null) {
+          // Binary values keep their variable-length content outside the fixed Binary[] array.
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -974,10 +1052,10 @@ public class TsFileProcessor {
       String[] measurements,
       TSDataType[] dataTypes,
       Object[] columns,
+      BitMap[] bitMaps,
       TsTableColumnCategory[] columnCategories,
       int start,
       int end,
-      boolean noFailure,
       TSStatus[] results)
       throws WriteProcessException {
     if (start >= end) {
@@ -993,8 +1071,8 @@ public class TsFileProcessor {
         end,
         memIncrements,
         columns,
+        bitMaps,
         columnCategories,
-        noFailure,
         results);
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -1011,7 +1089,9 @@ public class TsFileProcessor {
       int end,
       long[] memIncrements,
       Object column) {
-    // memIncrements = [memTable, text, chunk metadata] respectively
+    // memIncrements[0]: fixed-size TVList structures and materialized value primitive arrays.
+    // memIncrements[1]: variable-length payload retained by Binary values.
+    // memIncrements[2]: ChunkMetadata entries for newly introduced writable fields.
 
     IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurement);
     if (memChunk == null) {
@@ -1050,20 +1130,10 @@ public class TsFileProcessor {
       int end,
       long[] memIncrements,
       Object[] columns,
+      BitMap[] bitMaps,
       TsTableColumnCategory[] columnCategories,
-      boolean noFailure,
       TSStatus[] results) {
-    int incomingPointNum;
-    if (noFailure) {
-      incomingPointNum = end - start;
-    } else {
-      incomingPointNum = end - start;
-      for (TSStatus result : results) {
-        if (result != null && result.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          incomingPointNum--;
-        }
-      }
-    }
+    int incomingPointNum = end - start;
 
     TSDataType[] writableFieldDataTypes =
         getWritableFieldDataTypes(measurementIds, dataTypes, columns, columnCategories);
@@ -1072,23 +1142,43 @@ public class TsFileProcessor {
     IWritableMemChunk memChunk =
         workMemTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
     if (memChunk == null) {
-      // new devices introduce new ChunkMetadata
-      // ChunkMetadata memory Increment
+      // A new aligned device creates one value ChunkMetadata entry for each writable field.
       memIncrements[2] +=
           writableFieldDataTypes.length
               * ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
-      // TVList memory
 
       int numArraysToAdd =
           incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
               + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+      // Each new block allocates its timestamp array, value-list null placeholders, bitmap
+      // reservations, array headers, and ArrayList references. Value primitive arrays are excluded
+      // here because all-null and failed-only column segments leave them unmaterialized.
       memIncrements[0] +=
-          numArraysToAdd * AlignedTVList.alignedTvListArrayMemCost(writableFieldDataTypes, null);
+          numArraysToAdd
+              * AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                  writableFieldDataTypes, null);
+      // Add the payload and header of a value primitive array only for a column/block segment that
+      // contains at least one successful non-null value.
+      memIncrements[0] +=
+          calculateTabletPrimitiveArrayMemCost(
+              null,
+              measurementIds,
+              dataTypes,
+              columns,
+              bitMaps,
+              columnCategories,
+              results,
+              start,
+              end,
+              0);
     } else {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      List<TSDataType> dataTypesInTVList = new ArrayList<>();
+      List<TSDataType> newDataTypes = new ArrayList<>();
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
+      int currentArrayCnt =
+          currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
+              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
         if (!isWritableFieldMeasurement(measurementIds, dataTypes, columns, columnCategories, i)) {
@@ -1096,29 +1186,52 @@ public class TsFileProcessor {
         }
 
         if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
-          // add a new column in the TVList, the new column should be as long as existing ones
+          // A new column adds one null value-list placeholder and one conservatively reserved
+          // bitmap to every historical block. It does not materialize value primitive arrays in
+          // those blocks.
           memIncrements[0] +=
-              (currentPointNum / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                  * AlignedTVList.valueListArrayMemCost(dataType);
-          dataTypesInTVList.add(dataType);
+              currentArrayCnt * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
+          newDataTypes.add(dataType);
         }
       }
 
       // calculate how many new arrays will be added after this insertion
-      int currentArrayCnt =
-          currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
-              + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       int newArrayCnt =
           newPointNum / PrimitiveArrayManager.ARRAY_SIZE
               + (newPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       long acquireArray = newArrayCnt - currentArrayCnt;
 
       if (acquireArray != 0) {
-        // memory of extending the TVList
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
+        // Each acquired block adds a timestamp array, optional sort-index array, value-list null
+        // placeholders, bitmap reservations, array headers, and ArrayList references for columns
+        // already present in the working TVList. Value primitive arrays are charged separately
+        // below.
         memIncrements[0] +=
-            acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+            acquireArray
+                * alignedMemChunk
+                    .getWorkingTVList()
+                    .alignedTvListArrayMemCostWithoutPrimitiveArrays();
+        for (TSDataType ignored : newDataTypes) {
+          // Newly extended columns are not included in the working TVList's per-block cost yet, so
+          // add their value-list placeholder and bitmap reservation to every acquired block.
+          memIncrements[0] +=
+              acquireArray * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray();
+        }
       }
+      // Charge the payload and header of each value primitive array that this tablet actually
+      // materializes. Arrays already present in the working TVList are not charged again.
+      memIncrements[0] +=
+          calculateTabletPrimitiveArrayMemCost(
+              alignedMemChunk,
+              measurementIds,
+              dataTypes,
+              columns,
+              bitMaps,
+              columnCategories,
+              results,
+              start,
+              end,
+              currentPointNum);
     }
 
     // flexible-length data size
@@ -1130,9 +1243,90 @@ public class TsFileProcessor {
 
       if (dataType.isBinary()) {
         Binary[] binColumn = (Binary[]) columns[i];
+        // Binary values keep their variable-length content outside the fixed Binary[] arrays.
+        // Failed rows are excluded because their values are not inserted into the memtable.
         memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, results);
       }
     }
+  }
+
+  /**
+   * Calculates only the value primitive arrays that an aligned tablet will materialize. The
+   * per-block timestamp arrays, value-list placeholders, bitmap reservations, headers, and
+   * references are charged by the caller. A column/block pair is charged only when the tablet has
+   * at least one successful non-null value in that block and the working TVList has not already
+   * allocated its value array.
+   */
+  private static long calculateTabletPrimitiveArrayMemCost(
+      AlignedWritableMemChunk alignedMemChunk,
+      String[] measurementIds,
+      TSDataType[] dataTypes,
+      Object[] columns,
+      BitMap[] bitMaps,
+      TsTableColumnCategory[] columnCategories,
+      TSStatus[] results,
+      int start,
+      int end,
+      int currentPointNum) {
+    long size = 0;
+    for (int column = 0; dataTypes != null && column < dataTypes.length; column++) {
+      if (!isWritableFieldMeasurement(
+          measurementIds, dataTypes, columns, columnCategories, column)) {
+        continue;
+      }
+      BitMap bitMap = bitMaps == null || column >= bitMaps.length ? null : bitMaps[column];
+      int inputIndex = start;
+      int targetArrayIndex = currentPointNum / PrimitiveArrayManager.ARRAY_SIZE;
+      int targetElementIndex = currentPointNum % PrimitiveArrayManager.ARRAY_SIZE;
+      while (inputIndex < end) {
+        // Map the next tablet segment onto one target TVList block. The first segment may fill the
+        // unused tail of the current block; subsequent segments start at block offset zero.
+        int length =
+            Math.min(end - inputIndex, PrimitiveArrayManager.ARRAY_SIZE - targetElementIndex);
+        if (containsNonNullValue(bitMap, results, inputIndex, length)
+            && !isValueArrayMaterialized(
+                alignedMemChunk, measurementIds[column], targetArrayIndex)) {
+          // One successful non-null write materializes the whole fixed-size value array, whose
+          // memory consists of the primitive payload and the array header.
+          size += AlignedTVList.primitiveArrayMemCost(dataTypes[column]);
+        }
+        inputIndex += length;
+        targetArrayIndex++;
+        targetElementIndex = 0;
+      }
+    }
+    return size;
+  }
+
+  private static boolean isValueArrayMaterialized(
+      AlignedWritableMemChunk alignedMemChunk, String measurement, int arrayIndex) {
+    if (alignedMemChunk == null || !alignedMemChunk.containsMeasurement(measurement)) {
+      return false;
+    }
+    List<Object> valueArrays =
+        alignedMemChunk
+            .getWorkingTVList()
+            .getValues()
+            .get(alignedMemChunk.getMeasurementIndex(measurement));
+    return arrayIndex < valueArrays.size() && valueArrays.get(arrayIndex) != null;
+  }
+
+  private static boolean containsNonNullValue(
+      BitMap bitMap, TSStatus[] results, int start, int length) {
+    if (bitMap == null && results == null) {
+      return true;
+    }
+    for (int i = start; i < start + length; i++) {
+      boolean isNull = bitMap != null && bitMap.isMarked(i);
+      boolean isFailed =
+          results != null
+              && results[i] != null
+              && results[i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      if (!isNull && !isFailed) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static TSDataType[] getWritableFieldDataTypes(
@@ -1229,6 +1423,15 @@ public class TsFileProcessor {
     SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
+  }
+
+  private void rollbackMemoryInfoIfNeeded(final long[] memIncrements) {
+    for (final long memIncrement : memIncrements) {
+      if (memIncrement != 0) {
+        rollbackMemoryInfo(memIncrements);
+        return;
+      }
+    }
   }
 
   /**

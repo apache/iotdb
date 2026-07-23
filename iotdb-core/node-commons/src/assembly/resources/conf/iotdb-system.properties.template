@@ -36,7 +36,7 @@ cluster_name=defaultCluster
 # For other ConfigNodes that to join the cluster, cn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this ConfigNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 cn_seed_config_node=127.0.0.1:10710
@@ -44,7 +44,7 @@ cn_seed_config_node=127.0.0.1:10710
 # dn_seed_config_node points to any running ConfigNode's cn_internal_address:cn_internal_port.
 # Note: After this DataNode successfully joins the cluster for the first time, this parameter is no longer used.
 # Each node automatically maintains the list of ConfigNodes and traverses connections when restarting.
-# Format: address:port   e.g. 127.0.0.1:10710
+# Format: address:port or [ipv6]:port   e.g. 127.0.0.1:10710 or [::1]:10710
 # effectiveMode: first_start
 # Datatype: String
 dn_seed_config_node=127.0.0.1:10710
@@ -54,7 +54,7 @@ dn_seed_config_node=127.0.0.1:10710
 ####################
 
 # Used for RPC communication inside cluster.
-# Could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 cn_internal_address=127.0.0.1
@@ -70,7 +70,7 @@ cn_internal_port=10710
 cn_consensus_port=10720
 
 # Used for connection of IoTDB native clients(Session)
-# Could set 127.0.0.1(for local test) or ipv4 address
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: restart
 # Datatype: String
 dn_rpc_address=127.0.0.1
@@ -82,7 +82,7 @@ dn_rpc_address=127.0.0.1
 dn_rpc_port=6667
 
 # Used for communication inside cluster.
-# could set 127.0.0.1(for local test) or ipv4 address.
+# Could set 127.0.0.1(for local test), ipv4/ipv6 address, or hostname.
 # effectiveMode: first_start
 # Datatype: String
 dn_internal_address=127.0.0.1
@@ -607,10 +607,37 @@ rest_service_port=18080
 # Datatype: boolean
 enable_swagger=false
 
-# the default row limit to a REST query response when the rowSize parameter is not given in request
-# effectiveMode: restart
+# The maximum row limit for REST and Grafana query responses.
+# The request rowLimit/row_limit value cannot exceed this limit.
+# A non-positive value is invalid and falls back to the default (10000); it no longer means unlimited.
+# effectiveMode: hot_reload
 # Datatype: int
 rest_query_default_row_size_limit=10000
+
+# Maximum REST request body size in bytes. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_request_body_size_in_bytes=16777216
+
+# Maximum total in-flight REST request body size in bytes across concurrent requests. When set to 0, use the same budget as AutoResizingBuffer memory control. Set to a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_total_concurrent_request_body_size_in_bytes=0
+
+# Maximum rows accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_rows=100000
+
+# Maximum columns accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: int
+rest_max_insert_columns=1024
+
+# Maximum values accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: hot_reload
+# Datatype: long
+rest_max_insert_values=1000000
 
 # Is client authentication required
 # effectiveMode: restart
@@ -752,6 +779,23 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# A DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, templates, TTL,
+# permissions, ...) if it has not received a ConfigNode heartbeat within this duration, so a
+# partitioned DataNode stops trusting stale caches. Kept aligned with
+# failure_detector_fixed_threshold_in_ms so a DataNode fences itself around the same time the
+# cluster would consider it down. The ConfigNode also uses this to decide how long it must wait
+# before treating an unreachable DataNode as safely fenced.
+# effectiveMode: restart
+# Datatype: long
+metadata_lease_fence_ms=20000
+
+# Interval at which a DataNode checks whether its metadata lease has expired and self-fences local
+# metadata caches. Keep this value smaller than the ConfigNode-side safe-fence wait so the DataNode
+# can finish self-isolation before the ConfigNode treats it as fenced.
+# effectiveMode: restart
+# Datatype: long
+check_dn_lease_status_interval_ms=500
+
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
@@ -808,7 +852,8 @@ partition_table_recover_max_read_mb_per_sec=10
 datanode_memory_proportion=3:3:1:1:1:1
 
 # ConfigNode Memory Allocation Ratio: Pipe and Free Memory.
-# The parameter form is a:b, where a and b are integers. Currently, only PipePeriodicalLogReducer is connected to Pipe memory on ConfigNode.
+# The parameter form is a:b, where a and b are integers. Currently, ConfigNode Pipe uses
+# this memory for log reducer and receiver temporary buffers.
 # effectiveMode: restart
 confignode_memory_proportion=1:9
 
@@ -1418,6 +1463,14 @@ recovery_log_interval_in_ms=5000
 # Datatype: boolean
 enable_tsfile_validation=false
 
+# Whether to enable the TopK runtime filter optimization for table-model
+# "ORDER BY time LIMIT k" queries. When enabled, the TopK operator feeds the current
+# heap-top time back to table scans so scans can skip files/rows that cannot enter the
+# final result. Set to false to fall back to the original execution path without restart.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_topk_runtime_filter=true
+
 # Default tier TTL. When the survival time of the data exceeds the threshold, it will be migrated to the next tier.
 # Negative value means the tier TTL is unlimited.
 # effectiveMode: restart
@@ -1730,11 +1783,19 @@ data_region_iot_max_pending_batches_num = 5
 # Datatype: double
 data_region_iot_max_memory_ratio_for_queue = 0.6
 
-# The maximum transit size in byte per second for region migration
+# The maximum size in byte per second for region migration transfer.
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
+
+# The maximum estimated remove cost in byte per second for region migration file cleanup.
+# Each regular file remove costs 64 KiB, and each directory remove costs 4 KiB.
+# The default value equals about 256 regular file removes per second.
+# values less than or equal to 0 means no limit
+# effectiveMode: hot_reload
+# Datatype: long
+region_migration_file_remove_speed_limit_bytes_per_second = 16777216
 
 # The minimum interval (in ms) between two per-file progress logs while transmitting a snapshot in
 # IoTConsensus. A snapshot may contain a huge number of files, so logging one line per file is

@@ -51,4 +51,50 @@ public class IoTDBConfigRegionSinkTest {
       Assert.fail();
     }
   }
+
+  @Test
+  public void testIoTDBConfigRegionSinkAcceptsMutualSslParameters() {
+    try (IoTDBConfigRegionSink connector = new IoTDBConfigRegionSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, "keypwd");
+                    }
+                  })));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testIoTDBConfigRegionSinkRejectsIncompleteKeyStoreParameters() {
+    try (IoTDBConfigRegionSink connector = new IoTDBConfigRegionSink()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSinkConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName());
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, "truststore");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, "trustpwd");
+                      put(PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, "keystore");
+                    }
+                  })));
+      Assert.fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
+    }
+  }
 }

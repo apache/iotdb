@@ -26,17 +26,20 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
+import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -705,6 +708,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
 
+    conf.setEnableTopKRuntimeFilter(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topk_runtime_filter", String.valueOf(conf.isEnableTopKRuntimeFilter()))));
+
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1004,6 +1012,12 @@ public class IoTDBDescriptor {
                 "device_schema_request_cache_wait_time_ms",
                 String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
 
+    conf.setCheckDnLeaseStatusIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "check_dn_lease_status_interval_ms",
+                String.valueOf(conf.getCheckDnLeaseStatusIntervalMs()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1294,6 +1308,16 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    RegionMigrationRateLimiter.getInstance()
+        .init(conf.getRegionMigrationSpeedLimitBytesPerSecond());
+    conf.setRegionMigrationFileRemoveSpeedLimitBytesPerSecond(
+        Long.parseLong(
+            properties.getProperty(
+                "region_migration_file_remove_speed_limit_bytes_per_second",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "region_migration_file_remove_speed_limit_bytes_per_second"))));
+    RegionMigrationFileRemoveRateLimiter.getInstance()
+        .init(conf.getRegionMigrationFileRemoveSpeedLimitBytesPerSecond());
     conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
         Long.parseLong(
             properties.getProperty(
@@ -2198,6 +2222,13 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_tsfile_validation"))));
 
+      conf.setEnableTopKRuntimeFilter(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_topk_runtime_filter",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "enable_topk_runtime_filter"))));
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -2289,6 +2320,9 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update REST runtime limit config
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
+
       // update cache_eviction_memory_computation_threshold
       conf.setCacheEvictionMemoryComputationThreshold(
           Integer.parseInt(
@@ -2350,6 +2384,7 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.updateAppliedProperties(properties, true);
       // Overwrite the keys whose setters above may have rewritten, so `show configuration`
       // displays the effective values rather than the raw file values.
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
       overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
@@ -2731,7 +2766,7 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    LoggerPeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

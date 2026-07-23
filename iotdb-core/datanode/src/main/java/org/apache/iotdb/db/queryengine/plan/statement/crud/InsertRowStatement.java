@@ -259,14 +259,16 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw new QueryProcessException(
-              new PathNotExistException(
-                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+              createPathNotExistException(
+                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i],
+                  getDataType(i)));
         } else {
           markFailedMeasurement(
               i,
               new QueryProcessException(
-                  new PathNotExistException(
-                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
+                  createPathNotExistException(
+                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i],
+                      getDataType(i))));
         }
         continue;
       }

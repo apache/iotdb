@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,6 +52,14 @@ public class TopKNode extends MultiChildProcessNode {
 
   private final boolean childrenDataInOrder;
 
+  private final transient boolean topKRuntimeFilterAscending;
+
+  // Root TopK plan node id under which the shared runtime filter is registered/looked up; a
+  // non-null value also marks this TopK as a runtime filter producer (set during distributed
+  // optimize). All per-region TopK producers and their scan consumers within the same query use
+  // this id so that fragments of the same query on one DataNode share a single filter instance.
+  @Nullable private String topKRuntimeFilterSourceId;
+
   public TopKNode(
       PlanNodeId id,
       OrderingScheme scheme,
@@ -61,6 +71,7 @@ public class TopKNode extends MultiChildProcessNode {
     this.count = count;
     this.outputSymbols = outputSymbols;
     this.childrenDataInOrder = childrenDataInOrder;
+    this.topKRuntimeFilterAscending = computeTopKRuntimeFilterAscending(scheme);
   }
 
   public TopKNode(
@@ -75,11 +86,20 @@ public class TopKNode extends MultiChildProcessNode {
     this.count = count;
     this.outputSymbols = outputSymbols;
     this.childrenDataInOrder = childrenDataInOrder;
+    this.topKRuntimeFilterAscending = computeTopKRuntimeFilterAscending(scheme);
+  }
+
+  private static boolean computeTopKRuntimeFilterAscending(OrderingScheme orderingScheme) {
+    Symbol orderBy = orderingScheme.getOrderBy().get(0);
+    return orderingScheme.getOrdering(orderBy).isAscending();
   }
 
   @Override
   public PlanNode clone() {
-    return new TopKNode(getPlanNodeId(), orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode cloned =
+        new TopKNode(getPlanNodeId(), orderingScheme, count, outputSymbols, childrenDataInOrder);
+    cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return cloned;
   }
 
   @Override
@@ -102,6 +122,7 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, byteBuffer);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, byteBuffer);
+    ReadWriteIOUtils.write(topKRuntimeFilterSourceId, byteBuffer);
   }
 
   @Override
@@ -114,6 +135,7 @@ public class TopKNode extends MultiChildProcessNode {
       Symbol.serialize(symbol, stream);
     }
     ReadWriteIOUtils.write(childrenDataInOrder, stream);
+    ReadWriteIOUtils.write(topKRuntimeFilterSourceId, stream);
   }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
@@ -125,8 +147,12 @@ public class TopKNode extends MultiChildProcessNode {
       outputSymbols.add(Symbol.deserialize(byteBuffer));
     }
     boolean childrenDataInOrder = ReadWriteIOUtils.readBool(byteBuffer);
+    String topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode topKNode =
+        new TopKNode(planNodeId, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    topKNode.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return topKNode;
   }
 
   @Override
@@ -139,7 +165,10 @@ public class TopKNode extends MultiChildProcessNode {
     checkArgument(
         children.size() == newChildren.size(),
         QueryMessages.EXCEPTION_WRONG_NUMBER_OF_NEW_CHILDREN_817AF800);
-    return new TopKNode(id, newChildren, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    TopKNode topKNode =
+        new TopKNode(id, newChildren, orderingScheme, count, outputSymbols, childrenDataInOrder);
+    topKNode.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return topKNode;
   }
 
   public OrderingScheme getOrderingScheme() {
@@ -154,6 +183,20 @@ public class TopKNode extends MultiChildProcessNode {
     return childrenDataInOrder;
   }
 
+  public boolean isTopKRuntimeFilterAscending() {
+    return topKRuntimeFilterAscending;
+  }
+
+  /** A non-null source id marks this TopK as a runtime filter producer. */
+  @Nullable
+  public String getTopKRuntimeFilterSourceId() {
+    return topKRuntimeFilterSourceId;
+  }
+
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
+    this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -162,12 +205,14 @@ public class TopKNode extends MultiChildProcessNode {
     TopKNode sortNode = (TopKNode) o;
     return Objects.equal(orderingScheme, sortNode.orderingScheme)
         && Objects.equal(outputSymbols, sortNode.outputSymbols)
-        && Objects.equal(count, sortNode.count);
+        && Objects.equal(count, sortNode.count)
+        && Objects.equal(topKRuntimeFilterSourceId, sortNode.topKRuntimeFilterSourceId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), orderingScheme, outputSymbols, count);
+    return Objects.hashCode(
+        super.hashCode(), orderingScheme, outputSymbols, count, topKRuntimeFilterSourceId);
   }
 
   @Override

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -143,6 +144,10 @@ public class PartitionCache {
     this.cacheMetrics = new CacheMetrics();
   }
 
+  protected void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced();
+  }
+
   // region database cache
 
   /**
@@ -158,6 +163,7 @@ public class PartitionCache {
       final boolean tryToFetch,
       final boolean isAutoCreate,
       final String userName) {
+    failIfMetadataLeaseFenced();
     final DatabaseCacheResult<String, List<IDeviceID>> result =
         new DatabaseCacheResult<String, List<IDeviceID>>() {
           @Override
@@ -182,6 +188,7 @@ public class PartitionCache {
       final boolean tryToFetch,
       final boolean isAutoCreate,
       final String userName) {
+    failIfMetadataLeaseFenced();
     final DatabaseCacheResult<IDeviceID, String> result =
         new DatabaseCacheResult<IDeviceID, String>() {
           @Override
@@ -527,6 +534,7 @@ public class PartitionCache {
 
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
+    failIfMetadataLeaseFenced();
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
@@ -591,6 +599,7 @@ public class PartitionCache {
     // try to get regionReplicaSet from cache
     regionReplicaSetLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       result = getRegionReplicaSetInternal(consensusGroupIds);
     } finally {
       regionReplicaSetLock.readLock().unlock();
@@ -701,6 +710,7 @@ public class PartitionCache {
       final Map<String, List<IDeviceID>> databaseToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       if (databaseToDeviceMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
@@ -773,6 +783,7 @@ public class PartitionCache {
   public SchemaPartition getSchemaPartition(String database) {
     schemaPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(database);
       if (null == schemaPartitionTable) {
         // if database not find, then return cache miss.
@@ -862,6 +873,7 @@ public class PartitionCache {
       Map<String, List<DataPartitionQueryParam>> databaseToQueryParamsMap) {
     dataPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       if (databaseToQueryParamsMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
         return null;

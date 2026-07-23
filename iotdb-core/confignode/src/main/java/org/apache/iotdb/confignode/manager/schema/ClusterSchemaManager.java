@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -97,6 +98,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.schema.ConfigSchemaStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
@@ -149,10 +151,10 @@ public class ClusterSchemaManager {
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
-      "Failed in the read API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public ClusterSchemaManager(
       final IManager configManager,
@@ -206,6 +208,10 @@ public class ClusterSchemaManager {
           schema.getName(),
           schema.getDataReplicationFactor(),
           schema.getSchemaReplicationFactor());
+      PartitionMetrics.bindDatabaseTableMetrics(
+          MetricService.getInstance(),
+          clusterSchemaInfo.getConfigSchemaStatistics(),
+          schema.getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (final ConsensusException e) {
@@ -602,7 +608,9 @@ public class ClusterSchemaManager {
                 ? dataNodeNum
                 : (CONF.getDataRegionPerDataNode() == 0 ? totalCpuCoreNum : dataNodeNum),
             databaseNum,
-            databaseSchema.getSchemaReplicationFactor(),
+            (consensusGroupType == TConsensusGroupType.SchemaRegion)
+                ? databaseSchema.getSchemaReplicationFactor()
+                : databaseSchema.getDataReplicationFactor(),
             allocatedRegionGroupCount);
     LOGGER.info(
         (consensusGroupType == TConsensusGroupType.SchemaRegion)
@@ -641,6 +649,10 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getDatabaseNames(isTableModel).stream()
         .filter(this::isDatabaseExist)
         .collect(Collectors.toList());
+  }
+
+  public ConfigSchemaStatistics getConfigSchemaStatistics() {
+    return clusterSchemaInfo.getConfigSchemaStatistics();
   }
 
   /**
@@ -1398,10 +1410,13 @@ public class ClusterSchemaManager {
     }
   }
 
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, Set<TableNodeStatus> tableNodeStatus) {
     try {
       return ((FetchTableResp)
-              configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))
+              configManager
+                  .getConsensusManager()
+                  .read(new FetchTablePlan(fetchTableMap, tableNodeStatus)))
           .convertToTFetchTableResp();
     } catch (final ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
@@ -1420,23 +1435,42 @@ public class ClusterSchemaManager {
     final Map<String, List<String>> alteringTables =
         configManager.getProcedureManager().getAllExecutingTables();
     final Map<String, List<TsTable>> usingTableMap = clusterSchemaInfo.getAllUsingTables();
-    final Map<String, List<TsTable>> preCreateTableMap = clusterSchemaInfo.getAllPreCreateTables();
-    alteringTables.forEach(
-        (k, v) -> {
-          final List<TsTable> preCreateList =
-              preCreateTableMap.computeIfAbsent(k, database -> new ArrayList<>());
-          if (Objects.isNull(v)) {
-            usingTableMap
-                .remove(k)
-                .forEach(
-                    table -> preCreateList.add(new NonCommittableTsTable(table.getTableName())));
-          } else {
-            preCreateList.addAll(
-                v.stream().map(NonCommittableTsTable::new).collect(Collectors.toList()));
-          }
-        });
-    return TsTableInternalRPCUtil.serializeTableInitializationInfo(
-        usingTableMap, preCreateTableMap);
+    final Map<String, List<TsTable>> allPreDeleteTables = clusterSchemaInfo.getAllPreDeleteTables();
+    // the specialStatusMap will hold the PreCreate/PreDelete/altering table(NonCommittableTsTable)
+    final Map<String, List<TsTable>> specialStatusMap = clusterSchemaInfo.getAllPreCreateTables();
+
+    for (Map.Entry<String, List<String>> databaseEntry : alteringTables.entrySet()) {
+      String databaseName = databaseEntry.getKey();
+      List<String> alteringTableList = databaseEntry.getValue();
+      List<TsTable> speicalMapList =
+          specialStatusMap.computeIfAbsent(databaseName, name -> new ArrayList<>());
+
+      // 1. if the alteringTableList is null, means that executing the drop database is going on
+      if (Objects.isNull(alteringTableList)) {
+        List<TsTable> relatedTables = usingTableMap.remove(databaseName);
+        relatedTables.forEach(
+            table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+      } else {
+        // 2. if the table has existed, the procedure is modifying it.
+        // so the usingTableMap and specialStatusMap both hold it
+        speicalMapList.addAll(
+            alteringTableList.stream()
+                .map(NonCommittableTsTable::new)
+                .collect(Collectors.toList()));
+      }
+    }
+    // 3. deal with the pre_delete status table, add the PreDeleteTsTable table
+    for (Map.Entry<String, List<TsTable>> entry : allPreDeleteTables.entrySet()) {
+      String databaseName = entry.getKey();
+      List<TsTable> preDeleteTables = entry.getValue();
+      specialStatusMap
+          .computeIfAbsent(databaseName, name -> new ArrayList<>())
+          .addAll(
+              preDeleteTables.stream()
+                  .map(tsTable -> new PreDeleteTsTable(tsTable.getTableName()))
+                  .collect(Collectors.toList()));
+    }
+    return TsTableInternalRPCUtil.serializeTableInitializationInfo(usingTableMap, specialStatusMap);
   }
 
   // endregion
