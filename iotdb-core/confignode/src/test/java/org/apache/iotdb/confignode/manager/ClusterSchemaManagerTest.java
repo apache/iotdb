@@ -24,8 +24,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager;
-import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager.DatabaseLock;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLockQueue;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLockQueue.DatabaseLock;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,8 +62,7 @@ public class ClusterSchemaManagerTest {
     final String database = "root.sg";
     final IManager configManager = Mockito.mock(IManager.class);
     final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
-    final DatabaseLifecycleLockManager lockManager =
-        new DatabaseLifecycleLockManager(new SimpleProcedureScheduler());
+    final DatabaseLockQueue lockQueue = new DatabaseLockQueue(new SimpleProcedureScheduler());
     final CountDownLatch admissionAttempted = new CountDownLatch(1);
     final AtomicBoolean unfinishedProcedure = new AtomicBoolean(false);
     Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
@@ -71,7 +70,7 @@ public class ClusterSchemaManagerTest {
         .thenAnswer(
             ignored -> {
               admissionAttempted.countDown();
-              return lockManager.acquireLocks(Collections.singleton(database));
+              return lockQueue.acquireLocks(Collections.singleton(database));
             });
     Mockito.when(procedureManager.hasUnfinishedDatabaseLifecycleProcedure(database))
         .thenAnswer(ignored -> unfinishedProcedure.get());
@@ -87,7 +86,7 @@ public class ClusterSchemaManagerTest {
     final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     final Future<TSStatus> statusFuture;
-    try (final DatabaseLock ignored = lockManager.acquireLocks(Collections.singleton(database))) {
+    try (final DatabaseLock ignored = lockQueue.acquireLocks(Collections.singleton(database))) {
       statusFuture = executor.submit(() -> schemaManager.setDatabase(plan, false));
       Assert.assertTrue(admissionAttempted.await(10, TimeUnit.SECONDS));
       unfinishedProcedure.set(true);

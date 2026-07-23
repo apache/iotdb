@@ -134,7 +134,7 @@ import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProc
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
-import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager.DatabaseLock;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLockQueue.DatabaseLock;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
@@ -336,7 +336,7 @@ public class ProcedureManager {
       final DatabaseLock databaseLock;
       try {
         databaseLock =
-            env.getDatabaseLifecycleLockManager()
+            env.getDatabaseLockQueue()
                 .tryAcquireLocks(
                     Collections.singleton(databaseSchema.getName()),
                     remainingNanos,
@@ -1586,7 +1586,7 @@ public class ProcedureManager {
   }
 
   public DatabaseLock acquireDatabaseLifecycleLocks(final Set<String> databases) {
-    return env.getDatabaseLifecycleLockManager().acquireLocks(databases);
+    return env.getDatabaseLockQueue().acquireLocks(databases);
   }
 
   public boolean hasUnfinishedDatabaseLifecycleProcedure(final String database) {

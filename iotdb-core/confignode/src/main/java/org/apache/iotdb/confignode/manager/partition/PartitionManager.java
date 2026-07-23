@@ -88,7 +88,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager.DatabaseLock;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLockQueue.DatabaseLock;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -123,6 +123,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -749,29 +750,39 @@ public class PartitionManager {
     return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType);
   }
 
-  private TSStatus generateAndAllocateRegionGroups(
+  TSStatus generateAndAllocateRegionGroups(
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
-    if (!allotmentMap.isEmpty()) {
-      final CreateRegionGroupsProcedure procedure;
-      // Cover both ID allocation and submission with the same per-database locks used by database
-      // creation and deletion. A delayed plan therefore cannot become invisible between deleting
-      // and recreating a database with the same name.
+    final List<CreateRegionGroupsProcedure> procedures = new ArrayList<>(allotmentMap.size());
+    for (final Map.Entry<String, Integer> entry : new TreeMap<>(allotmentMap).entrySet()) {
+      final String database = entry.getKey();
+      // Cover both ID allocation and submission with the same database lock used by database
+      // creation and deletion. Submit every database before waiting so each Procedure can make
+      // progress independently of slow or deleting databases.
       try (final DatabaseLock ignored =
-          getProcedureManager().acquireDatabaseLifecycleLocks(allotmentMap.keySet())) {
+          getProcedureManager().acquireDatabaseLifecycleLock(database)) {
         final CreateRegionGroupsPlan createRegionGroupsPlan =
-            getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
+            getLoadManager()
+                .allocateRegionGroups(
+                    Collections.singletonMap(database, entry.getValue()), consensusGroupType);
         LOGGER.info(
             ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
         createRegionGroupsPlan.planLog(LOGGER);
-        procedure =
+        procedures.add(
             getProcedureManager()
-                .submitCreateRegionGroups(consensusGroupType, createRegionGroupsPlan);
+                .submitCreateRegionGroups(consensusGroupType, createRegionGroupsPlan));
       }
-      return getProcedureManager().waitCreateRegionGroups(procedure);
-    } else {
-      return RpcUtils.SUCCESS_STATUS;
     }
+
+    TSStatus result = RpcUtils.SUCCESS_STATUS;
+    for (final CreateRegionGroupsProcedure procedure : procedures) {
+      final TSStatus status = getProcedureManager().waitCreateRegionGroups(procedure);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        result = status;
+      }
+    }
+    return result;
   }
 
   /**

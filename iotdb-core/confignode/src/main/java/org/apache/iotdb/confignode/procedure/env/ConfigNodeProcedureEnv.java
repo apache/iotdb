@@ -56,7 +56,7 @@ import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLifecycleLockManager;
+import org.apache.iotdb.confignode.procedure.scheduler.DatabaseLockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -117,7 +117,7 @@ public class ConfigNodeProcedureEnv {
   /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
 
-  private final DatabaseLifecycleLockManager databaseLifecycleLockManager;
+  private final DatabaseLockQueue databaseLockQueue;
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
@@ -136,7 +136,7 @@ public class ConfigNodeProcedureEnv {
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.databaseLifecycleLockManager = new DatabaseLifecycleLockManager(scheduler);
+    this.databaseLockQueue = new DatabaseLockQueue(scheduler);
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
@@ -1154,19 +1154,19 @@ public class ConfigNodeProcedureEnv {
    * @return the first database whose lock is unavailable, or null when all locks are acquired
    */
   public String tryLockDatabases(final Procedure<?> procedure, final Set<String> databaseNames) {
-    return databaseLifecycleLockManager.tryLock(procedure, databaseNames);
+    return databaseLockQueue.tryLock(procedure, databaseNames);
   }
 
   public void waitDatabaseLock(final Procedure<?> procedure, final String databaseName) {
-    databaseLifecycleLockManager.waitProcedure(procedure, databaseName);
+    databaseLockQueue.waitProcedure(procedure, databaseName);
   }
 
   public void releaseDatabaseLocks(final Procedure<?> procedure, final Set<String> databaseNames) {
-    databaseLifecycleLockManager.releaseLocks(procedure, databaseNames);
+    databaseLockQueue.releaseLocks(procedure, databaseNames);
   }
 
-  public DatabaseLifecycleLockManager getDatabaseLifecycleLockManager() {
-    return databaseLifecycleLockManager;
+  public DatabaseLockQueue getDatabaseLockQueue() {
+    return databaseLockQueue;
   }
 
   public ProcedureScheduler getScheduler() {

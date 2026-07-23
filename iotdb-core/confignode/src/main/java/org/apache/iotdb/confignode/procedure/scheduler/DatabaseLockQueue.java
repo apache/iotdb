@@ -40,14 +40,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * database deletion cannot bypass one another. Procedure ownership is identified by procedure id
  * rather than worker thread because a procedure can resume on a different executor thread.
  */
-public class DatabaseLifecycleLockManager {
+public class DatabaseLockQueue {
 
   private final ProcedureScheduler scheduler;
   private final ReentrantLock stateLock = new ReentrantLock(true);
   private final Condition lockReleased = stateLock.newCondition();
   private final Map<String, DatabaseLockState> lockStateMap = new HashMap<>();
 
-  public DatabaseLifecycleLockManager(final ProcedureScheduler scheduler) {
+  public DatabaseLockQueue(final ProcedureScheduler scheduler) {
     this.scheduler = scheduler;
   }
 
@@ -212,16 +212,14 @@ public class DatabaseLifecycleLockManager {
   }
 
   public static final class DatabaseLock implements AutoCloseable {
-    private final DatabaseLifecycleLockManager lockManager;
+    private final DatabaseLockQueue lockQueue;
     private final List<String> databaseNames;
     private final Thread owner;
     private boolean closed;
 
     private DatabaseLock(
-        final DatabaseLifecycleLockManager lockManager,
-        final List<String> databaseNames,
-        final Thread owner) {
-      this.lockManager = lockManager;
+        final DatabaseLockQueue lockQueue, final List<String> databaseNames, final Thread owner) {
+      this.lockQueue = lockQueue;
       this.databaseNames = databaseNames;
       this.owner = owner;
     }
@@ -230,7 +228,7 @@ public class DatabaseLifecycleLockManager {
     public void close() {
       if (!closed) {
         closed = true;
-        lockManager.releaseRequestLocks(databaseNames, owner);
+        lockQueue.releaseRequestLocks(databaseNames, owner);
       }
     }
   }
