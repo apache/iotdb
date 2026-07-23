@@ -160,12 +160,15 @@ public class ActiveLoadTsFileLoader {
   public void stop() {
     final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
     if (executor == null) {
+      pendingQueue.clearPending();
       return;
     }
 
-    executor.shutdownNow();
+    boolean isTerminated = false;
     try {
-      if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+      executor.shutdownNow();
+      isTerminated = executor.awaitTermination(30, TimeUnit.SECONDS);
+      if (!isTerminated) {
         LOGGER.warn(
             StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
             ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
@@ -175,6 +178,12 @@ public class ActiveLoadTsFileLoader {
           StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
           ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
       Thread.currentThread().interrupt();
+    } finally {
+      if (isTerminated) {
+        pendingQueue.clear();
+      } else {
+        pendingQueue.clearPending();
+      }
     }
   }
 
@@ -213,6 +222,7 @@ public class ActiveLoadTsFileLoader {
           handleOtherException(loadEntry.get(), e);
         } finally {
           pendingQueue.removeFromLoading(loadEntry.get().getFile());
+          cleanupEmptyDirectories(loadEntry.get());
         }
       }
     } finally {
@@ -361,6 +371,32 @@ public class ActiveLoadTsFileLoader {
           });
     } catch (final IOException e) {
       LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
+    }
+  }
+
+  private void cleanupEmptyDirectories(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(new File(entry.getFile()))
+            : new File(entry.getPendingDir());
+    if (pendingDir == null) {
+      return;
+    }
+
+    final Path pendingPath = pendingDir.toPath().toAbsolutePath().normalize();
+    Path currentPath = new File(entry.getFile()).toPath().toAbsolutePath().normalize().getParent();
+    while (currentPath != null
+        && currentPath.startsWith(pendingPath)
+        && !currentPath.equals(pendingPath)) {
+      try {
+        Files.delete(currentPath);
+      } catch (final IOException e) {
+        if (Files.exists(currentPath)) {
+          LOGGER.debug(StorageEngineMessages.FAILED_DELETE_FOLDER_CLEANING_UP, currentPath, e);
+        }
+        return;
+      }
+      currentPath = currentPath.getParent();
     }
   }
 

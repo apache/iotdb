@@ -102,6 +102,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final AtomicBoolean isTsFileParserMemoryReserved = new AtomicBoolean(false);
   private final TsFileParserMemoryReservation tsFileParserMemoryReservationKey =
       new TsFileParserMemoryReservation();
+  private final AtomicReference<Iterator<TabletInsertionEvent>> tabletInsertionEventIterator =
+      new AtomicReference<>();
+  private final AtomicReference<PipeRawTabletInsertionEvent> pendingTabletInsertionEvent =
+      new AtomicReference<>();
+  private final AtomicInteger parsedTabletInsertionEventCount = new AtomicInteger(0);
+  private final AtomicBoolean isTsFileParsingCompleted = new AtomicBoolean(false);
+  private final AtomicLong parsedPointCountForCount = new AtomicLong(0);
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -225,7 +232,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         databaseNameFromDataRegion);
 
     this.resource = resource;
-    this.dataRegionId = resource.getDataRegionId();
+    final File resourceTsFile = resource.getTsFile();
+    final File timePartitionDir = resourceTsFile == null ? null : resourceTsFile.getParentFile();
+    this.dataRegionId =
+        timePartitionDir == null || timePartitionDir.getParentFile() == null
+            ? ""
+            : resource.getDataRegionId();
 
     // For events created at assigner or historical extractor, the tsFile is get from the resource
     // For events created for source, the tsFile is inherited from the assigner, because the
@@ -752,26 +764,70 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void consumeTabletInsertionEventsWithRetry(
       final TabletInsertionEventConsumer consumer, final String callerName) throws Exception {
-    int tabletEventCount = 0;
     try {
-      final Iterable<TabletInsertionEvent> iterable = toTabletInsertionEvents();
-      final Iterator<TabletInsertionEvent> iterator = iterable.iterator();
-      while (iterator.hasNext()) {
-        final TabletInsertionEvent parsedEvent = iterator.next();
-        tabletEventCount++;
+      while (true) {
+        final PipeRawTabletInsertionEvent parsedEvent =
+            getNextTabletInsertionEventFromSavedProgress();
+        if (parsedEvent == null) {
+          isTsFileParsingCompleted.set(true);
+          releaseTsFileParserMemoryIfReserved();
+          return;
+        }
         consumeParsedTabletInsertionEventWithRetry(
-            consumer, callerName, tabletEventCount, parsedEvent);
+            consumer, callerName, parsedTabletInsertionEventCount.get(), parsedEvent);
+        pendingTabletInsertionEvent.compareAndSet(parsedEvent, null);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      close();
+      // Yield the active parser slot to the next pipe while retaining the iterator and current
+      // tablet. The next retry resumes from this exact tablet instead of reparsing the TsFile.
+      releaseTsFileParserMemoryIfReserved();
       LOGGER.warn(
           DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
           callerName,
           getTsFile(),
-          tabletEventCount,
+          parsedTabletInsertionEventCount.get(),
           e);
       throw e;
+    } catch (final Exception e) {
+      releaseTsFileParserMemoryIfReserved();
+      throw e;
     }
+  }
+
+  private PipeRawTabletInsertionEvent getNextTabletInsertionEventFromSavedProgress()
+      throws Exception {
+    if (isTsFileParsingCompleted.get()) {
+      return null;
+    }
+
+    // Reacquire parser memory after a previous failure yielded the active parser slot. This wait
+    // is already bounded to 20-40 seconds, while the exponential backoff below is only for retrying
+    // the current tablet without yielding its parser slot.
+    waitForResourceEnough4Parsing((long) ((1 + Math.random()) * 20 * 1000));
+
+    final PipeRawTabletInsertionEvent pendingEvent = pendingTabletInsertionEvent.get();
+    if (pendingEvent != null) {
+      return pendingEvent;
+    }
+
+    Iterator<TabletInsertionEvent> iterator = tabletInsertionEventIterator.get();
+    if (iterator == null) {
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_S_PARSING_WHICH, tsFile);
+        return null;
+      }
+      iterator = initEventParser().toTabletInsertionEvents().iterator();
+      tabletInsertionEventIterator.set(iterator);
+    }
+
+    if (!iterator.hasNext()) {
+      return null;
+    }
+
+    final PipeRawTabletInsertionEvent nextEvent = (PipeRawTabletInsertionEvent) iterator.next();
+    pendingTabletInsertionEvent.set(nextEvent);
+    parsedTabletInsertionEventCount.incrementAndGet();
+    return nextEvent;
   }
 
   private void consumeParsedTabletInsertionEventWithRetry(
@@ -793,19 +849,32 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
         if (memoryManager.shouldReleaseTsFileParserOnOutOfMemory(
             firstOutOfMemoryTimeInMs, ++retryCount)) {
-          releaseParsedTabletEvent(parsedEvent);
           throw e;
         }
         logParserRetryOnOutOfMemory(callerName, tabletEventCount, retryCount, e);
         try {
-          Thread.sleep(PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs());
+          Thread.sleep(getParserRetryBackoffInMs(retryCount));
         } catch (final InterruptedException interruptedException) {
           Thread.currentThread().interrupt();
-          releaseParsedTabletEvent(parsedEvent);
           throw e;
         }
       }
     }
+  }
+
+  private long getParserRetryBackoffInMs(final int retryCount) {
+    final long initialBackoffInMs =
+        Math.max(1, PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs());
+    final int maxRetries = Math.max(1, PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries());
+    final long maxBackoffInMs =
+        initialBackoffInMs > Long.MAX_VALUE / maxRetries
+            ? Long.MAX_VALUE
+            : initialBackoffInMs * maxRetries;
+    long backoffInMs = initialBackoffInMs;
+    for (int retry = 1; retry < retryCount && backoffInMs < maxBackoffInMs; retry++) {
+      backoffInMs = backoffInMs >= maxBackoffInMs - backoffInMs ? maxBackoffInMs : backoffInMs << 1;
+    }
+    return backoffInMs;
   }
 
   private void logParserRetryOnOutOfMemory(
@@ -1000,21 +1069,21 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public long count(final boolean skipReportOnCommit) throws Exception {
-    AtomicLong count = new AtomicLong();
-
     if (shouldParseTime()) {
       try {
         consumeTabletInsertionEventsWithRetry(
             event -> {
-              count.addAndGet(event.count());
+              parsedPointCountForCount.addAndGet(event.count());
               if (skipReportOnCommit) {
                 event.skipReportOnCommit();
               }
             },
             "PipeTsFileInsertionEvent::count");
-        return count.get();
+        return parsedPointCountForCount.getAndSet(0);
       } finally {
-        close();
+        if (isTsFileParsingCompleted.get()) {
+          close();
+        }
       }
     }
 
@@ -1028,6 +1097,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public void close() {
     cancelTsFileParserMemoryReservationIfPending();
+    tabletInsertionEventIterator.set(null);
+    releaseParsedTabletEvent(pendingTabletInsertionEvent.getAndSet(null));
+    parsedTabletInsertionEventCount.set(0);
+    parsedPointCountForCount.set(0);
+    isTsFileParsingCompleted.set(false);
     eventParser.getAndUpdate(
         parser -> {
           if (Objects.nonNull(parser)) {

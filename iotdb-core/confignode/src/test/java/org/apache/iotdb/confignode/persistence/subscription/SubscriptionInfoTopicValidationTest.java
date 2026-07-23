@@ -116,6 +116,45 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testRejectUnsupportedAttributesOnConsensusTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=consensus does not support topic attributes [processor, start-time, strict]");
+  }
+
+  @Test
+  public void testRejectUnknownAttributeOnConsensusTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    attributes.put("unknown-attribute", "value");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=consensus does not support topic attributes [unknown-attribute]");
+  }
+
+  @Test
+  public void testAllowPipeAttributesOnLiveTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
   public void testRejectEmptyColumnFilter() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newConsensusTableTopicAttributes();

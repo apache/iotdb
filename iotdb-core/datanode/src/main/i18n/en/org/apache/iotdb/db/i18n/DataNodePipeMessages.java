@@ -945,6 +945,9 @@ public final class DataNodePipeMessages {
       "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "OPC UA endpoint selected: configured={}, advertised={}, effective={}, allowEndpointRedirect={}.";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "When %s or %s is true, specify a complete trust-store pair under the same "
           + "alias: %s and %s, %s and %s, or %s and %s";
@@ -1535,6 +1538,14 @@ public final class DataNodePipeMessages {
   public static final String UNABLE_CREATE_SECURITY_DIR = "Unable to create security dir: ";
   public static final String OPC_UA_SECURITY_DIR = "Security dir: {}";
   public static final String OPC_UA_SECURITY_PKI_DIR = "Security pki dir: {}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "The advertised host must be a hostname or IP address without a scheme, port, or path.";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "Advertised host {} is not present in the loaded OPC UA server certificate subject "
+              + "alternative names. Secured clients may reject it; replace or regenerate the "
+              + "certificate and establish trust again.";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent

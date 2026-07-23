@@ -147,15 +147,12 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    try {
-      sourceEvent.consumeTabletInsertionEventsWithRetry(
-          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
-      if (sourceEvent.isGeneratedByHistoricalExtractor()) {
-        PipeTerminateEvent.markHistoricalTsFileSplit(
-            sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
-      }
-    } finally {
-      sourceEvent.close();
+    sourceEvent.consumeTabletInsertionEventsWithRetry(
+        this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
+    sourceEvent.close();
+    if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+      PipeTerminateEvent.markHistoricalTsFileSplit(
+          sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
     }
   }
 
