@@ -133,7 +133,9 @@ public class IoTConsensus implements IConsensus {
     this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
+    this.service =
+        new IoTConsensusRPCService(
+            thisNode, config.getIotConsensusConfig(), config.getTrustedChannelFailureHandler());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(

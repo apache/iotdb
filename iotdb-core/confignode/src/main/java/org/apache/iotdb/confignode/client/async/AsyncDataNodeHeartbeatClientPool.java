@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.audit.DataNodeWriteAuditLogHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 
@@ -57,6 +58,7 @@ public class AsyncDataNodeHeartbeatClientPool {
       client.getDataNodeHeartBeat(req, handler);
       dispatched = true;
     } catch (Exception e) {
+      recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
       handleError(handler, e);
     } finally {
       returnClientIfNotDispatched(endPoint, client, dispatched);
@@ -103,6 +105,17 @@ public class AsyncDataNodeHeartbeatClientPool {
     } catch (final Exception ignore) {
       // Ignore handler failures in audit-log best-effort path.
     }
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(
+      Throwable failure, TEndPoint targetEndPoint) {
+    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
+      return;
+    }
+    ConfigNode.getInstance()
+        .getConfigManager()
+        .getAuditLogger()
+        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class AsyncDataNodeHeartbeatClientPoolHolder {

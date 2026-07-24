@@ -190,6 +190,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -325,6 +326,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         return;
       } catch (TException e) {
         logger.warn(DataNodeMiscMessages.NODE_LEADER_MAY_DOWN_TRY_NEXT, configLeader);
+        recordTrustedChannelFailureAuditLogIfNecessary(e, configLeader);
         configLeader = null;
         exception = e;
       }
@@ -347,6 +349,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         return;
       } catch (TException e) {
         logger.warn(DataNodeMiscMessages.NODE_MAY_DOWN_TRY_NEXT, tryEndpoint);
+        recordTrustedChannelFailureAuditLogIfNecessary(e, tryEndpoint);
         exception = e;
       }
     }
@@ -461,6 +464,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         logger.warn(message, e);
         configLeader = null;
+        recordTrustedChannelFailureAuditLogIfNecessary(e, configNode);
         if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
           throw e;
         }
@@ -483,6 +487,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
+    if (commonConfig.isEnableInternalSSL()) {
+      DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(failure, target);
+    }
   }
 
   @FunctionalInterface

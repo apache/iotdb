@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -177,6 +178,9 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
                 IOTDB_CONFIG.getAddressAndPort(),
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         LOGGER.warn(message, e);
+        final TAINodeLocation currentLocation = CURRENT_LOCATION.get();
+        recordTrustedChannelFailureAuditLogIfNecessary(
+            e, currentLocation == null ? null : currentLocation.getInternalEndPoint());
         CURRENT_LOCATION.set(null);
         if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
           throw e;
@@ -202,6 +206,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
         return;
       } catch (TException e) {
         LOGGER.warn(DataNodeMiscMessages.AINODE_MAY_DOWN, endpoint, e);
+        recordTrustedChannelFailureAuditLogIfNecessary(e, endpoint);
         CURRENT_LOCATION.set(null);
       }
     } else {
@@ -231,6 +236,12 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
       transport.open();
     }
     client = new IAINodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
+    if (COMMON_CONFIG.isEnableInternalSSL()) {
+      DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(failure, target);
+    }
   }
 
   public TEndPoint getCurrentEndpoint() {

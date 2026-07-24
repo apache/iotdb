@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.audit;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
@@ -57,6 +60,17 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public synchronized void log(IAuditEntity auditLogFields, Supplier<String> log) {}
+
+  public void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
+    if (CommonDescriptor.getInstance().getConfig().isEnableInternalSSL()) {
+      recordTrustedChannelFailureAuditLogIfNecessary(
+          failure,
+          new TEndPoint(
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+              IoTDBDescriptor.getInstance().getConfig().getInternalPort()),
+          target);
+    }
+  }
 
   public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId)
       throws IllegalPathException {}

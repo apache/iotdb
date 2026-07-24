@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -177,6 +178,7 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (Exception e) {
         lastException = e;
+        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
         if (retry != DEFAULT_RETRY_NUM - 1) {
           LOGGER.warn(
               ConfigNodeMessages.FAILED_ON_DATANODE_RETRYING, requestType, endPoint, retry + 1);
@@ -197,6 +199,7 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (Exception e) {
         lastException = e;
+        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
         if (retry != retryNum - 1) {
           LOGGER.warn(
               ConfigNodeMessages.FAILED_ON_DATANODE_RETRYING, requestType, endPoint, retry + 1);
@@ -248,14 +251,27 @@ public class SyncDataNodeClientPool {
       return client.changeRegionLeader(req);
     } catch (ClientManagerException e) {
       LOGGER.error(ConfigNodeMessages.CAN_T_CONNECT_TO_DATA_NODE, dataNode, e);
+      recordTrustedChannelFailureAuditLogIfNecessary(e, dataNode);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error(ConfigNodeMessages.CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE, dataNode, e);
+      recordTrustedChannelFailureAuditLogIfNecessary(e, dataNode);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return new TRegionLeaderChangeResp(status, -1L);
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(
+      Throwable failure, TEndPoint targetEndPoint) {
+    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
+      return;
+    }
+    ConfigNode.getInstance()
+        .getConfigManager()
+        .getAuditLogger()
+        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class ClientPoolHolder {

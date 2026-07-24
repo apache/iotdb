@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
@@ -587,6 +588,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     try {
       dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
+      DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
       LOGGER.warn(
           DataNodeQueryMessages
               .CAN_T_EXECUTE_REQUEST_ON_NODE_ARG_ERROR_MSG_IS_ARG_AND_WE_TRY_TO_RECONNECT_THIS_NODE,
@@ -613,6 +615,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           | TException
           | RatisReadUnavailableException
           | ConsensusGroupNotExistException e1) {
+        DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(e1, endPoint);
         dispatchRemoteFailed(endPoint, e1);
       }
     } catch (ConsensusGroupNotExistException e) {

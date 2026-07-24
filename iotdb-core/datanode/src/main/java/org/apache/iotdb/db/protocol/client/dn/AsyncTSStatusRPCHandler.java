@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -77,6 +78,8 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
 
   @Override
   public void onError(Exception e) {
+    DNAuditLogger.getInstance()
+        .recordTrustedChannelFailureAuditLogIfNecessary(e, targetNode.getInternalEndPoint());
     String errorMsg =
         "Failed to "
             + requestType
