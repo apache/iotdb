@@ -519,6 +519,9 @@ public class FileLoaderUtils {
       // non-aligned, we should skip all data of this chunk.
       return Collections.emptyList();
     } catch (Exception e) {
+      if (tsFile == null) {
+        throw e;
+      }
       throw new CorruptedTsFileException(
           tsFile,
           CorruptedTsFileException.Stage.READ_CHUNK_DATA,
@@ -537,6 +540,9 @@ public class FileLoaderUtils {
     try {
       return chunkReader.loadPageReaderList();
     } catch (Exception e) {
+      if (tsFile == null) {
+        throw e;
+      }
       throw new CorruptedTsFileException(
           tsFile,
           CorruptedTsFileException.Stage.LOAD_PAGE_READER,
