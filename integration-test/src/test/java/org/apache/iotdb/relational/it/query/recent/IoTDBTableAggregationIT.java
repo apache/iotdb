@@ -1928,6 +1928,21 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void maxNonPositiveFloatingPointTest() {
+    String[] expectedHeader = new String[] {"region", "_col1", "_col2"};
+    String[] retArray =
+        new String[] {
+          "huangpu,0.0,-35.0,", "pudong,0.0,-36.0,",
+        };
+
+    tableResultSetEqualTest(
+        "select region,max(s4 * 0.0),max(0.0 - s4) from table1 where device_id in ('d01','d07') group by region order by region",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void maxByTest() {
     String[] expectedHeader = new String[] {"device_id", "color", "type", "_col3", "_col4"};
     String[] retArray =
