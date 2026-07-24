@@ -30,6 +30,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AbstractOperatePipeProcedureV2Test {
@@ -117,12 +119,59 @@ public class AbstractOperatePipeProcedureV2Test {
                 .MESSAGE_ONE_OR_MORE_DATANODES_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_THEY_MAY_BE_UNAVAILABLE_OR_SLOW_11BBB333));
   }
 
+  @Test
+  public void testPreDeleteFlowAndStateOrdinalCompatibility() throws Exception {
+    Assert.assertEquals(0, OperatePipeTaskState.VALIDATE_TASK.ordinal());
+    Assert.assertEquals(1, OperatePipeTaskState.CALCULATE_INFO_FOR_TASK.ordinal());
+    Assert.assertEquals(2, OperatePipeTaskState.OPERATE_ON_DATA_NODES.ordinal());
+    Assert.assertEquals(3, OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS.ordinal());
+    Assert.assertEquals(4, OperatePipeTaskState.PRE_DELETE.ordinal());
+
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.preDeleteEnabled = true;
+
+    for (int i = 0; i < 5; i++) {
+      procedure.runOnce();
+    }
+
+    Assert.assertEquals(
+        List.of(
+            OperatePipeTaskState.VALIDATE_TASK,
+            OperatePipeTaskState.CALCULATE_INFO_FOR_TASK,
+            OperatePipeTaskState.PRE_DELETE,
+            OperatePipeTaskState.OPERATE_ON_DATA_NODES,
+            OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS),
+        procedure.executionOrder);
+  }
+
+  @Test
+  public void testLegacyDropFlowWithoutPreDeleteHistoryStillOperatesOnDataNodes() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+
+    // Schedule WRITE_CONFIG_NODE_CONSENSUS with the legacy flow, then continue with the new logic.
+    procedure.runOnce();
+    procedure.runOnce();
+    procedure.preDeleteEnabled = true;
+    procedure.runOnce();
+    procedure.runOnce();
+
+    Assert.assertEquals(
+        List.of(
+            OperatePipeTaskState.VALIDATE_TASK,
+            OperatePipeTaskState.CALCULATE_INFO_FOR_TASK,
+            OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS,
+            OperatePipeTaskState.OPERATE_ON_DATA_NODES),
+        procedure.executionOrder);
+  }
+
   private static class TestOperatePipeProcedure extends AbstractOperatePipeProcedureV2 {
 
     private int validateExecutionCount;
     private int calculateExecutionCount;
     private boolean failValidation;
     private boolean failCalculation;
+    private boolean preDeleteEnabled;
+    private final List<OperatePipeTaskState> executionOrder = new ArrayList<>();
 
     private TestOperatePipeProcedure() {
       pipeTaskInfo = new AtomicReference<>(new PipeTaskInfo());
@@ -141,6 +190,7 @@ public class AbstractOperatePipeProcedureV2Test {
     public boolean executeFromValidateTask(
         final org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv env)
         throws PipeException {
+      executionOrder.add(OperatePipeTaskState.VALIDATE_TASK);
       validateExecutionCount++;
       if (failValidation) {
         throw new PipeException("retry");
@@ -151,6 +201,7 @@ public class AbstractOperatePipeProcedureV2Test {
     @Override
     public void executeFromCalculateInfoForTask(
         final org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv env) {
+      executionOrder.add(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
       calculateExecutionCount++;
       if (failCalculation) {
         throw new RuntimeException("retry");
@@ -158,15 +209,26 @@ public class AbstractOperatePipeProcedureV2Test {
     }
 
     @Override
+    protected boolean shouldExecutePreDeleteState() {
+      return preDeleteEnabled;
+    }
+
+    @Override
+    public void executeFromPreDelete(
+        final org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv env) {
+      executionOrder.add(OperatePipeTaskState.PRE_DELETE);
+    }
+
+    @Override
     public void executeFromWriteConfigNodeConsensus(
         final org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv env) {
-      // Do nothing
+      executionOrder.add(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS);
     }
 
     @Override
     public void executeFromOperateOnDataNodes(
         final org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv env) {
-      // Do nothing
+      executionOrder.add(OperatePipeTaskState.OPERATE_ON_DATA_NODES);
     }
 
     @Override

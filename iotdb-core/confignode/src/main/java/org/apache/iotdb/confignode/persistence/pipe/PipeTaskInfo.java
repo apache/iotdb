@@ -224,7 +224,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
-    if (!isPipeExisted(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)) {
+    if (!isPipeExisted(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)
+        || PipeStatus.PRE_DELETE.equals(
+            getPipeStatus(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel))) {
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
@@ -365,7 +367,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.DROPPED) {
+    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
@@ -385,7 +387,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
-    if (pipeStatus == PipeStatus.DROPPED) {
+    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
@@ -423,7 +425,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.DROPPED) {
+    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
@@ -443,7 +445,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
-    if (pipeStatus == PipeStatus.DROPPED) {
+    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
@@ -1125,6 +1127,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
           final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
 
+          if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+            continue;
+          }
+
           // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed STOPPED meta
           // sync can turn a manually stopped pipe into a runtime-stopped one and the next
           // PipeMetaSyncer round will restart it automatically.
@@ -1177,7 +1183,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-              if (runtimeMeta.getIsStoppedByRuntimeException()) {
+              if (!PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
                 runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
                 runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 

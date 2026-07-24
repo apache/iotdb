@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -131,6 +132,49 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
+  protected boolean shouldExecutePreDeleteState() {
+    return true;
+  }
+
+  @Override
+  public void executeFromPreDelete(ConfigNodeProcedureEnv env) throws PipeException {
+    // Legacy procedures created without an explicit model do not persist pipeMetaToDrop. Restore
+    // it from PipeTaskInfo so a procedure recovered between CALCULATE_INFO_FOR_TASK and PRE_DELETE
+    // still exposes PRE_DELETE through SHOW PIPES.
+    if (!restorePipeMetaToDropIfNecessary()) {
+      return;
+    }
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isTableModelSet
+                      ? new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE, isTableModel)
+                      : new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE));
+    } catch (ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
+    }
+  }
+
+  boolean restorePipeMetaToDropIfNecessary() {
+    if (pipeMetaToDrop == null) {
+      pipeMetaToDrop =
+          isTableModelSet
+              ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
+              : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    }
+    return pipeMetaToDrop != null;
+  }
+
+  @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
@@ -192,6 +236,11 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
+  }
+
+  @Override
+  public void rollbackFromPreDelete(ConfigNodeProcedureEnv env) {
+    // Keep PRE_DELETE so SHOW PIPES continues to expose that the drop did not complete.
   }
 
   @Override

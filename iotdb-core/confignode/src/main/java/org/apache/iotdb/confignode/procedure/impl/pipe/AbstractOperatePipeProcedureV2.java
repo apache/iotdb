@@ -227,6 +227,16 @@ public abstract class AbstractOperatePipeProcedureV2
   /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
   public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
+  /** Whether this procedure uses the append-only {@link OperatePipeTaskState#PRE_DELETE} state. */
+  protected boolean shouldExecutePreDeleteState() {
+    return false;
+  }
+
+  /** Execute at state {@link OperatePipeTaskState#PRE_DELETE}. */
+  public void executeFromPreDelete(ConfigNodeProcedureEnv env) {
+    // Do nothing by default
+  }
+
   /**
    * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
    *
@@ -272,14 +282,29 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case CALCULATE_INFO_FOR_TASK:
           executeFromCalculateInfoForTask(env);
-          setNextState(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS);
+          setNextState(
+              shouldExecutePreDeleteState()
+                  ? OperatePipeTaskState.PRE_DELETE
+                  : OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS);
+          break;
+        case PRE_DELETE:
+          executeFromPreDelete(env);
+          setNextState(OperatePipeTaskState.OPERATE_ON_DATA_NODES);
           break;
         case WRITE_CONFIG_NODE_CONSENSUS:
           executeFromWriteConfigNodeConsensus(env);
+          if (shouldExecutePreDeleteState() && hasReachedState(OperatePipeTaskState.PRE_DELETE)) {
+            lastExecutionExceptionMessage = null;
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperatePipeTaskState.OPERATE_ON_DATA_NODES);
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
+          if (shouldExecutePreDeleteState() && hasReachedState(OperatePipeTaskState.PRE_DELETE)) {
+            setNextState(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS);
+            break;
+          }
           lastExecutionExceptionMessage = null;
           return Flow.NO_MORE_STATE;
         default:
@@ -369,6 +394,9 @@ public abstract class AbstractOperatePipeProcedureV2
               e);
         }
         break;
+      case PRE_DELETE:
+        rollbackFromPreDelete(env);
+        break;
       case WRITE_CONFIG_NODE_CONSENSUS:
         try {
           // rollbackFromWriteConfigNodeConsensus can be called before
@@ -409,6 +437,10 @@ public abstract class AbstractOperatePipeProcedureV2
   public abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
 
   public abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+
+  public void rollbackFromPreDelete(ConfigNodeProcedureEnv env) {
+    // Do nothing by default
+  }
 
   public abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
 
@@ -477,6 +509,7 @@ public abstract class AbstractOperatePipeProcedureV2
       case CALCULATE_INFO_FOR_TASK:
         return ProcedureMessages
             .MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504;
+      case PRE_DELETE:
       case WRITE_CONFIG_NODE_CONSENSUS:
         return ProcedureMessages
             .MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_THE_CONSENSUS_GROUP_MAY_BE_UNAVAILABLE_OR_SLOW_F8911CE7;
@@ -520,6 +553,12 @@ public abstract class AbstractOperatePipeProcedureV2
                 ? PipeProcedureExecutionStage.ROLLBACK_CALCULATE_INFO_FOR_TASK
                 : PipeProcedureExecutionStage.CALCULATE_INFO_FOR_TASK;
         break;
+      case PRE_DELETE:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_PRE_DELETE
+                : PipeProcedureExecutionStage.PRE_DELETE;
+        break;
       case WRITE_CONFIG_NODE_CONSENSUS:
         executionStage =
             isRollback
@@ -544,10 +583,12 @@ public abstract class AbstractOperatePipeProcedureV2
     WAITING_FOR_NODE_LOCK,
     VALIDATE_TASK,
     CALCULATE_INFO_FOR_TASK,
+    PRE_DELETE,
     WRITE_CONFIG_NODE_CONSENSUS,
     OPERATE_ON_DATA_NODES,
     ROLLBACK_VALIDATE_TASK(true),
     ROLLBACK_CALCULATE_INFO_FOR_TASK(true),
+    ROLLBACK_PRE_DELETE(true),
     ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS(true),
     ROLLBACK_OPERATE_ON_DATA_NODES(true);
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -166,6 +167,17 @@ public class PipeTableRespTest {
     Assert.assertTrue(showPipeResult.get(1).isSetIsDegraded());
     Assert.assertFalse(showPipeResult.get(1).isIsDegraded());
     Assert.assertFalse(showPipeResult.get(2).isSetIsDegraded());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespIncludesPreDeleteStatus() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    pipeTableResp.getAllPipeMeta().get(0).getRuntimeMeta().getStatus().set(PipeStatus.PRE_DELETE);
+
+    final List<TShowPipeInfo> showPipeResult =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
+
+    Assert.assertEquals(PipeStatus.PRE_DELETE.name(), showPipeResult.get(0).getState());
   }
 
   @Test
