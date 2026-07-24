@@ -94,7 +94,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        i -> i.getSeriesNumber(false),
+        i -> i.getSeriesNumber(false, false),
         Tag.NAME.toString(),
         NON_VIEW_SERIES_CNT,
         Tag.REGION.toString(),
