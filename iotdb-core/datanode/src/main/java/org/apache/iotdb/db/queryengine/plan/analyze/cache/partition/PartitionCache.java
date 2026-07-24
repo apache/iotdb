@@ -146,7 +146,8 @@ public class PartitionCache {
   }
 
   protected void failIfMetadataLeaseFenced() {
-    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.NONE);
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   // region database cache

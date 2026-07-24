@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
@@ -69,8 +68,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.rpc.TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED;
 
 public class Utils {
 
@@ -252,12 +249,6 @@ public class Utils {
    */
   public static boolean stallApply(TConsensusGroupType type) {
     return type == TConsensusGroupType.DataRegion && config.isReadOnly() && !config.isStopping();
-  }
-
-  public static boolean shouldRetryUntilSuccess(Throwable throwable) {
-    return throwable instanceof MetadataLeaseFencedException
-        && ((MetadataLeaseFencedException) throwable).getStatus().getCode()
-            == METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode();
   }
 
   /** return the max wait duration for retry */

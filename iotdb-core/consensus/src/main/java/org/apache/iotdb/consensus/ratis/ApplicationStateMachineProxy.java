@@ -153,6 +153,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
         }
         final TSStatus result = applicationStateMachine.write(deserializedRequest);
+        if (result.getCode() == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
+            && waitBeforeRetry()) {
+          continue;
+        }
         ret = new ResponseMessage(result);
         break;
       } catch (Throwable rte) {
@@ -161,15 +165,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                     .setMessage(RatisMessages.INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION + rte));
-        if (Utils.stallApply(consensusGroupType)) {
-          if (!waitUntilSystemAllowApply()) {
-            break;
-          }
-        } else if (Utils.shouldRetryUntilSuccess(rte)) {
-          if (!waitBeforeRetry()) {
-            break;
-          }
-        } else {
+        if (!Utils.stallApply(consensusGroupType) || !waitUntilSystemAllowApply()) {
           break;
         }
       }

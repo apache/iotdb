@@ -339,6 +339,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
         && !planNode.isGeneratedByPipe()) {
       return true;
     }
-    return statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode();
+    return statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
+        && !planNode.isGeneratedByPipe();
   }
 }

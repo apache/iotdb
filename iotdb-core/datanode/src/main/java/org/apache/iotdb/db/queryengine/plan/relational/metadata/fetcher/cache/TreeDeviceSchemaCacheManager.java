@@ -75,7 +75,8 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   void failIfMetadataLeaseFenced() {
-    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.NONE);
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   /** singleton pattern. */

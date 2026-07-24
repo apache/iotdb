@@ -90,6 +90,7 @@ public enum TSStatusCode {
   TYPE_NOT_FOUND(528),
   DATABASE_CONFLICT(529),
   DATABASE_MODEL(530),
+  // the range [531, 534] has been occupied by timecho DB
   METADATA_LEASE_FENCED(535),
   METADATA_LEASE_FENCED_RETRY_REQUIRED(536),
 
