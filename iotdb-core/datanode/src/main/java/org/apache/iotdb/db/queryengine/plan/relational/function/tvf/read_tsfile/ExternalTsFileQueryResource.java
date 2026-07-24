@@ -162,12 +162,6 @@ public class ExternalTsFileQueryResource {
         }
       }
       sealDeviceTaskPartitions();
-    } catch (CorruptedTsFileException e) {
-      // Device collection runs during the planning phase, outside any DriverTask thread.
-      // CorruptedTsFileException is a RuntimeException and would crash the DataNode if not
-      // caught here. Re-wrap with initCause so the planning/query infrastructure can surface
-      // the error message to the client.
-      throw new RuntimeException(e.getMessage(), e);
     }
   }
 
