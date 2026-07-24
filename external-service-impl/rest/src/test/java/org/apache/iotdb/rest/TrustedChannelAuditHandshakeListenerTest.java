@@ -57,6 +57,23 @@ public class TrustedChannelAuditHandshakeListenerTest {
     assertEquals(new TEndPoint("192.0.2.20", 18080), actualTarget.get());
   }
 
+  @Test
+  public void testReportingFailureDoesNotSelfSuppressHandshakeFailure() {
+    RuntimeException failure = new RuntimeException("test");
+    TrustedChannelAuditHandshakeListener listener =
+        new TrustedChannelAuditHandshakeListener(
+            (ignoredFailure, initiator, target) -> {
+              throw failure;
+            });
+    EndPoint endPoint =
+        newEndPoint(
+            new InetSocketAddress("192.0.2.10", 45123), new InetSocketAddress("192.0.2.20", 18080));
+
+    listener.recordHandshakeFailure(endPoint, failure);
+
+    assertEquals(0, failure.getSuppressed().length);
+  }
+
   private static EndPoint newEndPoint(
       InetSocketAddress remoteAddress, InetSocketAddress localAddress) {
     return (EndPoint)

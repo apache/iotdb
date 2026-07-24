@@ -109,6 +109,29 @@ public class TrustedChannelAuditServerEventHandlerTest {
     verify(delegate, never()).deleteContext(isNull(), any(), any());
   }
 
+  @Test
+  public void testCloseFailureDoesNotSelfSuppressHandshakeFailure() throws Exception {
+    TServerEventHandler delegate = mock(TServerEventHandler.class);
+    TProtocol input = mock(TProtocol.class);
+    SSLSocket socket = mock(SSLSocket.class);
+    TProtocol output = createProtocol(socket);
+    SSLHandshakeException failure = new SSLHandshakeException("handshake failure");
+    when(socket.getRemoteSocketAddress()).thenReturn(new InetSocketAddress("192.0.2.10", 45123));
+    org.mockito.Mockito.doThrow(failure).when(socket).startHandshake();
+    org.mockito.Mockito.doThrow(failure).when(socket).close();
+
+    TrustedChannelAuditServerEventHandler handler =
+        new TrustedChannelAuditServerEventHandler(
+            delegate, new TEndPoint("10.0.0.2", 10730), TrustedChannelFailureHandler.NO_OP);
+
+    UncheckedIOException thrown =
+        assertThrows(UncheckedIOException.class, () -> handler.createContext(input, output));
+
+    assertSame(failure, thrown.getCause());
+    assertEquals(0, failure.getSuppressed().length);
+    verify(delegate, never()).createContext(any(), any());
+  }
+
   private static TProtocol createProtocol(SSLSocket socket) {
     TProtocol protocol = mock(TProtocol.class);
     TElasticFramedTransport framedTransport = mock(TElasticFramedTransport.class);

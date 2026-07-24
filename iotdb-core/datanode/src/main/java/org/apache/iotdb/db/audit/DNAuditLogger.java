@@ -60,6 +60,11 @@ public class DNAuditLogger extends AbstractAuditLogger {
   @Override
   public synchronized void log(IAuditEntity auditLogFields, Supplier<String> log) {}
 
+  /**
+   * Records an outbound trusted-channel failure using the DataNode internal endpoint as the stable
+   * initiator identifier. Call the three-argument overload when the transport has a distinct local
+   * service endpoint.
+   */
   public void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
     recordTrustedChannelFailureAuditLogIfNecessary(
         failure,

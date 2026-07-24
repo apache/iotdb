@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
@@ -665,7 +666,8 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             DNAuditLogger.getInstance()
-                .recordTrustedChannelFailureAuditLogIfNecessary(e, remoteEndpoint);
+                .recordTrustedChannelFailureAuditLogIfNecessary(
+                    e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
 
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
@@ -748,7 +750,8 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             DNAuditLogger.getInstance()
-                .recordTrustedChannelFailureAuditLogIfNecessary(e, remoteEndpoint);
+                .recordTrustedChannelFailureAuditLogIfNecessary(
+                    e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT,
                 startSequenceId,
@@ -801,7 +804,8 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             DNAuditLogger.getInstance()
-                .recordTrustedChannelFailureAuditLogIfNecessary(e, remoteEndpoint);
+                .recordTrustedChannelFailureAuditLogIfNecessary(
+                    e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
             LOGGER.warn(
                 DataNodeQueryMessages.SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED,
                 remoteFragmentInstanceId,

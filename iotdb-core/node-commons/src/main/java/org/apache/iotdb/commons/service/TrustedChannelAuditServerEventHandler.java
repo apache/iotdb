@@ -95,7 +95,9 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
       try {
         socket.close();
       } catch (IOException closeFailure) {
-        e.addSuppressed(closeFailure);
+        if (closeFailure != e) {
+          e.addSuppressed(closeFailure);
+        }
       }
       throw new UncheckedIOException(e);
     }
@@ -109,7 +111,9 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
     try {
       failureHandler.onFailure(failure, initiator, target);
     } catch (RuntimeException auditFailure) {
-      failure.addSuppressed(auditFailure);
+      if (auditFailure != failure) {
+        failure.addSuppressed(auditFailure);
+      }
     }
   }
 

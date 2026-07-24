@@ -55,7 +55,9 @@ final class TrustedChannelAuditHandshakeListener implements SslHandshakeListener
     try {
       failureHandler.onFailure(failure, initiator, target);
     } catch (RuntimeException auditFailure) {
-      failure.addSuppressed(auditFailure);
+      if (auditFailure != failure) {
+        failure.addSuppressed(auditFailure);
+      }
     }
   }
 
