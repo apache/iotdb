@@ -103,6 +103,12 @@ public abstract class AbstractOperatePipeProcedureV2
   // recovered procedure is already re-scheduled by the procedure framework.
   private transient boolean shouldYieldAfterExecution;
 
+  // These fields are only used to report where a running Pipe procedure is blocked when the caller
+  // times out. They do not affect procedure execution and do not need to be persisted.
+  private volatile PipeProcedureExecutionStage executionStage =
+      PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+  private volatile String lastExecutionExceptionMessage;
+
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
       "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
 
@@ -118,6 +124,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.debug(ProcedureMessages.PROCEDUREID_TRY_TO_ACQUIRE_PIPE_LOCK, getProcId());
+    executionStage = PipeProcedureExecutionStage.WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK;
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
       LOGGER.warn(ProcedureMessages.PROCEDUREID_FAILED_TO_ACQUIRE_PIPE_LOCK, getProcId());
@@ -125,9 +132,11 @@ public abstract class AbstractOperatePipeProcedureV2
       LOGGER.debug(ProcedureMessages.PROCEDUREID_ACQUIRED_PIPE_LOCK, getProcId());
     }
 
+    executionStage = PipeProcedureExecutionStage.WAITING_FOR_NODE_LOCK;
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
     switch (procedureLockState) {
       case LOCK_ACQUIRED:
+        updateExecutionStage(getCurrentState(), false);
         if (pipeTaskInfo == null) {
           LOGGER.warn(
               ProcedureMessages
@@ -192,6 +201,9 @@ public abstract class AbstractOperatePipeProcedureV2
             .updateTimer(this.getOperation().getName(), this.elapsedTime());
       }
       releasePipeTaskCoordinatorLock(configNodeProcedureEnv);
+      if (!isFinished()) {
+        executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+      }
     }
   }
 
@@ -236,6 +248,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws InterruptedException {
     shouldYieldAfterExecution = false;
+    updateExecutionStage(state, false);
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           ProcedureMessages.PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL,
@@ -247,6 +260,7 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           if (!executeFromValidateTask(env)) {
+            lastExecutionExceptionMessage = null;
             LOGGER.info(ProcedureMessages.PROCEDUREID, getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the pipe
             // command corresponding to this procedure is "Msg: The statement is executed
@@ -266,13 +280,16 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
+          lastExecutionExceptionMessage = null;
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
               String.format(
                   ProcedureMessages.UNKNOWN_STATE_DURING_EXECUTING_OPERATEPIPEPROCEDURE, state));
       }
+      lastExecutionExceptionMessage = null;
     } catch (Exception e) {
+      lastExecutionExceptionMessage = getExceptionMessage(e);
       // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
         LOGGER.warn(
@@ -319,6 +336,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws IOException, InterruptedException, ProcedureException {
+    updateExecutionStage(state, true);
     if (pipeTaskInfo == null) {
       LOGGER.warn(
           ProcedureMessages.PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_ROLLBACKSTATE_S_EXECUTION_WILL,
@@ -410,6 +428,142 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected OperatePipeTaskState getInitialState() {
     return OperatePipeTaskState.VALIDATE_TASK;
+  }
+
+  public final String getTimeoutDiagnosticMessage() {
+    final PipeProcedureExecutionStage currentExecutionStage = executionStage;
+    return String.format(
+        ProcedureMessages
+            .MESSAGE_PIPE_OPERATION_ARG_TIMED_OUT_PROCEDUREID_ARG_STUCK_AT_ARG_REASON_ARG_THE_PROCEDURE_IS_STILL_RUNNING_7EEAC50E,
+        getOperation().name(),
+        getProcId(),
+        currentExecutionStage.name(),
+        getTimeoutReason(currentExecutionStage));
+  }
+
+  private String getTimeoutReason(final PipeProcedureExecutionStage currentExecutionStage) {
+    final String failureMessage = getFailureMessage();
+    if (currentExecutionStage.isRollback()) {
+      return failureMessage == null
+          ? ProcedureMessages.MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5
+          : String.format(
+              ProcedureMessages.MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456, failureMessage);
+    }
+    if (isFailed() && failureMessage != null) {
+      return String.format(
+          ProcedureMessages.MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829,
+          failureMessage);
+    }
+    if (lastExecutionExceptionMessage != null) {
+      return String.format(
+          ProcedureMessages
+              .MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27,
+          lastExecutionExceptionMessage);
+    }
+
+    switch (currentExecutionStage) {
+      case WAITING_FOR_PROCEDURE_WORKER:
+        return ProcedureMessages
+            .MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595;
+      case WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK:
+        return ProcedureMessages
+            .MESSAGE_WAITING_TO_ACQUIRE_THE_PIPETASKCOORDINATOR_LOCK_BECAUSE_ANOTHER_PIPE_OPERATION_IS_HOLDING_IT_25A3B6B8;
+      case WAITING_FOR_NODE_LOCK:
+        return ProcedureMessages
+            .MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86;
+      case VALIDATE_TASK:
+        return ProcedureMessages
+            .MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF;
+      case CALCULATE_INFO_FOR_TASK:
+        return ProcedureMessages
+            .MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504;
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        return ProcedureMessages
+            .MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_THE_CONSENSUS_GROUP_MAY_BE_UNAVAILABLE_OR_SLOW_F8911CE7;
+      case OPERATE_ON_DATA_NODES:
+        return ProcedureMessages
+            .MESSAGE_ONE_OR_MORE_DATANODES_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_THEY_MAY_BE_UNAVAILABLE_OR_SLOW_11BBB333;
+      default:
+        return ProcedureMessages
+            .MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595;
+    }
+  }
+
+  private String getFailureMessage() {
+    if (getException() != null) {
+      return getException().getMessage();
+    }
+    return lastExecutionExceptionMessage;
+  }
+
+  private static String getExceptionMessage(final Exception exception) {
+    return exception.getMessage() == null || exception.getMessage().isEmpty()
+        ? exception.getClass().getSimpleName()
+        : exception.getMessage();
+  }
+
+  private void updateExecutionStage(final OperatePipeTaskState state, final boolean isRollback) {
+    if (state == null) {
+      executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+      return;
+    }
+    switch (state) {
+      case VALIDATE_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_VALIDATE_TASK
+                : PipeProcedureExecutionStage.VALIDATE_TASK;
+        break;
+      case CALCULATE_INFO_FOR_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_CALCULATE_INFO_FOR_TASK
+                : PipeProcedureExecutionStage.CALCULATE_INFO_FOR_TASK;
+        break;
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS
+                : PipeProcedureExecutionStage.WRITE_CONFIG_NODE_CONSENSUS;
+        break;
+      case OPERATE_ON_DATA_NODES:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_OPERATE_ON_DATA_NODES
+                : PipeProcedureExecutionStage.OPERATE_ON_DATA_NODES;
+        break;
+      default:
+        executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
+        break;
+    }
+  }
+
+  private enum PipeProcedureExecutionStage {
+    WAITING_FOR_PROCEDURE_WORKER,
+    WAITING_FOR_PIPE_TASK_COORDINATOR_LOCK,
+    WAITING_FOR_NODE_LOCK,
+    VALIDATE_TASK,
+    CALCULATE_INFO_FOR_TASK,
+    WRITE_CONFIG_NODE_CONSENSUS,
+    OPERATE_ON_DATA_NODES,
+    ROLLBACK_VALIDATE_TASK(true),
+    ROLLBACK_CALCULATE_INFO_FOR_TASK(true),
+    ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS(true),
+    ROLLBACK_OPERATE_ON_DATA_NODES(true);
+
+    private final boolean rollback;
+
+    PipeProcedureExecutionStage() {
+      this(false);
+    }
+
+    PipeProcedureExecutionStage(final boolean rollback) {
+      this.rollback = rollback;
+    }
+
+    private boolean isRollback() {
+      return rollback;
+    }
   }
 
   /**

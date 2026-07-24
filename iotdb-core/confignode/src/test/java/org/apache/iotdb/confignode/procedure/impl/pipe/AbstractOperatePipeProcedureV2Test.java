@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -87,6 +88,33 @@ public class AbstractOperatePipeProcedureV2Test {
     Assert.assertTrue(procedure.hasException());
     Assert.assertFalse(procedure.isYieldAfterExecution(null));
     Assert.assertEquals(2, procedure.calculateExecutionCount);
+  }
+
+  @Test
+  public void testTimeoutDiagnosticReportsCurrentStateAndRetryReason() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.failValidation = true;
+
+    procedure.executeFromState(null, OperatePipeTaskState.VALIDATE_TASK);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("START_PIPE"));
+    Assert.assertTrue(diagnosticMessage.contains("VALIDATE_TASK"));
+    Assert.assertTrue(diagnosticMessage.contains("retry"));
+  }
+
+  @Test
+  public void testTimeoutDiagnosticReportsDataNodeOperation() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+
+    procedure.executeFromState(null, OperatePipeTaskState.OPERATE_ON_DATA_NODES);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("OPERATE_ON_DATA_NODES"));
+    Assert.assertTrue(
+        diagnosticMessage.contains(
+            ProcedureMessages
+                .MESSAGE_ONE_OR_MORE_DATANODES_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_THEY_MAY_BE_UNAVAILABLE_OR_SLOW_11BBB333));
   }
 
   private static class TestOperatePipeProcedure extends AbstractOperatePipeProcedureV2 {
