@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
@@ -39,6 +41,33 @@ import java.util.Properties;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
+  @Test
+  public void testHotReloadTsFileParserInFlightLimits() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final int originalGlobalLimit = commonConfig.getPipeTsFileParserInFlightMaxNum();
+    final int originalPerPipeRegionLimit =
+        commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("pipe_tsfile_parser_in_flight_max_num", "3");
+      properties.setProperty("pipe_tsfile_parser_in_flight_max_num_per_pipe_region", "2");
+      descriptor.loadHotModifiedProps(properties);
+
+      Assert.assertEquals(3, commonConfig.getPipeTsFileParserInFlightMaxNum());
+      Assert.assertEquals(2, commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion());
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "pipe_tsfile_parser_in_flight_max_num", Integer.toString(originalGlobalLimit));
+      properties.setProperty(
+          "pipe_tsfile_parser_in_flight_max_num_per_pipe_region",
+          Integer.toString(originalPerPipeRegionLimit));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
   @Test
   public void testHotReloadRegionMigrationFileRemoveSpeedLimit() throws Exception {
     IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();

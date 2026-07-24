@@ -31,10 +31,15 @@ import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStra
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.LongUnaryOperator;
 
@@ -57,6 +62,15 @@ public class PipeMemoryManager {
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
   private volatile long reservedTsFileParserCount;
+
+  private final Map<PipeIdentity, Integer> reservedTsFileParserCountByPipe = new HashMap<>();
+  private final Map<PipeRegionIdentity, Integer> reservedTsFileParserCountByPipeRegion =
+      new HashMap<>();
+  private final Map<PipeRegionIdentity, LinkedHashSet<TsFileParserMemoryReservation>>
+      waitingTsFileParserRequestsByPipeRegion = new HashMap<>();
+  private final Map<PipeIdentity, ArrayDeque<PipeRegionIdentity>>
+      waitingTsFileParserRegionOrderByPipe = new HashMap<>();
+  private final ArrayDeque<PipeIdentity> waitingTsFileParserPipeOrder = new ArrayDeque<>();
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
@@ -128,9 +142,12 @@ public class PipeMemoryManager {
             < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
   }
 
-  private boolean isHardEnough4TabletParsingWithReservedParserMemory() {
+  private boolean isHardEnough4TabletParsingWithReservedParserMemory(
+      final long extraMemoryInBytes) {
     final double tabletMemoryWithParserMemory =
-        (double) usedMemorySizeInBytesOfTablets + getReservedTsFileParserMemorySizeInBytes();
+        (double) usedMemorySizeInBytesOfTablets
+            + getReservedTsFileParserMemorySizeInBytes()
+            + extraMemoryInBytes;
     return tabletMemoryWithParserMemory + (double) usedMemorySizeInBytesOfTsFiles
             < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && tabletMemoryWithParserMemory < allowedMaxMemorySizeInBytesOfTablets();
@@ -149,32 +166,236 @@ public class PipeMemoryManager {
         && (double) usedMemorySizeInBytesOfTablets < allowedMaxMemorySizeInBytesOfTablets();
   }
 
-  public synchronized boolean tryReserveTsFileParserMemory() {
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return true;
+  public synchronized boolean tryReserveTsFileParserMemory(
+      final String pipeName,
+      final long creationTime,
+      final String dataRegionId,
+      final TsFileParserMemoryReservation reservationKey) {
+    if (reservationKey == null) {
+      return false;
+    }
+
+    final PipeIdentity pipeIdentity = new PipeIdentity(pipeName, creationTime);
+    final PipeRegionIdentity pipeRegionIdentity =
+        new PipeRegionIdentity(pipeIdentity, dataRegionId);
+    enqueueTsFileParserReservationRequest(pipeRegionIdentity, reservationKey);
+
+    final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
+    final int perPipeRegionLimit =
+        Math.max(
+            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final int reservedCountOfPipeRegion =
+        reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
+    if (reservedTsFileParserCount >= globalLimit
+        || reservedCountOfPipeRegion >= perPipeRegionLimit) {
+      notifyNextTsFileParserMemoryReservationInternal();
+      return false;
     }
 
     final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
-    if (isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
-      reservedTsFileParserCount++;
-      return true;
+    final boolean isSoftMemoryEnough =
+        !PIPE_MEMORY_MANAGEMENT_ENABLED
+            || isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes);
+    if (!isSoftMemoryEnough
+        && !isHardEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
+      return false;
     }
 
-    return false;
+    final PipeRegionIdentity nextPipeRegion =
+        getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
+    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
+        waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity);
+    if (!pipeRegionIdentity.equals(nextPipeRegion)
+        || requestsOfPipeRegion == null
+        || !reservationKey.equals(requestsOfPipeRegion.iterator().next())) {
+      notifyNextTsFileParserMemoryReservationInternal();
+      return false;
+    }
+
+    removeTsFileParserReservationRequest(pipeRegionIdentity, reservationKey, true);
+    reservedTsFileParserCount++;
+    reservedTsFileParserCountByPipe.merge(pipeIdentity, 1, Integer::sum);
+    reservedTsFileParserCountByPipeRegion.put(pipeRegionIdentity, reservedCountOfPipeRegion + 1);
+    notifyNextTsFileParserMemoryReservationInternal();
+    return true;
   }
 
-  public synchronized void releaseTsFileParserMemory() {
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+  public synchronized void cancelTsFileParserMemoryReservation(
+      final String pipeName,
+      final long creationTime,
+      final String dataRegionId,
+      final TsFileParserMemoryReservation reservationKey) {
+    if (reservationKey == null) {
+      return;
+    }
+    removeTsFileParserReservationRequest(
+        new PipeRegionIdentity(new PipeIdentity(pipeName, creationTime), dataRegionId),
+        reservationKey,
+        false);
+    notifyNextTsFileParserMemoryReservationInternal();
+  }
+
+  public synchronized void releaseTsFileParserMemory(
+      final String pipeName, final long creationTime, final String dataRegionId) {
+    final PipeIdentity pipeIdentity = new PipeIdentity(pipeName, creationTime);
+    final PipeRegionIdentity pipeRegionIdentity =
+        new PipeRegionIdentity(pipeIdentity, dataRegionId);
+    final int reservedCountOfPipeRegion =
+        reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
+    if (reservedCountOfPipeRegion <= 0) {
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0,
+          pipeName,
+          creationTime,
+          dataRegionId);
       return;
     }
 
-    reservedTsFileParserCount = Math.max(0, reservedTsFileParserCount - 1);
-    this.notifyAll();
+    if (reservedCountOfPipeRegion == 1) {
+      reservedTsFileParserCountByPipeRegion.remove(pipeRegionIdentity);
+    } else {
+      reservedTsFileParserCountByPipeRegion.put(pipeRegionIdentity, reservedCountOfPipeRegion - 1);
+    }
+    final int reservedCountOfPipe = reservedTsFileParserCountByPipe.getOrDefault(pipeIdentity, 0);
+    if (reservedCountOfPipe == 1) {
+      reservedTsFileParserCountByPipe.remove(pipeIdentity);
+    } else {
+      reservedTsFileParserCountByPipe.put(pipeIdentity, reservedCountOfPipe - 1);
+    }
+    reservedTsFileParserCount--;
+    notifyNextTsFileParserMemoryReservationInternal();
   }
 
-  public synchronized void waitForTsFileParserMemory(final long timeoutInMs)
-      throws InterruptedException {
-    this.wait(Math.max(1, timeoutInMs));
+  private void enqueueTsFileParserReservationRequest(
+      final PipeRegionIdentity pipeRegionIdentity,
+      final TsFileParserMemoryReservation reservationKey) {
+    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
+        waitingTsFileParserRequestsByPipeRegion.computeIfAbsent(
+            pipeRegionIdentity,
+            key -> {
+              final ArrayDeque<PipeRegionIdentity> regionOrder =
+                  waitingTsFileParserRegionOrderByPipe.computeIfAbsent(
+                      key.pipeIdentity,
+                      pipe -> {
+                        waitingTsFileParserPipeOrder.addLast(pipe);
+                        return new ArrayDeque<>();
+                      });
+              regionOrder.addLast(key);
+              return new LinkedHashSet<>();
+            });
+    requestsOfPipeRegion.add(reservationKey);
+  }
+
+  public synchronized void notifyNextTsFileParserMemoryReservation() {
+    notifyNextTsFileParserMemoryReservationInternal();
+  }
+
+  private void notifyNextTsFileParserMemoryReservationInternal() {
+    final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
+    if (reservedTsFileParserCount >= globalLimit) {
+      return;
+    }
+
+    final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
+    final boolean isSoftMemoryEnough =
+        !PIPE_MEMORY_MANAGEMENT_ENABLED
+            || isEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes);
+    if (!isSoftMemoryEnough
+        && !isHardEnough4TabletParsingWithReservedParserMemory(parserMemorySizeInBytes)) {
+      return;
+    }
+
+    final int perPipeRegionLimit =
+        Math.max(
+            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final PipeRegionIdentity nextPipeRegion =
+        getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
+    if (nextPipeRegion == null) {
+      return;
+    }
+
+    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
+        waitingTsFileParserRequestsByPipeRegion.get(nextPipeRegion);
+    if (requestsOfPipeRegion != null && !requestsOfPipeRegion.isEmpty()) {
+      requestsOfPipeRegion.iterator().next().signal();
+    }
+  }
+
+  private PipeRegionIdentity getNextEligibleTsFileParserPipeRegion(
+      final int perPipeRegionLimit, final boolean requirePipeWithoutReservedParser) {
+    for (final PipeIdentity pipeIdentity : waitingTsFileParserPipeOrder) {
+      // Under soft memory pressure, reserve the hard-threshold headroom for a pipe that has no
+      // parser yet. Otherwise a busy pipe at the queue head can block every pipe behind it.
+      if (requirePipeWithoutReservedParser
+          && reservedTsFileParserCountByPipe.getOrDefault(pipeIdentity, 0) > 0) {
+        continue;
+      }
+
+      final ArrayDeque<PipeRegionIdentity> regionOrder =
+          waitingTsFileParserRegionOrderByPipe.get(pipeIdentity);
+      if (regionOrder == null) {
+        continue;
+      }
+      for (final PipeRegionIdentity pipeRegionIdentity : regionOrder) {
+        if (reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0)
+            < perPipeRegionLimit) {
+          return pipeRegionIdentity;
+        }
+      }
+    }
+    return null;
+  }
+
+  private void removeTsFileParserReservationRequest(
+      final PipeRegionIdentity pipeRegionIdentity,
+      final TsFileParserMemoryReservation reservationKey,
+      final boolean rotateAfterAdmission) {
+    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
+        waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity);
+    if (requestsOfPipeRegion == null || !requestsOfPipeRegion.remove(reservationKey)) {
+      return;
+    }
+
+    final PipeIdentity pipeIdentity = pipeRegionIdentity.pipeIdentity;
+    final ArrayDeque<PipeRegionIdentity> regionOrder =
+        waitingTsFileParserRegionOrderByPipe.get(pipeIdentity);
+    if (requestsOfPipeRegion.isEmpty()) {
+      waitingTsFileParserRequestsByPipeRegion.remove(pipeRegionIdentity);
+      if (regionOrder != null) {
+        regionOrder.remove(pipeRegionIdentity);
+        if (regionOrder.isEmpty()) {
+          waitingTsFileParserRegionOrderByPipe.remove(pipeIdentity);
+          waitingTsFileParserPipeOrder.remove(pipeIdentity);
+          return;
+        }
+      }
+    } else if (rotateAfterAdmission && regionOrder != null) {
+      regionOrder.remove(pipeRegionIdentity);
+      regionOrder.addLast(pipeRegionIdentity);
+    }
+
+    if (rotateAfterAdmission) {
+      waitingTsFileParserPipeOrder.remove(pipeIdentity);
+      waitingTsFileParserPipeOrder.addLast(pipeIdentity);
+    }
+  }
+
+  public static final class TsFileParserMemoryReservation {
+
+    private boolean isSignaled;
+
+    public synchronized void await(final long timeoutInMs) throws InterruptedException {
+      if (!isSignaled) {
+        wait(timeoutInMs);
+      }
+      isSignaled = false;
+    }
+
+    private synchronized void signal() {
+      isSignaled = true;
+      notify();
+    }
   }
 
   public boolean shouldReleaseTsFileParserOnOutOfMemory(
@@ -194,7 +415,7 @@ public class PipeMemoryManager {
       return elapsedTimeInMs >= maxRetryTimeInMs;
     }
 
-    if (!isHardEnough4TabletParsingWithReservedParserMemory()) {
+    if (!isHardEnough4TabletParsingWithReservedParserMemory(0)) {
       return true;
     }
 
@@ -442,6 +663,7 @@ public class PipeMemoryManager {
         allocatedBlocks.remove(block);
       }
 
+      notifyNextTsFileParserMemoryReservationInternal();
       this.notifyAll();
       return;
     }
@@ -732,6 +954,7 @@ public class PipeMemoryManager {
     }
     block.markAsReleased();
 
+    notifyNextTsFileParserMemoryReservationInternal();
     this.notifyAll();
   }
 
@@ -749,6 +972,7 @@ public class PipeMemoryManager {
     }
     block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() - sizeInBytes);
 
+    notifyNextTsFileParserMemoryReservationInternal();
     this.notifyAll();
 
     return true;
@@ -784,5 +1008,62 @@ public class PipeMemoryManager {
 
   public long getTotalMemorySizeInBytes() {
     return memoryBlock.getTotalMemorySizeInBytes();
+  }
+
+  private static class PipeIdentity {
+
+    private final String pipeName;
+    private final long creationTime;
+
+    private PipeIdentity(final String pipeName, final long creationTime) {
+      this.pipeName = pipeName;
+      this.creationTime = creationTime;
+    }
+
+    @Override
+    public boolean equals(final Object object) {
+      if (this == object) {
+        return true;
+      }
+      if (!(object instanceof PipeIdentity)) {
+        return false;
+      }
+      final PipeIdentity that = (PipeIdentity) object;
+      return creationTime == that.creationTime && Objects.equals(pipeName, that.pipeName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pipeName, creationTime);
+    }
+  }
+
+  private static class PipeRegionIdentity {
+
+    private final PipeIdentity pipeIdentity;
+    private final String dataRegionId;
+
+    private PipeRegionIdentity(final PipeIdentity pipeIdentity, final String dataRegionId) {
+      this.pipeIdentity = pipeIdentity;
+      this.dataRegionId = dataRegionId;
+    }
+
+    @Override
+    public boolean equals(final Object object) {
+      if (this == object) {
+        return true;
+      }
+      if (!(object instanceof PipeRegionIdentity)) {
+        return false;
+      }
+      final PipeRegionIdentity that = (PipeRegionIdentity) object;
+      return Objects.equals(pipeIdentity, that.pipeIdentity)
+          && Objects.equals(dataRegionId, that.dataRegionId);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pipeIdentity, dataRegionId);
+    }
   }
 }
