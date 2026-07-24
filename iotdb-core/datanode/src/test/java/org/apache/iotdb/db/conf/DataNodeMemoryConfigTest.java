@@ -24,10 +24,38 @@ import org.apache.iotdb.commons.memory.MemoryConfig;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DataNodeMemoryConfigTest {
+
+  @Test
+  public void testResolveSubscriptionQueryMemoryProportions() {
+    final int[] defaultProportions = DataNodeMemoryConfig.resolveQueryMemoryProportions(null, true);
+    assertArrayEquals(new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250}, defaultProportions);
+    assertEquals(
+        0.2, (double) defaultProportions[8] / Arrays.stream(defaultProportions).sum(), 0.001);
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50", true));
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions(
+            "1:100:200:50:200:200:200:50:1000", false));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRejectInvalidSubscriptionQueryMemoryProportions() {
+    DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200", true);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRejectNegativeSubscriptionQueryMemoryProportion() {
+    DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50:-1", true);
+  }
 
   @Test
   public void testRpcMemoryControlIsActivatedOnlyExplicitly() {

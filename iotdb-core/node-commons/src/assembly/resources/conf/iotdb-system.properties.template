@@ -1156,10 +1156,12 @@ meta_data_cache_enable=true
 # Datatype: boolean
 may_cache_nonexist_series=true
 
-# Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others.
-# The parameter form is a:b:c:d:e:f:g:h, where a, b, c, d, e, f, g and h are integers. for example: 1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50
+# Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others : Subscription.
+# The parameter form is a:b:c:d:e:f:g:h:i, where a, b, c, d, e, f, g, h and i are integers. for example: 1:1:1:1:1:1:1:1:1 , 1:100:200:50:200:200:200:50:250
+# The legacy eight-part form is still accepted and defaults Subscription to 20% of query memory.
+# When subscription is disabled, its memory proportion is 0.
 # effectiveMode: restart
-chunk_timeseriesmeta_free_memory_proportion=1:100:200:50:200:200:200:50
+chunk_timeseriesmeta_free_memory_proportion=1:100:200:50:200:200:200:50:250
 
 # Whether to enable LAST cache
 # effectiveMode: restart
