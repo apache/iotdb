@@ -1755,9 +1755,18 @@ public class DataNodeTableOperatorGenerator
     AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
         constructAbstractAggTableScanOperatorParameter(node, context);
 
+    // When the device set resolves to zero devices AND there are no grouping
+    // keys (e.g. a global last/last_by over a device that was never written),
+    // fall back to the default aggregation operator, which already emits the
+    // single all-NULL row required for a global aggregation over empty input.
+    // The last-cache optimization has no device to read and would otherwise
+    // emit zero rows. A GROUP BY over an empty device set is intentionally left
+    // on the last-cache path, which already (correctly) returns zero rows.
     OptimizeType optimizeType =
-        canUseLastCacheOptimize(
-            parameter.getTableAggregators(), node, parameter.getTimeColumnName());
+        node.getDeviceEntries().isEmpty() && node.getGroupingKeys().isEmpty()
+            ? OptimizeType.NOOP
+            : canUseLastCacheOptimize(
+                parameter.getTableAggregators(), node, parameter.getTimeColumnName());
     if (optimizeType != OptimizeType.NOOP) {
       return constructLastQueryAggTableScanOperator(
           node, parameter, optimizeType == OptimizeType.LAST_ROW, context);
