@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.tvf;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.function.PartitionRecognizer;
+import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -31,13 +33,19 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
+import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -53,6 +61,7 @@ import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 public class TableFunctionOperatorTest {
   private static final ExecutorService instanceNotificationExecutor =
@@ -285,6 +294,147 @@ public class TableFunctionOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testVariableWidthResultsAreSplitByActualSize() throws Exception {
+    QueryId queryId = new QueryId("large_finish_result");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    OperatorContext operatorContext =
+        driverContext.addOperatorContext(
+            0, new PlanNodeId("tvf"), TableFunctionOperator.class.getSimpleName());
+    int maxLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    Assert.assertTrue(maxLineNumber >= 3);
+    int wideRowCount = maxLineNumber + 1;
+    int wideValueLength = maxBlockSize / (maxLineNumber - 1) + 1;
+    Binary narrowValue = new Binary("narrow", TSFileConfig.STRING_CHARSET);
+    Binary wideValue = new Binary(new byte[wideValueLength]);
+    TableFunctionProcessorProvider provider =
+        new TableFunctionProcessorProvider() {
+          @Override
+          public TableFunctionDataProcessor getDataProcessor() {
+            return new TableFunctionDataProcessor() {
+              @Override
+              public void process(
+                  Record input,
+                  List<ColumnBuilder> properColumnBuilders,
+                  ColumnBuilder passThroughIndexBuilder) {
+                // Initialize the splitter with a narrow result block.
+                properColumnBuilders.get(0).writeBinary(narrowValue);
+              }
+
+              @Override
+              public void finish(
+                  List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+                // This second result block exceeds both maxLineNumber and maxBlockSize. Reusing a
+                // row-count estimate from the narrow block must not let an oversized slice pass
+                // through.
+                for (int i = 0; i < wideRowCount; i++) {
+                  properColumnBuilders.get(0).writeBinary(wideValue);
+                }
+              }
+            };
+          }
+        };
+
+    Operator singleRowChild =
+        new Operator() {
+          private boolean consumed;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder =
+                new TsBlockBuilder(1, Collections.singletonList(TSDataType.INT64));
+            builder.getColumnBuilder(0).writeLong(1);
+            builder.declarePosition();
+            consumed = true;
+            return builder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+          }
+
+          @Override
+          public boolean hasNext() {
+            return !consumed;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return consumed;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+        };
+
+    int returnedRows = 0;
+    int returnedBlocks = 0;
+    try (TableFunctionOperator operator =
+        new TableFunctionOperator(
+            operatorContext,
+            provider,
+            singleRowChild,
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(TSDataType.TEXT),
+            1,
+            Collections.singletonList(0),
+            Collections.emptyList(),
+            false,
+            Collections.emptyList(),
+            false,
+            mock(IoTDBLocal.class))) {
+      while (!operator.isFinished()) {
+        operator.isBlocked();
+        TsBlock block = operator.next();
+        if (block == null) {
+          continue;
+        }
+        returnedBlocks++;
+        returnedRows += block.getPositionCount();
+        Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
+        Assert.assertTrue(block.getSizeInBytes() <= maxBlockSize);
+        Assert.assertTrue(new TsBlockSerde().serialize(block).remaining() <= maxBlockSize);
+        for (int i = 0; i < block.getPositionCount(); i++) {
+          int expectedLength =
+              returnedRows - block.getPositionCount() + i == 0 ? 6 : wideValueLength;
+          assertEquals(expectedLength, block.getColumn(0).getBinary(i).getLength());
+        }
+      }
+    }
+
+    assertEquals(wideRowCount + 1, returnedRows);
+    Assert.assertTrue(returnedBlocks > 2);
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
