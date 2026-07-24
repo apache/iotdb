@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.tsfile.exception.TsFileRuntimeException;
+
 import java.io.File;
 
 /**
- * Thrown when a TsFile is detected to be corrupted during query execution. Extends RuntimeException
- * so it bypasses all {@code catch (IOException)} blocks in the operator hierarchy and reaches the
- * centralized error handling in ErrorHandlingUtils.
+ * Thrown when a TsFile is detected to be corrupted during query execution. Extends {@link
+ * TsFileRuntimeException} so it follows the existing TsFile error handling and bypasses all {@code
+ * catch (IOException)} blocks in the operator hierarchy.
  */
-public class CorruptedTsFileException extends RuntimeException {
+public class CorruptedTsFileException extends TsFileRuntimeException {
 
   public enum Stage {
     READ_TIMESERIES_METADATA,
