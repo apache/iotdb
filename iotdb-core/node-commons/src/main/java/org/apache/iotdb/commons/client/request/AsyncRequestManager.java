@@ -210,7 +210,13 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           endPoint,
           e.getMessage(),
           retryCount);
-      onRequestFailure(e, endPoint);
+      try {
+        onRequestFailure(e, endPoint);
+      } catch (final RuntimeException reportingFailure) {
+        if (reportingFailure != e) {
+          e.addSuppressed(reportingFailure);
+        }
+      }
       if (handler != null) {
         try {
           handler.onError(e);

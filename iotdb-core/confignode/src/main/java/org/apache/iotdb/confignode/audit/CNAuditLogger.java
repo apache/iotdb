@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.audit;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -47,9 +46,7 @@ public class CNAuditLogger extends AbstractAuditLogger {
   public void log(IAuditEntity auditLogFields, Supplier<String> log) {}
 
   public void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
-    if (CommonDescriptor.getInstance().getConfig().isEnableInternalSSL()) {
-      recordTrustedChannelFailureAuditLogIfNecessary(
-          failure, new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()), target);
-    }
+    recordTrustedChannelFailureAuditLogIfNecessary(
+        failure, new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()), target);
   }
 }

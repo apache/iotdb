@@ -29,8 +29,19 @@ import org.apache.thrift.TException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.function.BiConsumer;
 
 public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
+
+  private static final BiConsumer<Throwable, ThriftClient> NO_OP_FAILURE_HANDLER =
+      (failure, client) -> {};
+
+  private final BiConsumer<Throwable, ThriftClient> failureHandler;
+
+  private SyncThriftClientWithErrorHandler(
+      final BiConsumer<Throwable, ThriftClient> failureHandler) {
+    this.failureHandler = failureHandler;
+  }
 
   /**
    * Note: The caller needs to ensure that the constructor corresponds to the class, or the cast
@@ -39,9 +50,31 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
   @SuppressWarnings("unchecked")
   public static <V extends ThriftClient> V newErrorHandler(
       Class<V> targetClass, Constructor<V> constructor, Object... args) {
+    return newErrorHandler(targetClass, constructor, NO_OP_FAILURE_HANDLER, args);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <V extends ThriftClient> V newErrorHandlerWithFailureHandler(
+      Class<V> targetClass,
+      Constructor<V> constructor,
+      BiConsumer<Throwable, V> failureHandler,
+      Object... args) {
+    return newErrorHandler(
+        targetClass,
+        constructor,
+        (failure, client) -> failureHandler.accept(failure, (V) client),
+        args);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <V extends ThriftClient> V newErrorHandler(
+      Class<V> targetClass,
+      Constructor<V> constructor,
+      BiConsumer<Throwable, ThriftClient> failureHandler,
+      Object... args) {
     Enhancer enhancer = new Enhancer();
     enhancer.setSuperclass(targetClass);
-    enhancer.setCallback(new SyncThriftClientWithErrorHandler());
+    enhancer.setCallback(new SyncThriftClientWithErrorHandler(failureHandler));
     if (constructor == null) {
       return (V) enhancer.create();
     }
@@ -54,6 +87,13 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
     try {
       return methodProxy.invokeSuper(o, objects);
     } catch (Throwable t) {
+      try {
+        failureHandler.accept(t, (ThriftClient) o);
+      } catch (final RuntimeException reportingFailure) {
+        if (reportingFailure != t) {
+          t.addSuppressed(reportingFailure);
+        }
+      }
       ThriftClient.resolveException(t, (ThriftClient) o);
       throw new TException(
           ClientMessages.EXCEPTION_ERROR_CALLING_METHOD_C04E5A63

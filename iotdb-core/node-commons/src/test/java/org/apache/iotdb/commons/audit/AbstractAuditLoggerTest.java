@@ -100,6 +100,21 @@ public class AbstractAuditLoggerTest {
         auditLogger.auditLog.get());
   }
 
+  @Test
+  public void testAuditFailureShouldNotReplaceTrustedChannelFailure() {
+    final RuntimeException auditFailure = new RuntimeException("audit failure");
+    final ThrowingAuditLogger auditLogger = new ThrowingAuditLogger(auditFailure);
+    final SSLHandshakeException channelFailure = new SSLHandshakeException("handshake failure");
+    final TEndPoint initiator = new TEndPoint("10.0.0.1", 10730);
+    final TEndPoint target = new TEndPoint("10.0.0.2", 10730);
+
+    auditLogger.recordTrustedChannelFailureAuditLogIfNecessary(channelFailure, initiator, target);
+
+    assertEquals(1, auditLogger.invocationCount.get());
+    assertEquals(1, channelFailure.getSuppressed().length);
+    assertSame(auditFailure, channelFailure.getSuppressed()[0]);
+  }
+
   private static class TestAuditLogger extends AbstractAuditLogger {
 
     private IAuditEntity auditEntity;
@@ -109,6 +124,22 @@ public class AbstractAuditLoggerTest {
     public void log(IAuditEntity auditLogFields, Supplier<String> log) {
       auditEntity = auditLogFields;
       auditLog = log;
+    }
+  }
+
+  private static class ThrowingAuditLogger extends AbstractAuditLogger {
+
+    private final RuntimeException auditFailure;
+    private final AtomicInteger invocationCount = new AtomicInteger();
+
+    private ThrowingAuditLogger(final RuntimeException auditFailure) {
+      this.auditFailure = auditFailure;
+    }
+
+    @Override
+    public void log(final IAuditEntity auditLogFields, final Supplier<String> log) {
+      invocationCount.incrementAndGet();
+      throw auditFailure;
     }
   }
 }

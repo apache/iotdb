@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.consensus.iotv2.container;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.client.ClientPoolFactory.AsyncIoTConsensusV2ServiceClientPoolFactory;
 import org.apache.iotdb.commons.client.ClientPoolFactory.SyncIoTConsensusV2ServiceClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -54,6 +56,9 @@ public class IoTV2GlobalComponentContainer {
   private final IClientManager<TEndPoint, AsyncIoTConsensusV2ServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusV2ServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
+  private volatile TEndPoint thisNode;
+  private volatile TrustedChannelFailureHandler trustedChannelFailureHandler =
+      TrustedChannelFailureHandler.NO_OP;
   private PipeSubtaskExecutor consensusExecutor;
 
   private IoTV2GlobalComponentContainer() {
@@ -85,6 +90,26 @@ public class IoTV2GlobalComponentContainer {
 
   public ScheduledExecutorService getBackgroundTaskService() {
     return this.backgroundTaskService;
+  }
+
+  public void configureTrustedChannelFailureHandler(
+      final TEndPoint thisNode, final TrustedChannelFailureHandler trustedChannelFailureHandler) {
+    this.thisNode = Objects.requireNonNull(thisNode);
+    this.trustedChannelFailureHandler = Objects.requireNonNull(trustedChannelFailureHandler);
+  }
+
+  public void reportTrustedChannelFailure(final Throwable failure, final TEndPoint targetEndPoint) {
+    final TEndPoint initiatorEndPoint = thisNode;
+    if (failure == null || initiatorEndPoint == null || targetEndPoint == null) {
+      return;
+    }
+    try {
+      trustedChannelFailureHandler.onFailure(failure, initiatorEndPoint, targetEndPoint);
+    } catch (final RuntimeException reportingFailure) {
+      if (reportingFailure != failure) {
+        failure.addSuppressed(reportingFailure);
+      }
+    }
   }
 
   public void stopBackgroundTaskService() {

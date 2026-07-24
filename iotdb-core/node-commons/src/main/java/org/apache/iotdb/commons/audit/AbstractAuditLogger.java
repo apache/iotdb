@@ -128,6 +128,10 @@ public abstract class AbstractAuditLogger {
               .setPrivilegeType(PrivilegeType.AUDIT),
           () -> initiatorIdentifier,
           () -> targetIdentifier);
+    } catch (RuntimeException auditFailure) {
+      if (auditFailure != failure) {
+        failure.addSuppressed(auditFailure);
+      }
     } finally {
       RECORDING_TRUSTED_CHANNEL_FAILURE.remove();
     }
