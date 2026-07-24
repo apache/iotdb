@@ -218,6 +218,32 @@ public final class DataNodeQueryMessages {
       "Error happened while scanning the file";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "all cached chunks should be consumed first";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "Failed to read timeseries metadata. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "Failed to read timeseries metadata from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_F0FFE629 =
+          "Failed to read chunk data. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_READ_CHUNK_DATA_FROM_TSFILE_ARG_B88F2496 =
+      "Failed to read chunk data from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "Failed to decode page data. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "Failed to decode page data from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_05D35760 =
+          "Failed to load page reader. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_LOAD_PAGE_READER_FROM_TSFILE_ARG_3B1CCC18 =
+      "Failed to load page reader from TsFile: %s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "Failed to read metadata index node from TsFile: %s";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
       "overlapped data should be consumed first";
   public static final String NO_MORE_BATCH_DATA =

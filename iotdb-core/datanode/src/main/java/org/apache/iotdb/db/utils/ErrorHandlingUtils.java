@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
@@ -186,6 +187,8 @@ public class ErrorHandlingUtils {
           : RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
+    } else if (t instanceof CorruptedTsFileException) {
+      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, t.getMessage());
     } else if (t instanceof SemanticException) {
       if (t.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(

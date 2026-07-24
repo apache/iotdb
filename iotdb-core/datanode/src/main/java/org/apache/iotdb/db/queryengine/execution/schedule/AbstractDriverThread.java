@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -93,6 +94,12 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
               next.setAbortCause(
                   new IoTDBRuntimeException(
                       rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true));
+            } else if (rootCause instanceof CorruptedTsFileException) {
+              // CorruptedTsFileException no longer chains the original IOException as its
+              // cause (it uses addSuppressed instead), so getRootCause returns the exception
+              // itself and we can match it here.
+              logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
+              next.setAbortCause(rootCause);
             } else {
               logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
               next.setAbortCause(
