@@ -2297,7 +2297,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   protected TSStatus checkUnsupportedAuditDatabaseWrite(
       IAuditEntity auditEntity, PartialPath path) {
     if (includeByAuditTreeDB(path)
-        && !AuthorityChecker.INTERNAL_AUDIT_USER.equals(path.getFullPath())) {
+        && !AuthorityChecker.INTERNAL_AUDIT_USER.equals(auditEntity.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(auditEntity, path::getFullPath);
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
