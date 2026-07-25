@@ -87,8 +87,13 @@ public class IoTDBTemplateAuthIT {
 
       assertNonQueryTestFail(
           adminStmt,
+          "delete database root.__audit",
+          "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
+
+      assertNonQueryTestFail(
+          adminStmt,
           "set device template t1 to root.__audit",
-          "803: The database 'root.__audit' is read-only");
+          "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
 
       Set<String> retSet = new HashSet<>(Arrays.asList("t1", "t2", "t3"));
 
