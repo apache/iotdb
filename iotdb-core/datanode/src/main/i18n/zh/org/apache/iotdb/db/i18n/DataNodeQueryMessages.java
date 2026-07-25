@@ -3683,9 +3683,10 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
 
       "AlterLogicalViewNode 的 getOutputColumnNames 尚未实现";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
 
-      "数据库 '%s' 为只读。";
+          "Apache IoTDB 不支持对数据库 '%s' 执行此操作。";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
 
       "数据库 '%s' 仅允许 AUDIT admin 查询。";
