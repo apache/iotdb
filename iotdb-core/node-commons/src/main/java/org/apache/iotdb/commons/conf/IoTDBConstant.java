@@ -139,7 +139,6 @@ public class IoTDBConstant {
   public static final String VERSION_WITH_BUILD_AND_PROFILE =
       VersionHolder.VERSION_WITH_BUILD_AND_PROFILE;
 
-  public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String SAMPLED_QUERIES_LOGGER_NAME = "SAMPLED_QUERIES";
 
