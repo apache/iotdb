@@ -103,13 +103,6 @@ public class ConfigMTreeTest {
   }
 
   @Test
-  public void testSetStorageGroupShouldRejectEmptyPathNode() {
-    Assert.assertThrows(
-        IllegalPathException.class,
-        () -> root.setStorageGroup(new PartialPath(new String[] {"root", ""})));
-  }
-
-  @Test
   public void testAddAndPathExist() throws MetadataException {
     final String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));

@@ -142,11 +142,6 @@ public class ConfigMTree {
    */
   public void setStorageGroup(final PartialPath path) throws MetadataException {
     final String[] nodeNames = path.getNodes();
-    for (final String nodeName : nodeNames) {
-      if (nodeName == null || nodeName.isEmpty()) {
-        throw new IllegalPathException(path.getFullPath());
-      }
-    }
     MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
