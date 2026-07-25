@@ -359,6 +359,12 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final PartialPath devicePath = new PartialPath(device);
 
       final String[] devicePrefixNodes = devicePath.getNodes();
+      for (final String node : devicePrefixNodes) {
+        if (node == null || node.isEmpty()) {
+          throw new LoadAnalyzeException(
+              new IllegalPathException(devicePath.getFullPath()).getMessage());
+        }
+      }
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
         throw new LoadAnalyzeException(
             String.format(

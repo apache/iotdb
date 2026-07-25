@@ -201,6 +201,35 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
+  public void testTreeSchemaVerifierShouldRejectDeviceWithEmptyPathNode() throws Exception {
+    final File tsFile = File.createTempFile("load-tree-illegal-device", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_illegal_device_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final IDeviceID device = new StringArrayDeviceID(new String[] {"root", ""});
+        getTreeSchemaCache(verifier)
+            .addTimeSeries(device, new MeasurementSchema("s1", TSDataType.INT32));
+
+        final InvocationTargetException exception =
+            Assert.assertThrows(
+                InvocationTargetException.class,
+                () -> getAutoCreateDatabaseMethod().invoke(verifier));
+        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeException);
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
   public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenAutoCreateDisabled()
       throws Exception {
     final boolean originalAutoCreateSchemaEnabled =
@@ -312,6 +341,13 @@ public class LoadTsFileAnalyzerTest {
   private Method getVerifyTreeSchemaMethod() throws NoSuchMethodException {
     final Method method =
         TreeSchemaAutoCreatorAndVerifier.class.getDeclaredMethod("verifySchema", ISchemaTree.class);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private Method getAutoCreateDatabaseMethod() throws NoSuchMethodException {
+    final Method method =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredMethod("autoCreateDatabase");
     method.setAccessible(true);
     return method;
   }
