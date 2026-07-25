@@ -71,6 +71,7 @@ public class PipeMemoryManager {
   private final Map<PipeIdentity, ArrayDeque<PipeRegionIdentity>>
       waitingTsFileParserRegionOrderByPipe = new HashMap<>();
   private final ArrayDeque<PipeIdentity> waitingTsFileParserPipeOrder = new ArrayDeque<>();
+  private PipeIdentity lastAdmittedWaitingTsFileParserPipe;
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
@@ -177,7 +178,8 @@ public class PipeMemoryManager {
     final PipeIdentity pipeIdentity = new PipeIdentity(pipeName, creationTime);
     final PipeRegionIdentity pipeRegionIdentity =
         new PipeRegionIdentity(pipeIdentity, dataRegionId);
-    enqueueTsFileParserReservationRequest(pipeRegionIdentity, reservationKey);
+    final boolean wasRequestAlreadyWaiting =
+        enqueueTsFileParserReservationRequest(pipeRegionIdentity, reservationKey);
 
     final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
     final int perPipeRegionLimit =
@@ -212,6 +214,9 @@ public class PipeMemoryManager {
     }
 
     removeTsFileParserReservationRequest(pipeRegionIdentity, reservationKey, true);
+    if (wasRequestAlreadyWaiting) {
+      lastAdmittedWaitingTsFileParserPipe = pipeIdentity;
+    }
     reservedTsFileParserCount++;
     reservedTsFileParserCountByPipe.merge(pipeIdentity, 1, Integer::sum);
     reservedTsFileParserCountByPipeRegion.put(pipeRegionIdentity, reservedCountOfPipeRegion + 1);
@@ -262,10 +267,11 @@ public class PipeMemoryManager {
       reservedTsFileParserCountByPipe.put(pipeIdentity, reservedCountOfPipe - 1);
     }
     reservedTsFileParserCount--;
+    clearTsFileParserAdmissionCursorIfIdle();
     notifyNextTsFileParserMemoryReservationInternal();
   }
 
-  private void enqueueTsFileParserReservationRequest(
+  private boolean enqueueTsFileParserReservationRequest(
       final PipeRegionIdentity pipeRegionIdentity,
       final TsFileParserMemoryReservation reservationKey) {
     final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
@@ -282,7 +288,7 @@ public class PipeMemoryManager {
               regionOrder.addLast(key);
               return new LinkedHashSet<>();
             });
-    requestsOfPipeRegion.add(reservationKey);
+    return !requestsOfPipeRegion.add(reservationKey);
   }
 
   public synchronized void notifyNextTsFileParserMemoryReservation() {
@@ -322,7 +328,14 @@ public class PipeMemoryManager {
 
   private PipeRegionIdentity getNextEligibleTsFileParserPipeRegion(
       final int perPipeRegionLimit, final boolean requirePipeWithoutReservedParser) {
+    PipeRegionIdentity firstEligiblePipeRegion = null;
+    boolean hasVisitedLastAdmittedPipe = lastAdmittedWaitingTsFileParserPipe == null;
     for (final PipeIdentity pipeIdentity : waitingTsFileParserPipeOrder) {
+      final boolean isLastAdmittedPipe = pipeIdentity.equals(lastAdmittedWaitingTsFileParserPipe);
+      if (isLastAdmittedPipe) {
+        hasVisitedLastAdmittedPipe = true;
+      }
+
       // Under soft memory pressure, reserve the hard-threshold headroom for a pipe that has no
       // parser yet. Otherwise a busy pipe at the queue head can block every pipe behind it.
       if (requirePipeWithoutReservedParser
@@ -335,14 +348,32 @@ public class PipeMemoryManager {
       if (regionOrder == null) {
         continue;
       }
+      PipeRegionIdentity eligiblePipeRegion = null;
       for (final PipeRegionIdentity pipeRegionIdentity : regionOrder) {
         if (reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0)
             < perPipeRegionLimit) {
-          return pipeRegionIdentity;
+          eligiblePipeRegion = pipeRegionIdentity;
+          break;
         }
       }
+      if (eligiblePipeRegion == null) {
+        continue;
+      }
+
+      if (firstEligiblePipeRegion == null) {
+        firstEligiblePipeRegion = eligiblePipeRegion;
+      }
+      if (hasVisitedLastAdmittedPipe && !isLastAdmittedPipe) {
+        return eligiblePipeRegion;
+      }
     }
-    return null;
+    return firstEligiblePipeRegion;
+  }
+
+  private void clearTsFileParserAdmissionCursorIfIdle() {
+    if (reservedTsFileParserCount == 0 && waitingTsFileParserPipeOrder.isEmpty()) {
+      lastAdmittedWaitingTsFileParserPipe = null;
+    }
   }
 
   private void removeTsFileParserReservationRequest(
@@ -365,6 +396,9 @@ public class PipeMemoryManager {
         if (regionOrder.isEmpty()) {
           waitingTsFileParserRegionOrderByPipe.remove(pipeIdentity);
           waitingTsFileParserPipeOrder.remove(pipeIdentity);
+          if (!rotateAfterAdmission) {
+            clearTsFileParserAdmissionCursorIfIdle();
+          }
           return;
         }
       }
@@ -376,6 +410,8 @@ public class PipeMemoryManager {
     if (rotateAfterAdmission) {
       waitingTsFileParserPipeOrder.remove(pipeIdentity);
       waitingTsFileParserPipeOrder.addLast(pipeIdentity);
+    } else {
+      clearTsFileParserAdmissionCursorIfIdle();
     }
   }
 

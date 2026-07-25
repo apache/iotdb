@@ -185,6 +185,47 @@ public class TsFileInsertionDataContainerTest {
   }
 
   @Test
+  public void testScanContainerKeepsIteratorOnOutOfMemory() throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-retry-tablet-memory.tsfile", 1, 1, 10, 0, 100, 10, 10);
+
+    try (final TsFileInsertionScanDataContainer container =
+        new TsFileInsertionScanDataContainer(
+            nonalignedTsFile,
+            new PrefixPipePattern("root"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null,
+            null,
+            false)) {
+      final AtomicInteger memoryUsageReadCount = new AtomicInteger(0);
+      replaceAllocatedTabletMemory(
+          container,
+          new PipeMemoryBlock(0) {
+            @Override
+            public long getMemoryUsageInBytes() {
+              if (memoryUsageReadCount.incrementAndGet() == 2) {
+                throw new PipeRuntimeOutOfMemoryCriticalException("expected oom");
+              }
+              return super.getMemoryUsageInBytes();
+            }
+          });
+
+      final Iterator<TabletInsertionEvent> iterator =
+          container.toTabletInsertionEvents().iterator();
+      final PipeRuntimeOutOfMemoryCriticalException exception =
+          Assert.assertThrows(PipeRuntimeOutOfMemoryCriticalException.class, iterator::next);
+      Assert.assertEquals("expected oom", exception.getMessage());
+
+      Assert.assertTrue(iterator.hasNext());
+      final TabletInsertionEvent event = iterator.next();
+      Assert.assertTrue(event instanceof PipeRawTabletInsertionEvent);
+      ((PipeRawTabletInsertionEvent) event).clearReferenceCount(getClass().getName());
+    }
+  }
+
+  @Test
   public void testConsumeTabletInsertionEventsWithRetryPreservesProgressOnOutOfMemory()
       throws Exception {
     final PipeTsFileInsertionEvent event =
@@ -1307,6 +1348,16 @@ public class TsFileInsertionDataContainerTest {
         TsFileInsertionDataContainer.class.getDeclaredField("allocatedMemoryBlockForTablet");
     field.setAccessible(true);
     return (PipeMemoryBlock) field.get(container);
+  }
+
+  private void replaceAllocatedTabletMemory(
+      final TsFileInsertionDataContainer container, final PipeMemoryBlock replacement)
+      throws NoSuchFieldException, IllegalAccessException {
+    final Field field =
+        TsFileInsertionDataContainer.class.getDeclaredField("allocatedMemoryBlockForTablet");
+    field.setAccessible(true);
+    ((PipeMemoryBlock) field.get(container)).close();
+    field.set(container, replacement);
   }
 
   @SuppressWarnings("unchecked")
