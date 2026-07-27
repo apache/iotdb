@@ -197,6 +197,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private volatile boolean schemaRegionConsensusStarted = false;
   private volatile boolean dataRegionConsensusStarted = false;
+  private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
   protected DataNodeContext context;
 
@@ -912,12 +913,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error(DataNodeMiscMessages.MEET_ERROR_STARTING_UP, e);
       throw e;
     }
-    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
-
     try {
       long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, schemaEngineRecoveryTimeInMs);
       logger.info(
           DataNodeMiscMessages
               .MISC_LOG_SCHEMAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_3D1B8523,
@@ -935,6 +935,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (IOException e) {
       throw new StartupException(e);
     }
+    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
   }
 
   void processPid() {
@@ -994,7 +995,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
     }
     long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.WAIT_DATABASES_READY, (endTime - startTime));
+    logger.info(
+        DataNodeMiscMessages
+            .MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C,
+        (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -1446,8 +1450,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void initSchemaEngine() {
     long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, (endTime - startTime));
+    schemaEngineRecoveryTimeInMs = System.currentTimeMillis() - startTime;
   }
 
   private void classLoader() {

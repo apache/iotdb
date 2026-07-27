@@ -371,8 +371,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "Setting up IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "Recover the schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode failed to set up.";
-  public static final String WAIT_DATABASES_READY =
-      "Wait for all databases ready, which takes {} ms.";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "Wait for local DataRegion recovery tasks to finish, which takes {} ms.";
   public static final String PREPARE_PIPE_RESOURCES =
       "Prepare pipe resources successfully, which takes {} ms.";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =

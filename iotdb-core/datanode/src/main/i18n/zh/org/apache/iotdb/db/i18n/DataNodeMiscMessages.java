@@ -370,8 +370,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "正在配置 IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "正在恢复 Schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode 启动失败。";
-  public static final String WAIT_DATABASES_READY =
-      "等待所有数据库就绪，耗时 {} 毫秒。";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "等待本地 DataRegion 恢复任务结束，耗时 {} 毫秒。";
   public static final String PREPARE_PIPE_RESOURCES =
       "Pipe 资源准备完成，耗时 {} 毫秒。";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =
