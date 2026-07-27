@@ -68,6 +68,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode());
   }
 
   /**

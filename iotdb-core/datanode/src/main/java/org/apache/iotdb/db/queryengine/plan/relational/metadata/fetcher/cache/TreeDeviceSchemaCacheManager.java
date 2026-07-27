@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -78,7 +79,8 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   void failIfMetadataLeaseFenced() {
-    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced();
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   /** singleton pattern. */

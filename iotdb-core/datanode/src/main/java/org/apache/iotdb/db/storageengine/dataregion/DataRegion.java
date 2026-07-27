@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -1787,7 +1788,8 @@ public class DataRegion implements IDataRegionForQuery {
     final String database = getDatabaseName();
 
     final TsTable cachedTable =
-        DataNodeTableCache.getInstance().getTable(database, tableName, false);
+        DataNodeTableCache.getInstance()
+            .getTable(database, tableName, false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     if (cachedTable != null) {
       return resolveSchemaFromCache(database, tableName, cachedTable);
     }

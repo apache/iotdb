@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.lease;
 
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 
 import com.google.common.util.concurrent.MoreExecutors;
 
@@ -47,10 +48,16 @@ public final class MetadataLeaseTestUtils {
   }
 
   public static void failIfMetadataLeaseFenced(final MetadataLeaseManager manager) {
+    failIfMetadataLeaseFenced(manager, LeaseFencedRetryPolicy.NONE);
+  }
+
+  public static void failIfMetadataLeaseFenced(
+      final MetadataLeaseManager manager, final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     manager.checkLeaseStatus();
     if (manager.isFenced()) {
       throw new MetadataLeaseFencedException(
-          "Metadata lease is fenced. The local metadata cache is unavailable.");
+          "Metadata lease is fenced. The local metadata cache is unavailable.",
+          leaseFencedRetryPolicy);
     }
   }
 

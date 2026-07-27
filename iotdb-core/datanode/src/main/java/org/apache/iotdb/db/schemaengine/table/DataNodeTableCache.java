@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
@@ -102,8 +103,8 @@ public class DataNodeTableCache implements ITableCache {
     return DataNodeTableCacheHolder.INSTANCE;
   }
 
-  void failIfMetadataLeaseFenced() {
-    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced();
+  void failIfMetadataLeaseFenced(final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
   }
 
   @Override
@@ -179,7 +180,7 @@ public class DataNodeTableCache implements ITableCache {
   public void preUpdateTable(final String database, final TsTable table, final String oldName) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       innerPreUpdateTable(database, table, oldName);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -193,7 +194,7 @@ public class DataNodeTableCache implements ITableCache {
       final String database1, final String database2, final TsTable table1, final TsTable table2) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       innerPreUpdateTable(database1, table1, null);
       innerPreUpdateTable(database2, table2, null);
     } finally {
@@ -246,7 +247,7 @@ public class DataNodeTableCache implements ITableCache {
   public void rollbackUpdateTable(String database, final String tableName, final String oldName) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       innerRollbackUpdateTable(database, tableName, oldName);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -261,7 +262,7 @@ public class DataNodeTableCache implements ITableCache {
       final String tableName2) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       innerRollbackUpdateTable(database1, tableName1, null);
       innerRollbackUpdateTable(database2, tableName2, null);
     } finally {
@@ -339,7 +340,7 @@ public class DataNodeTableCache implements ITableCache {
 
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       database = PathUtils.unQualifyDatabaseName(database);
       final TsTable newTable = getTableFromSpecialStatusMap(database, tableName);
       if (Objects.isNull(newTable)) {
@@ -379,7 +380,7 @@ public class DataNodeTableCache implements ITableCache {
       final String tableName2) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       final String unqualifiedDatabase1 = PathUtils.unQualifyDatabaseName(database1);
       final String unqualifiedDatabase2 = PathUtils.unQualifyDatabaseName(database2);
       final TsTable table1 = getTableFromSpecialStatusMap(unqualifiedDatabase1, tableName1);
@@ -543,7 +544,7 @@ public class DataNodeTableCache implements ITableCache {
   public Map<String, Map<String, TsTable>> getTableSnapshot() {
     readWriteLock.readLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       return databaseTableMap.entrySet().stream()
           .collect(
               Collectors.toMap(
@@ -565,7 +566,8 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public TsTable getTableInWrite(final String database, final String tableName) {
-    final TsTable result = getTableInCache(database, tableName);
+    final TsTable result =
+        getTableInCache(database, tableName, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);
   }
 
@@ -580,21 +582,30 @@ public class DataNodeTableCache implements ITableCache {
    */
   @Override
   public TsTable getTable(String database, final String tableName, final boolean force) {
+    return getTable(database, tableName, force, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
+  @Override
+  public TsTable getTable(
+      String database,
+      final String tableName,
+      final boolean force,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     database = PathUtils.unQualifyDatabaseName(database);
     final AtomicReference<TableNodeStatus> tableStatusRef = new AtomicReference<>();
     final Map<String, Map<String, Long>> specialStatusMap =
-        mayGetTableInSpecialStatusMap(database, tableName, tableStatusRef);
+        mayGetTableInSpecialStatusMap(database, tableName, tableStatusRef, leaseFencedRetryPolicy);
 
     if (Objects.nonNull(specialStatusMap) && !specialStatusMap.isEmpty()) {
       Map<String, Map<String, TsTable>> fetchedTables =
           getTablesInConfigNode(specialStatusMap, tableStatusRef.get());
       if (tableStatusRef.get() == TableNodeStatus.USING) {
-        updateUsingTable(fetchedTables, specialStatusMap);
+        updateUsingTable(fetchedTables, specialStatusMap, leaseFencedRetryPolicy);
       } else {
-        updateDeleteTable(fetchedTables, database, tableName);
+        updateDeleteTable(fetchedTables, database, tableName, leaseFencedRetryPolicy);
       }
     }
-    final TsTable table = getTableInCache(database, tableName);
+    final TsTable table = getTableInCache(database, tableName, leaseFencedRetryPolicy);
     if (Objects.isNull(table) && force) {
       CommonMetadataUtils.throwTableNotExistsException(database, tableName);
     }
@@ -604,10 +615,11 @@ public class DataNodeTableCache implements ITableCache {
   private Map<String, Map<String, Long>> mayGetTableInSpecialStatusMap(
       final String database,
       final String tableName,
-      final AtomicReference<TableNodeStatus> tableNodeStatus) {
+      final AtomicReference<TableNodeStatus> tableNodeStatus,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.readLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       final Map<String, Pair<TsTable, Long>> targetDatabaseMap = specialStatusMap.get(database);
       if (Objects.isNull(targetDatabaseMap)) {
         return null;
@@ -681,10 +693,11 @@ public class DataNodeTableCache implements ITableCache {
 
   private void updateUsingTable(
       final Map<String, Map<String, TsTable>> fetchedTables,
-      final Map<String, Map<String, Long>> previousVersions) {
+      final Map<String, Map<String, Long>> previousVersions,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       final AtomicBoolean isUpdated = new AtomicBoolean(false);
       fetchedTables.forEach(
           (qualifiedDatabase, tableInfoMap) -> {
@@ -739,10 +752,11 @@ public class DataNodeTableCache implements ITableCache {
   private void updateDeleteTable(
       Map<String, Map<String, TsTable>> fetchedTables,
       String targetDatabase,
-      final String targetTable) {
+      final String targetTable,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.writeLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       boolean isUpdated = false;
       boolean targetTableIsStillDeleting = false;
 
@@ -883,10 +897,13 @@ public class DataNodeTableCache implements ITableCache {
     return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
   }
 
-  private TsTable getTableInCache(final String database, final String tableName) {
+  private TsTable getTableInCache(
+      final String database,
+      final String tableName,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.readLock().lock();
     try {
-      failIfMetadataLeaseFenced();
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       final TsTable result =
           databaseTableMap.containsKey(database)
               ? databaseTableMap.get(database).get(tableName)
@@ -900,7 +917,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public boolean isDatabaseExist(final String database) {
-    failIfMetadataLeaseFenced();
+    failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     if (databaseTableMap.containsKey(database)) {
       return true;
     }
@@ -909,7 +926,7 @@ public class DataNodeTableCache implements ITableCache {
         .containsKey(database)) {
       readWriteLock.readLock().lock();
       try {
-        failIfMetadataLeaseFenced();
+        failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
         databaseTableMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
         return true;
       } finally {

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.lease;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
@@ -278,9 +279,10 @@ public class MetadataLeaseManager {
    * refuse to serve it rather than risk validating writes/queries against stale schema and
    * producing dirty data.
    */
-  public void failIfMetadataLeaseFenced() {
+  public void failIfMetadataLeaseFenced(final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     if (isFenced()) {
-      throw new MetadataLeaseFencedException(DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED);
+      throw new MetadataLeaseFencedException(
+          DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED, leaseFencedRetryPolicy);
     }
   }
 

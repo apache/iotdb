@@ -150,6 +150,149 @@ public class DataRegionStateMachineTest {
     Assert.assertEquals(2, planNode.getAcceptCount());
   }
 
+  @Test
+  public void testMetadataLeaseFencedNoRetry() {
+    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final FixedStatusPlanNode planNode =
+        new FixedStatusPlanNode(TSStatusCode.METADATA_LEASE_FENCED.getStatusCode());
+
+    final TSStatus status = stateMachine.write(planNode);
+
+    Assert.assertEquals(TSStatusCode.METADATA_LEASE_FENCED.getStatusCode(), status.getCode());
+    Assert.assertEquals(1, planNode.getAcceptCount());
+  }
+
+  @Test
+  public void testMetadataLeaseFencedRetryRequiredRetriesAndFails() {
+    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final FixedStatusPlanNode planNode =
+        new FixedStatusPlanNode(TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode());
+
+    final TSStatus status = stateMachine.write(planNode);
+
+    Assert.assertEquals(
+        TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), status.getCode());
+    Assert.assertEquals(5, planNode.getAcceptCount());
+  }
+
+  @Test
+  public void testMetadataLeaseFencedRetryRequiredRetriesAndSucceeds() {
+    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final SequenceStatusPlanNode planNode =
+        new SequenceStatusPlanNode(
+            TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(),
+            TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(),
+            TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    final TSStatus status = stateMachine.write(planNode);
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(3, planNode.getAcceptCount());
+  }
+
+  private static class FixedStatusPlanNode extends PlanNode {
+
+    private final int statusCode;
+    private int acceptCount = 0;
+
+    private FixedStatusPlanNode(final int statusCode) {
+      super(new PlanNodeId("test"));
+      this.statusCode = statusCode;
+    }
+
+    private int getAcceptCount() {
+      return acceptCount;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+      ++acceptCount;
+      return (R) new TSStatus(statusCode);
+    }
+
+    @Override
+    public List<PlanNode> getChildren() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public void addChild(final PlanNode child) {}
+
+    @Override
+    public PlanNode clone() {
+      return new FixedStatusPlanNode(statusCode);
+    }
+
+    @Override
+    public int allowedChildCount() {
+      return NO_CHILD_ALLOWED;
+    }
+
+    @Override
+    public List<String> getOutputColumnNames() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    protected void serializeAttributes(final ByteBuffer byteBuffer) {}
+
+    @Override
+    protected void serializeAttributes(final DataOutputStream stream) throws IOException {}
+  }
+
+  private static class SequenceStatusPlanNode extends PlanNode {
+
+    private final int[] statusCodes;
+    private int acceptCount = 0;
+
+    private SequenceStatusPlanNode(final int... statusCodes) {
+      super(new PlanNodeId("test"));
+      this.statusCodes = statusCodes;
+    }
+
+    private int getAcceptCount() {
+      return acceptCount;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+      final int code = statusCodes[Math.min(acceptCount, statusCodes.length - 1)];
+      ++acceptCount;
+      return (R) new TSStatus(code);
+    }
+
+    @Override
+    public List<PlanNode> getChildren() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public void addChild(final PlanNode child) {}
+
+    @Override
+    public PlanNode clone() {
+      return new SequenceStatusPlanNode(statusCodes);
+    }
+
+    @Override
+    public int allowedChildCount() {
+      return NO_CHILD_ALLOWED;
+    }
+
+    @Override
+    public List<String> getOutputColumnNames() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    protected void serializeAttributes(final ByteBuffer byteBuffer) {}
+
+    @Override
+    protected void serializeAttributes(final DataOutputStream stream) throws IOException {}
+  }
+
   private static class RetryControlledPlanNode extends PlanNode {
 
     private final boolean markAsPipeOnFirstAccept;

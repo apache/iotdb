@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -89,6 +90,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
     } catch (WriteProcessException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (MetadataLeaseFencedException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
@@ -133,6 +136,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         }
       }
       return firstStatus;
+    } catch (final MetadataLeaseFencedException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
@@ -171,6 +176,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
     } catch (SemanticException | TableLostRuntimeException e) {
       LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE_CAUSED, node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (MetadataLeaseFencedException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
@@ -206,6 +213,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         }
       }
       return firstStatus;
+    } catch (MetadataLeaseFencedException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
@@ -244,6 +253,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         }
       }
       return firstStatus;
+    } catch (MetadataLeaseFencedException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
