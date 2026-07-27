@@ -21,16 +21,21 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -48,6 +53,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class ReplicateTest {
@@ -311,6 +318,46 @@ public class ReplicateTest {
         Assert.fail("Failed because " + e.getMessage());
       }
     }
+  }
+
+  /**
+   * Verifies that a SyncLog request interrupted while waiting for its turn is rejected without
+   * being applied, and that the thread's interrupted status is preserved.
+   */
+  @Test
+  public void syncLogInterruptedWhileWaitingTest() throws Exception {
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    IoTConsensusServerImpl server = servers.get(0).getImpl(gid);
+    DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 1, 1, peers.get(1).getNodeId(), 1);
+    request.add(
+        new IndexedConsensusRequest(
+            1, 1, Collections.singletonList(new TestEntry(1, peers.get(1)))));
+    AtomicReference<TSStatus> status = new AtomicReference<>();
+    AtomicBoolean interrupted = new AtomicBoolean();
+
+    Thread syncLogThread =
+        new Thread(
+            () -> {
+              Thread.currentThread().interrupt();
+              status.set(server.syncLog(peers.get(1).getNodeId(), request));
+              interrupted.set(Thread.currentThread().isInterrupted());
+            });
+    syncLogThread.start();
+    syncLogThread.join();
+
+    Assert.assertTrue(interrupted.get());
+    Assert.assertEquals(1, status.get().getSubStatusSize());
+    Assert.assertEquals(
+        TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(),
+        status.get().getSubStatus().get(0).getCode());
+    Assert.assertEquals(
+        String.format(
+            IoTConsensusMessages
+                .MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2,
+            request.getStartSyncIndex()),
+        status.get().getSubStatus().get(0).getMessage());
+    Assert.assertTrue(stateMachines.get(0).getRequestSet().isEmpty());
   }
 
   @Test
