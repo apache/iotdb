@@ -166,6 +166,9 @@ public class FileLoaderUtils {
 
       return timeSeriesMetadata;
     } catch (Exception e) {
+      if (loadFromMem) {
+        throw e;
+      }
       throw new CorruptedTsFileException(
           resource.getTsFile(),
           CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
@@ -265,6 +268,9 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } catch (Exception e) {
+      if (loadFromMem) {
+        throw e;
+      }
       throw new CorruptedTsFileException(
           resource.getTsFile(),
           CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,

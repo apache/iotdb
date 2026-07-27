@@ -244,6 +244,9 @@ public final class DataNodeQueryMessages {
       "Failed to load page reader from TsFile: %s";
   public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
       "Failed to read metadata index node from TsFile: %s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "TsFile may be corrupted during query execution, file: {}, stage: {}";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
       "overlapped data should be consumed first";
   public static final String NO_MORE_BATCH_DATA =

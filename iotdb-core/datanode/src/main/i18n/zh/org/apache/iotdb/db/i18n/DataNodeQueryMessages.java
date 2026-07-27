@@ -227,6 +227,9 @@ public final class DataNodeQueryMessages {
       "从 TsFile 加载 page reader 失败：%s";
   public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
       "从 TsFile 读取元数据索引节点失败：%s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "查询执行期间 TsFile 可能已损坏，文件：{}，阶段：{}";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "所有缓存的 chunk 应先被消费";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =

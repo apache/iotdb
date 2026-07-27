@@ -98,7 +98,14 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
               // CorruptedTsFileException no longer chains the original IOException as its
               // cause (it uses addSuppressed instead), so getRootCause returns the exception
               // itself and we can match it here.
-              logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
+              CorruptedTsFileException corruptedTsFileException =
+                  (CorruptedTsFileException) rootCause;
+              logger.warn(
+                  DataNodeQueryMessages
+                      .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                  corruptedTsFileException.getTsFile(),
+                  corruptedTsFileException.getStage(),
+                  rootCause);
               next.setAbortCause(rootCause);
             } else {
               logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
