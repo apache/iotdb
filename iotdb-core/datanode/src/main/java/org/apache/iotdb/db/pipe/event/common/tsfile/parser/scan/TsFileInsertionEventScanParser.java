@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -400,6 +401,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
       PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      // Keep the parser state so the caller can yield its parser slot and retry from the same
+      // unconsumed data after memory is available again.
+      throw e;
     } catch (final Exception e) {
       close();
       throw new PipeException(DataNodePipeMessages.FAILED_TO_GET_NEXT_TABLET_INSERTION_EVENT, e);
