@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution;
+package org.apache.iotdb.calc.execution;
 
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -68,7 +68,7 @@ public class FutureStateChange<T> {
   }
 
   private void fireStateChange(T newState, Executor executor) {
-    requireNonNull(executor, DataNodeQueryMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
+    requireNonNull(executor, CalcMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
     Set<SettableFuture<T>> futures;
     synchronized (listeners) {
       futures = ImmutableSet.copyOf(listeners);

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -42,54 +43,28 @@ import java.util.concurrent.TimeoutException;
 
 public class PipeTsFileInsertionEventAdmissionTest {
 
-  @Test
-  public void testParserAdmissionBackoffIsBoundedAndJittered() {
-    Assert.assertEquals(100, PipeTsFileInsertionEvent.getMaxMemoryCheckIntervalMs(10, 10));
-    Assert.assertEquals(10, PipeTsFileInsertionEvent.getMaxMemoryCheckIntervalMs(10, 0));
-    Assert.assertEquals(
-        Long.MAX_VALUE, PipeTsFileInsertionEvent.getMaxMemoryCheckIntervalMs(Long.MAX_VALUE, 10));
-
-    Assert.assertEquals(20, PipeTsFileInsertionEvent.getNextMemoryCheckIntervalMs(10, 100));
-    Assert.assertEquals(100, PipeTsFileInsertionEvent.getNextMemoryCheckIntervalMs(80, 100));
-    Assert.assertEquals(100, PipeTsFileInsertionEvent.getNextMemoryCheckIntervalMs(100, 100));
-
-    for (int i = 0; i < 100; i++) {
-      final long intervalWithJitter =
-          PipeTsFileInsertionEvent.getMemoryCheckIntervalWithJitter(100);
-      Assert.assertTrue(intervalWithJitter >= 50);
-      Assert.assertTrue(intervalWithJitter <= 100);
-    }
-  }
-
   @Test(timeout = 10000)
   public void testParserAdmissionIsWokenWhenMemoryIsReleased() throws Exception {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
     final long originalParserMemoryInBytes = commonConfig.getPipeTsFileParserMemory();
-    final long originalMemoryCheckIntervalMs = commonConfig.getPipeCheckMemoryEnoughIntervalMs();
-    final int originalMemoryAllocateMaxRetries = commonConfig.getPipeMemoryAllocateMaxRetries();
+    final int originalGlobalLimit = commonConfig.getPipeTsFileParserInFlightMaxNum();
+    final int originalPerPipeRegionLimit =
+        commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    final TsFileParserMemoryReservation blockerReservation = new TsFileParserMemoryReservation();
 
     File tsFile = null;
     PipeTsFileInsertionEvent event = null;
     ExecutorService executor = null;
     Future<Iterable<TabletInsertionEvent>> parsingFuture = null;
-    int blockerReservationCount = 0;
+    boolean isBlockerReserved = false;
     try {
-      commonConfig.setPipeTsFileParserMemory(
-          Math.max(1, memoryManager.getTotalNonFloatingMemorySizeInBytes() / 8));
-      commonConfig.setPipeCheckMemoryEnoughIntervalMs(10000);
-      commonConfig.setPipeMemoryAllocateMaxRetries(10);
-
-      boolean parserMemoryExhausted = false;
-      for (int i = 0; i < 100; i++) {
-        if (!memoryManager.tryReserveTsFileParserMemory()) {
-          parserMemoryExhausted = true;
-          break;
-        }
-        blockerReservationCount++;
-      }
-      Assert.assertTrue(blockerReservationCount > 0);
-      Assert.assertTrue(parserMemoryExhausted);
+      commonConfig.setPipeTsFileParserMemory(1);
+      commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+      commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+      isBlockerReserved =
+          memoryManager.tryReserveTsFileParserMemory("blocker", 0, "0", blockerReservation);
+      Assert.assertTrue(isBlockerReserved);
 
       tsFile =
           TsFileGeneratorUtils.generateNonAlignedTsFile(
@@ -109,7 +84,7 @@ public class PipeTsFileInsertionEventAdmissionTest {
               false,
               false,
               null,
-              null,
+              "testPipe",
               0,
               null,
               new PrefixTreePattern("root"),
@@ -130,8 +105,8 @@ public class PipeTsFileInsertionEventAdmissionTest {
           TimeoutException.class, () -> blockedParsingFuture.get(200, TimeUnit.MILLISECONDS));
 
       final long releaseTimeInNanos = System.nanoTime();
-      memoryManager.releaseTsFileParserMemory();
-      blockerReservationCount--;
+      memoryManager.releaseTsFileParserMemory("blocker", 0, "0");
+      isBlockerReserved = false;
 
       Assert.assertNotNull(parsingFuture.get(3, TimeUnit.SECONDS));
       Assert.assertTrue(
@@ -147,13 +122,13 @@ public class PipeTsFileInsertionEventAdmissionTest {
       if (event != null) {
         event.close();
       }
-      while (blockerReservationCount > 0) {
-        memoryManager.releaseTsFileParserMemory();
-        blockerReservationCount--;
+      memoryManager.cancelTsFileParserMemoryReservation("blocker", 0, "0", blockerReservation);
+      if (isBlockerReserved) {
+        memoryManager.releaseTsFileParserMemory("blocker", 0, "0");
       }
       commonConfig.setPipeTsFileParserMemory(originalParserMemoryInBytes);
-      commonConfig.setPipeCheckMemoryEnoughIntervalMs(originalMemoryCheckIntervalMs);
-      commonConfig.setPipeMemoryAllocateMaxRetries(originalMemoryAllocateMaxRetries);
+      commonConfig.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+      commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalPerPipeRegionLimit);
       if (tsFile != null) {
         tsFile.delete();
       }

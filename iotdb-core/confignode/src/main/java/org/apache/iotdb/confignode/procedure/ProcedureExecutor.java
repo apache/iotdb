@@ -65,7 +65,8 @@ public class ProcedureExecutor<Env> {
 
   private final ConcurrentHashMap<Long, Procedure<Env>> procedures = new ConcurrentHashMap<>();
 
-  private ThreadGroup threadGroup;
+  private final ThreadGroup threadGroup =
+      new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
 
   private CopyOnWriteArrayList<WorkerThread> workerThreads;
 
@@ -122,7 +123,6 @@ public class ProcedureExecutor<Env> {
   public void init(int numThreads) {
     this.corePoolSize = numThreads;
     this.maxPoolSize = 10 * numThreads;
-    this.threadGroup = new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
     this.timeoutExecutor =
         new TimeoutExecutorThread<>(
             this, threadGroup, ThreadName.CONFIG_NODE_TIMEOUT_EXECUTOR.getName());
@@ -1051,15 +1051,6 @@ public class ProcedureExecutor<Env> {
     workerMonitorExecutor.awaitTermination();
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
-    }
-    try {
-      threadGroup.destroy();
-    } catch (IllegalThreadStateException e) {
-      LOG.warn(
-          ProcedureMessages
-              .LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211,
-          this.threadGroup);
-      this.threadGroup.list();
     }
   }
 

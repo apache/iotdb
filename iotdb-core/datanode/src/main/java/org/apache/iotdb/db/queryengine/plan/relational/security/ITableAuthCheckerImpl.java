@@ -167,8 +167,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setResult(false),
             () -> databaseName);
         throw new AccessDeniedException(
-            String.format(
-                DataNodeQueryMessages.QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE,
+            AccessControlImpl.getUnsupportedAuditDatabaseOperationMessage(
                 TABLE_MODEL_AUDIT_DATABASE));
       }
     }

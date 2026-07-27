@@ -3050,8 +3050,9 @@ public final class DataNodeQueryMessages {
       "getOutputColumnNames of CreateMultiTimeSeriesNode is not implemented";
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
       "getOutputColumnNames of AlterLogicalViewNode is not implemented";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
-      "The database '%s' is read-only.";
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
+          "Apache IoTDB does not support this operation on database '%s'.";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
       "The database '%s' can only be queried by AUDIT admin.";
   public static final String QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8 =
@@ -3292,15 +3293,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_INVALID_ARG_ARG_2946DBE5 = "Invalid %s %s";
   public static final String EXCEPTION_ID_IS_EMPTY_28C94FC0 = "id is empty";
   public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor is null";
-  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState is null";
-  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates is null";
-  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState is null";
   public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState is null";
-  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 = "stateChangeListener is null";
-  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 = "%s cannot transition from %s to %s";
-  public static final String EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 = "Cannot fire state change event while holding the lock";
-  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 = "Cannot notify while holding the lock";
-  public static final String EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 = "Cannot wait for state change while holding the lock";
   public static final String EXCEPTION_DONESTATE_IS_NULL_D88F77E5 = "doneState is null";
   public static final String EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618 = "doneState %s is not a done state";
   public static final String EXCEPTION_DATANODEID_SHOULD_BE_INIT_FIRST_13B19A85 = "DataNodeId should be init first!";

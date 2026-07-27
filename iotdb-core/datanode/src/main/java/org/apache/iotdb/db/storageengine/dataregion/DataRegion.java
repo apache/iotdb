@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -784,11 +785,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
       logger.info(
           StorageEngineMessages.STORAGE_LOG_THE_DATA_REGION_IS_CREATED_SUCCESSFULLY_B991F1D4,
-          databaseName,
-          dataRegionIdString);
-    } else {
-      logger.info(
-          StorageEngineMessages.STORAGE_LOG_THE_DATA_REGION_IS_RECOVERED_SUCCESSFULLY_5AAFF7B7,
           databaseName,
           dataRegionIdString);
     }
@@ -1740,7 +1736,9 @@ public class DataRegion implements IDataRegionForQuery {
           t -> {
             final String database = getDatabaseName();
 
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
+            TsTable tsTable =
+                DataNodeTableCache.getInstance()
+                    .getTable(database, t, false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.

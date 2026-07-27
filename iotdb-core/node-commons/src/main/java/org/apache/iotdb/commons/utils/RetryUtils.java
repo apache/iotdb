@@ -41,6 +41,7 @@ public class RetryUtils {
         || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
         || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
         || statusCode == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
   }
 

@@ -437,6 +437,26 @@ public final class CalcMessages {
       "Error notifying state change listener for {}";
   public static final String SERVER_IS_SHUTTING_DOWN =
       "Server is shutting down";
+  public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor is null";
+  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState is null";
+  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates is null";
+  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState is null";
+  public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState is null";
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 =
+      "stateChangeListener is null";
+  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 =
+      "%s cannot transition from %s to %s";
+  public static final String
+      EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
+          "Cannot fire state change event while holding the lock";
+  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
+      "Cannot notify while holding the lock";
+  public static final String EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188 =
+      "Cannot set state while holding the lock";
+  public static final String
+      EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
+          "Cannot wait for state change while holding the lock";
+  public static final String EXCEPTION_NEWSTATE_IS_NULL_D29A5454 = "newState is null";
 
   public static final String EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 =
       "percentage should be in [0,1], got ";

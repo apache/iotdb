@@ -214,4 +214,32 @@ public class TreeAccessTest {
             .getAllPathPatterns()
             .contains(new PartialPath("root.__audit.**")));
   }
+
+  @Test
+  public void testUnsupportedAuditDatabaseWrite() throws Exception {
+    TestTreeAccessCheckVisitor treeAccessCheckVisitor = new TestTreeAccessCheckVisitor();
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor.checkUnsupportedAuditDatabaseWriteStatus(
+            new TreeAccessCheckContext(
+                AuthorityChecker.INTERNAL_AUDIT_USER_ID, AuthorityChecker.INTERNAL_AUDIT_USER, ""),
+            new PartialPath("root.__audit")));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        treeAccessCheckVisitor.checkUnsupportedAuditDatabaseWriteStatus(
+            new TreeAccessCheckContext(10000L, "user1", ""), new PartialPath("root.__audit")));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        treeAccessCheckVisitor.checkUnsupportedAuditDatabaseWriteStatus(
+            new TreeAccessCheckContext(10000L, "user1", ""), new PartialPath("root.sg")));
+  }
+
+  private static class TestTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
+
+    private int checkUnsupportedAuditDatabaseWriteStatus(
+        TreeAccessCheckContext context, PartialPath path) {
+      return checkUnsupportedAuditDatabaseWrite(context, path).getCode();
+    }
+  }
 }

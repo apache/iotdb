@@ -1152,9 +1152,6 @@ public final class ProcedureMessages {
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
       "Procedure workers：{} 正在运行，{} 正在运行且卡住";
-  public static final String
-      LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 =
-          "ProcedureExecutor threadGroup {} 包含被非 procedure 模块使用的运行线程。";
   public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 =
       "将 procedure {} 添加为第 {} 个回滚步骤";
   public static final String

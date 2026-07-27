@@ -2036,6 +2036,19 @@ pipe_lib_dir=ext/pipe
 # Datatype: int
 pipe_subtask_executor_max_thread_num=0
 
+# The maximum number of TsFile parsers that can run concurrently across all Pipes on this DataNode.
+# When <= 0, use max(1, CPU core number / 2).
+# effectiveMode: hot_reload
+# Datatype: int
+pipe_tsfile_parser_in_flight_max_num=0
+
+# The maximum number of TsFile parsers that can run concurrently for one DataRegion of one Pipe.
+# Different DataRegions of the same Pipe have independent limits.
+# When <= 0, use 1.
+# effectiveMode: hot_reload
+# Datatype: int
+pipe_tsfile_parser_in_flight_max_num_per_pipe_region=1
+
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
 # Datatype: int

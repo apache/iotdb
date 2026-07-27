@@ -106,6 +106,15 @@ public class IoTDBAuthenticationTableIT {
             e.getMessage());
       }
 
+      try {
+        sessionRoot.executeNonQueryStatement("DROP DATABASE __audit");
+        fail("Should have thrown an exception");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "803: Access Denied: Apache IoTDB does not support this operation on database '__audit'.",
+            e.getMessage());
+      }
+
       sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS \"汉化\"");
       sessionRoot.executeNonQueryStatement("USE \"汉化\"");
 
