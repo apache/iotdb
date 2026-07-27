@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.SEQUENCE_FOLDER_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.UNSEQUENCE_FOLDER_NAME;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
@@ -111,7 +109,8 @@ public class LoadTsFileStatement extends Statement {
 
   public static List<File> processTsFile(final File file, final boolean validateSourcePath)
       throws FileNotFoundException {
-    final Path[] internalTsFileDirCanonicalPaths = getInternalTsFileDirCanonicalPaths();
+    final Path[] internalTsFileDirCanonicalPaths =
+        IoTDBDescriptor.getInstance().getConfig().getInternalTsFileDirCanonicalPaths();
     validateNotLoadingInternalTsFile(file, internalTsFileDirCanonicalPaths);
     if (validateSourcePath) {
       validateLoadSourcePath(file);
@@ -199,18 +198,6 @@ public class LoadTsFileStatement extends Statement {
                 .QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F,
             sourcePath,
             Arrays.toString(allowedDirs)));
-  }
-
-  private static Path[] getInternalTsFileDirCanonicalPaths() throws FileNotFoundException {
-    final String[] localDataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
-    final Path[] internalTsFileDirCanonicalPaths = new Path[localDataDirs.length * 2];
-    for (int i = 0; i < localDataDirs.length; i++) {
-      internalTsFileDirCanonicalPaths[i * 2] =
-          canonicalPath(new File(localDataDirs[i], SEQUENCE_FOLDER_NAME));
-      internalTsFileDirCanonicalPaths[i * 2 + 1] =
-          canonicalPath(new File(localDataDirs[i], UNSEQUENCE_FOLDER_NAME));
-    }
-    return internalTsFileDirCanonicalPaths;
   }
 
   private static void validateNotLoadingInternalTsFile(
