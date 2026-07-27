@@ -195,8 +195,8 @@ public final class ManagerMessages {
       "同步 consumer group 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
       "同步 pipe 元数据失败。结果状态：{}。";
-  public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
-      "将模板 {} 的扩展信息同步到 DataNode {} 失败";
+  public static final String EXIST_DATANODE_FAILED_TO_EXECUTE_AND_COULD_NOT_BE_FENCED =
+          "存在 DataNode 执行模板 %s 扩展失败且未能被隔离，DataNode之间模板状态可能不一致";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "同步 topic 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =

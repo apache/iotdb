@@ -476,7 +476,7 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED =
       "不能认定一个不可达的datanode处于隔离状态";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
-      "回滚 DataNode {} 上路径 {} 处模板 {} 的预释放模板信息失败";
+      "回滚模板 {} 在路径 {} 处的预释放模板信息失败，原因：{}";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
       "回滚在路径 {} 上预设置的模板 {} 失败，原因：{}";
   public static final String FAILED_TO_ROLLBACK_PRE_UNSET_TEMPLATE_OPERATION_OF_TEMPLATE_SET =
@@ -494,7 +494,7 @@ public final class ProcedureMessages {
       "序列化 finalDataPartitionTables 失败";
   public static final String FAILED_TO_SERIALIZE_SKIPDATANODE = "序列化 skipDataNode 失败";
   public static final String FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S =
-      "在路径 %s 上设置 schemaengine 模板 %s 失败，原因：DataNode %s 上存在失败";
+      "设置 schemaengine 模板 %s 到路径 %s 失败，原因：%s";
   public static final String FAILED_TO_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
       "启动 pipe {} 失败，详情：{}，元数据将稍后同步。";
   public static final String FAILED_TO_STOP_AINODE_BECAUSE_BUT_THE_REMOVE_PROCESS_WILL =

@@ -163,6 +163,7 @@ struct TDataNodeRestartResp {
 struct TDataNodeLeaseRecoveryResp{
  1: required common.TSStatus status
  2: optional binary tableInfo
+ 3: optional binary templateInfo
 }
 
 struct TDataNodeRemoveReq {

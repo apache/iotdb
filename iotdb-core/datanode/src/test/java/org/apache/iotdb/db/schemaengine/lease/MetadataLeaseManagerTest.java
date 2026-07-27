@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.lease;
 
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,7 +37,7 @@ public class MetadataLeaseManagerTest {
   @Test
   public void isNotFencedWithinLease() {
     final AtomicLong nowNanos = new AtomicLong(TimeUnit.SECONDS.toNanos(100));
-    final MetadataLeaseManager manager = newManager(nowNanos, () -> {}, () -> {});
+    final MetadataLeaseManager manager = newManager(nowNanos, () -> {});
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(1234));
 
@@ -47,7 +48,7 @@ public class MetadataLeaseManagerTest {
   @Test
   public void recoversAfterHeartbeatWhenLeaseExpired() {
     final AtomicLong nowNanos = new AtomicLong(TimeUnit.SECONDS.toNanos(100));
-    final MetadataLeaseManager manager = newManager(nowNanos, () -> {}, () -> {});
+    final MetadataLeaseManager manager = newManager(nowNanos, () -> {});
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
     manager.checkLeaseStatus();
@@ -63,14 +64,15 @@ public class MetadataLeaseManagerTest {
     final AtomicLong nowNanos = new AtomicLong(TimeUnit.SECONDS.toNanos(100));
     final AtomicInteger clearAttempts = new AtomicInteger();
     final MetadataLeaseManager manager =
-        newManager(
-            nowNanos,
-            () -> {
-              if (clearAttempts.getAndIncrement() == 0) {
-                throw new RuntimeException("mock clear cache failure");
-              }
-            },
-            () -> {});
+        Mockito.spy(
+            newManager(
+                nowNanos,
+                () -> {
+                  if (clearAttempts.getAndIncrement() == 0) {
+                    throw new RuntimeException("mock clear cache failure");
+                  }
+                }));
+    Mockito.doNothing().when(manager).reloadRelatedCache();
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
     manager.checkLeaseStatus();
@@ -90,15 +92,16 @@ public class MetadataLeaseManagerTest {
   public void retriesMetadataPullAfterFailure() {
     final AtomicLong nowNanos = new AtomicLong(TimeUnit.SECONDS.toNanos(100));
     final AtomicInteger pullAttempts = new AtomicInteger();
-    final MetadataLeaseManager manager =
-        newManager(
-            nowNanos,
-            () -> {},
-            () -> {
+    final MetadataLeaseManager manager = Mockito.spy(newManager(nowNanos, () -> {}));
+    Mockito.doAnswer(
+            invocation -> {
               if (pullAttempts.getAndIncrement() == 0) {
                 throw new RuntimeException("mock pull failure");
               }
-            });
+              return null;
+            })
+        .when(manager)
+        .reloadRelatedCache();
 
     nowNanos.addAndGet(TimeUnit.MILLISECONDS.toNanos(T_FENCE_MS + 1));
     manager.checkLeaseStatus();

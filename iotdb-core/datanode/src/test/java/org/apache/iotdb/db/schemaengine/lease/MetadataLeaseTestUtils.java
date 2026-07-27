@@ -38,7 +38,7 @@ public final class MetadataLeaseTestUtils {
   }
 
   public static MetadataLeaseManager newManager(final LongSupplier nowNanos) {
-    return newManager(nowNanos, () -> {}, () -> {});
+    return newManager(nowNanos, () -> {});
   }
 
   public static boolean isFenced(final MetadataLeaseManager manager) {
@@ -55,21 +55,16 @@ public final class MetadataLeaseTestUtils {
   }
 
   static MetadataLeaseManager newManager(
-      final AtomicLong nowNanos,
-      final MetadataLeaseManager.MetadataAction clearAction,
-      final MetadataLeaseManager.MetadataAction pullAction) {
-    return newManager(nowNanos::get, clearAction, pullAction);
+      final AtomicLong nowNanos, final MetadataLeaseManager.MetadataAction clearAction) {
+    return newManager(nowNanos::get, clearAction);
   }
 
   static MetadataLeaseManager newManager(
-      final LongSupplier nowNanos,
-      final MetadataLeaseManager.MetadataAction clearAction,
-      final MetadataLeaseManager.MetadataAction pullAction) {
+      final LongSupplier nowNanos, final MetadataLeaseManager.MetadataAction clearAction) {
     final MetadataLeaseManager manager =
         new MetadataLeaseManager(
             nowNanos,
             Collections.singletonList(clearAction),
-            Collections.singletonList(pullAction),
             MoreExecutors.newDirectExecutorService(),
             500L,
             null);

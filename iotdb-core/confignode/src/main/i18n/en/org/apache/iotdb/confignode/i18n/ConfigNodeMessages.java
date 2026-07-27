@@ -583,6 +583,7 @@ public final class ConfigNodeMessages {
   public static final String LOG_REDIRECTION_RECOMMENDED_REMOVECONFIGNODE_BUT_NO_LEADER_ENDPOINT_PROVIDED_ABORT_RETRY_520A4C64 = "Redirection recommended for removeConfigNode but no leader endpoint provided, abort retry.";
   public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_RESPONSE_ARG_691ABC90 = "Failed to write audit log to DataNode {}, response: {}";
   public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_90F15E13 = "Failed to write audit log to DataNode {}";
+  public static final String LOG_DATANODE_FAILED_TO_EXECUTE_METADATA_CACHE_PROPAGATION = "DataNode {} failed to execute metadata cache propagation, status: {}";
   public static final String EXCEPTION_UNKNOWN_PHYSICALPLANTYPE_ARG_7F21B699 = "Unknown PhysicalPlanType: %d";
   public static final String LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78 = "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is";
   public static final String EXCEPTION_FILE_11296840 = "file: ";

@@ -48,6 +48,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -272,10 +273,16 @@ public class SchemaUtils {
     return clientHandler.getResponseMap();
   }
 
-  private static Map<Integer, TSStatus> failedOnly(final Map<Integer, TSStatus> responses) {
-    return responses.entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  public static Map<Integer, TSStatus> broadcastTemplateUpdate(
+      final TUpdateTemplateReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   public static Map<Integer, TDataNodeLocation> filterFencedDataNode(

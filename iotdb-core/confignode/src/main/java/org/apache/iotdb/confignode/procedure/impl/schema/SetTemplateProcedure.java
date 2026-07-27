@@ -30,8 +30,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -40,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchema
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -219,26 +218,18 @@ public class SetTemplateProcedure
     req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
     req.setTemplateInfo(
         TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
-            templateName,
-            templateSetPath,
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(
-            new ProcedureException(
-                new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
-        return;
-      }
+    boolean proceed =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTemplateUpdate(req, targets));
+    if (!proceed) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
+          templateName,
+          templateSetPath,
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
+      setFailure(
+          new ProcedureException(new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
+      return;
     }
     setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
   }
@@ -400,37 +391,28 @@ public class SetTemplateProcedure
       // already setFailure
       return;
     }
-
     final TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.COMMIT_TEMPLATE_SET_INFO.toByte());
     req.setTemplateInfo(
         TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_COMMIT_SET_INFO_ON_PATH_TO,
-            templateName,
-            templateSetPath,
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    String.format(
-                        ProcedureMessages
-                            .FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S,
-                        templateName,
-                        templateSetPath,
-                        dataNodeLocationMap.get(entry.getKey())))));
-        return;
-      }
+    boolean proceed =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTemplateUpdate(req, targets));
+    if (!proceed) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_COMMIT_SET_INFO_ON_PATH_TO,
+          templateName,
+          templateSetPath,
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      ProcedureMessages.FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S,
+                      templateName,
+                      templateSetPath,
+                      ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED))));
     }
   }
 
@@ -508,35 +490,25 @@ public class SetTemplateProcedure
       return;
     }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-
-    final TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
-    invalidateTemplateSetInfoReq.setType(
-        TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    invalidateTemplateSetInfoReq.setTemplateInfo(
+    final TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
+    req.setTemplateInfo(
         TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(
             template.getId(), templateSetPath));
 
-    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
-            invalidateTemplateSetInfoReq,
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      // all dataNodes must clear the related template cache
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET,
-            template.getName(),
-            templateSetPath,
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(
-            new ProcedureException(
-                new MetadataException(ProcedureMessages.ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED)));
-      }
+    boolean proceed =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTemplateUpdate(req, targets));
+
+    if (!proceed) {
+      LOGGER.error(
+          ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET,
+          template.getName(),
+          templateSetPath,
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED)));
     }
   }
 

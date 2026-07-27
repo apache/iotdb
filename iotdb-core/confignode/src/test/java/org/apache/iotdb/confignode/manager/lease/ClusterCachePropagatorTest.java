@@ -21,14 +21,18 @@ package org.apache.iotdb.confignode.manager.lease;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.Verdict;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntToLongFunction;
@@ -139,6 +143,30 @@ public class ClusterCachePropagatorTest {
             },
             false);
     Assert.assertEquals(Verdict.FAIL, v);
+  }
+
+  @Test
+  public void locallyFencedButReachableDataNodeMustBeRetried() {
+    final ClusterCachePropagator p = propagator(id -> 0L);
+    final Map<Integer, TDataNodeLocation> targets = twoDataNodes();
+    final Map<Integer, TSStatus> responses = new HashMap<>();
+    responses.put(1, success());
+
+    new DataNodeTSStatusRPCHandler(
+            CnToDnAsyncRequestType.UPDATE_TEMPLATE,
+            2,
+            targets.get(2),
+            targets,
+            responses,
+            new CountDownLatch(1))
+        .onError(new TApplicationException("Metadata lease is still fenced"));
+
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), responses.get(2).getCode());
+
+    final Verdict v = p.propagateOnce(ignored -> responses, false);
+    Assert.assertEquals(
+        "The async recovery window must be retried instead of failing DDL", Verdict.WAIT, v);
   }
 
   @Test

@@ -489,7 +489,7 @@ public final class ProcedureMessages {
       "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}";
   public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED = "Failed to prove an unreachable DataNode is fenced";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
-      "Failed to rollback pre release template info of template {} set on path {} on DataNode {}";
+      "Failed to rollback pre release template info of template {} set on path {} because {}";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
       "Failed to rollback pre set template {} on path {} due to {}";
   public static final String FAILED_TO_ROLLBACK_PRE_UNSET_TEMPLATE_OPERATION_OF_TEMPLATE_SET =
@@ -510,7 +510,7 @@ public final class ProcedureMessages {
       "Failed to serialize finalDataPartitionTables";
   public static final String FAILED_TO_SERIALIZE_SKIPDATANODE = "Failed to serialize skipDataNode";
   public static final String FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S =
-      "Failed to set schemaengine template %s on path %s because there's failure on DataNode %s";
+      "Failed to set schemaengine template %s on path %s because %s";
   public static final String FAILED_TO_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
       "Failed to start pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_STOP_AINODE_BECAUSE_BUT_THE_REMOVE_PROCESS_WILL =

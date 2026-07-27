@@ -197,8 +197,8 @@ public final class ManagerMessages {
       "Failed to sync consumer group meta. Result status: {}.";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
       "Failed to sync pipe meta. Result status: {}.";
-  public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
-      "Failed to sync template {} extension info to DataNode {}";
+  public static final String EXIST_DATANODE_FAILED_TO_EXECUTE_AND_COULD_NOT_BE_FENCED =
+          "Exist DataNode failed to execute template %s extension and could not be fenced; template state of DataNodes may be inconsistent";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "Failed to sync topic meta. Result status: {}.";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
