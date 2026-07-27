@@ -34,6 +34,23 @@ public class SwingingDoorTrendingFilterTest {
     Assert.assertTrue(filter.filter(Long.MAX_VALUE, 0));
   }
 
+  @Test
+  public void testDecreasingTrendIsCompressed() throws Exception {
+    final SwingingDoorTrendingFilter<Integer> filter =
+        new SwingingDoorTrendingFilter<>(createProcessor(0, Long.MAX_VALUE, 0), 0, 10);
+
+    Assert.assertFalse(filter.filter(1, 9));
+  }
+
+  @Test
+  public void testDecreasingTrendIsCompressedAfterReset() throws Exception {
+    final SwingingDoorTrendingFilter<Integer> filter =
+        new SwingingDoorTrendingFilter<>(createProcessor(0, 10, 0), 0, 20);
+
+    Assert.assertTrue(filter.filter(10, 10));
+    Assert.assertFalse(filter.filter(11, 9));
+  }
+
   private SwingingDoorTrendingSamplingProcessor createProcessor(
       final long compressionMinTimeInterval,
       final long compressionMaxTimeInterval,

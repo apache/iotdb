@@ -270,13 +270,13 @@ public class KDTreeUtil {
       ArrayList<Double> min_v = new ArrayList<>();
       ArrayList<Double> max_v = new ArrayList<>();
       for (int i = 0; i < dimensions; i++) {
-        double min_temp = Double.MAX_VALUE;
-        double max_temp = Double.MIN_VALUE;
-        for (int j = 1; j < data.size(); j++) {
-          ArrayList<Double> d = data.get(j);
+        double min_temp = Double.POSITIVE_INFINITY;
+        double max_temp = Double.NEGATIVE_INFINITY;
+        for (ArrayList<Double> d : data) {
           if (d.get(i) < min_temp) {
             min_temp = d.get(i);
-          } else if (d.get(i) > max_temp) {
+          }
+          if (d.get(i) > max_temp) {
             max_temp = d.get(i);
           }
         }
