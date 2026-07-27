@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.db.exception;
 
-import org.apache.tsfile.exception.TsFileRuntimeException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.File;
 
-/**
- * Thrown when a TsFile is detected to be corrupted during query execution. Extends {@link
- * TsFileRuntimeException} so it follows the existing TsFile error handling and bypasses all {@code
- * catch (IOException)} blocks in the operator hierarchy.
- */
-public class CorruptedTsFileException extends TsFileRuntimeException {
+/** Thrown when a TsFile is detected to be corrupted during query execution. */
+public class CorruptedTsFileException extends IoTDBRuntimeException {
 
   public enum Stage {
     READ_TIMESERIES_METADATA,
@@ -56,7 +53,7 @@ public class CorruptedTsFileException extends TsFileRuntimeException {
    * @param cause the original exception (preserved as suppressed)
    */
   public CorruptedTsFileException(File tsFile, Stage stage, String message, Throwable cause) {
-    super(message);
+    super(message, TSStatusCode.CANNOT_READ_TSFILE.getStatusCode());
     this.tsFile = tsFile;
     this.stage = stage;
     if (cause != null) {
