@@ -730,6 +730,7 @@ public final class DataNodeSchemaMessages {
       "This view contains aggregation function(s) named [%s]";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext is null";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator is null";
+  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "Failed to create state machine for consensus group %s, because schema region does not exist";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";

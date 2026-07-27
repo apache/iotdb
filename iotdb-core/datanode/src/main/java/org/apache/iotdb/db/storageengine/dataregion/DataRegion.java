@@ -787,11 +787,6 @@ public class DataRegion implements IDataRegionForQuery {
           StorageEngineMessages.STORAGE_LOG_THE_DATA_REGION_IS_CREATED_SUCCESSFULLY_B991F1D4,
           databaseName,
           dataRegionIdString);
-    } else {
-      logger.info(
-          StorageEngineMessages.STORAGE_LOG_THE_DATA_REGION_IS_RECOVERED_SUCCESSFULLY_5AAFF7B7,
-          databaseName,
-          dataRegionIdString);
     }
   }
 

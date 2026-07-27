@@ -559,10 +559,11 @@ public final class StorageEngineMessages {
   // ---------------------------------------------------------------------------
   // Additional log messages
   // ---------------------------------------------------------------------------
-  public static final String STORAGE_LOG_STORAGE_ENGINE_RECOVER_COST_S_C8AEE9D9 =
-      "Storage Engine recover cost: {}s.";
-  public static final String STORAGE_LOG_DATA_REGIONS_HAVE_BEEN_RECOVERED_D5BD3A80 =
-      "Data regions have been recovered {}/{}";
+  public static final String
+      STORAGE_LOG_STORAGE_ENGINE_LOCAL_RECOVERY_TASKS_FINISHED_IN_ARGS_03F9135F =
+          "Storage Engine local recovery tasks finished in {}s.";
+  public static final String STORAGE_LOG_LOCAL_DATAREGION_LOADING_PROGRESS_ARG_ARG_8146929B =
+      "Local DataRegion loading progress: {}/{}.";
   public static final String STORAGE_LOG_TSFILE_RESOURCE_RECOVER_COST_S_41F074E0 =
       "TsFile Resource recover cost: {}s.";
   public static final String STORAGE_LOG_CONSTRUCT_A_DATA_REGION_INSTANCE_THE_DATABASE_IS_THREAD_17A16BDF =
@@ -617,8 +618,6 @@ public final class StorageEngineMessages {
       "The TsFiles of data region {}[{}] has recovered completely {}/{}.";
   public static final String STORAGE_LOG_THE_DATA_REGION_IS_CREATED_SUCCESSFULLY_B991F1D4 =
       "The data region {}[{}] is created successfully";
-  public static final String STORAGE_LOG_THE_DATA_REGION_IS_RECOVERED_SUCCESSFULLY_5AAFF7B7 =
-      "The data region {}[{}] is recovered successfully";
   public static final String STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_REGION_IS_DELETED_34D893A7 =
       "Won't insert tablet {}, because region is deleted";
   public static final String STORAGE_LOG_ASYNC_CLOSE_TSFILE_FILE_START_TIME_FILE_END_TIME_65020832 =
