@@ -19,7 +19,7 @@
 #
 
 echo ----------------------------
-echo Starting TimechoDB ConfigNode
+echo Starting @brand.name@ ConfigNode
 echo ----------------------------
 
 

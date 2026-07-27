@@ -25,11 +25,11 @@ if [ ! -d "$SYSTEMD_DIR" ]; then
     exit 1  # Exit with an error status
 fi
 
-FILE_NAME=$SYSTEMD_DIR/timechodb-ainode.service
+FILE_NAME=$SYSTEMD_DIR/@package.name@-ainode.service
 
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=timechodb-ainode
+Description=@package.name@-ainode
 Documentation=https://www.timecho.com/
 After=network.target
 
@@ -54,21 +54,21 @@ TimeoutStopSec=60s
 WantedBy=multi-user.target
 EOF
 
-echo "Daemon service of TimechoDB AINode has been successfully registered."
+echo "Daemon service of @brand.name@ AINode has been successfully registered."
 
 systemctl daemon-reload
 echo
-echo "Do you want to execute 'systemctl start timechodb-ainode'? y/n (default y)"
+echo "Do you want to execute 'systemctl start @package.name@-ainode'? y/n (default y)"
 read -r START_SERVICE
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
     "${TIMECHODB_AINODE_SBIN_HOME}"/stop-ainode.sh >/dev/null 2>&1 &
-    systemctl start timechodb-ainode
+    systemctl start @package.name@-ainode
     echo "Executed successfully."
 fi
 echo
-echo "Do you want to execute 'systemctl enable timechodb-ainode' to start at boot? y/n (default y)"
+echo "Do you want to execute 'systemctl enable @package.name@-ainode' to start at boot? y/n (default y)"
 read -r ADD_STARTUP
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-   systemctl enable timechodb-ainode >/dev/null 2>&1
+   systemctl enable @package.name@-ainode >/dev/null 2>&1
    echo "Executed successfully."
 fi

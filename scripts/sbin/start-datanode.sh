@@ -132,7 +132,7 @@ if [ "x$SHOW_VERSION" != "x" ]; then
 fi
 
 echo ---------------------
-echo "Starting TimechoDB DataNode"
+echo "Starting @brand.name@ DataNode"
 echo ---------------------
 
 #initEnv is in iotdb-common.sh

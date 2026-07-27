@@ -39,6 +39,20 @@ export CONFIGNODE_LOG_DIR="${CONFIGNODE_LOG_DIR:-${CONFIGNODE_HOME}/logs}"
 export CONFIGNODE_LOGS="${CONFIGNODE_LOGS:-${CONFIGNODE_LOG_DIR}}"
 export CONFIGNODE_LOG_CONFIG="${CONFIGNODE_LOG_CONFIG:-${CONFIGNODE_CONF}/logback-confignode.xml}"
 
+# Product name shown to users. This tree is built by do-docker-build-enterprise.sh, outside the
+# Maven reactor, so `-P iotdb` cannot filter it. Read the value out of conf/iotdb-common.sh, which
+# Maven does filter, instead of hardcoding it. Extracted rather than sourced: iotdb-common.sh also
+# sets memory and JVM options that would collide with the setup above.
+# `|| true` is required: this script runs under `set -eo pipefail`, so a missing file (sed exits 2)
+# or an early pipe close by head would abort before the fallback below could run.
+IOTDB_BRAND_NAME="$(sed -n 's/^IOTDB_BRAND_NAME="\(.*\)"$/\1/p' "${IOTDB_HOME}/conf/iotdb-common.sh" 2>/dev/null | head -1 || true)"
+# Empty => file missing or unreadable; contains '@' => file was not filtered. Both fall back to the
+# name this image is built under today.
+case "${IOTDB_BRAND_NAME}" in
+  '' | *@*) IOTDB_BRAND_NAME="TimechoDB" ;;
+esac
+export IOTDB_BRAND_NAME
+
 export IOTDB_JMX_OPTS="${IOTDB_JMX_OPTS:-}"
 export CONFIGNODE_JMX_OPTS="${CONFIGNODE_JMX_OPTS:-}"
 export IOTDB_JVM_OPTS="${IOTDB_JVM_OPTS:-}"
@@ -419,7 +433,7 @@ function execDatanode() {
   java=$(findJava)
   classpath=$(buildClasspath "${IOTDB_HOME}")
   if [[ -z "${classpath}" ]]; then
-    echo "Cannot find TimechoDB jars under ${IOTDB_HOME}/lib." >&2
+    echo "Cannot find ${IOTDB_BRAND_NAME} jars under ${IOTDB_HOME}/lib." >&2
     exit 1
   fi
 
@@ -448,7 +462,7 @@ function execDatanode() {
     "-Diotdb-foreground=yes"
   )
 
-  log "Starting TimechoDB DataNode"
+  log "Starting ${IOTDB_BRAND_NAME} DataNode"
   exec "${java}" \
     "${illegal_access_params[@]}" \
     "${iotdb_params[@]}" \
@@ -473,7 +487,7 @@ function execConfignode() {
   java=$(findJava)
   classpath=$(buildClasspath "${CONFIGNODE_HOME}")
   if [[ -z "${classpath}" ]]; then
-    echo "Cannot find TimechoDB jars under ${CONFIGNODE_HOME}/lib." >&2
+    echo "Cannot find ${IOTDB_BRAND_NAME} jars under ${CONFIGNODE_HOME}/lib." >&2
     exit 1
   fi
 
@@ -495,7 +509,7 @@ function execConfignode() {
     "-Diotdb-foreground=yes"
   )
 
-  log "Starting TimechoDB ConfigNode"
+  log "Starting ${IOTDB_BRAND_NAME} ConfigNode"
   exec "${java}" \
     "${illegal_access_params[@]}" \
     "${iotdb_params[@]}" \

@@ -48,6 +48,9 @@ mvn clean test -pl iotdb-core/datanode -Dtest=ClassName#methodName
 # Build with Chinese log & error messages
 mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
 
+# Build the IoTDB edition instead of the default TimechoDB edition (see "Packaging Editions")
+mvn clean package -pl distribution -am -DskipTests -P iotdb
+
 # Format code (requires JDK 17+; auto-skipped on JDK <17)
 mvn spotless:apply
 
@@ -56,6 +59,96 @@ mvn spotless:apply -P with-integration-tests
 
 # Check formatting without applying
 mvn spotless:check
+```
+
+## Packaging Editions (`-P iotdb` vs default)
+
+The same source tree ships as two editions. The default (equivalently `-P timechodb`) is the full
+TimechoDB product; `-P iotdb` produces the IoTDB edition, which gates off the commercial security
+features and rebrands the artifacts. The profiles live at the bottom of the root `pom.xml` and flip
+exactly three properties:
+
+| property | default / `-P timechodb` | `-P iotdb` | what it drives |
+| --- | --- | --- | --- |
+| `edition` | `TIMECHODB` | `IOTDB` | runtime feature gate + in-process branding |
+| `package.name` | `timechodb` | `iotdb` | distribution zip / `baseDirectory` names, and the systemd unit names in `scripts/tools/ops/daemon-*.sh` |
+| `brand.name` | `TimechoDB` | `IoTDB` | product name printed by the shipped scripts |
+
+**`edition`** is filtered into `iotdb-core/node-commons/src/main/resources/module-config.properties`,
+read once by `ModuleConfigManager`, and consumed by two things:
+
+- `EditionGate` (`iotdb-core/node-commons/.../conf/EditionGate.java`) — clamps the nine
+  `IoTDBGatedFeature` security features to their disabled form in the IoTDB edition. In the
+  TimechoDB edition every method is a no-op. Runtime `set configuration` of a gated key is rejected
+  in `StorageEngine` and `ClusterConfigTaskExecutor`.
+- `IoTDBConstant.BRAND_NAME` and `IoTDBConstant.LOGO` — the startup banner.
+
+`IoTDBConstant.GLOBAL_DB_NAME` stays `"IoTDB"` in both editions: it is a protocol identifier, not
+branding. `BrandingTest` guards this.
+
+### Branding in scripts
+
+Shell and batch scripts cannot read `module-config.properties`, so they carry Maven placeholders
+that are resolved at package time — the same `@property@` convention already used for
+`@tsfile.locale.opt@` in `scripts/conf/iotdb-common.sh`:
+
+- `@brand.name@` for display text (`echo Starting @brand.name@ DataNode`)
+- `@package.name@` for identifiers (`systemctl start @package.name@-datanode`)
+
+Seeing a literal `@brand.name@` in a checkout is expected — these scripts are only ever run from an
+assembled distribution. The filtering is wired per assembly descriptor by splitting a `fileSet` into
+an unfiltered set that excludes the branded files and a `<filtered>true</filtered>` set that
+includes only them. The descriptors doing this today are `distribution/src/assembly/all.xml`,
+`distribution/src/assembly/inner.xml`, `iotdb-core/ainode/ainode.xml`, and
+`integration-test/src/assembly/mpp-test.xml`.
+
+**Rule — never hardcode a product brand name in a user-visible script string.** Use `@brand.name@`
+(or `@package.name@` for an identifier) and make sure the file is listed in a filtered `fileSet` of
+*every* descriptor that ships it. A file that carries a placeholder but is missing from a filtered
+`fileSet` ships the raw `@brand.name@` to users — verify by grepping the built tree, not the source.
+
+Two things that look like branding but are not, and must stay as they are:
+
+- `TimechoDB@2021` in `start-cli.sh`, `sbin/windows/start-cli.bat` and `tools/ops/collect-info.*` —
+  the literal default password, hardcoded identically for both editions in `CommonConfig.java` and
+  `PipeSinkConstant.java`. Changing it breaks the scripts.
+- `TIMECHODB_SBIN_HOME` in `daemon-*.sh`, `com.timecho.iotdb.*` main classes, and
+  `Documentation=https://www.timecho.com/` — internal identifiers and the company URL, identical in
+  both editions.
+
+Still hardcoded as `IoTDB` and therefore wrong in a *default* build (known gap, not yet fixed —
+roughly 58 strings across ~30 scripts). The most visible: `sbin/windows/start-datanode.bat:24` and
+`start-confignode.bat:24` set `title IoTDB DataNode` / `title IoTDB ConfigNode` three lines above the
+now-branded banner, so a default build shows an "IoTDB" window title next to a "TimechoDB" banner.
+Also `sbin/start-ainode.sh`, `start-datanode.sh` (duplicate-node messages), `start-cli.sh`,
+`conf/{confignode,datanode}-env.sh` (Java-version messages), `tools/schema/*`, `tools/export-*`,
+`tools/import-data.sh`, `tools/ops/backup.sh`, `tools/ops/health_check.sh`,
+`tools/ops/destroy-*.bat`, `tools/tsfile/print-iotdb-data-dir.sh` and their Windows twins.
+
+### What `-P iotdb` does NOT reach
+
+`iotdb-core/ainode/pom.xml` sets `<finalName>timechodb-ainode-${project.version}</finalName>`, and
+`distribution/src/assembly/ainode.xml` reads its inputs back out of that exact hardcoded path. Both
+sides are deliberately `timechodb`-prefixed and must stay in sync — changing only the `finalName` to
+`${package.name}` silently breaks the distribution step. Only the final ainode zip's
+`baseDirectory` follows `${package.name}`.
+
+`docker_v2/` has no `pom.xml` — it is built by `do-docker-build-enterprise.sh` outside the Maven
+reactor, and its image name and default `target=timechodb-${version}-bin` are TimechoDB-specific.
+`entrypoint.sh` therefore reads `IOTDB_BRAND_NAME` at runtime out of the (filtered)
+`${IOTDB_HOME}/conf/iotdb-common.sh`, falling back to `TimechoDB` if the file is absent or
+unfiltered. Do not add `@brand.name@` placeholders anywhere under `docker_v2/`; nothing filters them.
+
+### Verifying an edition change
+
+Build both ways and grep the produced trees, not the sources:
+
+```bash
+mvn clean package -pl distribution -am -DskipTests
+mvn clean package -pl distribution -am -DskipTests -P iotdb
+# then, in each distribution/target/*-bin tree:
+grep -rn '@brand\.name@\|@package\.name@' sbin tools conf   # must return nothing
+grep -rn 'TimechoDB' sbin tools                             # must return nothing in the -P iotdb tree
 ```
 
 ## Integration Tests

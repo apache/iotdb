@@ -24,7 +24,7 @@ powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\W
 title IoTDB ConfigNode
 
 echo ```````````````````````````
-echo Starting TimechoDB ConfigNode
+echo Starting @brand.name@ ConfigNode
 echo ```````````````````````````
 
 set PATH="%JAVA_HOME%\bin\";%PATH%

@@ -30,12 +30,12 @@ if ! java --version >/dev/null 2>&1; then
     exit 1
 fi
 
-FILE_NAME=$SYSTEMD_DIR/timechodb-confignode.service
+FILE_NAME=$SYSTEMD_DIR/@package.name@-confignode.service
 
 if [ -z "$JAVA_HOME" ]; then
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=timechodb-confignode
+Description=@package.name@-confignode
 Documentation=https://www.timecho.com/
 After=network.target
 
@@ -63,7 +63,7 @@ EOF
 else
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=timechodb-confignode
+Description=@package.name@-confignode
 Documentation=https://www.timecho.com/
 After=network.target
 
@@ -89,21 +89,21 @@ WantedBy=multi-user.target
 EOF
 fi
 
-echo "Daemon service of TimechoDB ConfigNode has been successfully registered."
+echo "Daemon service of @brand.name@ ConfigNode has been successfully registered."
 
 systemctl daemon-reload
 echo
-echo "Do you want to execute 'systemctl start timechodb-confignode'? y/n (default y)"
+echo "Do you want to execute 'systemctl start @package.name@-confignode'? y/n (default y)"
 read -r START_SERVICE
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
     "${TIMECHODB_SBIN_HOME}"/stop-confignode.sh >/dev/null 2>&1 &
-    systemctl start timechodb-confignode
+    systemctl start @package.name@-confignode
     echo "Executed successfully."
 fi
 echo
-echo "Do you want to execute 'systemctl enable timechodb-confignode' to start at boot? y/n (default y)"
+echo "Do you want to execute 'systemctl enable @package.name@-confignode' to start at boot? y/n (default y)"
 read -r ADD_STARTUP
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-   systemctl enable timechodb-confignode >/dev/null 2>&1
+   systemctl enable @package.name@-confignode >/dev/null 2>&1
    echo "Executed successfully."
 fi

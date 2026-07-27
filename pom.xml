@@ -196,8 +196,12 @@
         <version.suffix/>
         <!-- Edition: TIMECHODB (full, default) or IOTDB (security features gated off) -->
         <edition>TIMECHODB</edition>
-        <!-- Distribution package name prefix: timechodb (TIMECHODB) or iotdb (IOTDB) -->
+        <!-- Distribution package name prefix, also used as the systemd unit name prefix in
+             scripts/tools/ops/daemon-*.sh: timechodb (TIMECHODB) or iotdb (IOTDB) -->
         <package.name>timechodb</package.name>
+        <!-- Product name shown to users. Filtered into the start/daemon scripts as @brand.name@
+             at package time; see the "Packaging Editions" section of CLAUDE.md. -->
+        <brand.name>TimechoDB</brand.name>
         <!-- Filename suffix for locale-specific distribution packages (empty for default en, e.g. "-zh" when with-zh-locale is active) -->
         <locale.suffix/>
     </properties>
@@ -2088,6 +2092,7 @@
             <properties>
                 <edition>IOTDB</edition>
                 <package.name>iotdb</package.name>
+                <brand.name>IoTDB</brand.name>
             </properties>
         </profile>
         <profile>
@@ -2095,6 +2100,7 @@
             <properties>
                 <edition>TIMECHODB</edition>
                 <package.name>timechodb</package.name>
+                <brand.name>TimechoDB</brand.name>
             </properties>
         </profile>
     </profiles>

@@ -115,7 +115,24 @@
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>start-datanode.sh</exclude>
+                <exclude>start-confignode.sh</exclude>
+                <exclude>windows/start-datanode.bat</exclude>
+                <exclude>windows/start-confignode.bat</exclude>
             </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!-- 启动脚本（品牌名随 edition 变化，需要 Maven 过滤 @brand.name@） -->
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/sbin</directory>
+            <includes>
+                <include>start-datanode.sh</include>
+                <include>start-confignode.sh</include>
+                <include>windows/start-datanode.bat</include>
+                <include>windows/start-confignode.bat</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
         <!-- 工具脚本 -->
@@ -125,7 +142,20 @@
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>ops/daemon-datanode.sh</exclude>
+                <exclude>ops/daemon-confignode.sh</exclude>
             </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!-- 工具脚本（品牌名与 systemd 单元名随 edition 变化，需要 Maven 过滤 @brand.name@ / @package.name@） -->
+        <fileSet>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/tools</directory>
+            <includes>
+                <include>ops/daemon-datanode.sh</include>
+                <include>ops/daemon-confignode.sh</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>

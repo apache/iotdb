@@ -24,6 +24,13 @@
 #   - `with-zh-locale` profile: "-Dtsfile.locale=zh".
 TSFILE_LOCALE_JVM_OPT="@tsfile.locale.opt@"
 
+# Product name shown to users, filtered by Maven at package time:
+#   - Default build: "TimechoDB".
+#   - `iotdb` profile: "IoTDB".
+# Read by docker_v2/src/main/DockerCompose/entrypoint.sh, which is built outside the Maven reactor
+# and so has no other way to learn the edition. See CLAUDE.md, "Packaging Editions".
+IOTDB_BRAND_NAME="@brand.name@"
+
 
 # this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
 # The command just parse IOTDB-prefixed variables and ignore all other variables

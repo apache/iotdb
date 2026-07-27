@@ -24,7 +24,7 @@ powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\W
 title IoTDB DataNode
 
 echo ````````````````````````
-echo Starting TimechoDB DataNode
+echo Starting @brand.name@ DataNode
 echo ````````````````````````
 
 @REM -----------------------------------------------------------------------------

@@ -76,6 +76,19 @@
                 <include>*ainode.*</include>
                 <include>**/*ainode.*</include>
             </includes>
+            <excludes>
+                <exclude>daemon-ainode.sh</exclude>
+            </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!-- 品牌名与 systemd 单元名随 edition 变化，需要 Maven 过滤 @brand.name@ / @package.name@ -->
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/tools/ops</directory>
+            <outputDirectory>tools/ops</outputDirectory>
+            <includes>
+                <include>daemon-ainode.sh</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
