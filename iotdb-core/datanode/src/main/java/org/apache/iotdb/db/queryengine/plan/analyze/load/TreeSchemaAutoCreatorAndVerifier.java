@@ -393,13 +393,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 SchemaConstant.ALL_MATCH_SCOPE.serialize());
         final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-        for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-          schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-          databasesNeededToBeSet.removeIf(
-              database ->
-                  database.startsWith(databaseName)
-                      || databaseName.startsWith(database.getFullPath()));
-        }
+        filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
       }
@@ -416,6 +410,28 @@ public class TreeSchemaAutoCreatorAndVerifier {
       executeSetDatabaseStatement(statement);
 
       schemaCache.addAlreadySetDatabase(databasePath);
+    }
+  }
+
+  void filterAlreadySetDatabases(
+      final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+    for (final String databaseName : alreadySetDatabaseNames) {
+      final PartialPath databasePath;
+      try {
+        databasePath = new PartialPath(databaseName);
+      } catch (final IllegalPathException e) {
+        // Ignore malformed databases left by older versions so they do not block valid loads.
+        continue;
+      }
+
+      // The path parser normalizes a trailing separator away, for example, "root." to "root".
+      if (!databaseName.equals(databasePath.getFullPath())) {
+        continue;
+      }
+
+      schemaCache.addAlreadySetDatabase(databasePath);
+      databasesNeededToBeSet.removeIf(
+          database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
     }
   }
 

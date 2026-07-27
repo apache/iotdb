@@ -230,6 +230,45 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
+  public void testTreeSchemaVerifierShouldIgnoreLegacyDatabaseWithEmptyPathNode() throws Exception {
+    final File tsFile = File.createTempFile("load-tree-legacy-database", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_legacy_database_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final PartialPath database = new PartialPath("root.sg");
+        final PartialPath databaseWithSameStringPrefix = new PartialPath("root.sg1");
+        final Set<PartialPath> databasesNeededToBeSet =
+            new HashSet<>(Arrays.asList(database, databaseWithSameStringPrefix));
+
+        verifier.filterAlreadySetDatabases(databasesNeededToBeSet, Collections.singleton("root."));
+
+        Assert.assertEquals(
+            new HashSet<>(Arrays.asList(database, databaseWithSameStringPrefix)),
+            databasesNeededToBeSet);
+        Assert.assertTrue(getTreeSchemaCache(verifier).getAlreadySetDatabases().isEmpty());
+
+        verifier.filterAlreadySetDatabases(
+            databasesNeededToBeSet, Collections.singleton(database.getFullPath()));
+
+        Assert.assertEquals(
+            Collections.singleton(databaseWithSameStringPrefix), databasesNeededToBeSet);
+        Assert.assertEquals(
+            Collections.singleton(database), getTreeSchemaCache(verifier).getAlreadySetDatabases());
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
   public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenAutoCreateDisabled()
       throws Exception {
     final boolean originalAutoCreateSchemaEnabled =
