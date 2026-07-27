@@ -1670,7 +1670,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   .collect(Collectors.toList())
                   .toString());
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+          .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
     }
 
     // audit db is read-only - check new path
@@ -1684,7 +1684,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   .collect(Collectors.toList())
                   .toString());
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+          .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
     }
 
     // Check permission for old path (WRITE_SCHEMA)
