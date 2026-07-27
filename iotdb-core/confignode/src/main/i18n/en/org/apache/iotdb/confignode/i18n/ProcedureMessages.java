@@ -460,6 +460,9 @@ public final class ProcedureMessages {
       "Cannot remove %d DataNode(s): the cluster has %d available DataNode(s) and must retain at least %d of them (max(schema_replication_factor=%d, data_replication_factor=%d)) so that every region keeps enough replicas, but this request would leave only %d.";
   public static final String FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT =
       " With a single replica there is nowhere to migrate regions to, so at least one DataNode must always remain.";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_ARG_REPLICAS_FROM_REGION_ARG_WITH_ARG_REPLICAS_USING_ARG_BECAUSE_THE_REMOVAL_SAFETY_CONDITION_ARG_REMOVEDREPLICACOUNT_REPLICACOUNT_IS_NOT_SATISFIED_4CF41C73 =
+          "Cannot remove %d replicas from region %s with %d replicas using %s because the removal safety condition %d * removedReplicaCount < replicaCount is not satisfied.";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =

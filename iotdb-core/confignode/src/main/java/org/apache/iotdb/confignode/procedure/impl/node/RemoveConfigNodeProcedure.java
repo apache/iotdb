@@ -153,4 +153,8 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
   public int hashCode() {
     return Objects.hash(this.removedConfigNode);
   }
+
+  public TConfigNodeLocation getRemovedConfigNode() {
+    return removedConfigNode;
+  }
 }

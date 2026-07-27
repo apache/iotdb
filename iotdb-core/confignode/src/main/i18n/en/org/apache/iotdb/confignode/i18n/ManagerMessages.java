@@ -660,6 +660,12 @@ public final class ManagerMessages {
       "Remove ConfigNode failed because there is no other ConfigNode in Running status in current"
       + " Cluster.";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_BECAUSE_IT_IS_ALREADY_BEING_REMOVED_EEE0128D =
+          "Cannot remove ConfigNode %d because it is already being removed.";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_REMOVING_ARG_CONFIGNODES_AT_THE_SAME_TIME_FROM_A_ARG_REPLICA_CONFIGNODEGROUP_USING_ARG_WOULD_VIOLATE_THE_SAFETY_CONDITION_ARG_REMOVINGCONFIGNODECOUNT_REPLICACOUNT_A64BF23B =
+          "Cannot remove ConfigNode %d: removing %d ConfigNodes at the same time from a %d-replica ConfigNodeGroup using %s would violate the safety condition %d * removingConfigNodeCount < replicaCount.";
   public static final String MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D = "Transfer ConfigNode leader failed because can not find any running ConfigNode.";
   public static final String MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603 = "The ConfigNode to be removed is leader, already transfer Leader to ";
   public static final String MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF = "The target DataNode is not existed, please ensure your input <queryId> is correct";

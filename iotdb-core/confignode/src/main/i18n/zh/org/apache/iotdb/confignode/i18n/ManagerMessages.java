@@ -640,6 +640,12 @@ public final class ManagerMessages {
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758 = "移除 ConfigNode 失败，原因：当前集群中只有一个 ConfigNode。";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315 = "移除 ConfigNode 失败，原因：当前集群中没有其他处于 Running 状态的 ConfigNode。";
   public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "移除 ConfigNode 失败，原因：ConfigNodeGroup 正在进行 leader 选举，请重试。";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_BECAUSE_IT_IS_ALREADY_BEING_REMOVED_EEE0128D =
+          "无法移除 ConfigNode %d，因为该节点已处于移除流程中。";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_REMOVING_ARG_CONFIGNODES_AT_THE_SAME_TIME_FROM_A_ARG_REPLICA_CONFIGNODEGROUP_USING_ARG_WOULD_VIOLATE_THE_SAFETY_CONDITION_ARG_REMOVINGCONFIGNODECOUNT_REPLICACOUNT_A64BF23B =
+          "无法移除 ConfigNode %d：同时移除 %d 个 ConfigNode（ConfigNodeGroup 当前为 %d 副本并使用 %s）将违反安全条件：%d * removingConfigNodeCount < replicaCount。";
   public static final String MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D = "转移 ConfigNode leader 失败，原因：找不到任何正在运行的 ConfigNode。";
   public static final String MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603 = "待移除的 ConfigNode 是 leader，已将 Leader 转移到 ";
   public static final String MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF = "目标 DataNode 不存在，请确保输入的 <queryId> 正确";

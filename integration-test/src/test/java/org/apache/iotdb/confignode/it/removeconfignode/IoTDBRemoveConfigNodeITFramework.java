@@ -152,6 +152,35 @@ public class IoTDBRemoveConfigNodeITFramework {
     }
   }
 
+  public void testRejectRemoveConfigNodeFromTwoReplicaGroup(final SQLModel model) throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(2, 1);
+
+    try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(model));
+        final Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      final ResultSet result = statement.executeQuery(SHOW_CONFIGNODES);
+      final Set<Integer> allConfigNodeIds = new HashSet<>();
+      while (result.next()) {
+        allConfigNodeIds.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+      }
+      Assert.assertEquals(2, allConfigNodeIds.size());
+
+      final int removeConfigNodeId = allConfigNodeIds.iterator().next();
+      try {
+        statement.execute(generateRemoveString(removeConfigNodeId));
+        Assert.fail();
+      } catch (IoTDBSQLException expected) {
+        // Removing one peer from a two-replica Ratis group would lose the majority.
+      }
+
+      final ResultSet remainingResult = statement.executeQuery(SHOW_CONFIGNODES);
+      int remainingConfigNodeCount = 0;
+      while (remainingResult.next()) {
+        remainingConfigNodeCount++;
+      }
+      Assert.assertEquals(2, remainingConfigNodeCount);
+    }
+  }
+
   private static void awaitUntilSuccess(Statement statement, int removeConfigNodeId) {
     AtomicReference<Set<Integer>> lastTimeConfigNodes = new AtomicReference<>();
     AtomicReference<Exception> lastException = new AtomicReference<>();

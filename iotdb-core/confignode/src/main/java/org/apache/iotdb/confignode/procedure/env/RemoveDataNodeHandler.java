@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetReg
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.node.NodeRemovalSafety;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
@@ -217,8 +218,9 @@ public class RemoveDataNodeHandler {
   }
 
   /**
-   * Retrieves all region migration plans for the specified removed DataNodes and selects the
-   * destination.
+   * Selects one migration plan per affected RegionGroup for the specified removed DataNodes. The
+   * caller invokes this method again after the returned migrations finish, so multiple replicas of
+   * the same RegionGroup are migrated in separate rounds.
    *
    * @param removedDataNodes the list of DataNodes from which to obtain migration plans
    * @return a list of region migration plans associated with the removed DataNodes
@@ -260,7 +262,7 @@ public class RemoveDataNodeHandler {
     List<TRegionReplicaSet> allocatedReplicaSets =
         configManager.getPartitionManager().getAllReplicaSets(consensusGroupType);
 
-    // Step 1: Identify affected replica sets and record the removed DataNode for each replica set
+    // Step 1: Identify affected replica sets and select one removed DataNode for each replica set
     Map<TConsensusGroupId, TDataNodeLocation> removedNodeMap = new HashMap<>();
     Set<TRegionReplicaSet> affectedReplicaSets =
         identifyAffectedReplicaSets(allocatedReplicaSets, removedDataNodes, removedNodeMap);
@@ -318,7 +320,7 @@ public class RemoveDataNodeHandler {
 
   /**
    * Identifies affected replica sets from allocatedReplicaSets that contain any DataNode in
-   * removedDataNodes, and records the removed DataNode for each replica set.
+   * removedDataNodes, and selects one removed DataNode for each replica set in this round.
    */
   private Set<TRegionReplicaSet> identifyAffectedReplicaSets(
       List<TRegionReplicaSet> allocatedReplicaSets,
@@ -334,7 +336,7 @@ public class RemoveDataNodeHandler {
           .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(removedNode))
           .forEach(
               replicaSet -> {
-                removedNodeMap.put(replicaSet.getRegionId(), removedNode);
+                removedNodeMap.putIfAbsent(replicaSet.getRegionId(), removedNode);
                 affectedReplicaSets.add(replicaSet);
               });
     }
@@ -621,6 +623,41 @@ public class RemoveDataNodeHandler {
         message += ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT;
       }
       status.setMessage(message);
+      return status;
+    }
+
+    final Set<Integer> removedDataNodeIds =
+        removedDataNodes.stream().map(TDataNodeLocation::getDataNodeId).collect(Collectors.toSet());
+    for (TRegionReplicaSet replicaSet : configManager.getPartitionManager().getAllReplicaSets()) {
+      final int removedReplicaCount =
+          (int)
+              replicaSet.getDataNodeLocations().stream()
+                  .filter(location -> removedDataNodeIds.contains(location.getDataNodeId()))
+                  .count();
+      if (removedReplicaCount == 0) {
+        continue;
+      }
+
+      final boolean strongConsistency =
+          CONF.isConsensusGroupStrongConsistency(replicaSet.getRegionId());
+      final int replicaCount = replicaSet.getDataNodeLocationsSize();
+      if (!NodeRemovalSafety.isSafe(removedReplicaCount, replicaCount, strongConsistency)) {
+        final String consensusProtocolClass =
+            TConsensusGroupType.SchemaRegion.equals(replicaSet.getRegionId().getType())
+                ? CONF.getSchemaRegionConsensusProtocolClass()
+                : CONF.getDataRegionConsensusProtocolClass();
+        status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+        status.setMessage(
+            String.format(
+                ProcedureMessages
+                    .MESSAGE_CANNOT_REMOVE_ARG_REPLICAS_FROM_REGION_ARG_WITH_ARG_REPLICAS_USING_ARG_BECAUSE_THE_REMOVAL_SAFETY_CONDITION_ARG_REMOVEDREPLICACOUNT_REPLICACOUNT_IS_NOT_SATISFIED_4CF41C73,
+                removedReplicaCount,
+                replicaSet.getRegionId(),
+                replicaCount,
+                consensusProtocolClass,
+                NodeRemovalSafety.getSafetyMultiplier(strongConsistency)));
+        return status;
+      }
     }
     return status;
   }

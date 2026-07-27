@@ -77,14 +77,67 @@ public class IoTDBRemoveDataNodeUtils {
   }
 
   /**
+   * Select DataNodes that share a weak-consistency RegionGroup while keeping every affected weak
+   * and strong RegionGroup within its removal-safety threshold.
+   */
+  public static Set<Integer> selectRemoveDataNodesSharingWeakRegionSafely(
+      int removeDataNodeNum,
+      Map<Integer, Set<Integer>> weakRegionMap,
+      Map<Integer, Set<Integer>> strongRegionMap) {
+    for (Set<Integer> weakRegionDataNodes : weakRegionMap.values()) {
+      Set<Integer> selected = new LinkedHashSet<>();
+      if (searchSafeSharedRegionSelection(
+          new ArrayList<>(weakRegionDataNodes),
+          0,
+          removeDataNodeNum,
+          selected,
+          weakRegionMap,
+          strongRegionMap)) {
+        return selected;
+      }
+    }
+    throw new IllegalStateException(
+        String.format(
+            "Cannot select %d DataNodes that safely share a weak-consistency RegionGroup. "
+                + "weakRegionMap=%s, strongRegionMap=%s",
+            removeDataNodeNum, weakRegionMap, strongRegionMap));
+  }
+
+  private static boolean searchSafeSharedRegionSelection(
+      List<Integer> candidates,
+      int start,
+      int need,
+      Set<Integer> selected,
+      Map<Integer, Set<Integer>> weakRegionMap,
+      Map<Integer, Set<Integer>> strongRegionMap) {
+    if (selected.size() == need) {
+      return weakRegionMap.values().stream()
+              .allMatch(region -> countSelectedReplicas(selected, region) < region.size())
+          && strongRegionMap.values().stream()
+              .allMatch(region -> 2L * countSelectedReplicas(selected, region) < region.size());
+    }
+    for (int i = start; i < candidates.size(); i++) {
+      selected.add(candidates.get(i));
+      if (searchSafeSharedRegionSelection(
+          candidates, i + 1, need, selected, weakRegionMap, strongRegionMap)) {
+        return true;
+      }
+      selected.remove(candidates.get(i));
+    }
+    return false;
+  }
+
+  private static long countSelectedReplicas(Set<Integer> selected, Set<Integer> regionDataNodes) {
+    return selected.stream().filter(regionDataNodes::contains).count();
+  }
+
+  /**
    * Select {@code removeDataNodeNum} DataNodes to remove such that no two of them host a replica of
-   * the same consensus group. Removing two DataNodes that share a region group would make the
-   * generated {@code RemoveDataNodesProcedure} try to migrate two replicas of the same group at
-   * once, which the ConfigNode rejects ("Only one replica of the same consensus group is allowed to
-   * be migrated at the same time."). Randomly picking DataNodes (see {@link
-   * #selectRemoveDataNodes}) therefore makes multi-DataNode-remove tests flaky; this method instead
-   * searches exhaustively (with backtracking) for a conflict-free selection, so it fails only when
-   * no such selection exists rather than when an unlucky pick order dead-ends.
+   * the same consensus group. Most removal tests are not intended to exercise the per-RegionGroup
+   * safety threshold, so randomly picking DataNodes (see {@link #selectRemoveDataNodes}) can make
+   * them fail when the selected nodes contain too many replicas of a strong-consistency group. This
+   * method instead searches exhaustively (with backtracking) for a conflict-free selection, so it
+   * fails only when no such selection exists rather than when an unlucky pick order dead-ends.
    *
    * @param allDataNodeId all registered DataNode ids
    * @param removeDataNodeNum how many DataNodes to remove

@@ -620,6 +620,21 @@ public class IoTDBRegionOperationReliabilityITFramework {
     return regionMap;
   }
 
+  public static Map<Integer, Set<Integer>> getSchemaRegionMap(Statement statement)
+      throws Exception {
+    ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);
+    Map<Integer, Set<Integer>> regionMap = new HashMap<>();
+    while (showRegionsResult.next()) {
+      if (String.valueOf(TConsensusGroupType.SchemaRegion)
+          .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))) {
+        int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
+        int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+        regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
+      }
+    }
+    return regionMap;
+  }
+
   public static Map<Integer, Pair<Integer, Set<Integer>>> getDataRegionMapWithLeader(
       Statement statement) throws Exception {
     ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);

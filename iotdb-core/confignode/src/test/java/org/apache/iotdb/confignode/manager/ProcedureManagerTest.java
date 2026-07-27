@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -86,15 +85,6 @@ public class ProcedureManagerTest {
           new TEndPoint("127.0.0.1", 6679),
           new TEndPoint("127.0.0.1", 6680),
           new TEndPoint("127.0.0.1", 6681));
-
-  private final TDataNodeLocation toDataNodeLocation =
-      new TDataNodeLocation(
-          12,
-          new TEndPoint("127.0.0.1", 6687),
-          new TEndPoint("127.0.0.1", 6688),
-          new TEndPoint("127.0.0.1", 6689),
-          new TEndPoint("127.0.0.1", 6690),
-          new TEndPoint("127.0.0.1", 6691));
 
   private final TDataNodeLocation coordinatorDataNodeLocation =
       new TDataNodeLocation(
@@ -158,24 +148,6 @@ public class ProcedureManagerTest {
     Set<TConsensusGroupId> set = new HashSet<>();
     set.add(consensusGroupId);
     when(REMOVE_DATA_NODE_HANDLER.getRemovedDataNodesRegionSet(removedDataNodes)).thenReturn(set);
-
-    TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
-    Assert.assertTrue(isFailed(status));
-  }
-
-  @Test
-  public void testCheckRemoveDataNodeWithRegionMigrateProcedureConflictsWithEachOther() {
-    RegionMigrationPlan regionMigrationPlanA =
-        new RegionMigrationPlan(consensusGroupId, removeDataNodeLocationA);
-    regionMigrationPlanA.setToDataNode(toDataNodeLocation);
-    RegionMigrationPlan regionMigrationPlanB =
-        new RegionMigrationPlan(consensusGroupId, removeDataNodeLocationB);
-    regionMigrationPlanB.setToDataNode(toDataNodeLocation);
-
-    List<RegionMigrationPlan> regionMigrationPlans =
-        new ArrayList<>(Arrays.asList(regionMigrationPlanA, regionMigrationPlanB));
-    when(REMOVE_DATA_NODE_HANDLER.getRegionMigrationPlans(removedDataNodes))
-        .thenReturn(regionMigrationPlans);
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
