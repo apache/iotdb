@@ -90,6 +90,15 @@ public interface IMemTable extends WALEntryValue {
 
   long getTotalPointsNum();
 
+  long getTotalValueCount();
+
+  long getNullValueCount();
+
+  /**
+   * @return the ratio of null values to all valid values written into this MemTable
+   */
+  double getNullValueRatio();
+
   /**
    * insert into this memtable
    *
