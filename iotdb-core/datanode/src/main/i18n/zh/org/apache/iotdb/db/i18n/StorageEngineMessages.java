@@ -746,6 +746,8 @@ public final class StorageEngineMessages {
       "{}：{} 在 flush 期间已关闭，放弃 flush 任务";
   public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3 =
       "TsFile {} 的压缩率为 {}，totalMemTableSize：{}，文件大小：{}";
+  public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_FILE_SIZE_NULL_VALUE_RATIO_46F3B1F7 =
+      "TsFile {} 的压缩率为 {}，totalMemTableSize：{}，文件大小：{}，空值比例：{}";
   public static final String STORAGE_LOG_STORAGE_GROUP_CLOSE_AND_REMOVE_EMPTY_FILE_72D42293 =
       "Storage group {} 关闭并移除空文件 {}";
   public static final String STORAGE_LOG_PUT_THE_MEMTABLE_SIGNAL_OUT_OF_FLUSHINGMEMTABLES_BUT_IT_D78AF257 =

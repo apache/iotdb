@@ -757,6 +757,8 @@ public final class StorageEngineMessages {
       "{}: {} is closed during flush, abandon flush task";
   public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3 =
       "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}";
+  public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_FILE_SIZE_NULL_VALUE_RATIO_46F3B1F7 =
+      "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}, null value ratio: {}";
   public static final String STORAGE_LOG_STORAGE_GROUP_CLOSE_AND_REMOVE_EMPTY_FILE_72D42293 =
       "Storage group {} close and remove empty file {}";
   public static final String STORAGE_LOG_PUT_THE_MEMTABLE_SIGNAL_OUT_OF_FLUSHINGMEMTABLES_BUT_IT_D78AF257 =

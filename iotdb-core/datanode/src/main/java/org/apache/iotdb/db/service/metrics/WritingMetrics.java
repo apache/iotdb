@@ -434,6 +434,7 @@ public class WritingMetrics implements IMetricSet {
   public static final String SERIES_NUM = "series_num";
   public static final String AVG_SERIES_POINT_NUM = "avg_series_points_num";
   public static final String COMPRESSION_RATIO = "compression_ratio";
+  public static final String NULL_VALUE_RATIO = "null_value_ratio";
   public static final String EFFECTIVE_RATIO_INFO = "effective_ratio_info";
   public static final String OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT =
       "oldest_mem_table_ram_when_cause_snapshot";
@@ -598,7 +599,13 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
-    Arrays.asList(MEM_TABLE_SIZE, SERIES_NUM, POINTS_NUM, COMPRESSION_RATIO, FLUSH_TSFILE_SIZE)
+    Arrays.asList(
+            MEM_TABLE_SIZE,
+            SERIES_NUM,
+            POINTS_NUM,
+            COMPRESSION_RATIO,
+            NULL_VALUE_RATIO,
+            FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -727,6 +734,7 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             AVG_SERIES_POINT_NUM,
             COMPRESSION_RATIO,
+            NULL_VALUE_RATIO,
             FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
@@ -786,6 +794,19 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             COMPRESSION_RATIO,
+            Tag.REGION.toString(),
+            new DataRegionId(Integer.parseInt(dataRegionId)).toString());
+  }
+
+  public void recordTsFileNullValueRatioOfFlushingMemTable(
+      String dataRegionId, double nullValueRatio) {
+    MetricService.getInstance()
+        .histogram(
+            (long) (nullValueRatio * 100),
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            NULL_VALUE_RATIO,
             Tag.REGION.toString(),
             new DataRegionId(Integer.parseInt(dataRegionId)).toString());
   }
