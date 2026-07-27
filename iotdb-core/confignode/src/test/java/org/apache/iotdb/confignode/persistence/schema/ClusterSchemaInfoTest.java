@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.SqlViewSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -308,6 +309,21 @@ public class ClusterSchemaInfoTest {
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
     Assert.assertEquals(2, statistics.getTableDatabaseNum());
     Assert.assertEquals(0, statistics.getBaseTableNum(database));
+  }
+
+  @Test
+  public void testDatabasePathWithEmptyNodeIsInvalid() throws MetadataException {
+    clusterSchemaInfo.isDatabaseNameValid("root.database", false);
+    clusterSchemaInfo.isDatabaseNameValid("database", true);
+
+    for (final String database : Arrays.asList("", "root.", "root..database", "root.database.")) {
+      try {
+        clusterSchemaInfo.isDatabaseNameValid(database, database.isEmpty());
+        Assert.fail("Expected IllegalPathException for database: " + database);
+      } catch (final IllegalPathException e) {
+        Assert.assertEquals(TSStatusCode.ILLEGAL_PATH.getStatusCode(), e.getErrorCode());
+      }
+    }
   }
 
   @Test
