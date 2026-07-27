@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -120,6 +122,21 @@ public interface ISchemaFetcher {
       List<CompressionType[]> compressionTypes,
       List<Boolean> aligned,
       MPPQueryContext context);
+
+  default ISchemaTree fetchSchemaList(
+      final List<PartialPath> devicePaths,
+      final List<String[]> measurementsList,
+      final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
+    final PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePaths.size(); i++) {
+      for (final String measurement : measurementsList.get(i)) {
+        patternTree.appendFullPath(devicePaths.get(i), measurement);
+      }
+    }
+    return fetchSchema(patternTree, true, context, true);
+  }
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 

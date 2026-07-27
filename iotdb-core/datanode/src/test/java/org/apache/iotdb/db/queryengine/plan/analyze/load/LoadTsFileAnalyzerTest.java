@@ -231,6 +231,67 @@ public class LoadTsFileAnalyzerTest {
     }
   }
 
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenPerLoadAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+    final File tsFile = File.createTempFile("missing-schema-per-load", ".tsfile");
+
+    try {
+      final LoadTsFileStatement waitingStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      waitingStatement.setAutoCreateSchema(false);
+      try (final LoadTsFileAnalyzer waitingAnalyzer =
+          new LoadTsFileAnalyzer(
+              waitingStatement, true, new MPPQueryContext(new QueryId("load_pipe_waiting_test")))) {
+        Assert.assertFalse(waitingAnalyzer.isAutoCreateSchemaAllowed());
+        Assert.assertTrue(
+            waitingAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+
+      try (final LoadTsFileAnalyzer defaultAnalyzer =
+          new LoadTsFileAnalyzer(
+              LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+              true,
+              new MPPQueryContext(new QueryId("load_pipe_default_test")))) {
+        Assert.assertTrue(defaultAnalyzer.isAutoCreateSchemaAllowed());
+        Assert.assertFalse(
+            defaultAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testGlobalAutoCreateDisabledKeepsPerLoadAutoCreatePermission() throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("global-auto-create-disabled", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            true,
+            new MPPQueryContext(new QueryId("load_global_auto_create_disabled_test")))) {
+      Assert.assertFalse(analyzer.isAutoCreateSchema());
+      Assert.assertTrue(analyzer.isAutoCreateSchemaAllowed());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
   private void writeTableTsFileWithMixedDevices(final File tsFile) throws Exception {
     if (tsFile.exists()) {
       Assert.assertTrue(tsFile.delete());

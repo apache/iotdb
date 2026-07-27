@@ -610,34 +610,42 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath))
-        : loadTsFileSync(null, fileAbsolutePath);
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false)
+        : loadTsFileSync(null, fileAbsolutePath, false);
   }
 
   @Override
   protected TSStatus loadFileV2(
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException {
-    return req instanceof PipeTransferTsFileSealWithModReq
-        // TsFile's absolute path will be the second element
-        ? (isUsingAsyncLoadTsFileStrategy.get()
-            ? loadTsFileAsync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
-                fileAbsolutePaths)
-            : loadTsFileSync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
-                fileAbsolutePaths.get(req.getFileNames().size() - 1)))
-        : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
+    if (!(req instanceof PipeTransferTsFileSealWithModReq)) {
+      return loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
+    }
+
+    final PipeTransferTsFileSealWithModReq tsFileSealReq = (PipeTransferTsFileSealWithModReq) req;
+    final String databaseName = tsFileSealReq.getDatabaseNameByTsFileName();
+    final boolean shouldWaitForSchemaBeforeLoad = tsFileSealReq.shouldWaitForSchemaBeforeLoad();
+    // TsFile's absolute path will be the second element when the request contains a mod file.
+    return isUsingAsyncLoadTsFileStrategy.get()
+        ? loadTsFileAsync(databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad)
+        : loadTsFileSync(
+            databaseName,
+            fileAbsolutePaths.get(req.getFileNames().size() - 1),
+            shouldWaitForSchemaBeforeLoad);
   }
 
-  private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
+  private TSStatus loadTsFileAsync(
+      final String dataBaseName,
+      final List<String> absolutePaths,
+      final boolean shouldWaitForSchemaBeforeLoad)
       throws IOException {
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
             shouldConvertDataTypeOnTypeMismatch,
             validateTsFile.get(),
-            shouldMarkAsPipeRequest.get());
+            shouldMarkAsPipeRequest.get(),
+            shouldWaitForSchemaBeforeLoad);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -650,24 +658,43 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldConvertDataTypeOnTypeMismatch,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest) {
+    return buildLoadTsFileAttributesForAsync(
+        dataBaseName,
+        shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile,
+        shouldMarkAsPipeRequest,
+        false);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
         shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile || shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
+        !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
         AuthorityChecker.SUPER_USER);
   }
 
-  private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
+  private TSStatus loadTsFileSync(
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean shouldWaitForSchemaBeforeLoad)
       throws FileNotFoundException {
     return executeStatementAndClassifyExceptions(
         buildLoadTsFileStatementForSync(
             dataBaseName,
             fileAbsolutePath,
             validateTsFile.get(),
-            shouldConvertDataTypeOnTypeMismatch));
+            shouldConvertDataTypeOnTypeMismatch,
+            shouldWaitForSchemaBeforeLoad));
   }
 
   static LoadTsFileStatement buildLoadTsFileStatementForSync(
@@ -676,10 +703,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean validateTsFile,
       final boolean shouldConvertDataTypeOnTypeMismatch)
       throws FileNotFoundException {
+    return buildLoadTsFileStatementForSync(
+        dataBaseName, fileAbsolutePath, validateTsFile, shouldConvertDataTypeOnTypeMismatch, false);
+  }
+
+  static LoadTsFileStatement buildLoadTsFileStatementForSync(
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean validateTsFile,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean shouldWaitForSchemaBeforeLoad)
+      throws FileNotFoundException {
     final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(shouldConvertDataTypeOnTypeMismatch);
-    statement.setVerifySchema(validateTsFile || shouldConvertDataTypeOnTypeMismatch);
+    statement.setVerifySchema(
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad);
+    statement.setAutoCreateSchema(!shouldWaitForSchemaBeforeLoad);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
