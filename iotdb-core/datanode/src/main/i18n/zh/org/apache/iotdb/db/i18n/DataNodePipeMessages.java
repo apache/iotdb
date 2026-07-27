@@ -1237,8 +1237,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: 执行 statement {} 时遇到失败状态：{}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: 执行 statement {} 时遇到异常：";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}，statement = {}，exception = {}，message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "未知 PipeRequestType %s。";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "遇到异常 %s，处理请求 %s 时。";
