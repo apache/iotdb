@@ -102,6 +102,7 @@ public class DataNodeTableCacheLeaseTest {
   private static void assertLeaseFenced(final Runnable runnable) {
     final MetadataLeaseFencedException e =
         assertThrows(MetadataLeaseFencedException.class, runnable::run);
-    assertEquals(TSStatusCode.METADATA_LEASE_FENCED.getStatusCode(), e.getErrorCode());
+    assertEquals(
+        TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), e.getErrorCode());
   }
 }
