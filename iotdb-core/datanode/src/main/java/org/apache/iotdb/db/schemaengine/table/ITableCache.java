@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.schema.table.TsTable;
 
 import javax.annotation.Nonnull;
@@ -52,6 +53,12 @@ public interface ITableCache {
   TsTable getTable(final String database, final String tableName);
 
   TsTable getTable(String database, final String tableName, final boolean force);
+
+  TsTable getTable(
+      String database,
+      final String tableName,
+      final boolean force,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy);
 
   Map<String, Map<String, TsTable>> getTableSnapshot();
 
