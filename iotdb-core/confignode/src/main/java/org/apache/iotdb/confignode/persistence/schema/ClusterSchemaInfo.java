@@ -458,7 +458,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void isDatabaseNameValid(String databaseName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      mTree.checkDatabaseAlreadySet(new PartialPath(databaseName));
+      final PartialPath databasePath = new PartialPath(databaseName);
+      for (final String node : databasePath.getNodes()) {
+        if (node.isEmpty()) {
+          throw new IllegalPathException(databaseName);
+        }
+      }
+      mTree.checkDatabaseAlreadySet(databasePath);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
