@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -114,7 +115,7 @@ public class DropPipeProcedureV2Test {
   }
 
   @Test
-  public void testPreDeleteWritesStatusBeforeFinalDrop() throws Exception {
+  public void testWriteConsensusMarksPreDeleteBeforeFinalDrop() throws Exception {
     final String pipeName = "testPipe";
     final PipeTaskInfo pipeTaskInfo = createPipeTaskInfo(pipeName);
     final TestDropPipeProcedureV2 proc = new TestDropPipeProcedureV2(pipeName, false);
@@ -129,13 +130,39 @@ public class DropPipeProcedureV2Test {
     Mockito.when(consensusManager.write(Mockito.any(ConfigPhysicalPlan.class)))
         .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    proc.executeFromPreDelete(env);
+    proc.executeFromWriteConfigNodeConsensus(env);
 
     final ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
         ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
     Mockito.verify(consensusManager).write(planCaptor.capture());
     assertEquals(
         new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE, false), planCaptor.getValue());
+  }
+
+  @Test
+  public void testDataNodeStageCommitsFinalDrop() throws Exception {
+    final String pipeName = "testPipe";
+    final PipeTaskInfo pipeTaskInfo = createPipeTaskInfo(pipeName);
+    final TestDropPipeProcedureV2 proc = new TestDropPipeProcedureV2(pipeName, false);
+    proc.setPipeTaskInfo(pipeTaskInfo);
+    proc.executeFromCalculateInfoForTask(Mockito.mock(ConfigNodeProcedureEnv.class));
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(env.pushSinglePipeMetaToDataNodes(Mockito.any(ByteBuffer.class), Mockito.any()))
+        .thenReturn(Collections.emptyMap());
+    Mockito.when(consensusManager.write(Mockito.any(ConfigPhysicalPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    proc.executeFromOperateOnDataNodes(env);
+
+    final ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
+        ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
+    Mockito.verify(consensusManager).write(planCaptor.capture());
+    assertEquals(new DropPipePlanV2(pipeName, false), planCaptor.getValue());
   }
 
   @Test

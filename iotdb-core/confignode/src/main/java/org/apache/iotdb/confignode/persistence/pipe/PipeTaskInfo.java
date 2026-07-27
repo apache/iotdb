@@ -90,7 +90,6 @@ import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -224,12 +223,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
-    if (!isPipeExisted(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)
-        || PipeStatus.PRE_DELETE.equals(
-            getPipeStatus(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel))) {
+    if (!isPipeExisted(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)) {
       final String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_DOES_NOT_EXIST_29E0DCEB,
+              alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (PipeStatus.PRE_DELETE.equals(
+        getPipeStatus(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel))) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
+              alterPipeRequest.getPipeName());
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -367,10 +376,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
+    if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -387,10 +405,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
-    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
+    if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -425,10 +452,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
+    if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -445,10 +481,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
-    if (pipeStatus == PipeStatus.DROPPED || pipeStatus == PipeStatus.PRE_DELETE) {
+    if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }

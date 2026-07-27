@@ -1416,14 +1416,18 @@ public final class ProcedureMessages {
       "waiting to acquire the PipeTaskCoordinator lock because another Pipe operation is holding it.";
   public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
       "waiting to acquire the ConfigNode node lock because another node procedure is holding it.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+      "waiting to acquire the ConfigNode node lock held by %s (procedureId=%d).";
   public static final String MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
       "Pipe request or plugin validation has not completed; a plugin check or metadata access may be slow.";
   public static final String MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
       "Pipe metadata calculation has not completed; metadata access or local calculation may be slow.";
-  public static final String MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_THE_CONSENSUS_GROUP_MAY_BE_UNAVAILABLE_OR_SLOW_F8911CE7 =
-      "the ConfigNode consensus write has not returned; the consensus group may be unavailable or slow.";
-  public static final String MESSAGE_ONE_OR_MORE_DATANODES_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_THEY_MAY_BE_UNAVAILABLE_OR_SLOW_11BBB333 =
-      "one or more DataNodes have not responded to the Pipe metadata push; they may be unavailable or slow.";
+  public static final String MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+      "the ConfigNode consensus write has not returned; run SHOW CLUSTER to check node status.";
+  public static final String MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+      "DataNodes %s have not responded to the Pipe metadata push; run SHOW CLUSTER to check their status.";
+  public static final String MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+      "the Pipe metadata push has not completed; run SHOW CLUSTER to check DataNode status.";
   public static final String MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
       "the previous attempt failed with '%s' and this state is being retried.";
   public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =

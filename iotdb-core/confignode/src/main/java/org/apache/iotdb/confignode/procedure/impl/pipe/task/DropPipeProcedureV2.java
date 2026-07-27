@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -132,15 +133,12 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean shouldExecutePreDeleteState() {
-    return true;
-  }
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info(
+        ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
 
-  @Override
-  public void executeFromPreDelete(ConfigNodeProcedureEnv env) throws PipeException {
     // Legacy procedures created without an explicit model do not persist pipeMetaToDrop. Restore
-    // it from PipeTaskInfo so a procedure recovered between CALCULATE_INFO_FOR_TASK and PRE_DELETE
-    // still exposes PRE_DELETE through SHOW PIPES.
+    // it from PipeTaskInfo so a recovered procedure can still expose PRE_DELETE through SHOW PIPES.
     if (!restorePipeMetaToDropIfNecessary()) {
       return;
     }
@@ -174,11 +172,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return pipeMetaToDrop != null;
   }
 
-  @Override
-  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info(
-        ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
-
+  private void dropPipeOnConfigNode(final ConfigNodeProcedureEnv env) throws PipeException {
     TSStatus response;
     try {
       response =
@@ -199,7 +193,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     String exceptionMessage;
@@ -213,17 +207,21 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
         exceptionMessage =
             parsePushPipeMetaExceptionForPipe(
-                pipeName, env.pushSinglePipeMetaToDataNodes(droppedPipeMeta.serialize()));
+                pipeName,
+                env.pushSinglePipeMetaToDataNodes(
+                    droppedPipeMeta.serialize(), this::setPendingDataNodeIds));
       }
     } catch (final IOException e) {
       exceptionMessage = e.getMessage();
     }
-    if (!exceptionMessage.isEmpty()) {
+    if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_DROP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           pipeName,
           exceptionMessage);
     }
+    updateExecutionStage(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS, false);
+    dropPipeOnConfigNode(env);
   }
 
   @Override
@@ -236,11 +234,6 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
-  }
-
-  @Override
-  public void rollbackFromPreDelete(ConfigNodeProcedureEnv env) {
-    // Keep PRE_DELETE so SHOW PIPES continues to expose that the drop did not complete.
   }
 
   @Override

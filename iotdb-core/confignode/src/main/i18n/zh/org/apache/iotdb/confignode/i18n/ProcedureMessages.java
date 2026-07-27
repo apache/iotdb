@@ -1497,17 +1497,23 @@ public final class ProcedureMessages {
       MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
           "正在等待获取 ConfigNode 节点锁，因为另一个节点 Procedure 正在持有该锁。";
   public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+          "正在等待获取由 %s（procedureId=%d）持有的 ConfigNode 节点锁。";
+  public static final String
       MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
           "Pipe 请求或插件校验尚未完成；插件检查或元数据访问可能过慢。";
   public static final String
       MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
           "Pipe 元数据计算尚未完成；元数据访问或本地计算可能过慢。";
   public static final String
-      MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_THE_CONSENSUS_GROUP_MAY_BE_UNAVAILABLE_OR_SLOW_F8911CE7 =
-          "ConfigNode 共识写尚未返回；共识组可能不可用或响应过慢。";
+      MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+          "ConfigNode 共识写尚未返回；请执行 SHOW CLUSTER 检查节点状态。";
   public static final String
-      MESSAGE_ONE_OR_MORE_DATANODES_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_THEY_MAY_BE_UNAVAILABLE_OR_SLOW_11BBB333 =
-          "一个或多个 DataNode 尚未响应 Pipe 元数据推送；这些 DataNode 可能不可用或响应过慢。";
+      MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+          "DataNode %s 尚未响应 Pipe 元数据推送；请执行 SHOW CLUSTER 检查其状态。";
+  public static final String
+      MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+          "Pipe 元数据推送尚未完成；请执行 SHOW CLUSTER 检查 DataNode 状态。";
   public static final String
       MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
           "上一次尝试因“%s”失败，正在重试此状态。";

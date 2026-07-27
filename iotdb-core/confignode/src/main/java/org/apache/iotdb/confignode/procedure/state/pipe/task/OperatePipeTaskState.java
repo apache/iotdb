@@ -23,7 +23,5 @@ public enum OperatePipeTaskState {
   VALIDATE_TASK,
   CALCULATE_INFO_FOR_TASK,
   OPERATE_ON_DATA_NODES,
-  WRITE_CONFIG_NODE_CONSENSUS,
-  // Keep new states appended to preserve persisted state ordinals.
-  PRE_DELETE
+  WRITE_CONFIG_NODE_CONSENSUS
 }
