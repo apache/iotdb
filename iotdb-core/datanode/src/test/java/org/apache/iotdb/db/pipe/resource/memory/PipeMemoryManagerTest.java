@@ -193,6 +193,43 @@ public class PipeMemoryManagerTest {
   }
 
   @Test
+  public void testPipeFairnessSurvivesTransientSingleRegionQueueGap() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+
+    final Reservation blocker = new Reservation("blocker", 0);
+    final Reservation multiRegion1 = new Reservation("multi", 1, "1");
+    final Reservation multiRegion2 = new Reservation("multi", 1, "2");
+    final Reservation multiRegion3 = new Reservation("multi", 1, "3");
+    final Reservation singleFirst = new Reservation("single", 2, "1");
+    final Reservation singleSecond = new Reservation("single", 2, "1");
+
+    Assert.assertTrue(tryAcquire(blocker));
+    Assert.assertFalse(tryAcquire(multiRegion1));
+    Assert.assertFalse(tryAcquire(multiRegion2));
+    Assert.assertFalse(tryAcquire(multiRegion3));
+    Assert.assertFalse(tryAcquire(singleFirst));
+
+    release(blocker);
+    Assert.assertTrue(tryAcquire(multiRegion1));
+    release(multiRegion1);
+
+    Assert.assertTrue(tryAcquire(singleFirst));
+    release(singleFirst);
+
+    // The single-region pipe temporarily has no admission request while it advances to its next
+    // TsFile, so the multi-region pipe can use the otherwise idle parser slot.
+    Assert.assertTrue(tryAcquire(multiRegion2));
+    Assert.assertFalse(tryAcquire(singleSecond));
+    release(multiRegion2);
+
+    // Once the single-region pipe is waiting again, the remembered pipe-level cursor must prevent
+    // another region of the multi-region pipe from taking a second consecutive turn.
+    Assert.assertFalse(tryAcquire(multiRegion3));
+    Assert.assertTrue(tryAcquire(singleSecond));
+  }
+
+  @Test
   public void testSoftMemoryHeadroomIsReservedForPipeWithoutParser() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(2);
     commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(2);
