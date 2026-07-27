@@ -1432,8 +1432,14 @@ public class IoTConsensusServerImpl {
           } catch (InterruptedException e) {
             logger.warn(
                 IoTConsensusMessages.CURRENT_WAITING_INTERRUPTED, request.getStartSyncIndex(), e);
+            requestCache.remove(request);
+            queueSortCondition.signalAll();
             Thread.currentThread().interrupt();
-            break;
+            return new TSStatus()
+                .setSubStatus(
+                    Collections.nCopies(
+                        request.getInsertNodes().size(),
+                        RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR)));
           }
         }
         long sortTime = System.nanoTime();
