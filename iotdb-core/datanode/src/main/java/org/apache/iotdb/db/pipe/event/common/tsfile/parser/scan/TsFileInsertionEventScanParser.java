@@ -57,6 +57,7 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.BufferedTsFileInput;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
@@ -83,6 +84,8 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
+  private static final int TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES = 8 * 1024;
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -91,6 +94,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private BatchData data;
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
+  private PipeMemoryBlock allocatedMemoryBlockForTsFileInput;
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
@@ -156,11 +160,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader =
-          new TsFileSequenceReader(
-              tsFile.getAbsolutePath(),
-              !currentModifications.isEmpty(),
-              !currentModifications.isEmpty());
+      tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
@@ -191,6 +191,22 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         false,
         sourceEvent,
         isWithMod);
+  }
+
+  private TsFileSequenceReader createTsFileSequenceReader(
+      final File tsFile, final boolean hasModifications) throws IOException {
+    if (hasModifications) {
+      return new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
+    }
+
+    allocatedMemoryBlockForTsFileInput =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+    return new TsFileSequenceReader(
+        new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
+        false,
+        false,
+        null);
   }
 
   @Override
@@ -1097,6 +1113,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     if (allocatedMemoryBlockForChunk != null) {
       allocatedMemoryBlockForChunk.close();
+    }
+
+    if (allocatedMemoryBlockForTsFileInput != null) {
+      allocatedMemoryBlockForTsFileInput.close();
     }
   }
 
