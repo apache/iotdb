@@ -56,11 +56,28 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveDeltaAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIncreaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIrateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveRateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedDeltaAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIncreaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIrateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedRateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveDeltaAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIncreaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIrateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveRateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.OrderedDeltaAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.OrderedIncreaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.OrderedIrateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.OrderedRateAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
@@ -142,6 +159,38 @@ public class AccumulatorFactory {
       boolean distinct,
       MemoryReservationManager memoryReservationManager,
       @Nullable IoTDBLocal ioTDBLocal) {
+    return createAccumulator(
+        functionName,
+        aggregationType,
+        inputDataTypes,
+        inputExpressions,
+        inputAttributes,
+        ascending,
+        isAggTableScan,
+        timeColumnName,
+        measurementColumnNames,
+        distinct,
+        AggregationNode.Step.SINGLE,
+        false,
+        memoryReservationManager,
+        ioTDBLocal);
+  }
+
+  public static TableAccumulator createAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending,
+      boolean isAggTableScan,
+      String timeColumnName,
+      Set<String> measurementColumnNames,
+      boolean distinct,
+      AggregationNode.Step step,
+      boolean inputOrderedByTimeAscending,
+      MemoryReservationManager memoryReservationManager,
+      @Nullable IoTDBLocal ioTDBLocal) {
     TableAccumulator result;
 
     // Input expression size of 1 indicates aggregation split has occurred and this is a final
@@ -201,7 +250,13 @@ public class AccumulatorFactory {
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
               : new FirstDescAccumulator(inputDataTypes.get(0));
     } else {
-      result = createBuiltinAccumulator(aggregationType, inputDataTypes, memoryReservationManager);
+      result =
+          createBuiltinAccumulator(
+              aggregationType,
+              inputDataTypes,
+              step,
+              inputOrderedByTimeAscending,
+              memoryReservationManager);
     }
 
     if (distinct) {
@@ -247,6 +302,32 @@ public class AccumulatorFactory {
       boolean distinct,
       MemoryReservationManager memoryReservationManager,
       @Nullable IoTDBLocal ioTDBLocal) {
+    return createGroupedAccumulator(
+        functionName,
+        aggregationType,
+        inputDataTypes,
+        inputExpressions,
+        inputAttributes,
+        ascending,
+        distinct,
+        AggregationNode.Step.SINGLE,
+        false,
+        memoryReservationManager,
+        ioTDBLocal);
+  }
+
+  public static GroupedAccumulator createGroupedAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending,
+      boolean distinct,
+      AggregationNode.Step step,
+      boolean inputOrderedByTimeAscending,
+      MemoryReservationManager memoryReservationManager,
+      @Nullable IoTDBLocal ioTDBLocal) {
     GroupedAccumulator result;
 
     if (aggregationType == TAggregationType.UDAF) {
@@ -261,6 +342,8 @@ public class AccumulatorFactory {
               inputExpressions,
               inputAttributes,
               ascending,
+              step,
+              inputOrderedByTimeAscending,
               memoryReservationManager);
     }
 
@@ -317,7 +400,11 @@ public class AccumulatorFactory {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending,
+      AggregationNode.Step step,
+      boolean inputOrderedByTimeAscending,
       MemoryReservationManager memoryReservationManager) {
+    boolean useOrderedImplementation =
+        step == AggregationNode.Step.SINGLE && inputOrderedByTimeAscending;
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
@@ -403,6 +490,22 @@ public class AccumulatorFactory {
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       case PERCENTILE:
         return new GroupedPercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case RATE:
+        return useOrderedImplementation
+            ? new GroupedOrderedRateAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            : new GroupedNaiveRateAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INCREASE:
+        return useOrderedImplementation
+            ? new GroupedOrderedIncreaseAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            : new GroupedNaiveIncreaseAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case IRATE:
+        return useOrderedImplementation
+            ? new GroupedOrderedIrateAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            : new GroupedNaiveIrateAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case DELTA:
+        return useOrderedImplementation
+            ? new GroupedOrderedDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            : new GroupedNaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -413,6 +516,22 @@ public class AccumulatorFactory {
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
       MemoryReservationManager memoryReservationManager) {
+    return createBuiltinAccumulator(
+        aggregationType,
+        inputDataTypes,
+        AggregationNode.Step.SINGLE,
+        false,
+        memoryReservationManager);
+  }
+
+  public static TableAccumulator createBuiltinAccumulator(
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      AggregationNode.Step step,
+      boolean inputOrderedByTimeAscending,
+      MemoryReservationManager memoryReservationManager) {
+    boolean useOrderedImplementation =
+        step == AggregationNode.Step.SINGLE && inputOrderedByTimeAscending;
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -499,6 +618,22 @@ public class AccumulatorFactory {
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       case PERCENTILE:
         return new PercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case RATE:
+        return useOrderedImplementation
+            ? new OrderedRateAccumulator(inputDataTypes.get(0))
+            : new NaiveRateAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INCREASE:
+        return useOrderedImplementation
+            ? new OrderedIncreaseAccumulator(inputDataTypes.get(0))
+            : new NaiveIncreaseAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case IRATE:
+        return useOrderedImplementation
+            ? new OrderedIrateAccumulator(inputDataTypes.get(0))
+            : new NaiveIrateAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case DELTA:
+        return useOrderedImplementation
+            ? new OrderedDeltaAccumulator(inputDataTypes.get(0))
+            : new NaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -573,6 +708,10 @@ public class AccumulatorFactory {
       case COVAR_SAMP:
       case REGR_SLOPE:
       case REGR_INTERCEPT:
+      case RATE:
+      case INCREASE:
+      case IRATE:
+      case DELTA:
         return true;
       default:
         return false;

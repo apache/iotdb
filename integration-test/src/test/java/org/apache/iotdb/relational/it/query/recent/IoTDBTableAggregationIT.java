@@ -133,6 +133,39 @@ public class IoTDBTableAggregationIT {
         "INSERT INTO stat_table(time, device_id, s1, s3, s4) VALUES (5, 'n1', 50, 50.0, 50.0)",
         "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (6, 'n1', 40, 20, 40.0, 20.0)",
         "FLUSH",
+        // rate(), increase(), irate() and delta() integration-test fixtures
+        "CREATE TABLE rate_test(scenario STRING TAG, value_i32 INT32 FIELD, value_i64 INT64 FIELD, value_float FLOAT FIELD, value_double DOUBLE FIELD, gauge DOUBLE FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD, text_value STRING FIELD, bool_value BOOLEAN FIELD)",
+        "CREATE TABLE rate_int32_extreme(scenario STRING TAG, value_col INT32 FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD)",
+        "CREATE TABLE rate_int64_extreme(scenario STRING TAG, value_col INT64 FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD)",
+        "INSERT INTO rate_test(time,scenario,value_i32,value_i64,value_float,value_double,gauge,sample_time,window_start,window_end,text_value,bool_value) VALUES (0,'timestamp_normal',100,100,100.0,100.0,100.0,0,0,5000,'x',true),(1,'timestamp_normal',160,160,160.0,160.0,160.0,1000,0,5000,'x',true)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (100,'reset',500.0,500.0,0,0,5000),(101,'reset',580.0,580.0,1000,0,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (1000,'distributed',500.0,100.0,1000,1000,5000),(2000,'distributed',580.0,60.0,2000,1000,5000)",
+        "FLUSH",
+        "INSERT INTO rate_test(time,scenario,value_i32,value_i64,value_float,value_double,gauge,sample_time,window_start,window_end,text_value,bool_value) VALUES (2,'timestamp_normal',220,220,220.0,220.0,220.0,2000,0,5000,'x',true),(3,'timestamp_normal',280,280,280.0,280.0,280.0,3000,0,5000,'x',true),(4,'timestamp_normal',340,340,340.0,340.0,340.0,4000,0,5000,'x',true)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (102,'reset',20.0,20.0,2000,0,5000),(103,'reset',100.0,100.0,3000,0,5000),(104,'reset',180.0,180.0,4000,0,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (604800000,'distributed',20.0,80.0,3000,1000,5000),(604801000,'distributed',100.0,70.0,4000,1000,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (200,'unordered',30.0,30.0,3000,0,5000),(201,'unordered',10.0,10.0,1000,0,5000),(202,'unordered',40.0,40.0,4000,0,5000),(203,'unordered',20.0,20.0,2000,0,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (300,'two_reset',580.0,580.0,1000,0,5000),(301,'two_reset',20.0,20.0,2000,0,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (310,'single',10.0,10.0,1000,0,5000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (320,'nulls',10.0,10.0,0,0,4000),(321,'nulls',null,null,null,null,null),(322,'nulls',30.0,30.0,2000,0,4000),(323,'nulls',40.0,40.0,3000,0,4000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (330,'multiple_reset',100.0,100.0,0,0,6000),(331,'multiple_reset',150.0,150.0,1000,0,6000),(332,'multiple_reset',20.0,20.0,2000,0,6000),(333,'multiple_reset',70.0,70.0,3000,0,6000),(334,'multiple_reset',10.0,10.0,4000,0,6000),(335,'multiple_reset',40.0,40.0,5000,0,6000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (340,'zero',100.0,100.0,2000,0,10000),(341,'zero',100.0,100.0,4000,0,10000),(342,'zero',100.0,100.0,6000,0,10000),(343,'zero',100.0,100.0,8000,0,10000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (350,'zero_protection',10.0,10.0,2000,0,10000),(351,'zero_protection',100.0,100.0,4000,0,10000),(352,'zero_protection',10.0,10.0,6000,0,10000),(353,'zero_protection',30.0,30.0,8000,0,10000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (360,'threshold',11.0,11.0,1100,0,4100),(361,'threshold',21.0,21.0,2100,0,4100),(362,'threshold',31.0,31.0,3100,0,4100)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (370,'far_boundary',20.0,20.0,2000,0,10000),(371,'far_boundary',30.0,30.0,3000,0,10000),(372,'far_boundary',40.0,40.0,4000,0,10000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (380,'boundary',0.0,0.0,0,0,2000),(381,'boundary',10.0,10.0,1000,0,2000),(382,'boundary',20.0,20.0,2000,0,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (11100,'gapfill',100.0,100.0,11100,11000,12000),(11900,'gapfill',108.0,108.0,11900,11000,12000),(13100,'gapfill',120.0,120.0,13100,13000,14000),(13900,'gapfill',128.0,128.0,13900,13000,14000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (390,'negative_delta',100.0,100.0,0,0,3000),(391,'negative_delta',-10.0,-10.0,1000,0,3000),(392,'negative_delta',20.0,20.0,2000,0,3000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,window_start,window_end) VALUES (400,'null_time',10.0,10.0,0,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_end) VALUES (401,'null_start',10.0,10.0,0,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start) VALUES (402,'null_end',10.0,10.0,0,0)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (410,'inconsistent_window',10.0,10.0,0,0,2000),(411,'inconsistent_window',20.0,20.0,1000,100,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (420,'duplicate_time',0.0,0.0,0,0,2000),(421,'duplicate_time',10.0,10.0,1000,0,2000),(422,'duplicate_time',20.0,20.0,1000,0,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (430,'outside_before',10.0,10.0,-1,0,2000)",
+        "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (440,'counter_a',100.0,100.0,0,0,2000),(441,'counter_a',120.0,120.0,1000,0,2000),(450,'counter_b',1000.0,1000.0,0,0,2000),(451,'counter_b',1030.0,1030.0,1000,0,2000)",
+        "INSERT INTO rate_int32_extreme(time,scenario,value_col,sample_time,window_start,window_end) VALUES (0,'extreme',-2147483648,0,0,2000),(1,'extreme',2147483647,1000,0,2000)",
+        "INSERT INTO rate_int64_extreme(time,scenario,value_col,sample_time,window_start,window_end) VALUES (0,'extreme',-9223372036854775808,0,0,2000),(1,'extreme',9223372036854775807,1000,0,2000)",
+        "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
 
@@ -5729,6 +5762,479 @@ public class IoTDBTableAggregationIT {
         "select province, city, region, device_id, date_bin(1h, time), count(s1) from table1 where s1 >= 40 group by 1,2,3,4,5 order by province, city, region, device_id, date_bin(1h, time) limit 1",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  // ==================================================================
+  // ================= Rate-Family Aggregation Tests ==================
+  // ==================================================================
+
+  @Test
+  public void rateFunctionsNormalTest() {
+    tableResultSetEqualTest(
+        "SELECT scenario,date_bin(5ms,time) AS window_start,"
+            + "rate(value_double,time,window_start,window_start + 5) AS rate_value,"
+            + "increase(value_double,time,window_start,window_start + 5) AS increase_value,"
+            + "irate(value_double,time) AS irate_value,"
+            + "delta(value_double,time,window_start,window_start + 5) AS delta_value "
+            + "FROM (SELECT time,scenario,value_double FROM rate_test "
+            + "WHERE scenario='timestamp_normal') GROUP BY scenario,window_start",
+        new String[] {
+          "scenario", "window_start", "rate_value", "increase_value", "irate_value", "delta_value"
+        },
+        new String[] {"timestamp_normal,1970-01-01T00:00:00.000Z,60000.0,300.0,60000.0,300.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='reset'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"65.0,325.0,80.0,-400.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT scenario,rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario IN ('timestamp_normal','reset') "
+            + "GROUP BY scenario ORDER BY scenario",
+        new String[] {"scenario", "rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"reset,65.0,325.0,80.0,-400.0,", "timestamp_normal,60.0,300.0,60.0,300.0,"},
+        DATABASE_NAME);
+
+    // The rows span two flushed files and two physical time partitions. In cluster mode this also
+    // exercises partial/intermediate/final aggregation.
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(gauge,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='distributed'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"60.0,240.0,80.0,-40.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='unordered'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"10.0,50.0,10.0,50.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT window_start,window_end,"
+            + "rate(value_double,time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,time) AS irate_value,"
+            + "delta(value_double,time,window_start,window_end) AS delta_value "
+            + "FROM TUMBLE(DATA => (SELECT time,value_double FROM rate_test "
+            + "WHERE scenario='timestamp_normal'),TIMECOL => 'time',SIZE => 5ms) "
+            + "GROUP BY window_start,window_end",
+        new String[] {
+          "window_start", "window_end", "rate_value", "increase_value", "irate_value", "delta_value"
+        },
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,60000.0,300.0,60000.0,300.0,"
+        },
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT window_start,window_end,"
+            + "rate(value_double,time,window_start,window_end) AS rate_value "
+            + "FROM HOP(DATA => (SELECT time,value_double FROM rate_test "
+            + "WHERE scenario='timestamp_normal'),TIMECOL => 'time',SLIDE => 5ms,SIZE => 5ms) "
+            + "GROUP BY window_start,window_end",
+        new String[] {"window_start", "window_end", "rate_value"},
+        new String[] {"1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,60000.0,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void rateFunctionsBoundaryTest() {
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='single'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"null,null,null,null,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='missing'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"null,null,null,null,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='two_reset'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"10.0,50.0,20.0,-1400.0,"},
+        DATABASE_NAME);
+
+    // The NULL row has NULL time and boundary columns as well; it must be ignored with value_col.
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='nulls'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"10.0,40.0,10.0,40.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='multiple_reset'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"32.0,192.0,30.0,-72.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='zero'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"0.0,0.0,0.0,0.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value "
+            + "FROM rate_test WHERE scenario='zero_protection'",
+        new String[] {"rate_value", "increase_value"},
+        new String[] {"17.0,170.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='threshold'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"8.536585365853659,35.0,10.0,35.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='far_boundary'",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"3.0,30.0,10.0,30.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='boundary' "
+            + "AND sample_time >= window_start AND sample_time < window_end",
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"10.0,20.0,10.0,20.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT date_bin_gapfill(1s,time) AS gap_start,"
+            + "rate(value_double,time,gap_start,gap_start + 1000) AS rate_value,"
+            + "increase(value_double,time,gap_start,gap_start + 1000) AS increase_value,"
+            + "irate(value_double,time) AS irate_value,"
+            + "delta(value_double,time,gap_start,gap_start + 1000) AS delta_value "
+            + "FROM rate_test WHERE scenario='gapfill' AND time >= 11000 AND time < 14000 "
+            + "GROUP BY gap_start ORDER BY gap_start",
+        new String[] {"gap_start", "rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {
+          "1970-01-01T00:00:11.000Z,10.0,10.0,10.0,10.0,",
+          "1970-01-01T00:00:12.000Z,null,null,null,null,",
+          "1970-01-01T00:00:13.000Z,10.0,10.0,10.0,10.0,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void rateFunctionsTypeTest() {
+    tableResultSetEqualTest(
+        "SELECT rate(value_i32,sample_time,window_start,window_end) AS rate_i32,"
+            + "rate(value_i64,sample_time,window_start,window_end) AS rate_i64,"
+            + "rate(value_float,sample_time,window_start,window_end) AS rate_float,"
+            + "rate(value_double,sample_time,window_start,window_end) AS rate_double,"
+            + "increase(value_i32,sample_time,window_start,window_end) AS increase_i32,"
+            + "increase(value_i64,sample_time,window_start,window_end) AS increase_i64,"
+            + "increase(value_float,sample_time,window_start,window_end) AS increase_float,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_double,"
+            + "irate(value_i32,sample_time) AS irate_i32,"
+            + "irate(value_i64,sample_time) AS irate_i64,"
+            + "irate(value_float,sample_time) AS irate_float,"
+            + "irate(value_double,sample_time) AS irate_double,"
+            + "delta(value_i32,sample_time,window_start,window_end) AS delta_i32,"
+            + "delta(value_i64,sample_time,window_start,window_end) AS delta_i64,"
+            + "delta(value_float,sample_time,window_start,window_end) AS delta_float,"
+            + "delta(value_double,sample_time,window_start,window_end) AS delta_double "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        new String[] {
+          "rate_i32",
+          "rate_i64",
+          "rate_float",
+          "rate_double",
+          "increase_i32",
+          "increase_i64",
+          "increase_float",
+          "increase_double",
+          "irate_i32",
+          "irate_i64",
+          "irate_float",
+          "irate_double",
+          "delta_i32",
+          "delta_i64",
+          "delta_float",
+          "delta_double"
+        },
+        new String[] {
+          "60.0,60.0,60.0,60.0,300.0,300.0,300.0,300.0,"
+              + "60.0,60.0,60.0,60.0,300.0,300.0,300.0,300.0,"
+        },
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT rate(value_double,time,"
+            + "CAST('1970-01-01T00:00:00.000+00:00' AS TIMESTAMP),"
+            + "CAST('1970-01-01T00:00:00.005+00:00' AS TIMESTAMP)) AS rate_value,"
+            + "irate(value_double,time) AS irate_value "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        new String[] {"rate_value", "irate_value"},
+        new String[] {"60000.0,60000.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT delta(value_double,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_test WHERE scenario='negative_delta'",
+        new String[] {"delta_value"},
+        new String[] {"-120.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT delta(value_col,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_int32_extreme",
+        new String[] {"delta_value"},
+        new String[] {"8.58993459E9,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT delta(value_col,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_int64_extreme",
+        new String[] {"delta_value"},
+        new String[] {"3.6893488147419103E19,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void rateFunctionsExceptionTest() {
+    for (String function : new String[] {"rate", "increase", "delta"}) {
+      tableAssertTestFail(
+          "SELECT " + function + "(value_double,sample_time,window_start) FROM rate_test",
+          "Aggregate function [" + function + "] requires 4 arguments",
+          DATABASE_NAME);
+      tableAssertTestFail(
+          "SELECT " + function + "(text_value,sample_time,window_start,window_end) FROM rate_test",
+          "Aggregate function ["
+              + function
+              + "] only supports INT32, INT64, FLOAT and DOUBLE as the first argument",
+          DATABASE_NAME);
+      tableAssertTestFail(
+          "SELECT " + function + "(value_double,text_value,window_start,window_end) FROM rate_test",
+          "The time arguments of aggregate function ["
+              + function
+              + "] should be TIMESTAMP or INT64 type",
+          DATABASE_NAME);
+    }
+
+    tableAssertTestFail(
+        "SELECT irate(value_double,sample_time,window_start) FROM rate_test",
+        "Aggregate function [irate] requires 2 arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT irate(text_value,sample_time) FROM rate_test",
+        "Aggregate function [irate] only supports INT32, INT64, FLOAT and DOUBLE as the first argument",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT irate(value_double,bool_value) FROM rate_test",
+        "The time arguments of aggregate function [irate] should be TIMESTAMP or INT64 type",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT increase(value_double,sample_time,text_value,window_end) FROM rate_test",
+        "The time arguments of aggregate function [increase] should be TIMESTAMP or INT64 type",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT delta(value_double,sample_time,window_start,bool_value) FROM rate_test",
+        "The time arguments of aggregate function [delta] should be TIMESTAMP or INT64 type",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT rate(from_ieee754_64(X'7FF8000000000000'),sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "Aggregate function [rate] does not support non-finite value_col: NaN",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT increase(from_ieee754_64(X'7FF0000000000000'),sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "Aggregate function [increase] does not support non-finite value_col: Infinity",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT irate(from_ieee754_64(X'FFF0000000000000'),sample_time) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "Aggregate function [irate] does not support non-finite value_col: -Infinity",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT delta(from_ieee754_64(X'7FF8000000000000'),sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "Aggregate function [delta] does not support non-finite value_col: NaN",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='negative_delta'",
+        "The value_col argument of aggregate function [rate] must be a non-negative number",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT increase(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='negative_delta'",
+        "The value_col argument of aggregate function [increase] must be a non-negative number",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT irate(value_double,sample_time) "
+            + "FROM rate_test WHERE scenario='negative_delta'",
+        "The value_col argument of aggregate function [irate] must be a non-negative number",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='null_time'",
+        "The argument 2 of aggregate function [rate] must not be NULL",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT irate(value_double,sample_time) FROM rate_test WHERE scenario='null_time'",
+        "The argument 2 of aggregate function [irate] must not be NULL",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='null_start'",
+        "The argument 3 of aggregate function [rate] must not be NULL",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='null_end'",
+        "The argument 4 of aggregate function [rate] must not be NULL",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT increase(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='null_start'",
+        "The argument 3 of aggregate function [increase] must not be NULL",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT delta(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='null_end'",
+        "The argument 4 of aggregate function [delta] must not be NULL",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,CAST(5000 AS INT64),CAST(0 AS INT64)) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "The window_start argument of aggregate function [rate] must be less than window_end",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,CAST(0 AS INT64),CAST(0 AS INT64)) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "The window_start argument of aggregate function [rate] must be less than window_end",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT increase(value_double,sample_time,CAST(5000 AS INT64),CAST(0 AS INT64)) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "The window_start argument of aggregate function [increase] must be less than window_end",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT delta(value_double,sample_time,CAST(0 AS INT64),CAST(0 AS INT64)) "
+            + "FROM rate_test WHERE scenario='timestamp_normal'",
+        "The window_start argument of aggregate function [delta] must be less than window_end",
+        DATABASE_NAME);
+
+    for (String function : new String[] {"rate", "increase", "delta"}) {
+      tableAssertTestFail(
+          "SELECT "
+              + function
+              + "(value_double,sample_time,window_start,window_end) "
+              + "FROM rate_test WHERE scenario='boundary'",
+          "The sample time of aggregate function ["
+              + function
+              + "] must satisfy window_start <= time_col < window_end",
+          DATABASE_NAME);
+      tableAssertTestFail(
+          "SELECT "
+              + function
+              + "(value_double,sample_time,window_start,window_end) "
+              + "FROM rate_test WHERE scenario='inconsistent_window'",
+          "Aggregate function ["
+              + function
+              + "] requires consistent window boundaries in the same aggregation group",
+          DATABASE_NAME);
+    }
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) "
+            + "FROM rate_test WHERE scenario='outside_before'",
+        "The sample time of aggregate function [rate] must satisfy window_start <= time_col < window_end",
+        DATABASE_NAME);
+
+    for (String function : new String[] {"rate", "increase", "delta"}) {
+      tableAssertTestFail(
+          "SELECT "
+              + function
+              + "(value_double,sample_time,window_start,window_end) "
+              + "FROM rate_test WHERE scenario='duplicate_time'",
+          "Aggregate function ["
+              + function
+              + "] does not support duplicate time_col values in the same aggregation group: 1000",
+          DATABASE_NAME);
+    }
+    tableAssertTestFail(
+        "SELECT irate(value_double,sample_time) "
+            + "FROM rate_test WHERE scenario='duplicate_time'",
+        "Aggregate function [irate] does not support duplicate time_col values in the same aggregation group: 1000",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT rate(value_double,sample_time,window_start,window_end) FROM rate_test "
+            + "WHERE scenario IN ('counter_a','counter_b')",
+        "Aggregate function [rate] does not support duplicate time_col values in the same aggregation group",
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT scenario,rate(value_double,sample_time,window_start,window_end) AS rate_value "
+            + "FROM rate_test WHERE scenario IN ('counter_a','counter_b') "
+            + "GROUP BY scenario ORDER BY scenario",
+        new String[] {"scenario", "rate_value"},
+        new String[] {"counter_a,20.0,", "counter_b,30.0,"},
         DATABASE_NAME);
   }
 
