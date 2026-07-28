@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
@@ -39,6 +40,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.Variant;
@@ -79,6 +82,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -86,12 +90,16 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -105,6 +113,8 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
 public class TypeServices {
@@ -1447,6 +1457,155 @@ public class TypeServices {
                   };
             };
 
+    public static final TypeService<ToIntFunction<Object>>
+        CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> value -> (int) value;
+                  case DATE -> value -> DateUtils.parseDateExpressionToInt((LocalDate) value);
+                  case INT64, TIMESTAMP -> value -> (int) (long) value;
+                  case FLOAT -> value -> (int) (float) value;
+                  case DOUBLE -> value -> (int) (double) value;
+                  case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                "The type %s cannot be casted to int.", type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<ToLongFunction<Object>>
+        CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> value -> (int) value;
+                  case DATE -> value -> DateUtils.parseDateExpressionToInt((LocalDate) value);
+                  case INT64, TIMESTAMP -> value -> (long) value;
+                  case FLOAT -> value -> (long) (float) value;
+                  case DOUBLE -> value -> (long) (double) value;
+                  case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                "The type %s cannot be casted to long.", type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<Function<Object, Float>>
+        CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> value -> (float) (int) value;
+                  case DATE ->
+                      value -> (float) DateUtils.parseDateExpressionToInt((LocalDate) value);
+                  case INT64, TIMESTAMP -> value -> (float) (long) value;
+                  case FLOAT -> value -> (float) value;
+                  case DOUBLE -> value -> (float) (double) value;
+                  case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                "The type %s cannot be casted to float.", type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<ToDoubleFunction<Object>>
+        CUSTOMIZED_INTERMEDIATE_RESULT_TO_DOUBLE_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> value -> (int) value;
+                  case DATE -> value -> DateUtils.parseDateExpressionToInt((LocalDate) value);
+                  case INT64, TIMESTAMP -> value -> (long) value;
+                  case FLOAT -> value -> (float) value;
+                  case DOUBLE -> value -> (double) value;
+                  case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                "The type %s cannot be casted to double.", type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<Function<Object, String>>
+        CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> value -> Boolean.toString((boolean) value);
+                  case INT32 -> value -> Integer.toString((int) value);
+                  case DATE -> value -> ((LocalDate) value).toString();
+                  case INT64 -> value -> Long.toString((long) value);
+                  case TIMESTAMP ->
+                      value ->
+                          RpcUtils.formatDatetime(
+                              RpcUtils.DEFAULT_TIME_FORMAT,
+                              CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+                              (long) value,
+                              ZoneId.systemDefault());
+                  case FLOAT -> value -> Float.toString((float) value);
+                  case DOUBLE -> value -> Double.toString((double) value);
+                  case TEXT, STRING -> value -> (String) value;
+                  case BLOB ->
+                      value ->
+                          BytesUtils.parseBlobByteArrayToString(
+                              ((org.apache.iotdb.pipe.api.type.Binary) value).getValues());
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                "The type %s cannot be casted to string.", type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<TabletObjectValueGetter>
+        OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> (column, rowIndex) -> ((boolean[]) column)[rowIndex];
+                  case INT32 -> (column, rowIndex) -> ((int[]) column)[rowIndex];
+                  case DATE ->
+                      (column, rowIndex) ->
+                          new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
+                  case INT64 -> (column, rowIndex) -> ((long[]) column)[rowIndex];
+                  case TIMESTAMP ->
+                      (column, rowIndex) ->
+                          new DateTime(
+                              TimestampPrecisionUtils.currPrecision.toNanos(
+                                          ((long[]) column)[rowIndex])
+                                      / 100L
+                                  + 116444736000000000L);
+                  case FLOAT -> (column, rowIndex) -> ((float[]) column)[rowIndex];
+                  case DOUBLE -> (column, rowIndex) -> ((double[]) column)[rowIndex];
+                  case TEXT, BLOB, STRING ->
+                      (column, rowIndex) -> ((Binary[]) column)[rowIndex].toString();
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (column, rowIndex) -> {
+                        throw new UnSupportedDataTypeException(
+                            DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
+                      };
+                };
+
+    public static final TypeService<Supplier<NodeId>> OPC_UA_DATA_TYPE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> () -> Identifiers.Boolean;
+              case INT32 -> () -> Identifiers.Int32;
+              case DATE, TIMESTAMP -> () -> Identifiers.DateTime;
+              case INT64 -> () -> Identifiers.Int64;
+              case FLOAT -> () -> Identifiers.Float;
+              case DOUBLE -> () -> Identifiers.Double;
+              case TEXT, BLOB, STRING -> () -> Identifiers.String;
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  () -> {
+                    throw new PipeRuntimeNonCriticalException(
+                        DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                  };
+            };
+
+    @FunctionalInterface
+    public interface TabletObjectValueGetter {
+      Object get(Object column, int rowIndex);
+    }
+
     public static final TypeService<Function<Boolean, Type>>
         PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE =
             type ->
@@ -1669,6 +1828,13 @@ public class TypeServices {
 
     static {
       OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
+      CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE.check();
+      CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE.check();
+      CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE.check();
+      CUSTOMIZED_INTERMEDIATE_RESULT_TO_DOUBLE_SERVICE.check();
+      CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE.check();
+      OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE.check();
+      OPC_UA_DATA_TYPE_SERVICE.check();
       PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
       PIPE_DATA_TYPE_TRANSFORMER_SERVICE.check();
       PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();

@@ -34,7 +34,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -64,8 +63,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
-import java.sql.Date;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -384,28 +381,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
   private static Object getTabletObjectValue4Opc(
       final Object column, final int rowIndex, final TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return ((boolean[]) column)[rowIndex];
-      case INT32:
-        return ((int[]) column)[rowIndex];
-      case DATE:
-        return new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
-      case INT64:
-        return ((long[]) column)[rowIndex];
-      case TIMESTAMP:
-        return new DateTime(timestampToUtc(((long[]) column)[rowIndex]));
-      case FLOAT:
-        return ((float[]) column)[rowIndex];
-      case DOUBLE:
-        return ((double[]) column)[rowIndex];
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return ((Binary[]) column)[rowIndex].toString();
-      default:
-        throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED_DATATYPE + type);
+    final Type valueType;
+    try {
+      valueType = Type.fromTsDataType(type);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED_DATATYPE + type);
     }
+    return TypeServices.Pipe.OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE
+        .call(valueType)
+        .get(column, rowIndex);
   }
 
   public static long timestampToUtc(final long timeStamp) {
@@ -493,31 +477,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   public static NodeId convertToOpcDataType(final TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return Identifiers.Boolean;
-      case INT32:
-        return Identifiers.Int32;
-      case DATE:
-      case TIMESTAMP:
-        return Identifiers.DateTime;
-      case INT64:
-        return Identifiers.Int64;
-      case FLOAT:
-        return Identifiers.Float;
-      case DOUBLE:
-        return Identifiers.Double;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return Identifiers.String;
-      case VECTOR:
-      case OBJECT:
-      case UNKNOWN:
-      default:
-        throw new PipeRuntimeNonCriticalException(
-            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type);
+    final Type dataType;
+    try {
+      dataType = Type.fromTsDataType(type);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new PipeRuntimeNonCriticalException(DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type);
     }
+    return TypeServices.Pipe.OPC_UA_DATA_TYPE_SERVICE.call(dataType).get();
   }
 
   /**
