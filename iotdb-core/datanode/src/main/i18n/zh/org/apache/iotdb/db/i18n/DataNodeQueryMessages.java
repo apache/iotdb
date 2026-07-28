@@ -211,20 +211,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
       "从 TsFile 读取时间序列元数据失败：%s";
   public static final String
-      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_F0FFE629 =
-          "读取 chunk 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
-  public static final String EXCEPTION_FAILED_TO_READ_CHUNK_DATA_FROM_TSFILE_ARG_B88F2496 =
-      "从 TsFile 读取 chunk 数据失败：%s";
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "读取 chunk 数据或加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "从 TsFile 读取 chunk 数据或加载 page reader 失败：%s";
   public static final String
       EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
           "解码 page 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
   public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
       "从 TsFile 解码 page 数据失败：%s";
-  public static final String
-      EXCEPTION_FAILED_TO_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_05D35760 =
-          "加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
-  public static final String EXCEPTION_FAILED_TO_LOAD_PAGE_READER_FROM_TSFILE_ARG_3B1CCC18 =
-      "从 TsFile 加载 page reader 失败：%s";
   public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
       "从 TsFile 读取元数据索引节点失败：%s";
   public static final String

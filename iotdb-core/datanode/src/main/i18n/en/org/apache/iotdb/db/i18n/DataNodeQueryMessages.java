@@ -225,23 +225,18 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
       "Failed to read timeseries metadata from TsFile: %s";
   public static final String
-      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_F0FFE629 =
-          "Failed to read chunk data. The TsFile may be corrupted,"
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
               + " please check the logs for the corrupted file path.";
-  public static final String EXCEPTION_FAILED_TO_READ_CHUNK_DATA_FROM_TSFILE_ARG_B88F2496 =
-      "Failed to read chunk data from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "Failed to read chunk data or load page reader from TsFile: %s";
   public static final String
       EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
           "Failed to decode page data. The TsFile may be corrupted,"
               + " please check the logs for the corrupted file path.";
   public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
       "Failed to decode page data from TsFile: %s";
-  public static final String
-      EXCEPTION_FAILED_TO_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_05D35760 =
-          "Failed to load page reader. The TsFile may be corrupted,"
-              + " please check the logs for the corrupted file path.";
-  public static final String EXCEPTION_FAILED_TO_LOAD_PAGE_READER_FROM_TSFILE_ARG_3B1CCC18 =
-      "Failed to load page reader from TsFile: %s";
   public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
       "Failed to read metadata index node from TsFile: %s";
   public static final String

@@ -29,8 +29,7 @@ public class CorruptedTsFileException extends IoTDBRuntimeException {
 
   public enum Stage {
     READ_TIMESERIES_METADATA,
-    READ_CHUNK_DATA,
-    LOAD_PAGE_READER,
+    READ_CHUNK_DATA_OR_LOAD_PAGE_READER,
     DECODE_PAGE_DATA,
     READ_METADATA_INDEX_NODE
   }

@@ -119,8 +119,8 @@ public class IoTDBQueryWithCorruptedTsFileIT {
   }
 
   @Test
-  public void testReadTsFileWithCorruptedPageData() throws Exception {
-    File tsFile = new File(tmpDir, "corrupt-page.tsfile");
+  public void testReadTsFileWithCorruptedChunkDataOrPageReader() throws Exception {
+    File tsFile = new File(tmpDir, "corrupt-chunk-or-page-reader.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {
       generateTable(
           writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), TSDataType.INT64, 1, 100);
@@ -129,11 +129,13 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     corruptDataSection(tsFile);
 
     tableAssertTestFail(
-        "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(tsFile) + "')", "TsFile", DATABASE_NAME);
+        "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(tsFile) + "')",
+        "Failed to read chunk data or load page reader from TsFile: " + tsFile,
+        DATABASE_NAME);
   }
 
   @Test
-  public void testNormalQueryWithCorruptedPageData() throws Exception {
+  public void testNormalQueryWithCorruptedChunkDataOrPageReader() throws Exception {
     String tableName = "corrupt_table";
     // 1. Create table and insert data via session — generates TsFiles in the data directory
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
@@ -183,17 +185,20 @@ public class IoTDBQueryWithCorruptedTsFileIT {
         fail("Expected query on corrupted TsFile to fail");
       } catch (SQLException e) {
         assertTrue(
-            "Error message should mention corruption without file path: " + e.getMessage(),
-            e.getMessage().contains("may be corrupted")
-                || e.getMessage().contains("check the logs"));
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
+                        + " please check the logs for the corrupted file path."));
       }
     }
   }
 
   /**
    * Corrupts a block of bytes in the data section of a TsFile (between the header and the
-   * MetadataIndex tree). Uses {@link TsFileSequenceReader} to read {@code metaOffset} from
-   * TsFileMetadata, so corruption reliably hits compressed page data rather than metadata.
+   * MetadataIndex tree) to exercise the combined chunk-data/page-reader loading stage. Uses {@link
+   * TsFileSequenceReader} to read {@code metaOffset} from TsFileMetadata so metadata is not
+   * corrupted.
    *
    * <p>TsFile layout: [Header] [Data chunks] [MetadataIndex Tree] [TsFileMetadata] [Magic][Size] ↑
    * metaOffset
@@ -208,7 +213,7 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     int magicLen = TSFileConfig.MAGIC_STRING.getBytes().length;
     int dataStart = magicLen + Byte.BYTES;
     int dataEnd = (int) metaOffset;
-    // Corrupt bytes in the middle of the data section — XOR 512 bytes to ensure decompression fails
+    // Corrupt bytes in the middle of the data section to make chunk/page-reader loading fail.
     int middle = dataStart + (dataEnd - dataStart) / 2;
     int corruptLen = Math.min(512, dataEnd - middle);
     for (int i = 0; i < corruptLen; i++) {

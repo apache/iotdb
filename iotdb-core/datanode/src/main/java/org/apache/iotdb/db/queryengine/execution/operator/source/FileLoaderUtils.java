@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
@@ -165,6 +166,8 @@ public class FileLoaderUtils {
       }
 
       return timeSeriesMetadata;
+    } catch (IoTDBRuntimeException e) {
+      throw e;
     } catch (Exception e) {
       if (loadFromMem) {
         throw e;
@@ -267,6 +270,8 @@ public class FileLoaderUtils {
         }
       }
       return alignedTimeSeriesMetadata;
+    } catch (IoTDBRuntimeException e) {
+      throw e;
     } catch (Exception e) {
       if (loadFromMem) {
         throw e;
@@ -530,37 +535,20 @@ public class FileLoaderUtils {
       }
       throw new CorruptedTsFileException(
           tsFile,
-          CorruptedTsFileException.Stage.READ_CHUNK_DATA,
+          CorruptedTsFileException.Stage.READ_CHUNK_DATA_OR_LOAD_PAGE_READER,
           context.isExternalTsFileScan()
               ? String.format(
                   DataNodeQueryMessages
-                      .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_FROM_TSFILE_ARG_B88F2496,
+                      .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70,
                   tsFile)
               : DataNodeQueryMessages
-                  .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_F0FFE629,
+                  .EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1,
           e);
     }
     if (chunkMetaData.isDataTypeModifiedAndCannotUseStatistics()) {
       chunkReader.markDataTypeModifiedAndCannotUseStatistics();
     }
-    try {
-      return chunkReader.loadPageReaderList();
-    } catch (Exception e) {
-      if (tsFile == null) {
-        throw e;
-      }
-      throw new CorruptedTsFileException(
-          tsFile,
-          CorruptedTsFileException.Stage.LOAD_PAGE_READER,
-          context.isExternalTsFileScan()
-              ? String.format(
-                  DataNodeQueryMessages
-                      .EXCEPTION_FAILED_TO_LOAD_PAGE_READER_FROM_TSFILE_ARG_3B1CCC18,
-                  tsFile)
-              : DataNodeQueryMessages
-                  .EXCEPTION_FAILED_TO_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_05D35760,
-          e);
-    }
+    return chunkReader.loadPageReaderList();
   }
 
   /**
