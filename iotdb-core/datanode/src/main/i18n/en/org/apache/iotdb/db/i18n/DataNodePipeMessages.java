@@ -1318,8 +1318,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: Failure status encountered while executing statement {}: {}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: Exception encountered while executing statement {}: ";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}, statement = {}, exception = {}, message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "Unknown PipeRequestType %s.";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "Exception %s encountered while handling request %s.";
