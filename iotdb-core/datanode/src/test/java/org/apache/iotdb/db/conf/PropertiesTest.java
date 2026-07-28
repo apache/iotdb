@@ -42,6 +42,33 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
   @Test
+  public void testHotReloadNegativeWalThrottleThresholdUsesDefault() throws Exception {
+    final String key = "wal_throttle_threshold_in_byte";
+    final long configuredThreshold = 1024 * 1024 * 1024L;
+    final long defaultThreshold =
+        Long.parseLong(ConfigurationFileUtils.getConfigurationDefaultValue(key));
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final long originalThreshold = descriptor.getConfig().getThrottleThreshold();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(key, Long.toString(configuredThreshold));
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(configuredThreshold, descriptor.getConfig().getThrottleThreshold());
+
+      properties.setProperty(key, "-1");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(defaultThreshold, descriptor.getConfig().getThrottleThreshold());
+      Assert.assertEquals(
+          Long.toString(defaultThreshold), ConfigurationFileUtils.getAppliedProperties().get(key));
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(key, Long.toString(originalThreshold));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
   public void testHotReloadTsFileParserInFlightLimits() throws Exception {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
