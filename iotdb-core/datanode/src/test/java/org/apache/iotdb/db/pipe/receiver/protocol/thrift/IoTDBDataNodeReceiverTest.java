@@ -95,25 +95,72 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
-  public void testRepeatedStatementExceptionLogIsReduced() throws Exception {
-    final Path tsFile = Files.createTempFile("pipe-load-log-reducer", ".tsfile");
-    try {
-      final LoadTsFileStatement statement =
-          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
-              "root.test.sg_0", tsFile.toString(), true, true);
-      final long receiverId = System.nanoTime();
-      final Exception exception = new RuntimeException("repeated receiver exception " + receiverId);
+  public void testStatementExceptionLogIsReducedByFailureLocation() {
+    final InsertRowStatement firstStatement = new InsertRowStatement();
+    firstStatement.setTime(1);
+    firstStatement.setValues(new Object[] {"first statement value"});
+    final InsertRowStatement secondStatement = new InsertRowStatement();
+    secondStatement.setTime(2);
+    secondStatement.setValues(new Object[] {"second statement value"});
 
-      Assert.assertTrue(
-          IoTDBDataNodeReceiver.shouldLogStatementException(receiverId, statement, exception));
-      Assert.assertFalse(
-          IoTDBDataNodeReceiver.shouldLogStatementException(receiverId, statement, exception));
-      Assert.assertTrue(
-          IoTDBDataNodeReceiver.shouldLogStatementException(
-              receiverId, statement, new RuntimeException("another receiver exception")));
-    } finally {
-      Files.deleteIfExists(tsFile);
-    }
+    final String testId = Long.toString(System.nanoTime());
+    final String sameFailureLocation = "sameFailureLocation" + testId;
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLogStatementException(
+            firstStatement, newStatementException("first message", sameFailureLocation)));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldLogStatementException(
+            secondStatement, newStatementException("second message", sameFailureLocation)));
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLogStatementException(
+            secondStatement,
+            newStatementException("second message", "differentFailureLocation" + testId)));
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldLogStatementException(
+            new InsertRowsStatement(),
+            newStatementException("second message", sameFailureLocation)));
+  }
+
+  @Test
+  public void testInsertRowsPipeLoggingStringIsCompact() {
+    final InsertRowStatement firstStatement = new InsertRowStatement();
+    firstStatement.setTime(1);
+    firstStatement.setValues(new Object[] {"first secret value"});
+    final InsertRowStatement middleStatement = new InsertRowStatement();
+    middleStatement.setTime(2);
+    middleStatement.setValues(new Object[] {"middle secret value"});
+    final InsertRowStatement lastStatement = new InsertRowStatement();
+    lastStatement.setTime(3);
+    lastStatement.setValues(new Object[] {"last secret value"});
+
+    final InsertRowsStatement statement = new InsertRowsStatement();
+    statement.setInsertRowStatementList(
+        Arrays.asList(firstStatement, middleStatement, lastStatement));
+
+    final String pipeLoggingString = statement.getPipeLoggingString();
+    Assert.assertTrue(pipeLoggingString.contains("rowCount=3"));
+    Assert.assertTrue(pipeLoggingString.contains("firstRow="));
+    Assert.assertTrue(pipeLoggingString.contains("time=1"));
+    Assert.assertTrue(pipeLoggingString.contains("lastRow="));
+    Assert.assertTrue(pipeLoggingString.contains("time=3"));
+    Assert.assertFalse(pipeLoggingString.contains("time=2"));
+    Assert.assertFalse(pipeLoggingString.contains("first secret value"));
+    Assert.assertFalse(pipeLoggingString.contains("middle secret value"));
+    Assert.assertFalse(pipeLoggingString.contains("last secret value"));
+  }
+
+  private static Exception newStatementException(
+      final String message, final String failureLocation) {
+    final NullPointerException rootCause = new NullPointerException(message);
+    rootCause.setStackTrace(
+        new StackTraceElement[] {
+          new StackTraceElement(
+              IoTDBDataNodeReceiverTest.class.getName(),
+              failureLocation,
+              "IoTDBDataNodeReceiverTest.java",
+              1)
+        });
+    return new RuntimeException("wrapper " + message, rootCause);
   }
 
   @Test
