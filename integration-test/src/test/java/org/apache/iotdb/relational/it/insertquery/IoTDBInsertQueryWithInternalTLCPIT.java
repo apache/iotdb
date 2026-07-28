@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.insertquery;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -72,6 +73,9 @@ public class IoTDBInsertQueryWithInternalTLCPIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(3)
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000)
         .setEnableInternalSSL(true)
@@ -87,7 +91,7 @@ public class IoTDBInsertQueryWithInternalTLCPIT {
     CommonDescriptor.getInstance().getConfig().setTrustStorePwd(STORE_PASSWORD);
     CommonDescriptor.getInstance().getConfig().setSslProtocol(TLCP_PROTOCOL);
     RpcSslUtils.configure(TLCP_PROTOCOL);
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment(3, 3);
     clusterStarted = true;
   }
 
