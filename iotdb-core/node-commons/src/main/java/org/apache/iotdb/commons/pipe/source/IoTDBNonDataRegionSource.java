@@ -20,8 +20,10 @@
 package org.apache.iotdb.commons.pipe.source;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
@@ -46,6 +48,7 @@ import org.apache.tsfile.utils.Pair;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -99,15 +102,15 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       return;
     }
 
-    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    final MetaProgressIndex metaProgressIndex =
+        extractMetaProgressIndex(pipeTaskMeta.getProgressIndex());
     final long nextIndex =
-        progressIndex instanceof MinimumProgressIndex
+        Objects.isNull(metaProgressIndex)
                 // If the index is invalid, the queue is seen as cleared before and thus
                 // needs snapshot re-transferring
-                || !getListeningQueue()
-                    .isGivenNextIndexValid(((MetaProgressIndex) progressIndex).getIndex() + 1)
+                || !getListeningQueue().isGivenNextIndexValid(metaProgressIndex.getIndex() + 1)
             ? getNextIndexAfterSnapshot()
-            : ((MetaProgressIndex) progressIndex).getIndex() + 1;
+            : metaProgressIndex.getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
     super.start();
   }
@@ -296,10 +299,31 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     if (Objects.isNull(pipeTaskMeta)) {
       return 0L;
     }
-    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        ? getListeningQueue().getTailIndex()
-            - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
-            - 1
+    final MetaProgressIndex metaProgressIndex =
+        extractMetaProgressIndex(pipeTaskMeta.getProgressIndex());
+    return Objects.nonNull(metaProgressIndex)
+        ? getListeningQueue().getTailIndex() - metaProgressIndex.getIndex() - 1
         : getListeningQueue().getSize() + historicalEventsCount;
+  }
+
+  private static MetaProgressIndex extractMetaProgressIndex(final ProgressIndex progressIndex) {
+    if (progressIndex instanceof MetaProgressIndex) {
+      return (MetaProgressIndex) progressIndex;
+    }
+    if (progressIndex instanceof StateProgressIndex) {
+      return extractMetaProgressIndex(((StateProgressIndex) progressIndex).getInnerProgressIndex());
+    }
+    if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      final ProgressIndex metaProgressIndex =
+          type2Index.get(ProgressIndexType.META_PROGRESS_INDEX.getType());
+      if (metaProgressIndex instanceof MetaProgressIndex) {
+        return (MetaProgressIndex) metaProgressIndex;
+      }
+      return extractMetaProgressIndex(
+          type2Index.get(ProgressIndexType.STATE_PROGRESS_INDEX.getType()));
+    }
+    return null;
   }
 }
