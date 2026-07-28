@@ -249,15 +249,22 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           getQueueForCommitContext(queues, commitContext);
       boolean handled = false;
       if (Objects.nonNull(assignedQueue)) {
-        final boolean success;
-        if (!nack) {
-          success = assignedQueue.ackSilent(consumerId, commitContext);
-        } else {
-          success = assignedQueue.nackSilent(consumerId, commitContext);
-        }
-        if (success) {
+        if (assignedQueue.isCommitContextOutdated(commitContext)) {
+          // A seek or reboot has already fenced this context. Accept the delayed commit as a no-op
+          // so the client does not retry it, while keeping the current commit frontier unchanged.
           successfulCommitContexts.add(commitContext);
           handled = true;
+        } else {
+          final boolean success;
+          if (!nack) {
+            success = assignedQueue.ackSilent(consumerId, commitContext);
+          } else {
+            success = assignedQueue.nackSilent(consumerId, commitContext);
+          }
+          if (success) {
+            successfulCommitContexts.add(commitContext);
+            handled = true;
+          }
         }
       }
       if (!handled) {
