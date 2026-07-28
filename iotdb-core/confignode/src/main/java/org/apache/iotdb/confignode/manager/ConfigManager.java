@@ -367,6 +367,8 @@ public class ConfigManager implements IManager {
   private final CNAuditLogger auditLogger;
 
   private static final String DATABASE = "\tDatabase=";
+  private static final List<String> WAL_THROTTLE_THRESHOLD_KEYS =
+      Arrays.asList("iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte");
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -1789,6 +1791,17 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
+    for (String key : WAL_THROTTLE_THRESHOLD_KEYS) {
+      String value = req.getConfigs().get(key);
+      if (value == null) {
+        continue;
+      }
+      try {
+        Long.parseLong(value.trim());
+      } catch (NumberFormatException e) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.toString());
+      }
+    }
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int currentNodeId = CONF.getConfigNodeId();
     TSStatus consistentClusterConfigStatus =
