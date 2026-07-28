@@ -62,7 +62,7 @@ public class CommonDescriptorDiskSpaceWarningThresholdTest {
     final CommonDescriptor descriptor = CommonDescriptor.getInstance();
     final double original = descriptor.getConfig().getDiskSpaceWarningThreshold();
     try {
-      for (final String badValue : new String[] {"1.0", "1.5", "-0.1"}) {
+      for (final String badValue : new String[] {"NaN", "1.0", "1.5", "-0.1"}) {
         final TrimProperties properties = new TrimProperties();
         properties.setProperty(KEY, badValue);
         Assert.assertThrows(
