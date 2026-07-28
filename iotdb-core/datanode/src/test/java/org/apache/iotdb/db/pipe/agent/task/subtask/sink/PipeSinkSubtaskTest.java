@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -270,6 +274,63 @@ public class PipeSinkSubtaskTest {
   }
 
   @Test
+  public void testTransferExceptionWithNullRootCauseMessageIncludesExceptionType()
+      throws Exception {
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final Event event = mock(Event.class);
+    final NullPointerException rootCause = new NullPointerException();
+
+    when(pendingQueue.waitedPoll()).thenReturn(event);
+    doThrow(rootCause).when(connector).transfer(any(Event.class));
+
+    final PipeSinkSubtask subtask =
+        new PipeSinkSubtask(
+            "PipeSinkSubtaskTest",
+            System.currentTimeMillis(),
+            "data_test",
+            "data_test",
+            0,
+            pendingQueue,
+            connector);
+
+    try {
+      subtask.executeOnce();
+      Assert.fail();
+    } catch (final PipeException e) {
+      Assert.assertTrue(e.getMessage().contains("root cause: java.lang.NullPointerException"));
+      Assert.assertFalse(e.getMessage().contains("root cause: null"));
+      Assert.assertSame(rootCause, e.getCause());
+    } finally {
+      subtask.close();
+    }
+  }
+
+  @Test
+  public void testOnFailurePreservesOriginalCause() {
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final EnrichedEvent event = mock(EnrichedEvent.class);
+    final NullPointerException rootCause = new NullPointerException();
+    final PipeException failure = new PipeException("transfer failed", rootCause);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+
+    subtask.prepareFailure(event);
+    try {
+      subtask.onFailure(failure);
+
+      final PipeRuntimeException reportedException = subtask.getReportedException();
+      Assert.assertTrue(reportedException instanceof PipeRuntimeSinkCriticalException);
+      Assert.assertSame(failure, reportedException.getCause());
+      Assert.assertSame(rootCause, ErrorHandlingCommonUtils.getRootCause(reportedException));
+    } finally {
+      subtask.close();
+    }
+  }
+
+  @Test
   public void testHeartbeatPreservesReceiverProbeDelayException() throws Exception {
     final long originalSleepIntervalInitMs =
         CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
@@ -307,6 +368,38 @@ public class PipeSinkSubtaskTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+    }
+  }
+
+  private static class CapturingPipeSinkSubtask extends PipeSinkSubtask {
+
+    private PipeRuntimeException reportedException;
+
+    private CapturingPipeSinkSubtask(
+        final UnboundedBlockingPendingQueue<Event> pendingQueue, final PipeConnector connector) {
+      super(
+          "PipeSinkSubtaskTest",
+          System.currentTimeMillis(),
+          "data_test",
+          "data_test",
+          0,
+          pendingQueue,
+          connector);
+    }
+
+    private void prepareFailure(final EnrichedEvent event) {
+      setLastEvent(event);
+      setLastExceptionEvent(event);
+      retryCount.set(MAX_RETRY_TIMES);
+    }
+
+    private PipeRuntimeException getReportedException() {
+      return reportedException;
+    }
+
+    @Override
+    protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+      reportedException = exception;
     }
   }
 

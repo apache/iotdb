@@ -32,6 +32,10 @@ public abstract class PipeRuntimeException extends PipeException {
     super(message);
   }
 
+  protected PipeRuntimeException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
   protected PipeRuntimeException(final String message, final long timeStamp) {
     super(message, timeStamp);
   }
