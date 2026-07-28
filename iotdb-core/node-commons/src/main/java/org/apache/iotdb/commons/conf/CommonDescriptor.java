@@ -597,7 +597,9 @@ public class CommonDescriptor {
             properties.getProperty(
                 "disk_space_warning_threshold",
                 String.valueOf(config.getDiskSpaceWarningThreshold())));
-    if (diskSpaceWarningThreshold < 0 || diskSpaceWarningThreshold >= 1) {
+    if (!Double.isFinite(diskSpaceWarningThreshold)
+        || diskSpaceWarningThreshold < 0
+        || diskSpaceWarningThreshold >= 1) {
       throw new IOException(
           CommonMessages.EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766
               + diskSpaceWarningThreshold
