@@ -114,7 +114,7 @@ public class IoTDBQueryWithCorruptedTsFileIT {
 
     tableAssertTestFail(
         "SELECT * FROM read_tsfile(PATHS => '" + toSqlPath(tsFile) + "')",
-        "timeseries metadata",
+        "Failed to read metadata index node from TsFile: " + tsFile,
         DATABASE_NAME);
   }
 
