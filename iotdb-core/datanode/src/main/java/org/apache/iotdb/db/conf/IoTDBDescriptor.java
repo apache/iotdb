@@ -1805,6 +1805,11 @@ public class IoTDBDescriptor {
     }
 
     long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
+    if (throttleDownThresholdInByte < 0) {
+      throttleDownThresholdInByte =
+          Long.parseLong(
+              ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
+    }
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -2419,6 +2424,8 @@ public class IoTDBDescriptor {
         Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
