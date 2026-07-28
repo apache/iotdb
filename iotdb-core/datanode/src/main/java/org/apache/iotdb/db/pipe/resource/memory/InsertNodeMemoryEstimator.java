@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -138,16 +139,8 @@ public class InsertNodeMemoryEstimator {
 
   // ============================= Primitive Type Wrapper Classes =========
 
-  private static final long SIZE_OF_LONG =
-      RamUsageEstimator.alignObjectSize(Long.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_INT =
       RamUsageEstimator.alignObjectSize(Integer.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_DOUBLE =
-      RamUsageEstimator.alignObjectSize(Double.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_FLOAT =
-      RamUsageEstimator.alignObjectSize(Float.BYTES + NUM_BYTES_OBJECT_HEADER);
-  private static final long SIZE_OF_BOOLEAN =
-      RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   private static final long SIZE_OF_ARRAYLIST =
@@ -544,10 +537,6 @@ public class InsertNodeMemoryEstimator {
 
   // =============================Write==================================
 
-  private static long sizeOfBinary(final Binary binary) {
-    return Objects.nonNull(binary) ? binary.ramBytesUsed() : 0L;
-  }
-
   public static long sizeOfColumns(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
     if (Objects.isNull(columns)) {
@@ -606,42 +595,11 @@ public class InsertNodeMemoryEstimator {
         size += NUM_BYTES_OBJECT_HEADER;
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
-        case INT64:
-        case TIMESTAMP:
-          {
-            size += SIZE_OF_LONG;
-            break;
-          }
-        case DATE:
-        case INT32:
-          {
-            size += SIZE_OF_INT;
-            break;
-          }
-        case DOUBLE:
-          {
-            size += SIZE_OF_DOUBLE;
-            break;
-          }
-        case FLOAT:
-          {
-            size += SIZE_OF_FLOAT;
-            break;
-          }
-        case BOOLEAN:
-          {
-            size += SIZE_OF_BOOLEAN;
-            break;
-          }
-        case STRING:
-        case TEXT:
-        case BLOB:
-          {
-            final Binary binary = (Binary) values[i];
-            size += sizeOfBinary(binary);
-          }
-      }
+      final TSDataType dataType = measurementSchemas[i].getType();
+      size +=
+          TypeServices.INSERT_NODE_VALUE_SIZE_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .applyAsLong(values[i]);
     }
     return size;
   }

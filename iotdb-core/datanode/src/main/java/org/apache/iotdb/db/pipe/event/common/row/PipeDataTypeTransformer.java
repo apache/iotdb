@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
-import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -39,34 +39,10 @@ public class PipeDataTypeTransformer {
   }
 
   public static Type transformToPipeDataType(final TSDataType tsDataType) {
-    return tsDataType == null ? null : getPipeDataType(tsDataType.getType());
-  }
-
-  private static Type getPipeDataType(final byte type) {
-    switch (type) {
-      case 0:
-        return Type.BOOLEAN;
-      case 1:
-        return Type.INT32;
-      case 2:
-        return Type.INT64;
-      case 3:
-        return Type.FLOAT;
-      case 4:
-        return Type.DOUBLE;
-      case 5:
-        return Type.TEXT;
-      case 8:
-        return Type.TIMESTAMP;
-      case 9:
-        return Type.DATE;
-      case 10:
-        return Type.BLOB;
-      case 11:
-        return Type.STRING;
-      default:
-        throw new IllegalArgumentException(DataNodePipeMessages.INVALID_INPUT + type);
-    }
+    return tsDataType == null
+        ? null
+        : TypeServices.PIPE_DATA_TYPE_TRANSFORMER_SERVICE.call(
+            org.apache.tsfile.read.common.type.Type.fromTsDataType(tsDataType));
   }
 
   private PipeDataTypeTransformer() {

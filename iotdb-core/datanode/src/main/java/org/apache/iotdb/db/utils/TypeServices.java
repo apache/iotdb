@@ -70,6 +70,7 @@ import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -94,6 +95,7 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+import java.util.function.ToLongFunction;
 
 public class TypeServices {
 
@@ -141,6 +143,18 @@ public class TypeServices {
                   throw new UnsupportedOperationException(
                       CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
                 };
+          };
+
+  public static final TypeService<ToLongFunction<Object>> INSERT_NODE_VALUE_SIZE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                value ->
+                    RamUsageEstimator.alignObjectSize(
+                        type.estimateValueSize() + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER);
+            case TEXT, BLOB, STRING ->
+                value -> Objects.nonNull(value) ? ((Binary) value).ramBytesUsed() : 0L;
+            case OBJECT, ROW, UNKNOWN, VECTOR -> value -> 0L;
           };
 
   public static final TypeService<IntFunction<ColumnBuilder>>
@@ -1233,6 +1247,34 @@ public class TypeServices {
                     };
               };
 
+  public static final TypeService<org.apache.iotdb.pipe.api.type.Type>
+      PIPE_DATA_TYPE_TRANSFORMER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN -> org.apache.iotdb.pipe.api.type.Type.BOOLEAN;
+                case INT32 -> org.apache.iotdb.pipe.api.type.Type.INT32;
+                case INT64 -> org.apache.iotdb.pipe.api.type.Type.INT64;
+                case FLOAT -> org.apache.iotdb.pipe.api.type.Type.FLOAT;
+                case DOUBLE -> org.apache.iotdb.pipe.api.type.Type.DOUBLE;
+                case TEXT -> org.apache.iotdb.pipe.api.type.Type.TEXT;
+                case TIMESTAMP -> org.apache.iotdb.pipe.api.type.Type.TIMESTAMP;
+                case DATE -> org.apache.iotdb.pipe.api.type.Type.DATE;
+                case BLOB -> org.apache.iotdb.pipe.api.type.Type.BLOB;
+                case STRING -> org.apache.iotdb.pipe.api.type.Type.STRING;
+                case OBJECT ->
+                    throw new IllegalArgumentException(
+                        DataNodePipeMessages.INVALID_INPUT + TSDataType.OBJECT.getType());
+                case UNKNOWN ->
+                    throw new IllegalArgumentException(
+                        DataNodePipeMessages.INVALID_INPUT + TSDataType.UNKNOWN.getType());
+                case VECTOR ->
+                    throw new IllegalArgumentException(
+                        DataNodePipeMessages.INVALID_INPUT + TSDataType.VECTOR.getType());
+                case ROW ->
+                    throw new IllegalArgumentException(
+                        DataNodePipeMessages.INVALID_INPUT + type.getTypeEnum());
+              };
+
   public static final TypeService<TsPrimitiveTabletValueWriter>
       PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
           type ->
@@ -1399,8 +1441,10 @@ public class TypeServices {
   static {
     OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
     STATEMENT_VALUE_SIZE_PER_LINE_SERVICE.check();
+    INSERT_NODE_VALUE_SIZE_SERVICE.check();
     OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
     PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
+    PIPE_DATA_TYPE_TRANSFORMER_SERVICE.check();
     PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
     PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
     PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
