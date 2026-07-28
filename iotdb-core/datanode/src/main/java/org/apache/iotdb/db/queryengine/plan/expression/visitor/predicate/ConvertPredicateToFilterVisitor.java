@@ -482,7 +482,7 @@ public class ConvertPredicateToFilterVisitor
   public static <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
     try {
       return (T)
-          TypeServices.CONVERT_PREDICATE_VALUE_PARSER_SERVICE
+          TypeServices.Predicate.CONVERT_PREDICATE_VALUE_PARSER_SERVICE
               .call(Type.fromTsDataType(dataType))
               .apply(valueString);
     } catch (NumberFormatException e) {

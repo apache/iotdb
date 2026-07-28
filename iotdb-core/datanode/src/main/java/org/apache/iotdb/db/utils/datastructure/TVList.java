@@ -155,7 +155,9 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public static TVList newList(TSDataType dataType) {
-    return TypeServices.TV_LIST_PROVIDER_SERVICE.call(Type.fromTsDataType(dataType)).newList();
+    return TypeServices.StorageEngine.TV_LIST_PROVIDER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .newList();
   }
 
   // get array memory cost of working TVList
@@ -713,14 +715,14 @@ public abstract class TVList implements WALEntryValue {
 
   public static TVList deserialize(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    return TypeServices.TV_LIST_PROVIDER_SERVICE
+    return TypeServices.StorageEngine.TV_LIST_PROVIDER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .deserialize(stream);
   }
 
   public static TVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    return TypeServices.TV_LIST_PROVIDER_SERVICE
+    return TypeServices.StorageEngine.TV_LIST_PROVIDER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .deserializeWithoutBitMap(stream);
   }
@@ -811,7 +813,8 @@ public abstract class TVList implements WALEntryValue {
       this.batchWriter =
           dataType == TSDataType.VECTOR
               ? null
-              : TypeServices.TV_LIST_BATCH_WRITER_SERVICE.call(Type.fromTsDataType(dataType));
+              : TypeServices.StorageEngine.TV_LIST_BATCH_WRITER_SERVICE.call(
+                  Type.fromTsDataType(dataType));
       this.index = 0;
       this.rows = rowCount;
       this.probeNext = false;
@@ -1109,7 +1112,8 @@ public abstract class TVList implements WALEntryValue {
     public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
       TypeServices.TVListChunkWriter valueWriter =
-          TypeServices.TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(getDataType()));
+          TypeServices.StorageEngine.TV_LIST_CHUNK_WRITER_SERVICE.call(
+              Type.fromTsDataType(getDataType()));
       for (; index < rows; index++) {
         if (isNullValue(getValueIndex(index))) {
           continue;

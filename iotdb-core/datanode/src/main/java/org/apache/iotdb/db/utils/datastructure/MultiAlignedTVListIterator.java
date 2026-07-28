@@ -230,7 +230,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           continue;
         }
 
-        TypeServices.ARRAY_VALUE_COLUMN_WRITER_SERVICE
+        TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE
             .call(Type.fromTsDataType(tsDataTypeList.get(columnIndex)))
             .write(
                 valueBuilder,

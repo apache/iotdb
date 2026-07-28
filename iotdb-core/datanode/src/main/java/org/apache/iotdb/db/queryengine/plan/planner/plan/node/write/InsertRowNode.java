@@ -656,7 +656,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         continue;
       }
       WALWriteUtils.write(dataType, buffer);
-      TypeServices.WAL_VALUE_WRITER_SERVICE
+      TypeServices.StorageEngine.WAL_VALUE_WRITER_SERVICE
           .call(Type.fromTsDataType(dataType))
           .accept(values[i], buffer);
     }

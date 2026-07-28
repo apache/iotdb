@@ -30,7 +30,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.utils.TypeServices.NEGATION_TRANSFORMER_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.NEGATION_TRANSFORMER_SERVICE;
 
 public class ArithmeticNegationTransformer extends UnaryTransformer {
 

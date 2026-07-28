@@ -233,7 +233,7 @@ public class PrimitiveArrayManager {
   }
 
   private static Object createPrimitiveArray(TSDataType dataType) {
-    return TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+    return TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
         .call(Type.fromTsDataType(dataType))
         .apply(ARRAY_SIZE);
   }
@@ -287,7 +287,8 @@ public class PrimitiveArrayManager {
   public static Object createDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = getArrayRowCount(size);
     IntFunction<Object> arrayAllocator =
-        TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(Type.fromTsDataType(dataType));
+        TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(
+            Type.fromTsDataType(dataType));
     Object[] dataLists =
         (Object[]) Array.newInstance(arrayAllocator.apply(0).getClass(), arrayNumber);
     Arrays.setAll(dataLists, index -> arrayAllocator.apply(ARRAY_SIZE));

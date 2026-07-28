@@ -465,7 +465,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
 
         isNeedFillTime = true;
-        TypeServices.PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE
+        TypeServices.Pipe.PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE
             .call(Type.fromTsDataType(dataType))
             .write(primitiveType, tablet.getValues()[i], rowIndex);
         PipeTabletUtils.unmarkNullValue(tablet, rowIndex, i);
@@ -478,7 +478,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
       isNeedFillTime = true;
       final TSDataType dataType = tablet.getSchemas().get(0).getType();
-      TypeServices.PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE
+      TypeServices.Pipe.PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE
           .call(Type.fromTsDataType(dataType))
           .write(data, tablet.getValues()[0], rowIndex);
       PipeTabletUtils.unmarkNullValue(tablet, rowIndex, 0);

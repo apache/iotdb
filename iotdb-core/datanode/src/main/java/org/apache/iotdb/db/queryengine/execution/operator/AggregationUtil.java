@@ -243,7 +243,7 @@ public class AggregationUtil {
   }
 
   public static long getOutputColumnSizePerLine(TSDataType tsDataType) {
-    return TypeServices.OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE
+    return TypeServices.Aggregation.OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE
         .call(Type.fromTsDataType(tsDataType))
         .getAsLong();
   }

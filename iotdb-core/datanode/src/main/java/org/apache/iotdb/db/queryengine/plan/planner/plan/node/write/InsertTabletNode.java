@@ -998,7 +998,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private void serializeColumn(
       TSDataType dataType, Object array, IWALByteBufferView buffer, int start, int end) {
-    TypeServices.WAL_ARRAY_WRITER_SERVICE
+    TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .write(array, buffer, start, end);
   }

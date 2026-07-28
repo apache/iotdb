@@ -312,7 +312,7 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   private short convertTsDataType2VariantType(final TSDataType dataType) {
-    return TypeServices.OPC_DA_VARIANT_TYPE_SERVICE.call(Type.fromTsDataType(dataType));
+    return TypeServices.Pipe.OPC_DA_VARIANT_TYPE_SERVICE.call(Type.fromTsDataType(dataType));
   }
 
   private Variant.VARIANT getTabletObjectValue4Opc(

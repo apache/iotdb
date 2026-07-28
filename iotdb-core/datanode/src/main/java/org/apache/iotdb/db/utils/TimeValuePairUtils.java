@@ -42,7 +42,7 @@ public class TimeValuePairUtils {
   public static TimeValuePair getEmptyTimeValuePair(TSDataType dataType) {
     return new TimeValuePair(
         0,
-        TypeServices.EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE
+        TypeServices.StorageEngine.EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE
             .call(Type.fromTsDataType(dataType))
             .get());
   }

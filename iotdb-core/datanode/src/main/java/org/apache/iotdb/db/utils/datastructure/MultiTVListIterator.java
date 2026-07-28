@@ -103,7 +103,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
     this.batchWriter =
-        TypeServices.TV_LIST_BATCH_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
+        TypeServices.StorageEngine.TV_LIST_BATCH_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 

@@ -142,7 +142,7 @@ public class TabletDecoder {
     TSEncoding encoding = columnEncodings.get(columnIndex + 1);
 
     Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
-    return TypeServices.TABLET_COLUMN_DECODER_SERVICE
+    return TypeServices.StorageEngine.TABLET_COLUMN_DECODER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .decode(decoder, uncompressed, rowSize, encoding);
   }

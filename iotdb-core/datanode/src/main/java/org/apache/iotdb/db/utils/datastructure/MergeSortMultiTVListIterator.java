@@ -130,7 +130,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
   public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
     TypeServices.TVListChunkWriter valueWriter =
-        TypeServices.TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
+        TypeServices.StorageEngine.TV_LIST_CHUNK_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     while (hasNextTimeValuePair()) {
       // remember current iterator and row index
       TVList.TVListIterator currIterator = tvListIterators.get(iteratorIndex);

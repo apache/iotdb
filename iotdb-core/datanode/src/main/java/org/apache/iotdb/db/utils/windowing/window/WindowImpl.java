@@ -52,7 +52,7 @@ public class WindowImpl implements Window {
       timestamps[i] = list.getTimeByIndex(begin + i);
     }
 
-    TypeServices.WINDOW_VALUE_ARRAY_BUILDER_SERVICE
+    TypeServices.StorageEngine.WINDOW_VALUE_ARRAY_BUILDER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .build(this, list, begin, size);
   }

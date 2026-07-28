@@ -597,7 +597,7 @@ public class InsertNodeMemoryEstimator {
       }
       final TSDataType dataType = measurementSchemas[i].getType();
       size +=
-          TypeServices.INSERT_NODE_VALUE_SIZE_SERVICE
+          TypeServices.Memory.INSERT_NODE_VALUE_SIZE_SERVICE
               .call(Type.fromTsDataType(dataType))
               .applyAsLong(values[i]);
     }

@@ -733,7 +733,7 @@ public class ValueConverter {
     if (value == null) {
       return null;
     }
-    return TypeServices.VALUE_PARSER_NO_EXCEPTION_SERVICE
+    return TypeServices.ValueConversion.VALUE_PARSER_NO_EXCEPTION_SERVICE
         .call(Type.fromTsDataType(dataType))
         .apply(value);
   }

@@ -198,7 +198,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           dataType != null && column != null,
           "Scalar Subquery result should not get null dataType or null column.");
       return Optional.of(
-          TypeServices.UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE
+          TypeServices.Predicate.UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE
               .call(Type.fromTsDataType(dataType))
               .apply(column));
     } catch (final Throwable throwable) {

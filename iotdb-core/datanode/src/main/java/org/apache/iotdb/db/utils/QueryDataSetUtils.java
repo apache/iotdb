@@ -345,7 +345,7 @@ public class QueryDataSetUtils {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
       values[i] =
-          TypeServices.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
+          TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
               .call(Type.fromTsDataType(types[i]))
               .apply(buffer, size);
     }
@@ -357,7 +357,7 @@ public class QueryDataSetUtils {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
       values[i] =
-          TypeServices.RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE
+          TypeServices.StorageEngine.RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE
               .call(Type.fromTsDataType(types[i]))
               .deserialize(stream, size);
     }

@@ -367,7 +367,7 @@ public class CommonUtils {
 
   public static Object createValueColumnOfDataType(
       TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
-    return TypeServices.TABLET_COLUMN_ALLOCATOR_SERVICE
+    return TypeServices.StorageEngine.TABLET_COLUMN_ALLOCATOR_SERVICE
         .call(Type.fromTsDataType(dataType))
         .apply(rowNum);
   }

@@ -29,7 +29,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
-import static org.apache.iotdb.db.utils.TypeServices.DIFF_TRANSFORMER_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.DIFF_TRANSFORMER_SERVICE;
 
 public class DiffFunctionTransformer extends UnaryTransformer {
 

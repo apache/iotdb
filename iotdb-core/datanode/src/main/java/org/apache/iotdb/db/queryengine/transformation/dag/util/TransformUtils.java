@@ -51,7 +51,7 @@ public class TransformUtils {
                 + constantOperand.getExpressionString());
       }
 
-      return TypeServices.CONSTANT_COLUMN_BUILDER_SERVICE
+      return TypeServices.Transformation.CONSTANT_COLUMN_BUILDER_SERVICE
           .call(Type.fromTsDataType(constantOperand.getDataType()))
           .apply(value);
     } catch (QueryProcessException e) {
@@ -61,7 +61,7 @@ public class TransformUtils {
 
   public static boolean splitWindowForStateWindow(
       TSDataType dataType, ValueRecorder valueRecorder, double delta, Column values, int index) {
-    return TypeServices.STATE_WINDOW_SPLITTER_SERVICE
+    return TypeServices.Transformation.STATE_WINDOW_SPLITTER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .split(valueRecorder, delta, values, index);
   }

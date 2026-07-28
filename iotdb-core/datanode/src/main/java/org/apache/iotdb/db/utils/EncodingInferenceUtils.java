@@ -35,6 +35,8 @@ public class EncodingInferenceUtils {
   /** Get default encoding by dataType */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    return TypeServices.DEFAULT_ENCODING_SERVICE.call(Type.fromTsDataType(dataType)).apply(conf);
+    return TypeServices.StorageEngine.DEFAULT_ENCODING_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(conf);
   }
 }

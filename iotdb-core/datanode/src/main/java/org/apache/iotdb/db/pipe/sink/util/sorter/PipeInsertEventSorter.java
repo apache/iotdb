@@ -122,7 +122,7 @@ public class PipeInsertEventSorter {
       return null;
     }
     final Type type =
-        TypeServices.PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE
+        TypeServices.Pipe.PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE
             .call(Type.fromTsDataType(dataType))
             .apply(dataType != TSDataType.DATE || dataAdapter.isDateStoredAsLocalDate(columnIndex));
     return reorderValueList(valueList, type, originalBitMap, deDuplicatedBitMap);

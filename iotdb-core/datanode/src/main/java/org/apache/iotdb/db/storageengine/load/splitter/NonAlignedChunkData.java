@@ -190,7 +190,7 @@ public class NonAlignedChunkData implements ChunkData {
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
     final Type type = Type.fromTsDataType(chunkHeader.getDataType());
     final TypeServices.ValueSerializer<Object> valueSerializer =
-        TypeServices.OBJECT_VALUE_SERIALIZER_SERVICE.call(type);
+        TypeServices.StorageEngine.OBJECT_VALUE_SERIALIZER_SERVICE.call(type);
 
     for (int i = 0; i < times.length; i++) {
       if (times[i] > endTime) {
@@ -229,7 +229,7 @@ public class NonAlignedChunkData implements ChunkData {
                 chunkHeader.getCompressionType()));
     boolean needDecode;
     final TypeServices.DecodedChunkWriter decodedChunkWriter =
-        TypeServices.DECODED_CHUNK_WRITER_SERVICE.call(
+        TypeServices.StorageEngine.DECODED_CHUNK_WRITER_SERVICE.call(
             Type.fromTsDataType(chunkHeader.getDataType()));
     for (int j = 0; j < pageNumber; j++) {
       needDecode = ReadWriteIOUtils.readBool(stream);

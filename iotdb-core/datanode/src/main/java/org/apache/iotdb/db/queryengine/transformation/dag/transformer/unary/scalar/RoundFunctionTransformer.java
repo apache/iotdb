@@ -30,7 +30,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.utils.TypeServices.ROUND_TRANSFORMER_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.ROUND_TRANSFORMER_SERVICE;
 
 public class RoundFunctionTransformer extends UnaryTransformer {
 

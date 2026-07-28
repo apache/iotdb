@@ -448,7 +448,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
       final Function<Object, String> valueStringifier =
-          TypeServices.OPC_UA_VALUE_STRINGIFIER_SERVICE.call(Type.fromTsDataType(dataType));
+          TypeServices.Pipe.OPC_UA_VALUE_STRINGIFIER_SERVICE.call(Type.fromTsDataType(dataType));
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       if (!isTableModel) {

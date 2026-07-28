@@ -29,14 +29,14 @@ import org.apache.tsfile.read.common.type.Type;
 
 public class TypeUtils {
   public static ColumnBuilder initColumnBuilder(TSDataType type, int count) {
-    return TypeServices.TRANSFORMATION_COLUMN_BUILDER_SERVICE
+    return TypeServices.Transformation.COLUMN_BUILDER_SERVICE
         .call(Type.fromTsDataType(type))
         .apply(count);
   }
 
   public static double castValueToDouble(Column column, TSDataType type, int index)
       throws QueryProcessException {
-    return TypeServices.TRANSFORMATION_VALUE_TO_DOUBLE_SERVICE
+    return TypeServices.Transformation.VALUE_TO_DOUBLE_SERVICE
         .call(Type.fromTsDataType(type))
         .convert(column, index);
   }

@@ -41,7 +41,7 @@ public class PipeDataTypeTransformer {
   public static Type transformToPipeDataType(final TSDataType tsDataType) {
     return tsDataType == null
         ? null
-        : TypeServices.PIPE_DATA_TYPE_TRANSFORMER_SERVICE.call(
+        : TypeServices.Pipe.PIPE_DATA_TYPE_TRANSFORMER_SERVICE.call(
             org.apache.tsfile.read.common.type.Type.fromTsDataType(tsDataType));
   }
 

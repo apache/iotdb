@@ -83,7 +83,8 @@ public class MemPageReader implements IPageReader {
     BatchData batchData = BatchDataFactory.createBatchData(tsDataType, ascending, false);
     boolean[] satisfyInfo = buildSatisfyInfoArray(null);
     TypeServices.BatchDataColumnWriter valueWriter =
-        TypeServices.BATCH_DATA_COLUMN_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
+        TypeServices.StorageEngine.BATCH_DATA_COLUMN_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     Column valueColumn = tsBlock.getColumn(0);
 
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {

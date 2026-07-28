@@ -473,7 +473,7 @@ public abstract class TabletInsertionEventParser {
       final boolean isSingleOriginValueColumn,
       final BitMap originNullValueColumnBitmap,
       final BitMap nullValueColumnBitmap /* output parameters */) {
-    return TypeServices.PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE
+    return TypeServices.Pipe.PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE
         .call(Type.fromTsDataType(type))
         .filter(
             originValueColumn,
@@ -494,7 +494,7 @@ public abstract class TabletInsertionEventParser {
       return;
     }
     valueColumns[columnIndex] =
-        TypeServices.EMPTY_TABLET_COLUMN_FACTORY_SERVICE
+        TypeServices.StorageEngine.EMPTY_TABLET_COLUMN_FACTORY_SERVICE
             .call(Type.fromTsDataType(type))
             .apply(rowSize);
   }

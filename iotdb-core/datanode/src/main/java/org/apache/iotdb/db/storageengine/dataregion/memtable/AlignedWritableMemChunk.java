@@ -632,7 +632,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     List<TypeServices.AlignedTVListChunkWriter> valueWriters = new ArrayList<>(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
       valueWriters.add(
-          TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(dataType)));
+          TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+              Type.fromTsDataType(dataType)));
     }
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {

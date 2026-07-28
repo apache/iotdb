@@ -482,10 +482,12 @@ public class TabletStatementConverter {
       final Type type = Type.fromTsDataType(types[i]);
       values[i] =
           isValueColumnsNotNull
-              ? TypeServices.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
+              ? TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
                   .call(type)
                   .apply(byteBuffer, rowSize)
-              : TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(type).apply(rowSize);
+              : TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+                  .call(type)
+                  .apply(rowSize);
       final boolean isBinaryType = types[i].isBinary();
       if (isBinaryType && !isValueColumnsNotNull) {
         Arrays.fill((Binary[]) values[i], Binary.EMPTY_VALUE);

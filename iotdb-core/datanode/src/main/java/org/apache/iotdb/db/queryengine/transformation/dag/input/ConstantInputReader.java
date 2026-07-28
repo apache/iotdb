@@ -59,7 +59,7 @@ public class ConstantInputReader implements LayerReader {
     try {
       cachedColumns[0] =
           new RunLengthEncodedColumn(
-              TypeServices.CONSTANT_COLUMN_BUILDER_SERVICE
+              TypeServices.Transformation.CONSTANT_COLUMN_BUILDER_SERVICE
                   .call(Type.fromTsDataType(dataType))
                   .apply(value),
               count);

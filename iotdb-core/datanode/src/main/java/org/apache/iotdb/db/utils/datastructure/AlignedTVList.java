@@ -386,7 +386,7 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return TypeServices.ARRAY_VALUE_GETTER_SERVICE
+    return TypeServices.StorageEngine.ARRAY_VALUE_GETTER_SERVICE
         .call(Type.fromTsDataType(dataTypes.get(columnIndex)))
         .get(columnValues.get(arrayIndex), elementIndex);
   }
@@ -1068,7 +1068,7 @@ public abstract class AlignedTVList extends TVList {
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       TypeServices.ArrayValueColumnWriter valueWriter =
-          TypeServices.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
+          TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
               Type.fromTsDataType(dataTypes.get(columnIndex)));
       currentWriteRowIndex = 0;
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
@@ -1190,7 +1190,7 @@ public abstract class AlignedTVList extends TVList {
     for (int columnIndex = 0; columnIndex < values.size(); ++columnIndex) {
       Type type = Type.fromTsDataType(dataTypes.get(columnIndex));
       size +=
-          TypeServices.SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE
+          TypeServices.StorageEngine.SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE
               .call(type)
               .calculate(values.get(columnIndex), rowCount, ARRAY_SIZE);
     }
@@ -1221,7 +1221,7 @@ public abstract class AlignedTVList extends TVList {
     // serialize value and bitmap by column
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       TypeServices.WALColumnWriter valueWriter =
-          TypeServices.WAL_ARRAY_WRITER_SERVICE.call(
+          TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE.call(
               Type.fromTsDataType(dataTypes.get(columnIndex)));
       List<Object> columnValues = values.get(columnIndex);
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
@@ -1268,9 +1268,9 @@ public abstract class AlignedTVList extends TVList {
       BitMap bitMap = new BitMap(rowCount);
       Type type = Type.fromTsDataType(dataTypes.get(columnIndex));
       Object valuesOfOneColumn =
-          TypeServices.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(type).apply(rowCount);
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(type).apply(rowCount);
       TypeServices.DecodedArrayValueReader valueReader =
-          TypeServices.DECODED_ARRAY_VALUE_READER_SERVICE.call(type);
+          TypeServices.StorageEngine.DECODED_ARRAY_VALUE_READER_SERVICE.call(type);
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
         valueReader.read(valuesOfOneColumn, rowIndex, stream);
         if (ReadWriteIOUtils.readBool(stream)) {
@@ -1510,7 +1510,7 @@ public abstract class AlignedTVList extends TVList {
           dataTypeList.stream()
               .map(
                   dataType ->
-                      TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+                      TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
                           Type.fromTsDataType(dataType)))
               .collect(Collectors.toList());
       this.selectedIndices = new int[dataTypeList.size()];
@@ -1816,7 +1816,7 @@ public abstract class AlignedTVList extends TVList {
         TypeServices.ArrayValueColumnWriter valueWriter =
             validColumnIndex < 0 || validColumnIndex >= dataTypes.size()
                 ? null
-                : TypeServices.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
+                : TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
                     Type.fromTsDataType(dataTypes.get(validColumnIndex)));
         currentWriteRowIndex = 0;
         for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {

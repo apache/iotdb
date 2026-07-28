@@ -53,7 +53,7 @@ public class OperatorGeneratorUtil {
   }
 
   private static long getValueSizePerLine(TSDataType tsDataType) {
-    return TypeServices.STATEMENT_VALUE_SIZE_PER_LINE_SERVICE
+    return TypeServices.Memory.STATEMENT_VALUE_SIZE_PER_LINE_SERVICE
         .call(Type.fromTsDataType(tsDataType))
         .getAsLong();
   }

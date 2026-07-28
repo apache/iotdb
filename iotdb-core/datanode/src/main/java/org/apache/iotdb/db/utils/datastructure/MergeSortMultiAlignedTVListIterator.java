@@ -90,7 +90,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         tsDataTypeList.stream()
             .map(
                 dataType ->
-                    TypeServices.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+                    TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
                         Type.fromTsDataType(dataType)))
             .collect(Collectors.toList());
     this.ignoreAllNullRows = ignoreAllNullRows;

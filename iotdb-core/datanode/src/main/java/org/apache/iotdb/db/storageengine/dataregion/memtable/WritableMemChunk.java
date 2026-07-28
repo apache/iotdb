@@ -75,7 +75,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
     this.rowWriter =
-        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(Type.fromTsDataType(schema.getType()));
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(schema.getType()));
     this.encryptParameter = EncryptUtils.getEncryptParameter();
   }
 
@@ -84,7 +85,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
     this.rowWriter =
-        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(Type.fromTsDataType(schema.getType()));
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(schema.getType()));
     this.encryptParameter = encryptParameter;
   }
 
@@ -118,7 +120,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public void writeNonAlignedTablet(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    TypeServices.TV_LIST_ARRAY_WRITER_SERVICE
+    TypeServices.StorageEngine.TV_LIST_ARRAY_WRITER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .write(list, times, valueList, bitMap, start, end);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
@@ -334,7 +336,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
     TypeServices.TVListChunkWriter valueWriter =
-        TypeServices.TV_LIST_CHUNK_WRITER_SERVICE.call(Type.fromTsDataType(tsDataType));
+        TypeServices.StorageEngine.TV_LIST_CHUNK_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     long dataSizeInCurrentChunk = 0;
     int pointNumInCurrentChunk = 0;
     for (int sortedRowIndex = 0;
@@ -464,7 +467,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
     memChunk.rowWriter =
-        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
             Type.fromTsDataType(memChunk.schema.getType()));
     int sortedListSize = stream.readInt();
     memChunk.sortedList = new ArrayList<>();
@@ -481,7 +484,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
     memChunk.rowWriter =
-        TypeServices.TV_LIST_OBJECT_WRITER_SERVICE.call(
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
             Type.fromTsDataType(memChunk.schema.getType()));
     memChunk.list = TVList.deserialize(stream);
     return memChunk;

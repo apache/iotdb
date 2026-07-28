@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.utils.TypeServices.MODE_ACCUMULATOR_PROVIDER_SERVICE;
+import static org.apache.iotdb.db.utils.TypeServices.Aggregation.MODE_ACCUMULATOR_PROVIDER_SERVICE;
 
 public class AccumulatorFactory {
 

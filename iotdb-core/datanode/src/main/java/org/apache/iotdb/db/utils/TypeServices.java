@@ -113,1437 +113,1572 @@ public class TypeServices {
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
   private static final LocalDate EMPTY_LOCAL_DATE = LocalDate.of(1000, 1, 1);
 
-  public static final TypeService<Function<Object, Column>> CONSTANT_COLUMN_BUILDER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT ->
-                value -> {
-                  final ColumnBuilder builder = type.createColumnBuilder(1);
-                  type.writeObject(builder, value);
-                  return builder.build();
-                };
-            case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
+  public static final class Memory {
 
-  public static final TypeService<LongSupplier> OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
-                () -> type.estimateValueSize() + Byte.BYTES;
-            case TEXT, BLOB, STRING, OBJECT ->
-                () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
-            case ROW, UNKNOWN, VECTOR ->
-                () -> {
-                  throw new UnsupportedOperationException(
-                      DataNodeQueryMessages.UNKNOWN_DATA_TYPE_2 + type.getTypeEnum());
-                };
-          };
+    public static final TypeService<LongSupplier> STATEMENT_VALUE_SIZE_PER_LINE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::estimateValueSize;
+              case TEXT, BLOB, STRING ->
+                  () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  () -> {
+                    throw new UnsupportedOperationException(
+                        CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
+                  };
+            };
 
-  public static final TypeService<LongSupplier> STATEMENT_VALUE_SIZE_PER_LINE_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::estimateValueSize;
-            case TEXT, BLOB, STRING ->
-                () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                () -> {
-                  throw new UnsupportedOperationException(
-                      CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
-                };
-          };
+    public static final TypeService<ToLongFunction<Object>> INSERT_NODE_VALUE_SIZE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                  value ->
+                      RamUsageEstimator.alignObjectSize(
+                          type.estimateValueSize() + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER);
+              case TEXT, BLOB, STRING ->
+                  value -> Objects.nonNull(value) ? ((Binary) value).ramBytesUsed() : 0L;
+              case OBJECT, ROW, UNKNOWN, VECTOR -> value -> 0L;
+            };
 
-  public static final TypeService<ToLongFunction<Object>> INSERT_NODE_VALUE_SIZE_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
-                value ->
-                    RamUsageEstimator.alignObjectSize(
-                        type.estimateValueSize() + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER);
-            case TEXT, BLOB, STRING ->
-                value -> Objects.nonNull(value) ? ((Binary) value).ramBytesUsed() : 0L;
-            case OBJECT, ROW, UNKNOWN, VECTOR -> value -> 0L;
-          };
+    static {
+      STATEMENT_VALUE_SIZE_PER_LINE_SERVICE.check();
+      INSERT_NODE_VALUE_SIZE_SERVICE.check();
+    }
 
-  public static final TypeService<IntFunction<ColumnBuilder>>
-      TRANSFORMATION_COLUMN_BUILDER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN,
-                    INT32,
-                    DATE,
-                    INT64,
-                    TIMESTAMP,
-                    FLOAT,
-                    DOUBLE,
-                    TEXT,
-                    BLOB,
-                    STRING,
-                    OBJECT ->
-                    type::createColumnBuilder;
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(
-                            String.format(
-                                DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT,
-                                type.getTypeEnum()))
-                        .setChecked(true);
-              };
+    private Memory() {
+      // Utility class
+    }
+  }
 
-  public static final TypeService<ColumnToDoubleConverter> TRANSFORMATION_VALUE_TO_DOUBLE_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE -> type::getInt;
-            case INT64, TIMESTAMP -> type::getLong;
-            case FLOAT -> type::getFloat;
-            case DOUBLE -> type::getDouble;
-            case BOOLEAN -> (column, index) -> type.getBoolean(column, index) ? 1 : 0;
-            case TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                (column, index) -> {
-                  throw new QueryProcessException(
-                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
-                };
-          };
+  public static final class Transformation {
 
-  public static final TypeService<RoundTransformer> ROUND_TRANSFORMER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> RoundFunctionTransformer::transformInt;
-            case INT64 -> RoundFunctionTransformer::transformLong;
-            case FLOAT -> RoundFunctionTransformer::transformFloat;
-            case DOUBLE -> RoundFunctionTransformer::transformDouble;
-            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                (transformer, columns, builder) -> {
-                  throw new UnsupportedOperationException(
-                      String.format("Unsupported source dataType: %s", type.getTypeEnum()));
-                };
-          };
+    public static final TypeService<Function<Object, Column>> CONSTANT_COLUMN_BUILDER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT ->
+                  value -> {
+                    final ColumnBuilder builder = type.createColumnBuilder(1);
+                    type.writeObject(builder, value);
+                    return builder.build();
+                  };
+              case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  public static final TypeService<DiffTransformer> DIFF_TRANSFORMER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> DiffFunctionTransformer::transformInt;
-            case INT64 -> DiffFunctionTransformer::transformLong;
-            case FLOAT -> DiffFunctionTransformer::transformFloat;
-            case DOUBLE -> DiffFunctionTransformer::transformDouble;
-            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                (transformer, columns, builder) -> {
-                  throw new QueryProcessException(
-                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
-                };
-          };
+    public static final TypeService<IntFunction<ColumnBuilder>> COLUMN_BUILDER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN,
+                  INT32,
+                  DATE,
+                  INT64,
+                  TIMESTAMP,
+                  FLOAT,
+                  DOUBLE,
+                  TEXT,
+                  BLOB,
+                  STRING,
+                  OBJECT ->
+                  type::createColumnBuilder;
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          String.format(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()))
+                      .setChecked(true);
+            };
 
-  public static final TypeService<NegationTransformer> NEGATION_TRANSFORMER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> ArithmeticNegationTransformer::transformInt;
-            case INT64 -> ArithmeticNegationTransformer::transformLong;
-            case FLOAT -> ArithmeticNegationTransformer::transformFloat;
-            case DOUBLE -> ArithmeticNegationTransformer::transformDouble;
-            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                (transformer, columns, builder) -> {
-                  throw new QueryProcessException(
-                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
-                };
-          };
+    public static final TypeService<ColumnToDoubleConverter> VALUE_TO_DOUBLE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE -> type::getInt;
+              case INT64, TIMESTAMP -> type::getLong;
+              case FLOAT -> type::getFloat;
+              case DOUBLE -> type::getDouble;
+              case BOOLEAN -> (column, index) -> type.getBoolean(column, index) ? 1 : 0;
+              case TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (column, index) -> {
+                    throw new QueryProcessException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                  };
+            };
 
-  public static final TypeService<Supplier<Accumulator>> MODE_ACCUMULATOR_PROVIDER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> BooleanModeAccumulator::new;
-            case TEXT, BLOB, STRING -> BinaryModeAccumulator::new;
-            case INT32, DATE -> IntModeAccumulator::new;
-            case INT64, TIMESTAMP -> LongModeAccumulator::new;
-            case FLOAT -> FloatModeAccumulator::new;
-            case DOUBLE -> DoubleModeAccumulator::new;
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                () -> {
-                  throw new IllegalArgumentException(
-                      DataNodeQueryMessages.UNKNOWN_DATA_TYPE + type.getTypeEnum());
-                };
-          };
+    public static final TypeService<RoundTransformer> ROUND_TRANSFORMER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 -> RoundFunctionTransformer::transformInt;
+              case INT64 -> RoundFunctionTransformer::transformLong;
+              case FLOAT -> RoundFunctionTransformer::transformFloat;
+              case DOUBLE -> RoundFunctionTransformer::transformDouble;
+              case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (transformer, columns, builder) -> {
+                    throw new UnsupportedOperationException(
+                        String.format("Unsupported source dataType: %s", type.getTypeEnum()));
+                  };
+            };
 
-  public static final TypeService<StateWindowSplitter> STATE_WINDOW_SPLITTER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordInt(type.getInt(values, index - 1));
-                    valueRecorder.setRecorded(true);
-                  }
-                  final boolean split =
-                      Math.abs(type.getInt(values, index) - valueRecorder.getInt()) > delta;
-                  if (split) {
-                    valueRecorder.recordInt(type.getInt(values, index));
-                  }
-                  return split;
-                };
-            case INT64 ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordLong(type.getLong(values, index - 1));
-                    valueRecorder.setRecorded(true);
-                  }
-                  final boolean split =
-                      Math.abs(type.getLong(values, index) - valueRecorder.getLong()) > delta;
-                  if (split) {
-                    valueRecorder.recordLong(type.getLong(values, index));
-                  }
-                  return split;
-                };
-            case FLOAT ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordFloat(type.getFloat(values, index - 1));
-                    valueRecorder.setRecorded(true);
-                  }
-                  final boolean split =
-                      Math.abs(type.getFloat(values, index) - valueRecorder.getFloat()) > delta;
-                  if (split) {
-                    valueRecorder.recordFloat(type.getFloat(values, index));
-                  }
-                  return split;
-                };
-            case DOUBLE ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordDouble(type.getDouble(values, index - 1));
-                    valueRecorder.setRecorded(true);
-                  }
-                  final boolean split =
-                      Math.abs(type.getDouble(values, index) - valueRecorder.getDouble()) > delta;
-                  if (split) {
-                    valueRecorder.recordDouble(type.getDouble(values, index));
-                  }
-                  return split;
-                };
-            case BOOLEAN ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordBoolean(type.getBoolean(values, index - 1));
-                    valueRecorder.setRecorded(true);
-                  }
-                  final boolean split =
-                      type.getBoolean(values, index) != valueRecorder.getBoolean();
-                  if (split) {
-                    valueRecorder.recordBoolean(type.getBoolean(values, index));
-                  }
-                  return split;
-                };
-            case TEXT ->
-                (valueRecorder, delta, values, index) -> {
-                  if (!valueRecorder.hasRecorded()) {
-                    valueRecorder.recordString(type.getBinary(values, index - 1).toString());
-                    valueRecorder.setRecorded(true);
-                  }
-                  final String value = type.getBinary(values, index).toString();
-                  final boolean split = !value.equals(valueRecorder.getString());
-                  if (split) {
-                    valueRecorder.recordString(value);
-                  }
-                  return split;
-                };
-            case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                (valueRecorder, delta, values, index) -> {
-                  throw new UnsupportedOperationException(
-                      DataNodeQueryMessages.INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY);
-                };
-          };
+    public static final TypeService<DiffTransformer> DIFF_TRANSFORMER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 -> DiffFunctionTransformer::transformInt;
+              case INT64 -> DiffFunctionTransformer::transformLong;
+              case FLOAT -> DiffFunctionTransformer::transformFloat;
+              case DOUBLE -> DiffFunctionTransformer::transformDouble;
+              case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (transformer, columns, builder) -> {
+                    throw new QueryProcessException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                  };
+            };
 
-  public static final TypeService<Function<String, Object>> VALUE_PARSER_NO_EXCEPTION_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> Boolean::parseBoolean;
-            case INT32 -> TypeServices::parseInteger;
-            case INT64 -> TypeServices::parseLong;
-            case FLOAT -> TypeServices::parseFloat;
-            case DOUBLE -> TypeServices::parseDouble;
-            case TEXT -> TypeServices::parseText;
-            case TIMESTAMP -> TypeServices::parseTimestamp;
-            case DATE -> TypeServices::parseDate;
-            case BLOB -> TypeServices::parseBlob;
-            case STRING -> TypeServices::parseString;
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
-                    .setChecked(true);
-          };
+    public static final TypeService<NegationTransformer> NEGATION_TRANSFORMER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 -> ArithmeticNegationTransformer::transformInt;
+              case INT64 -> ArithmeticNegationTransformer::transformLong;
+              case FLOAT -> ArithmeticNegationTransformer::transformFloat;
+              case DOUBLE -> ArithmeticNegationTransformer::transformDouble;
+              case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (transformer, columns, builder) -> {
+                    throw new QueryProcessException(
+                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                  };
+            };
 
-  public static final TypeService<BiConsumer<Object, IWALByteBufferView>> WAL_VALUE_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> (value, buffer) -> WALWriteUtils.write((Boolean) value, buffer);
-            case INT32, DATE -> (value, buffer) -> WALWriteUtils.write((Integer) value, buffer);
-            case INT64, TIMESTAMP -> (value, buffer) -> WALWriteUtils.write((Long) value, buffer);
-            case FLOAT -> (value, buffer) -> WALWriteUtils.write((Float) value, buffer);
-            case DOUBLE -> (value, buffer) -> WALWriteUtils.write((Double) value, buffer);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (value, buffer) -> WALWriteUtils.write((Binary) value, buffer);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<WALColumnWriter> WAL_ARRAY_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (column, buffer, start, end) -> {
-                  int[] values = (int[]) column;
-                  for (int i = start; i < end; i++) {
-                    buffer.putInt(values[i]);
-                  }
-                };
-            case INT64, TIMESTAMP ->
-                (column, buffer, start, end) -> {
-                  long[] values = (long[]) column;
-                  for (int i = start; i < end; i++) {
-                    buffer.putLong(values[i]);
-                  }
-                };
-            case FLOAT ->
-                (column, buffer, start, end) -> {
-                  float[] values = (float[]) column;
-                  for (int i = start; i < end; i++) {
-                    buffer.putFloat(values[i]);
-                  }
-                };
-            case DOUBLE ->
-                (column, buffer, start, end) -> {
-                  double[] values = (double[]) column;
-                  for (int i = start; i < end; i++) {
-                    buffer.putDouble(values[i]);
-                  }
-                };
-            case BOOLEAN ->
-                (column, buffer, start, end) -> {
-                  boolean[] values = (boolean[]) column;
-                  for (int i = start; i < end; i++) {
-                    buffer.put((byte) (values[i] ? 1 : 0));
-                  }
-                };
-            case TEXT, BLOB, STRING, OBJECT ->
-                (column, buffer, start, end) -> {
-                  Binary[] values = (Binary[]) column;
-                  for (int i = start; i < end; i++) {
-                    if (values[i] != null && values[i].getValues() != null) {
-                      WALWriteUtils.write(values[i], buffer);
-                    } else {
-                      buffer.putInt(0);
+    public static final TypeService<StateWindowSplitter> STATE_WINDOW_SPLITTER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordInt(type.getInt(values, index - 1));
+                      valueRecorder.setRecorded(true);
                     }
-                  }
+                    final boolean split =
+                        Math.abs(type.getInt(values, index) - valueRecorder.getInt()) > delta;
+                    if (split) {
+                      valueRecorder.recordInt(type.getInt(values, index));
+                    }
+                    return split;
+                  };
+              case INT64 ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordLong(type.getLong(values, index - 1));
+                      valueRecorder.setRecorded(true);
+                    }
+                    final boolean split =
+                        Math.abs(type.getLong(values, index) - valueRecorder.getLong()) > delta;
+                    if (split) {
+                      valueRecorder.recordLong(type.getLong(values, index));
+                    }
+                    return split;
+                  };
+              case FLOAT ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordFloat(type.getFloat(values, index - 1));
+                      valueRecorder.setRecorded(true);
+                    }
+                    final boolean split =
+                        Math.abs(type.getFloat(values, index) - valueRecorder.getFloat()) > delta;
+                    if (split) {
+                      valueRecorder.recordFloat(type.getFloat(values, index));
+                    }
+                    return split;
+                  };
+              case DOUBLE ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordDouble(type.getDouble(values, index - 1));
+                      valueRecorder.setRecorded(true);
+                    }
+                    final boolean split =
+                        Math.abs(type.getDouble(values, index) - valueRecorder.getDouble()) > delta;
+                    if (split) {
+                      valueRecorder.recordDouble(type.getDouble(values, index));
+                    }
+                    return split;
+                  };
+              case BOOLEAN ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordBoolean(type.getBoolean(values, index - 1));
+                      valueRecorder.setRecorded(true);
+                    }
+                    final boolean split =
+                        type.getBoolean(values, index) != valueRecorder.getBoolean();
+                    if (split) {
+                      valueRecorder.recordBoolean(type.getBoolean(values, index));
+                    }
+                    return split;
+                  };
+              case TEXT ->
+                  (valueRecorder, delta, values, index) -> {
+                    if (!valueRecorder.hasRecorded()) {
+                      valueRecorder.recordString(type.getBinary(values, index - 1).toString());
+                      valueRecorder.setRecorded(true);
+                    }
+                    final String value = type.getBinary(values, index).toString();
+                    final boolean split = !value.equals(valueRecorder.getString());
+                    if (split) {
+                      valueRecorder.recordString(value);
+                    }
+                    return split;
+                  };
+              case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (valueRecorder, delta, values, index) -> {
+                    throw new UnsupportedOperationException(
+                        DataNodeQueryMessages.INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY);
+                  };
+            };
+
+    @FunctionalInterface
+    public interface ColumnToDoubleConverter {
+      double convert(Column column, int index) throws QueryProcessException;
+    }
+
+    @FunctionalInterface
+    public interface RoundTransformer {
+      void transform(RoundFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
+          throws QueryProcessException, IOException;
+    }
+
+    @FunctionalInterface
+    public interface DiffTransformer {
+      void transform(DiffFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
+          throws QueryProcessException;
+    }
+
+    @FunctionalInterface
+    public interface NegationTransformer {
+      void transform(
+          ArithmeticNegationTransformer transformer, Column[] columns, ColumnBuilder builder)
+          throws QueryProcessException, IOException;
+    }
+
+    @FunctionalInterface
+    public interface StateWindowSplitter {
+      boolean split(ValueRecorder valueRecorder, double delta, Column values, int index);
+    }
+
+    static {
+      CONSTANT_COLUMN_BUILDER_SERVICE.check();
+      COLUMN_BUILDER_SERVICE.check();
+      VALUE_TO_DOUBLE_SERVICE.check();
+      ROUND_TRANSFORMER_SERVICE.check();
+      DIFF_TRANSFORMER_SERVICE.check();
+      NEGATION_TRANSFORMER_SERVICE.check();
+      STATE_WINDOW_SPLITTER_SERVICE.check();
+    }
+
+    private Transformation() {
+      // Utility class
+    }
+  }
+
+  public static final class Aggregation {
+
+    public static final TypeService<LongSupplier> OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                  () -> type.estimateValueSize() + Byte.BYTES;
+              case TEXT, BLOB, STRING, OBJECT ->
+                  () -> StatisticsManager.getInstance().getMaxBinarySizeInBytes();
+              case ROW, UNKNOWN, VECTOR ->
+                  () -> {
+                    throw new UnsupportedOperationException(
+                        DataNodeQueryMessages.UNKNOWN_DATA_TYPE_2 + type.getTypeEnum());
+                  };
+            };
+
+    public static final TypeService<Supplier<Accumulator>> MODE_ACCUMULATOR_PROVIDER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> BooleanModeAccumulator::new;
+              case TEXT, BLOB, STRING -> BinaryModeAccumulator::new;
+              case INT32, DATE -> IntModeAccumulator::new;
+              case INT64, TIMESTAMP -> LongModeAccumulator::new;
+              case FLOAT -> FloatModeAccumulator::new;
+              case DOUBLE -> DoubleModeAccumulator::new;
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  () -> {
+                    throw new IllegalArgumentException(
+                        DataNodeQueryMessages.UNKNOWN_DATA_TYPE + type.getTypeEnum());
+                  };
+            };
+
+    static {
+      OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
+      MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
+    }
+
+    private Aggregation() {
+      // Utility class
+    }
+  }
+
+  public static final class ValueConversion {
+
+    public static final TypeService<Function<String, Object>> VALUE_PARSER_NO_EXCEPTION_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> Boolean::parseBoolean;
+              case INT32 -> TypeServices::parseInteger;
+              case INT64 -> TypeServices::parseLong;
+              case FLOAT -> TypeServices::parseFloat;
+              case DOUBLE -> TypeServices::parseDouble;
+              case TEXT -> TypeServices::parseText;
+              case TIMESTAMP -> TypeServices::parseTimestamp;
+              case DATE -> TypeServices::parseDate;
+              case BLOB -> TypeServices::parseBlob;
+              case STRING -> TypeServices::parseString;
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                      .setChecked(true);
+            };
+
+    private ValueConversion() {
+      // Utility class
+    }
+  }
+
+  public static final class StorageEngine {
+
+    public static final TypeService<BiConsumer<Object, IWALByteBufferView>>
+        WAL_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> (value, buffer) -> WALWriteUtils.write((Boolean) value, buffer);
+                  case INT32, DATE ->
+                      (value, buffer) -> WALWriteUtils.write((Integer) value, buffer);
+                  case INT64, TIMESTAMP ->
+                      (value, buffer) -> WALWriteUtils.write((Long) value, buffer);
+                  case FLOAT -> (value, buffer) -> WALWriteUtils.write((Float) value, buffer);
+                  case DOUBLE -> (value, buffer) -> WALWriteUtils.write((Double) value, buffer);
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (value, buffer) -> WALWriteUtils.write((Binary) value, buffer);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                          .setChecked(true);
                 };
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
 
-  public static final TypeService<DecodedValueChunkWriter> DECODED_VALUE_CHUNK_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, isNull ? 0 : ReadWriteIOUtils.readInt(stream), isNull);
-            case INT64, TIMESTAMP ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, isNull ? 0L : ReadWriteIOUtils.readLong(stream), isNull);
-            case FLOAT ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, isNull ? 0F : ReadWriteIOUtils.readFloat(stream), isNull);
-            case DOUBLE ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, isNull ? 0D : ReadWriteIOUtils.readDouble(stream), isNull);
-            case BOOLEAN ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, !isNull && ReadWriteIOUtils.readBool(stream), isNull);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (writer, time, stream, isNull) ->
-                    writer.write(time, isNull ? null : ReadWriteIOUtils.readBinary(stream), isNull);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
+    public static final TypeService<WALColumnWriter> WAL_ARRAY_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (column, buffer, start, end) -> {
+                    int[] values = (int[]) column;
+                    for (int i = start; i < end; i++) {
+                      buffer.putInt(values[i]);
+                    }
+                  };
+              case INT64, TIMESTAMP ->
+                  (column, buffer, start, end) -> {
+                    long[] values = (long[]) column;
+                    for (int i = start; i < end; i++) {
+                      buffer.putLong(values[i]);
+                    }
+                  };
+              case FLOAT ->
+                  (column, buffer, start, end) -> {
+                    float[] values = (float[]) column;
+                    for (int i = start; i < end; i++) {
+                      buffer.putFloat(values[i]);
+                    }
+                  };
+              case DOUBLE ->
+                  (column, buffer, start, end) -> {
+                    double[] values = (double[]) column;
+                    for (int i = start; i < end; i++) {
+                      buffer.putDouble(values[i]);
+                    }
+                  };
+              case BOOLEAN ->
+                  (column, buffer, start, end) -> {
+                    boolean[] values = (boolean[]) column;
+                    for (int i = start; i < end; i++) {
+                      buffer.put((byte) (values[i] ? 1 : 0));
+                    }
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (column, buffer, start, end) -> {
+                    Binary[] values = (Binary[]) column;
+                    for (int i = start; i < end; i++) {
+                      if (values[i] != null && values[i].getValues() != null) {
+                        WALWriteUtils.write(values[i], buffer);
+                      } else {
+                        buffer.putInt(0);
+                      }
+                    }
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  public static final TypeService<SegmentedArraySerializedSizeCalculator>
-      SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN -> (valueArrays, rowCount, arraySize) -> rowCount * Byte.BYTES;
-                case INT32, DATE -> (valueArrays, rowCount, arraySize) -> rowCount * Integer.BYTES;
-                case INT64, TIMESTAMP ->
-                    (valueArrays, rowCount, arraySize) -> rowCount * Long.BYTES;
-                case FLOAT -> (valueArrays, rowCount, arraySize) -> rowCount * Float.BYTES;
-                case DOUBLE -> (valueArrays, rowCount, arraySize) -> rowCount * Double.BYTES;
-                case TEXT, BLOB, STRING, OBJECT ->
-                    (valueArrays, rowCount, arraySize) -> {
-                      int size = 0;
-                      int remaining = rowCount;
-                      for (Object valueArray : valueArrays) {
-                        int length = Math.min(remaining, arraySize);
-                        size += type.serializedSize(valueArray, length);
-                        remaining -= length;
-                        if (remaining == 0) {
-                          break;
+    public static final TypeService<DecodedValueChunkWriter> DECODED_VALUE_CHUNK_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(time, isNull ? 0 : ReadWriteIOUtils.readInt(stream), isNull);
+              case INT64, TIMESTAMP ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(time, isNull ? 0L : ReadWriteIOUtils.readLong(stream), isNull);
+              case FLOAT ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(time, isNull ? 0F : ReadWriteIOUtils.readFloat(stream), isNull);
+              case DOUBLE ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(time, isNull ? 0D : ReadWriteIOUtils.readDouble(stream), isNull);
+              case BOOLEAN ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(time, !isNull && ReadWriteIOUtils.readBool(stream), isNull);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (writer, time, stream, isNull) ->
+                      writer.write(
+                          time, isNull ? null : ReadWriteIOUtils.readBinary(stream), isNull);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<SegmentedArraySerializedSizeCalculator>
+        SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> (valueArrays, rowCount, arraySize) -> rowCount * Byte.BYTES;
+                  case INT32, DATE ->
+                      (valueArrays, rowCount, arraySize) -> rowCount * Integer.BYTES;
+                  case INT64, TIMESTAMP ->
+                      (valueArrays, rowCount, arraySize) -> rowCount * Long.BYTES;
+                  case FLOAT -> (valueArrays, rowCount, arraySize) -> rowCount * Float.BYTES;
+                  case DOUBLE -> (valueArrays, rowCount, arraySize) -> rowCount * Double.BYTES;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (valueArrays, rowCount, arraySize) -> {
+                        int size = 0;
+                        int remaining = rowCount;
+                        for (Object valueArray : valueArrays) {
+                          int length = Math.min(remaining, arraySize);
+                          size += type.serializedSize(valueArray, length);
+                          remaining -= length;
+                          if (remaining == 0) {
+                            break;
+                          }
                         }
-                      }
-                      return size;
-                    };
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                        .setChecked(true);
-              };
-
-  public static final TypeService<ArrayValueColumnWriter> ARRAY_VALUE_COLUMN_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (builder, values, index, floatPrecision, encoding) ->
-                    builder.writeBoolean(((boolean[]) values)[index]);
-            case INT32 ->
-                (builder, values, index, floatPrecision, encoding) ->
-                    builder.writeInt(((int[]) values)[index]);
-            case DATE ->
-                (builder, values, index, floatPrecision, encoding) -> {
-                  int value = ((int[]) values)[index];
-                  if (builder instanceof BinaryColumnBuilder) {
-                    ((BinaryColumnBuilder) builder).writeDate(value);
-                  } else {
-                    builder.writeInt(value);
-                  }
+                        return size;
+                      };
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                          .setChecked(true);
                 };
-            case INT64, TIMESTAMP ->
-                (builder, values, index, floatPrecision, encoding) ->
-                    builder.writeLong(((long[]) values)[index]);
-            case FLOAT ->
-                (builder, values, index, floatPrecision, encoding) -> {
-                  float value = ((float[]) values)[index];
-                  if (encoding != null
-                      && !Float.isNaN(value)
-                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
-                  }
-                  builder.writeFloat(value);
-                };
-            case DOUBLE ->
-                (builder, values, index, floatPrecision, encoding) -> {
-                  double value = ((double[]) values)[index];
-                  if (encoding != null
-                      && !Double.isNaN(value)
-                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
-                  }
-                  builder.writeDouble(value);
-                };
-            case TEXT, BLOB, STRING, OBJECT ->
-                (builder, values, index, floatPrecision, encoding) ->
-                    builder.writeBinary(((Binary[]) values)[index]);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
 
-  public static final TypeService<BatchDataColumnWriter> BATCH_DATA_COLUMN_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (batchData, time, column, index) ->
-                    batchData.putBoolean(time, type.getBoolean(column, index));
-            case INT32, DATE ->
-                (batchData, time, column, index) ->
-                    batchData.putInt(time, type.getInt(column, index));
-            case INT64, TIMESTAMP ->
-                (batchData, time, column, index) ->
-                    batchData.putLong(time, type.getLong(column, index));
-            case FLOAT ->
-                (batchData, time, column, index) ->
-                    batchData.putFloat(time, type.getFloat(column, index));
-            case DOUBLE ->
-                (batchData, time, column, index) ->
-                    batchData.putDouble(time, type.getDouble(column, index));
-            case TEXT, BLOB, STRING, OBJECT ->
-                (batchData, time, column, index) ->
-                    batchData.putBinary(time, type.getBinary(column, index));
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
+    public static final TypeService<ArrayValueColumnWriter> ARRAY_VALUE_COLUMN_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (builder, values, index, floatPrecision, encoding) ->
+                      builder.writeBoolean(((boolean[]) values)[index]);
+              case INT32 ->
+                  (builder, values, index, floatPrecision, encoding) ->
+                      builder.writeInt(((int[]) values)[index]);
+              case DATE ->
+                  (builder, values, index, floatPrecision, encoding) -> {
+                    int value = ((int[]) values)[index];
+                    if (builder instanceof BinaryColumnBuilder) {
+                      ((BinaryColumnBuilder) builder).writeDate(value);
+                    } else {
+                      builder.writeInt(value);
+                    }
+                  };
+              case INT64, TIMESTAMP ->
+                  (builder, values, index, floatPrecision, encoding) ->
+                      builder.writeLong(((long[]) values)[index]);
+              case FLOAT ->
+                  (builder, values, index, floatPrecision, encoding) -> {
+                    float value = ((float[]) values)[index];
+                    if (encoding != null
+                        && !Float.isNaN(value)
+                        && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                      value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                    }
+                    builder.writeFloat(value);
+                  };
+              case DOUBLE ->
+                  (builder, values, index, floatPrecision, encoding) -> {
+                    double value = ((double[]) values)[index];
+                    if (encoding != null
+                        && !Double.isNaN(value)
+                        && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                      value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                    }
+                    builder.writeDouble(value);
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (builder, values, index, floatPrecision, encoding) ->
+                      builder.writeBinary(((Binary[]) values)[index]);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  public static final TypeService<ValueSerializer<Object>> OBJECT_VALUE_SERIALIZER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE -> (value, stream) -> ReadWriteIOUtils.write((int) value, stream);
-            case INT64, TIMESTAMP ->
-                (value, stream) -> ReadWriteIOUtils.write((long) value, stream);
-            case FLOAT -> (value, stream) -> ReadWriteIOUtils.write((float) value, stream);
-            case DOUBLE -> (value, stream) -> ReadWriteIOUtils.write((double) value, stream);
-            case BOOLEAN -> (value, stream) -> ReadWriteIOUtils.write((boolean) value, stream);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (value, stream) -> ReadWriteIOUtils.write((Binary) value, stream);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
+    public static final TypeService<BatchDataColumnWriter> BATCH_DATA_COLUMN_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (batchData, time, column, index) ->
+                      batchData.putBoolean(time, type.getBoolean(column, index));
+              case INT32, DATE ->
+                  (batchData, time, column, index) ->
+                      batchData.putInt(time, type.getInt(column, index));
+              case INT64, TIMESTAMP ->
+                  (batchData, time, column, index) ->
+                      batchData.putLong(time, type.getLong(column, index));
+              case FLOAT ->
+                  (batchData, time, column, index) ->
+                      batchData.putFloat(time, type.getFloat(column, index));
+              case DOUBLE ->
+                  (batchData, time, column, index) ->
+                      batchData.putDouble(time, type.getDouble(column, index));
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (batchData, time, column, index) ->
+                      batchData.putBinary(time, type.getBinary(column, index));
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  public static final TypeService<ValueSerializer<TsPrimitiveType>>
-      TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case INT32, DATE ->
-                    (value, stream) -> ReadWriteIOUtils.write(value.getInt(), stream);
-                case INT64, TIMESTAMP ->
-                    (value, stream) -> ReadWriteIOUtils.write(value.getLong(), stream);
-                case FLOAT -> (value, stream) -> ReadWriteIOUtils.write(value.getFloat(), stream);
-                case DOUBLE -> (value, stream) -> ReadWriteIOUtils.write(value.getDouble(), stream);
-                case BOOLEAN ->
-                    (value, stream) -> ReadWriteIOUtils.write(value.getBoolean(), stream);
-                case TEXT, BLOB, STRING, OBJECT ->
-                    (value, stream) -> ReadWriteIOUtils.write(value.getBinary(), stream);
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                        .setChecked(true);
-              };
+    public static final TypeService<ValueSerializer<Object>> OBJECT_VALUE_SERIALIZER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE -> (value, stream) -> ReadWriteIOUtils.write((int) value, stream);
+              case INT64, TIMESTAMP ->
+                  (value, stream) -> ReadWriteIOUtils.write((long) value, stream);
+              case FLOAT -> (value, stream) -> ReadWriteIOUtils.write((float) value, stream);
+              case DOUBLE -> (value, stream) -> ReadWriteIOUtils.write((double) value, stream);
+              case BOOLEAN -> (value, stream) -> ReadWriteIOUtils.write((boolean) value, stream);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (value, stream) -> ReadWriteIOUtils.write((Binary) value, stream);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  public static final TypeService<Supplier<TsPrimitiveType>>
-      EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> type::getTsPrimitiveType;
-                case DATE -> Type.fromTsDataType(TSDataType.INT32)::getTsPrimitiveType;
-                case TIMESTAMP -> Type.fromTsDataType(TSDataType.INT64)::getTsPrimitiveType;
-                case TEXT, BLOB, STRING, OBJECT ->
-                    () ->
-                        Type.fromTsDataType(TSDataType.TEXT)
-                            .getTsPrimitiveType(new Binary("", TSFileConfig.STRING_CHARSET));
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                        .setChecked(true);
-              };
-
-  public static final TypeService<Function<IoTDBConfig, TSEncoding>> DEFAULT_ENCODING_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> IoTDBConfig::getDefaultBooleanEncoding;
-            case INT32, DATE -> IoTDBConfig::getDefaultInt32Encoding;
-            case INT64, TIMESTAMP -> IoTDBConfig::getDefaultInt64Encoding;
-            case FLOAT -> IoTDBConfig::getDefaultFloatEncoding;
-            case DOUBLE -> IoTDBConfig::getDefaultDoubleEncoding;
-            case TEXT, BLOB, STRING, OBJECT -> IoTDBConfig::getDefaultTextEncoding;
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<TabletColumnDecoder> TABLET_COLUMN_DECODER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  int[] values = new int[rowCount];
-                  // PlainEncoder uses var int, which may cause compatibility problems.
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] =
-                        encoding == TSEncoding.PLAIN
-                            ? ReadWriteIOUtils.readInt(buffer)
-                            : decoder.readInt(buffer);
-                  }
-                  return values;
+    public static final TypeService<ValueSerializer<TsPrimitiveType>>
+        TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      (value, stream) -> ReadWriteIOUtils.write(value.getInt(), stream);
+                  case INT64, TIMESTAMP ->
+                      (value, stream) -> ReadWriteIOUtils.write(value.getLong(), stream);
+                  case FLOAT -> (value, stream) -> ReadWriteIOUtils.write(value.getFloat(), stream);
+                  case DOUBLE ->
+                      (value, stream) -> ReadWriteIOUtils.write(value.getDouble(), stream);
+                  case BOOLEAN ->
+                      (value, stream) -> ReadWriteIOUtils.write(value.getBoolean(), stream);
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (value, stream) -> ReadWriteIOUtils.write(value.getBinary(), stream);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                          .setChecked(true);
                 };
-            case INT64, TIMESTAMP ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  long[] values = new long[rowCount];
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] = decoder.readLong(buffer);
-                  }
-                  return values;
-                };
-            case FLOAT ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  float[] values = new float[rowCount];
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] = decoder.readFloat(buffer);
-                  }
-                  return values;
-                };
-            case DOUBLE ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  double[] values = new double[rowCount];
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] = decoder.readDouble(buffer);
-                  }
-                  return values;
-                };
-            case BOOLEAN ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  boolean[] values = new boolean[rowCount];
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] = decoder.readBoolean(buffer);
-                  }
-                  return values;
-                };
-            case TEXT, BLOB, STRING ->
-                (decoder, buffer, rowCount, encoding) -> {
-                  Binary[] values = new Binary[rowCount];
-                  // PlainEncoder uses var int, which may cause compatibility problems.
-                  for (int i = 0; i < rowCount; i++) {
-                    values[i] =
-                        encoding == TSEncoding.PLAIN
-                            ? ReadWriteIOUtils.readBinary(buffer)
-                            : decoder.readBinary(buffer);
-                  }
-                  return values;
-                };
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
 
-  public static final TypeService<DecodedArrayValueReader> DECODED_ARRAY_VALUE_READER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (values, index, stream) ->
-                    ((int[]) values)[index] = ReadWriteIOUtils.readInt(stream);
-            case INT64, TIMESTAMP ->
-                (values, index, stream) ->
-                    ((long[]) values)[index] = ReadWriteIOUtils.readLong(stream);
-            case FLOAT ->
-                (values, index, stream) ->
-                    ((float[]) values)[index] = ReadWriteIOUtils.readFloat(stream);
-            case DOUBLE ->
-                (values, index, stream) ->
-                    ((double[]) values)[index] = ReadWriteIOUtils.readDouble(stream);
-            case BOOLEAN ->
-                (values, index, stream) ->
-                    ((boolean[]) values)[index] = ReadWriteIOUtils.readBool(stream);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (values, index, stream) ->
-                    ((Binary[]) values)[index] = ReadWriteIOUtils.readBinary(stream);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<DecodedChunkWriter> DECODED_CHUNK_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readInt(stream));
-            case INT64, TIMESTAMP ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readLong(stream));
-            case FLOAT ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readFloat(stream));
-            case DOUBLE ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readDouble(stream));
-            case BOOLEAN ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBool(stream));
-            case TEXT, BLOB, STRING, OBJECT ->
-                (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBinary(stream));
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<TVListArrayWriter> TV_LIST_ARRAY_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putBooleans(times, (boolean[]) values, bitMap, start, end);
-            case INT32, DATE ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putInts(times, (int[]) values, bitMap, start, end);
-            case INT64, TIMESTAMP ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putLongs(times, (long[]) values, bitMap, start, end);
-            case FLOAT ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putFloats(times, (float[]) values, bitMap, start, end);
-            case DOUBLE ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putDoubles(times, (double[]) values, bitMap, start, end);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (tvList, times, values, bitMap, start, end) ->
-                    tvList.putBinaries(times, (Binary[]) values, bitMap, start, end);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<TVListObjectWriter> TV_LIST_OBJECT_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> (tvList, time, value) -> tvList.putBoolean(time, (boolean) value);
-            case INT32, DATE -> (tvList, time, value) -> tvList.putInt(time, (int) value);
-            case INT64, TIMESTAMP -> (tvList, time, value) -> tvList.putLong(time, (long) value);
-            case FLOAT -> (tvList, time, value) -> tvList.putFloat(time, (float) value);
-            case DOUBLE -> (tvList, time, value) -> tvList.putDouble(time, (double) value);
-            case TEXT, BLOB, STRING ->
-                (tvList, time, value) -> tvList.putBinary(time, (Binary) value);
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  private static final TVListProvider UNSUPPORTED_TV_LIST_PROVIDER =
-      new TVListProvider(() -> null, stream -> null, stream -> null);
-
-  public static final TypeService<TVListProvider> TV_LIST_PROVIDER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                new TVListProvider(
-                    BooleanTVList::newList,
-                    BooleanTVList::deserialize,
-                    BooleanTVList::deserializeWithoutBitMap);
-            case INT32 ->
-                new TVListProvider(
-                    () -> IntTVList.newList(TSDataType.INT32),
-                    stream -> IntTVList.deserialize(stream, TSDataType.INT32),
-                    stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32));
-            case DATE ->
-                new TVListProvider(
-                    () -> IntTVList.newList(TSDataType.DATE),
-                    stream -> IntTVList.deserialize(stream, TSDataType.DATE),
-                    stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE));
-            case INT64, TIMESTAMP ->
-                new TVListProvider(
-                    LongTVList::newList,
-                    LongTVList::deserialize,
-                    LongTVList::deserializeWithoutBitMap);
-            case FLOAT ->
-                new TVListProvider(
-                    FloatTVList::newList,
-                    FloatTVList::deserialize,
-                    FloatTVList::deserializeWithoutBitMap);
-            case DOUBLE ->
-                new TVListProvider(
-                    DoubleTVList::newList,
-                    DoubleTVList::deserialize,
-                    DoubleTVList::deserializeWithoutBitMap);
-            case TEXT, BLOB, STRING, OBJECT ->
-                new TVListProvider(
-                    BinaryTVList::newList,
-                    BinaryTVList::deserialize,
-                    BinaryTVList::deserializeWithoutBitMap);
-            case ROW, UNKNOWN, VECTOR -> UNSUPPORTED_TV_LIST_PROVIDER;
-          };
-
-  public static final TypeService<TVListChunkWriter> TV_LIST_CHUNK_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (writer, time, tvList, index) -> {
-                  writer.write(time, tvList.getBoolean(index));
-                  return 8L + 1L;
+    public static final TypeService<Supplier<TsPrimitiveType>>
+        EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> type::getTsPrimitiveType;
+                  case DATE -> Type.fromTsDataType(TSDataType.INT32)::getTsPrimitiveType;
+                  case TIMESTAMP -> Type.fromTsDataType(TSDataType.INT64)::getTsPrimitiveType;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      () ->
+                          Type.fromTsDataType(TSDataType.TEXT)
+                              .getTsPrimitiveType(new Binary("", TSFileConfig.STRING_CHARSET));
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                          .setChecked(true);
                 };
-            case INT32, DATE ->
-                (writer, time, tvList, index) -> {
-                  writer.write(time, tvList.getInt(index));
-                  return 8L + 4L;
-                };
-            case INT64, TIMESTAMP ->
-                (writer, time, tvList, index) -> {
-                  writer.write(time, tvList.getLong(index));
-                  return 8L + 8L;
-                };
-            case FLOAT ->
-                (writer, time, tvList, index) -> {
-                  writer.write(time, tvList.getFloat(index));
-                  return 8L + 4L;
-                };
-            case DOUBLE ->
-                (writer, time, tvList, index) -> {
-                  writer.write(time, tvList.getDouble(index));
-                  return 8L + 8L;
-                };
-            case TEXT, BLOB, STRING, OBJECT ->
-                (writer, time, tvList, index) -> {
-                  Binary value = tvList.getBinary(index);
-                  writer.write(time, value);
-                  return 8L + MemUtils.getBinarySize(value);
-                };
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
 
-  public static final TypeService<TVListBatchWriter> TV_LIST_BATCH_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  boolean value = tvList.getBoolean(index);
-                  if (filter != null && !filter.satisfyBoolean(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+    public static final TypeService<Function<IoTDBConfig, TSEncoding>> DEFAULT_ENCODING_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> IoTDBConfig::getDefaultBooleanEncoding;
+              case INT32, DATE -> IoTDBConfig::getDefaultInt32Encoding;
+              case INT64, TIMESTAMP -> IoTDBConfig::getDefaultInt64Encoding;
+              case FLOAT -> IoTDBConfig::getDefaultFloatEncoding;
+              case DOUBLE -> IoTDBConfig::getDefaultDoubleEncoding;
+              case TEXT, BLOB, STRING, OBJECT -> IoTDBConfig::getDefaultTextEncoding;
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<TabletColumnDecoder> TABLET_COLUMN_DECODER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    int[] values = new int[rowCount];
+                    // PlainEncoder uses var int, which may cause compatibility problems.
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] =
+                          encoding == TSEncoding.PLAIN
+                              ? ReadWriteIOUtils.readInt(buffer)
+                              : decoder.readInt(buffer);
+                    }
+                    return values;
+                  };
+              case INT64, TIMESTAMP ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    long[] values = new long[rowCount];
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] = decoder.readLong(buffer);
+                    }
+                    return values;
+                  };
+              case FLOAT ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    float[] values = new float[rowCount];
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] = decoder.readFloat(buffer);
+                    }
+                    return values;
+                  };
+              case DOUBLE ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    double[] values = new double[rowCount];
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] = decoder.readDouble(buffer);
+                    }
+                    return values;
+                  };
+              case BOOLEAN ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    boolean[] values = new boolean[rowCount];
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] = decoder.readBoolean(buffer);
+                    }
+                    return values;
+                  };
+              case TEXT, BLOB, STRING ->
+                  (decoder, buffer, rowCount, encoding) -> {
+                    Binary[] values = new Binary[rowCount];
+                    // PlainEncoder uses var int, which may cause compatibility problems.
+                    for (int i = 0; i < rowCount; i++) {
+                      values[i] =
+                          encoding == TSEncoding.PLAIN
+                              ? ReadWriteIOUtils.readBinary(buffer)
+                              : decoder.readBinary(buffer);
+                    }
+                    return values;
+                  };
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<DecodedArrayValueReader> DECODED_ARRAY_VALUE_READER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (values, index, stream) ->
+                      ((int[]) values)[index] = ReadWriteIOUtils.readInt(stream);
+              case INT64, TIMESTAMP ->
+                  (values, index, stream) ->
+                      ((long[]) values)[index] = ReadWriteIOUtils.readLong(stream);
+              case FLOAT ->
+                  (values, index, stream) ->
+                      ((float[]) values)[index] = ReadWriteIOUtils.readFloat(stream);
+              case DOUBLE ->
+                  (values, index, stream) ->
+                      ((double[]) values)[index] = ReadWriteIOUtils.readDouble(stream);
+              case BOOLEAN ->
+                  (values, index, stream) ->
+                      ((boolean[]) values)[index] = ReadWriteIOUtils.readBool(stream);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (values, index, stream) ->
+                      ((Binary[]) values)[index] = ReadWriteIOUtils.readBinary(stream);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<DecodedChunkWriter> DECODED_CHUNK_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readInt(stream));
+              case INT64, TIMESTAMP ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readLong(stream));
+              case FLOAT ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readFloat(stream));
+              case DOUBLE ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readDouble(stream));
+              case BOOLEAN ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBool(stream));
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (writer, time, stream) -> writer.write(time, ReadWriteIOUtils.readBinary(stream));
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<TVListArrayWriter> TV_LIST_ARRAY_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putBooleans(times, (boolean[]) values, bitMap, start, end);
+              case INT32, DATE ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putInts(times, (int[]) values, bitMap, start, end);
+              case INT64, TIMESTAMP ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putLongs(times, (long[]) values, bitMap, start, end);
+              case FLOAT ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putFloats(times, (float[]) values, bitMap, start, end);
+              case DOUBLE ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putDoubles(times, (double[]) values, bitMap, start, end);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (tvList, times, values, bitMap, start, end) ->
+                      tvList.putBinaries(times, (Binary[]) values, bitMap, start, end);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<TVListObjectWriter> TV_LIST_OBJECT_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> (tvList, time, value) -> tvList.putBoolean(time, (boolean) value);
+              case INT32, DATE -> (tvList, time, value) -> tvList.putInt(time, (int) value);
+              case INT64, TIMESTAMP -> (tvList, time, value) -> tvList.putLong(time, (long) value);
+              case FLOAT -> (tvList, time, value) -> tvList.putFloat(time, (float) value);
+              case DOUBLE -> (tvList, time, value) -> tvList.putDouble(time, (double) value);
+              case TEXT, BLOB, STRING ->
+                  (tvList, time, value) -> tvList.putBinary(time, (Binary) value);
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    private static final TVListProvider UNSUPPORTED_TV_LIST_PROVIDER =
+        new TVListProvider(() -> null, stream -> null, stream -> null);
+
+    public static final TypeService<TVListProvider> TV_LIST_PROVIDER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  new TVListProvider(
+                      BooleanTVList::newList,
+                      BooleanTVList::deserialize,
+                      BooleanTVList::deserializeWithoutBitMap);
+              case INT32 ->
+                  new TVListProvider(
+                      () -> IntTVList.newList(TSDataType.INT32),
+                      stream -> IntTVList.deserialize(stream, TSDataType.INT32),
+                      stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32));
+              case DATE ->
+                  new TVListProvider(
+                      () -> IntTVList.newList(TSDataType.DATE),
+                      stream -> IntTVList.deserialize(stream, TSDataType.DATE),
+                      stream -> IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE));
+              case INT64, TIMESTAMP ->
+                  new TVListProvider(
+                      LongTVList::newList,
+                      LongTVList::deserialize,
+                      LongTVList::deserializeWithoutBitMap);
+              case FLOAT ->
+                  new TVListProvider(
+                      FloatTVList::newList,
+                      FloatTVList::deserialize,
+                      FloatTVList::deserializeWithoutBitMap);
+              case DOUBLE ->
+                  new TVListProvider(
+                      DoubleTVList::newList,
+                      DoubleTVList::deserialize,
+                      DoubleTVList::deserializeWithoutBitMap);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  new TVListProvider(
+                      BinaryTVList::newList,
+                      BinaryTVList::deserialize,
+                      BinaryTVList::deserializeWithoutBitMap);
+              case ROW, UNKNOWN, VECTOR -> UNSUPPORTED_TV_LIST_PROVIDER;
+            };
+
+    public static final TypeService<TVListChunkWriter> TV_LIST_CHUNK_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (writer, time, tvList, index) -> {
+                    writer.write(time, tvList.getBoolean(index));
+                    return 8L + 1L;
+                  };
+              case INT32, DATE ->
+                  (writer, time, tvList, index) -> {
+                    writer.write(time, tvList.getInt(index));
+                    return 8L + 4L;
+                  };
+              case INT64, TIMESTAMP ->
+                  (writer, time, tvList, index) -> {
+                    writer.write(time, tvList.getLong(index));
+                    return 8L + 8L;
+                  };
+              case FLOAT ->
+                  (writer, time, tvList, index) -> {
+                    writer.write(time, tvList.getFloat(index));
+                    return 8L + 4L;
+                  };
+              case DOUBLE ->
+                  (writer, time, tvList, index) -> {
+                    writer.write(time, tvList.getDouble(index));
+                    return 8L + 8L;
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (writer, time, tvList, index) -> {
+                    Binary value = tvList.getBinary(index);
+                    writer.write(time, value);
+                    return 8L + MemUtils.getBinarySize(value);
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<TVListBatchWriter> TV_LIST_BATCH_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    boolean value = tvList.getBoolean(index);
+                    if (filter != null && !filter.satisfyBoolean(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeBoolean(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeBoolean(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case INT32, DATE ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  int value = tvList.getInt(index);
-                  if (filter != null && !filter.satisfyInteger(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+                  };
+              case INT32, DATE ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    int value = tvList.getInt(index);
+                    if (filter != null && !filter.satisfyInteger(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeInt(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeInt(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case INT64, TIMESTAMP ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  long value = tvList.getLong(index);
-                  if (filter != null && !filter.satisfyLong(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+                  };
+              case INT64, TIMESTAMP ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    long value = tvList.getLong(index);
+                    if (filter != null && !filter.satisfyLong(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeLong(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeLong(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case FLOAT ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  float value = tvList.getFloat(index);
-                  if (!Float.isNaN(value)
-                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
-                  }
-                  if (filter != null && !filter.satisfyFloat(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+                  };
+              case FLOAT ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    float value = tvList.getFloat(index);
+                    if (!Float.isNaN(value)
+                        && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                      value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                    }
+                    if (filter != null && !filter.satisfyFloat(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeFloat(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeFloat(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case DOUBLE ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  double value = tvList.getDouble(index);
-                  if (!Double.isNaN(value)
-                      && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-                    value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
-                  }
-                  if (filter != null && !filter.satisfyDouble(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+                  };
+              case DOUBLE ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    double value = tvList.getDouble(index);
+                    if (!Double.isNaN(value)
+                        && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+                      value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
+                    }
+                    if (filter != null && !filter.satisfyDouble(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeDouble(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeDouble(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case TEXT, BLOB, STRING, OBJECT ->
-                (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
-                  Binary value = tvList.getBinary(index);
-                  if (filter != null && !filter.satisfyBinary(time, value)) {
-                    return false;
-                  }
-                  if (consumeOffset(pagination)) {
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (tvList, index, time, filter, builder, floatPrecision, encoding, pagination) -> {
+                    Binary value = tvList.getBinary(index);
+                    if (filter != null && !filter.satisfyBinary(time, value)) {
+                      return false;
+                    }
+                    if (consumeOffset(pagination)) {
+                      return true;
+                    }
+                    consumeLimit(pagination);
+                    builder.getTimeColumnBuilder().writeLong(time);
+                    builder.getColumnBuilder(0).writeBinary(value);
+                    builder.declarePosition();
                     return true;
-                  }
-                  consumeLimit(pagination);
-                  builder.getTimeColumnBuilder().writeLong(time);
-                  builder.getColumnBuilder(0).writeBinary(value);
-                  builder.declarePosition();
-                  return true;
-                };
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
 
-  private static boolean consumeOffset(PaginationController paginationController) {
-    if (paginationController != null && paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return true;
+    private static boolean consumeOffset(PaginationController paginationController) {
+      if (paginationController != null && paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        return true;
+      }
+      return false;
     }
-    return false;
+
+    private static void consumeLimit(PaginationController paginationController) {
+      if (paginationController != null) {
+        paginationController.consumeLimit();
+      }
+    }
+
+    public static final TypeService<AlignedTVListChunkWriter> ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? false : tvList.getBooleanByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case INT32, DATE ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? 0 : tvList.getIntByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case INT64, TIMESTAMP ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? 0L : tvList.getLongByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case FLOAT ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? 0F : tvList.getFloatByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case DOUBLE ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? 0D : tvList.getDoubleByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (writer, time, tvList, rowIndex, columnIndex, isNull) ->
+                      writer.write(
+                          time,
+                          isNull ? null : tvList.getBinaryByValueIndex(rowIndex, columnIndex),
+                          isNull);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<IntFunction<Object>> PRIMITIVE_ARRAY_ALLOCATOR_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
+                  type::createArray;
+              case DATE -> Type.fromTsDataType(TSDataType.INT32)::createArray;
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<IntFunction<Object>> TABLET_COLUMN_ALLOCATOR_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN,
+                  INT32,
+                  DATE,
+                  INT64,
+                  TIMESTAMP,
+                  FLOAT,
+                  DOUBLE,
+                  TEXT,
+                  BLOB,
+                  STRING,
+                  OBJECT ->
+                  type::createArray;
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<IntFunction<Object>> EMPTY_TABLET_COLUMN_FACTORY_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::createArray;
+              case DATE ->
+                  size -> {
+                    LocalDate[] values = (LocalDate[]) type.createArray(size);
+                    Arrays.fill(values, LocalDate.of(1000, 1, 1));
+                    return values;
+                  };
+              case TEXT, BLOB, STRING ->
+                  size -> {
+                    Binary[] values = (Binary[]) type.createArray(size);
+                    Arrays.fill(values, Binary.EMPTY_VALUE);
+                    return values;
+                  };
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<WindowValueArrayBuilder> WINDOW_VALUE_ARRAY_BUILDER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (window, list, begin, size) -> {
+                    int[] values = new int[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getIntByIndex(begin + i);
+                    }
+                    window.setIntValues(values);
+                  };
+              case INT64, TIMESTAMP ->
+                  (window, list, begin, size) -> {
+                    long[] values = new long[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getLongByIndex(begin + i);
+                    }
+                    window.setLongValues(values);
+                  };
+              case FLOAT ->
+                  (window, list, begin, size) -> {
+                    float[] values = new float[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getFloatByIndex(begin + i);
+                    }
+                    window.setFloatValues(values);
+                  };
+              case DOUBLE ->
+                  (window, list, begin, size) -> {
+                    double[] values = new double[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getDoubleByIndex(begin + i);
+                    }
+                    window.setDoubleValues(values);
+                  };
+              case BOOLEAN ->
+                  (window, list, begin, size) -> {
+                    boolean[] values = new boolean[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getBooleanByIndex(begin + i);
+                    }
+                    window.setBooleanValues(values);
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (window, list, begin, size) -> {
+                    Binary[] values = new Binary[size];
+                    for (int i = 0; i < size; i++) {
+                      values[i] = list.getBinaryByIndex(begin + i);
+                    }
+                    window.setBinaryValues(values);
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<BiFunction<ByteBuffer, Integer, Object>>
+        RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN,
+                      INT32,
+                      INT64,
+                      TIMESTAMP,
+                      FLOAT,
+                      DOUBLE,
+                      TEXT,
+                      BLOB,
+                      STRING,
+                      OBJECT ->
+                      type::deserializeArray;
+                  case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                          .setChecked(true);
+                };
+
+    public static final TypeService<RawArrayInputStreamDeserializer>
+        RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN,
+                      INT32,
+                      INT64,
+                      TIMESTAMP,
+                      FLOAT,
+                      DOUBLE,
+                      TEXT,
+                      BLOB,
+                      STRING,
+                      OBJECT ->
+                      type::deserializeArray;
+                  case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                          .setChecked(true);
+                };
+
+    public static final TypeService<ArrayValueGetter> ARRAY_VALUE_GETTER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> (array, index) -> ((boolean[]) array)[index];
+              case INT32, DATE -> (array, index) -> ((int[]) array)[index];
+              case INT64, TIMESTAMP -> (array, index) -> ((long[]) array)[index];
+              case FLOAT -> (array, index) -> ((float[]) array)[index];
+              case DOUBLE -> (array, index) -> ((double[]) array)[index];
+              case TEXT, BLOB, STRING, OBJECT -> (array, index) -> ((Binary[]) array)[index];
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                      .setChecked(true);
+            };
+
+    static {
+      TV_LIST_ARRAY_WRITER_SERVICE.check();
+      TV_LIST_OBJECT_WRITER_SERVICE.check();
+      TV_LIST_PROVIDER_SERVICE.check();
+      TV_LIST_CHUNK_WRITER_SERVICE.check();
+      TV_LIST_BATCH_WRITER_SERVICE.check();
+      ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
+      PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
+      TABLET_COLUMN_ALLOCATOR_SERVICE.check();
+      EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
+      WINDOW_VALUE_ARRAY_BUILDER_SERVICE.check();
+      RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE.check();
+      RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE.check();
+      ARRAY_VALUE_GETTER_SERVICE.check();
+      DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
+      SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
+      ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
+      BATCH_DATA_COLUMN_WRITER_SERVICE.check();
+      OBJECT_VALUE_SERIALIZER_SERVICE.check();
+      TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();
+      EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE.check();
+      DEFAULT_ENCODING_SERVICE.check();
+      TABLET_COLUMN_DECODER_SERVICE.check();
+      DECODED_ARRAY_VALUE_READER_SERVICE.check();
+      DECODED_CHUNK_WRITER_SERVICE.check();
+    }
+
+    private StorageEngine() {
+      // Utility class
+    }
   }
 
-  private static void consumeLimit(PaginationController paginationController) {
-    if (paginationController != null) {
-      paginationController.consumeLimit();
-    }
-  }
+  public static final class Predicate {
 
-  public static final TypeService<AlignedTVListChunkWriter> ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? false : tvList.getBooleanByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case INT32, DATE ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? 0 : tvList.getIntByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case INT64, TIMESTAMP ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? 0L : tvList.getLongByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case FLOAT ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? 0F : tvList.getFloatByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case DOUBLE ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? 0D : tvList.getDoubleByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case TEXT, BLOB, STRING, OBJECT ->
-                (writer, time, tvList, rowIndex, columnIndex, isNull) ->
-                    writer.write(
-                        time,
-                        isNull ? null : tvList.getBinaryByValueIndex(rowIndex, columnIndex),
-                        isNull);
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<IntFunction<Object>> PRIMITIVE_ARRAY_ALLOCATOR_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
-                type::createArray;
-            case DATE -> Type.fromTsDataType(TSDataType.INT32)::createArray;
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
-          };
-
-  public static final TypeService<IntFunction<Object>> TABLET_COLUMN_ALLOCATOR_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN,
-                INT32,
-                DATE,
-                INT64,
-                TIMESTAMP,
-                FLOAT,
-                DOUBLE,
-                TEXT,
-                BLOB,
-                STRING,
-                OBJECT ->
-                type::createArray;
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
-          };
-
-  public static final TypeService<IntFunction<Object>> EMPTY_TABLET_COLUMN_FACTORY_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::createArray;
-            case DATE ->
-                size -> {
-                  LocalDate[] values = (LocalDate[]) type.createArray(size);
-                  Arrays.fill(values, LocalDate.of(1000, 1, 1));
-                  return values;
+    public static final TypeService<Function<String, Comparable<?>>>
+        CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> Integer::valueOf;
+                  case INT64, TIMESTAMP -> Long::valueOf;
+                  case FLOAT -> Float::valueOf;
+                  case DOUBLE -> Double::valueOf;
+                  case BOOLEAN ->
+                      valueString -> {
+                        if (valueString.equalsIgnoreCase("true")) {
+                          return Boolean.TRUE;
+                        } else if (valueString.equalsIgnoreCase("false")) {
+                          return Boolean.FALSE;
+                        }
+                        throw new IllegalArgumentException(
+                            String.format(
+                                DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
+                                valueString,
+                                type.getTypeEnum()));
+                      };
+                  case BLOB -> valueString -> new Binary(BaseEncoding.base16().decode(valueString));
+                  case TEXT, STRING ->
+                      valueString -> new Binary(valueString, TSFileConfig.STRING_CHARSET);
+                  case DATE -> DateTimeUtils::parseDateExpressionToInt;
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      throw new UnsupportedOperationException(
+                          String.format(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
                 };
-            case TEXT, BLOB, STRING ->
-                size -> {
-                  Binary[] values = (Binary[]) type.createArray(size);
-                  Arrays.fill(values, Binary.EMPTY_VALUE);
-                  return values;
-                };
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
-          };
 
-  public static final TypeService<WindowValueArrayBuilder> WINDOW_VALUE_ARRAY_BUILDER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                (window, list, begin, size) -> {
-                  int[] values = new int[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getIntByIndex(begin + i);
-                  }
-                  window.setIntValues(values);
+    public static final TypeService<Function<Literal, Comparable<?>>>
+        RELATIONAL_CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 -> value -> Integer.valueOf((int) getLongValue(value));
+                  case DATE -> value -> Integer.valueOf(((GenericLiteral) value).getValue());
+                  case INT64 -> value -> Long.valueOf(getLongValue(value));
+                  case TIMESTAMP -> TypeServices::getTimestampValue;
+                  case FLOAT -> value -> Float.valueOf((float) getDoubleValue(value));
+                  case DOUBLE -> value -> Double.valueOf(getDoubleValue(value));
+                  case BOOLEAN -> value -> Boolean.valueOf(((BooleanLiteral) value).getValue());
+                  case TEXT, STRING ->
+                      value ->
+                          new Binary(
+                              ((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET);
+                  case BLOB -> value -> new Binary(((BinaryLiteral) value).getValue());
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      throw new UnsupportedOperationException(
+                          String.format(
+                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
                 };
-            case INT64, TIMESTAMP ->
-                (window, list, begin, size) -> {
-                  long[] values = new long[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getLongByIndex(begin + i);
-                  }
-                  window.setLongValues(values);
-                };
-            case FLOAT ->
-                (window, list, begin, size) -> {
-                  float[] values = new float[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getFloatByIndex(begin + i);
-                  }
-                  window.setFloatValues(values);
-                };
-            case DOUBLE ->
-                (window, list, begin, size) -> {
-                  double[] values = new double[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getDoubleByIndex(begin + i);
-                  }
-                  window.setDoubleValues(values);
-                };
-            case BOOLEAN ->
-                (window, list, begin, size) -> {
-                  boolean[] values = new boolean[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getBooleanByIndex(begin + i);
-                  }
-                  window.setBooleanValues(values);
-                };
-            case TEXT, BLOB, STRING, OBJECT ->
-                (window, list, begin, size) -> {
-                  Binary[] values = new Binary[size];
-                  for (int i = 0; i < size; i++) {
-                    values[i] = list.getBinaryByIndex(begin + i);
-                  }
-                  window.setBinaryValues(values);
-                };
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
-          };
 
-  public static final TypeService<BiFunction<ByteBuffer, Integer, Object>>
-      RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
-                    type::deserializeArray;
-                case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(type.getTypeEnum().name())
-                        .setChecked(true);
-              };
-
-  public static final TypeService<RawArrayInputStreamDeserializer>
-      RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
-                    type::deserializeArray;
-                case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(type.getTypeEnum().name())
-                        .setChecked(true);
-              };
-
-  public static final TypeService<ArrayValueGetter> ARRAY_VALUE_GETTER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> (array, index) -> ((boolean[]) array)[index];
-            case INT32, DATE -> (array, index) -> ((int[]) array)[index];
-            case INT64, TIMESTAMP -> (array, index) -> ((long[]) array)[index];
-            case FLOAT -> (array, index) -> ((float[]) array)[index];
-            case DOUBLE -> (array, index) -> ((double[]) array)[index];
-            case TEXT, BLOB, STRING, OBJECT -> (array, index) -> ((Binary[]) array)[index];
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(type.getTypeEnum().name()).setChecked(true);
-          };
-
-  public static final TypeService<Function<String, Comparable<?>>>
-      CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case INT32 -> Integer::valueOf;
-                case INT64, TIMESTAMP -> Long::valueOf;
-                case FLOAT -> Float::valueOf;
-                case DOUBLE -> Double::valueOf;
-                case BOOLEAN ->
-                    valueString -> {
-                      if (valueString.equalsIgnoreCase("true")) {
-                        return Boolean.TRUE;
-                      } else if (valueString.equalsIgnoreCase("false")) {
-                        return Boolean.FALSE;
-                      }
+    public static final TypeService<Function<Column, Literal>>
+        UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      column -> new LongLiteral(Long.toString(type.getInt(column, 0)));
+                  case INT64, TIMESTAMP ->
+                      column -> new LongLiteral(Long.toString(type.getLong(column, 0)));
+                  case FLOAT -> column -> new FloatLiteral(type.getFloat(column, 0));
+                  case DOUBLE ->
+                      column -> new DoubleLiteral(Double.toString(type.getDouble(column, 0)));
+                  case BOOLEAN ->
+                      column -> new BooleanLiteral(Boolean.toString(type.getBoolean(column, 0)));
+                  case BLOB -> column -> new BinaryLiteral(type.getBinary(column, 0).toString());
+                  case TEXT, STRING ->
+                      column -> new StringLiteral(type.getBinary(column, 0).toString());
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
                       throw new IllegalArgumentException(
                           String.format(
-                              DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
-                              valueString,
+                              DataNodeQueryMessages
+                                  .UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT,
                               type.getTypeEnum()));
-                    };
-                case BLOB -> valueString -> new Binary(BaseEncoding.base16().decode(valueString));
-                case TEXT, STRING ->
-                    valueString -> new Binary(valueString, TSFileConfig.STRING_CHARSET);
-                case DATE -> DateTimeUtils::parseDateExpressionToInt;
-                case OBJECT, ROW, UNKNOWN, VECTOR ->
-                    throw new UnsupportedOperationException(
-                        String.format(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
-              };
-
-  public static final TypeService<Function<Literal, Comparable<?>>>
-      RELATIONAL_CONVERT_PREDICATE_VALUE_PARSER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case INT32 -> value -> Integer.valueOf((int) getLongValue(value));
-                case DATE -> value -> Integer.valueOf(((GenericLiteral) value).getValue());
-                case INT64 -> value -> Long.valueOf(getLongValue(value));
-                case TIMESTAMP -> TypeServices::getTimestampValue;
-                case FLOAT -> value -> Float.valueOf((float) getDoubleValue(value));
-                case DOUBLE -> value -> Double.valueOf(getDoubleValue(value));
-                case BOOLEAN -> value -> Boolean.valueOf(((BooleanLiteral) value).getValue());
-                case TEXT, STRING ->
-                    value ->
-                        new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET);
-                case BLOB -> value -> new Binary(((BinaryLiteral) value).getValue());
-                case OBJECT, ROW, UNKNOWN, VECTOR ->
-                    throw new UnsupportedOperationException(
-                        String.format(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
-              };
-
-  public static final TypeService<Function<Column, Literal>>
-      UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case INT32, DATE ->
-                    column -> new LongLiteral(Long.toString(type.getInt(column, 0)));
-                case INT64, TIMESTAMP ->
-                    column -> new LongLiteral(Long.toString(type.getLong(column, 0)));
-                case FLOAT -> column -> new FloatLiteral(type.getFloat(column, 0));
-                case DOUBLE ->
-                    column -> new DoubleLiteral(Double.toString(type.getDouble(column, 0)));
-                case BOOLEAN ->
-                    column -> new BooleanLiteral(Boolean.toString(type.getBoolean(column, 0)));
-                case BLOB -> column -> new BinaryLiteral(type.getBinary(column, 0).toString());
-                case TEXT, STRING ->
-                    column -> new StringLiteral(type.getBinary(column, 0).toString());
-                case OBJECT, ROW, UNKNOWN, VECTOR ->
-                    throw new IllegalArgumentException(
-                        String.format(
-                            DataNodeQueryMessages.UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT,
-                            type.getTypeEnum()));
-              };
-
-  public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> Variant.VT_BOOL;
-            case INT32 -> Variant.VT_I4;
-            case INT64 -> Variant.VT_I8;
-            case DATE, TIMESTAMP -> Variant.VT_DATE;
-            case FLOAT -> Variant.VT_R4;
-            case DOUBLE -> Variant.VT_R8;
-            // Note that "Variant" does not support "VT_BLOB" data, and not all the DA servers
-            // support this, thus we use "VT_BSTR" to substitute.
-            case TEXT, STRING, BLOB, OBJECT -> Variant.VT_BSTR;
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(
-                        DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum())
-                    .setChecked(true);
-          };
-
-  public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, BLOB, STRING -> Object::toString;
-            case DATE ->
-                value -> ((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toString();
-            case TIMESTAMP -> value -> DateTimeUtils.convertLongToDate((long) value);
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                value -> {
-                  throw new PipeRuntimeNonCriticalException(
-                      DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
                 };
-          };
 
-  public static final TypeService<Function<Boolean, Type>>
-      PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, TEXT, BLOB, OBJECT, STRING ->
-                    ignored -> type;
-                case DATE ->
-                    isDateStoredAsLocalDate ->
-                        isDateStoredAsLocalDate ? type : Type.fromTsDataType(TSDataType.INT32);
-                case ROW, UNKNOWN, VECTOR ->
-                    ignored -> {
-                      throw new UnSupportedDataTypeException(
-                              DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
-                          .setChecked(true);
-                    };
-              };
-
-  public static final TypeService<org.apache.iotdb.pipe.api.type.Type>
-      PIPE_DATA_TYPE_TRANSFORMER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN -> org.apache.iotdb.pipe.api.type.Type.BOOLEAN;
-                case INT32 -> org.apache.iotdb.pipe.api.type.Type.INT32;
-                case INT64 -> org.apache.iotdb.pipe.api.type.Type.INT64;
-                case FLOAT -> org.apache.iotdb.pipe.api.type.Type.FLOAT;
-                case DOUBLE -> org.apache.iotdb.pipe.api.type.Type.DOUBLE;
-                case TEXT -> org.apache.iotdb.pipe.api.type.Type.TEXT;
-                case TIMESTAMP -> org.apache.iotdb.pipe.api.type.Type.TIMESTAMP;
-                case DATE -> org.apache.iotdb.pipe.api.type.Type.DATE;
-                case BLOB -> org.apache.iotdb.pipe.api.type.Type.BLOB;
-                case STRING -> org.apache.iotdb.pipe.api.type.Type.STRING;
-                case OBJECT ->
-                    throw new IllegalArgumentException(
-                        DataNodePipeMessages.INVALID_INPUT + TSDataType.OBJECT.getType());
-                case UNKNOWN ->
-                    throw new IllegalArgumentException(
-                        DataNodePipeMessages.INVALID_INPUT + TSDataType.UNKNOWN.getType());
-                case VECTOR ->
-                    throw new IllegalArgumentException(
-                        DataNodePipeMessages.INVALID_INPUT + TSDataType.VECTOR.getType());
-                case ROW ->
-                    throw new IllegalArgumentException(
-                        DataNodePipeMessages.INVALID_INPUT + type.getTypeEnum());
-              };
-
-  public static final TypeService<TsPrimitiveTabletValueWriter>
-      PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
-                case TEXT, BLOB, STRING ->
-                    (value, column, index) -> {
-                      type.write(value, column, index);
-                      final Binary[] binaryColumn = (Binary[]) column;
-                      binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
-                    };
-                case OBJECT, ROW, UNKNOWN, VECTOR ->
-                    (value, column, index) -> {
-                      throw new UnSupportedDataTypeException(
-                          DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
-                    };
-              };
-
-  public static final TypeService<BatchDataTabletValueWriter>
-      PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
-                case TEXT, BLOB, STRING ->
-                    (value, column, index) -> {
-                      type.write(value, column, index);
-                      final Binary[] binaryColumn = (Binary[]) column;
-                      binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
-                    };
-                case OBJECT, ROW, UNKNOWN, VECTOR ->
-                    (value, column, index) -> {
-                      throw new UnSupportedDataTypeException(
-                          DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
-                    };
-              };
-
-  private static Binary normalizeBinaryValue(final Binary value) {
-    return Objects.isNull(value) || Objects.isNull(value.getValues()) ? Binary.EMPTY_VALUE : value;
+    private Predicate() {
+      // Utility class
+    }
   }
 
-  public static final TypeService<TabletValueColumnFilter> PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE ->
-                (originValueColumn,
-                    rowIndexList,
-                    isSingleOriginValueColumn,
-                    originNullValueColumnBitmap,
-                    nullValueColumnBitmap) ->
-                    filterPrimitiveValueColumn(
-                        type,
-                        originValueColumn,
-                        rowIndexList,
-                        isSingleOriginValueColumn,
-                        originNullValueColumnBitmap,
-                        nullValueColumnBitmap);
-            case DATE -> TypeServices::filterDateValueColumn;
-            case TEXT, BLOB, STRING -> TypeServices::filterBinaryValueColumn;
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                (originValueColumn,
-                    rowIndexList,
-                    isSingleOriginValueColumn,
-                    originNullValueColumnBitmap,
-                    nullValueColumnBitmap) -> {
+  public static final class Pipe {
+
+    public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> Variant.VT_BOOL;
+              case INT32 -> Variant.VT_I4;
+              case INT64 -> Variant.VT_I8;
+              case DATE, TIMESTAMP -> Variant.VT_DATE;
+              case FLOAT -> Variant.VT_R4;
+              case DOUBLE -> Variant.VT_R8;
+              // Note that "Variant" does not support "VT_BLOB" data, and not all the DA servers
+              // support this, thus we use "VT_BSTR" to substitute.
+              case TEXT, STRING, BLOB, OBJECT -> Variant.VT_BSTR;
+              case ROW, UNKNOWN, VECTOR ->
                   throw new UnSupportedDataTypeException(
-                      String.format("Data type %s is not supported.", type.getTypeEnum()));
+                          DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, BLOB, STRING -> Object::toString;
+              case DATE ->
+                  value -> ((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toString();
+              case TIMESTAMP -> value -> DateTimeUtils.convertLongToDate((long) value);
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  value -> {
+                    throw new PipeRuntimeNonCriticalException(
+                        DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                  };
+            };
+
+    public static final TypeService<Function<Boolean, Type>>
+        PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN,
+                      INT32,
+                      INT64,
+                      TIMESTAMP,
+                      FLOAT,
+                      DOUBLE,
+                      TEXT,
+                      BLOB,
+                      OBJECT,
+                      STRING ->
+                      ignored -> type;
+                  case DATE ->
+                      isDateStoredAsLocalDate ->
+                          isDateStoredAsLocalDate ? type : Type.fromTsDataType(TSDataType.INT32);
+                  case ROW, UNKNOWN, VECTOR ->
+                      ignored -> {
+                        throw new UnSupportedDataTypeException(
+                                DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                            .setChecked(true);
+                      };
                 };
-          };
 
-  private static Object filterPrimitiveValueColumn(
-      final Type type,
-      final Object originValueColumn,
-      final List<Integer> rowIndexList,
-      final boolean isSingleOriginValueColumn,
-      final BitMap originNullValueColumnBitmap,
-      final BitMap nullValueColumnBitmap) {
-    final Object originValueColumns;
-    if (isSingleOriginValueColumn) {
-      originValueColumns = type.createArray(1);
-      type.addValue(0, originValueColumn, originValueColumns);
-    } else {
-      originValueColumns = originValueColumn;
+    public static final TypeService<org.apache.iotdb.pipe.api.type.Type>
+        PIPE_DATA_TYPE_TRANSFORMER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> org.apache.iotdb.pipe.api.type.Type.BOOLEAN;
+                  case INT32 -> org.apache.iotdb.pipe.api.type.Type.INT32;
+                  case INT64 -> org.apache.iotdb.pipe.api.type.Type.INT64;
+                  case FLOAT -> org.apache.iotdb.pipe.api.type.Type.FLOAT;
+                  case DOUBLE -> org.apache.iotdb.pipe.api.type.Type.DOUBLE;
+                  case TEXT -> org.apache.iotdb.pipe.api.type.Type.TEXT;
+                  case TIMESTAMP -> org.apache.iotdb.pipe.api.type.Type.TIMESTAMP;
+                  case DATE -> org.apache.iotdb.pipe.api.type.Type.DATE;
+                  case BLOB -> org.apache.iotdb.pipe.api.type.Type.BLOB;
+                  case STRING -> org.apache.iotdb.pipe.api.type.Type.STRING;
+                  case OBJECT ->
+                      throw new IllegalArgumentException(
+                          DataNodePipeMessages.INVALID_INPUT + TSDataType.OBJECT.getType());
+                  case UNKNOWN ->
+                      throw new IllegalArgumentException(
+                          DataNodePipeMessages.INVALID_INPUT + TSDataType.UNKNOWN.getType());
+                  case VECTOR ->
+                      throw new IllegalArgumentException(
+                          DataNodePipeMessages.INVALID_INPUT + TSDataType.VECTOR.getType());
+                  case ROW ->
+                      throw new IllegalArgumentException(
+                          DataNodePipeMessages.INVALID_INPUT + type.getTypeEnum());
+                };
+
+    public static final TypeService<TsPrimitiveTabletValueWriter>
+        PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
+                  case TEXT, BLOB, STRING ->
+                      (value, column, index) -> {
+                        type.write(value, column, index);
+                        final Binary[] binaryColumn = (Binary[]) column;
+                        binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
+                      };
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (value, column, index) -> {
+                        throw new UnSupportedDataTypeException(
+                            DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
+                      };
+                };
+
+    public static final TypeService<BatchDataTabletValueWriter>
+        PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::write;
+                  case TEXT, BLOB, STRING ->
+                      (value, column, index) -> {
+                        type.write(value, column, index);
+                        final Binary[] binaryColumn = (Binary[]) column;
+                        binaryColumn[index] = normalizeBinaryValue(binaryColumn[index]);
+                      };
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (value, column, index) -> {
+                        throw new UnSupportedDataTypeException(
+                            DataNodePipeMessages.UNSUPPORTED + type.getTypeEnum());
+                      };
+                };
+
+    private static Binary normalizeBinaryValue(final Binary value) {
+      return Objects.isNull(value) || Objects.isNull(value.getValues())
+          ? Binary.EMPTY_VALUE
+          : value;
     }
-    final Object valueColumns = type.createArray(rowIndexList.size());
-    for (int i = 0; i < rowIndexList.size(); ++i) {
-      final int originRowIndex = rowIndexList.get(i);
-      if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
-        nullValueColumnBitmap.mark(i);
+
+    public static final TypeService<TabletValueColumnFilter>
+        PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                      (originValueColumn,
+                          rowIndexList,
+                          isSingleOriginValueColumn,
+                          originNullValueColumnBitmap,
+                          nullValueColumnBitmap) ->
+                          filterPrimitiveValueColumn(
+                              type,
+                              originValueColumn,
+                              rowIndexList,
+                              isSingleOriginValueColumn,
+                              originNullValueColumnBitmap,
+                              nullValueColumnBitmap);
+                  case DATE -> Pipe::filterDateValueColumn;
+                  case TEXT, BLOB, STRING -> Pipe::filterBinaryValueColumn;
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (originValueColumn,
+                          rowIndexList,
+                          isSingleOriginValueColumn,
+                          originNullValueColumnBitmap,
+                          nullValueColumnBitmap) -> {
+                        throw new UnSupportedDataTypeException(
+                            String.format("Data type %s is not supported.", type.getTypeEnum()));
+                      };
+                };
+
+    private static Object filterPrimitiveValueColumn(
+        final Type type,
+        final Object originValueColumn,
+        final List<Integer> rowIndexList,
+        final boolean isSingleOriginValueColumn,
+        final BitMap originNullValueColumnBitmap,
+        final BitMap nullValueColumnBitmap) {
+      final Object originValueColumns;
+      if (isSingleOriginValueColumn) {
+        originValueColumns = type.createArray(1);
+        type.addValue(0, originValueColumn, originValueColumns);
       } else {
-        type.copyArrayElement(originValueColumns, originRowIndex, valueColumns, i);
+        originValueColumns = originValueColumn;
       }
-    }
-    return valueColumns;
-  }
-
-  private static LocalDate[] filterDateValueColumn(
-      final Object originValueColumn,
-      final List<Integer> rowIndexList,
-      final boolean isSingleOriginValueColumn,
-      final BitMap originNullValueColumnBitmap,
-      final BitMap nullValueColumnBitmap) {
-    final LocalDate[] valueColumns = new LocalDate[rowIndexList.size()];
-    final boolean isLocalDateColumn =
-        isSingleOriginValueColumn
-            ? originValueColumn instanceof LocalDate
-            : originValueColumn instanceof LocalDate[];
-    final LocalDate[] dateValueColumns =
-        isLocalDateColumn
-            ? (isSingleOriginValueColumn
-                ? new LocalDate[] {(LocalDate) originValueColumn}
-                : (LocalDate[]) originValueColumn)
-            : null;
-    final int[] intValueColumns =
-        isLocalDateColumn
-            ? null
-            : (isSingleOriginValueColumn
-                ? new int[] {(int) originValueColumn}
-                : (int[]) originValueColumn);
-    for (int i = 0; i < rowIndexList.size(); ++i) {
-      final int originRowIndex = rowIndexList.get(i);
-      if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
-        valueColumns[i] = EMPTY_LOCAL_DATE;
-        nullValueColumnBitmap.mark(i);
-      } else {
-        valueColumns[i] =
-            isLocalDateColumn
-                ? dateValueColumns[originRowIndex]
-                : DateUtils.parseIntToLocalDate(intValueColumns[originRowIndex]);
+      final Object valueColumns = type.createArray(rowIndexList.size());
+      for (int i = 0; i < rowIndexList.size(); ++i) {
+        final int originRowIndex = rowIndexList.get(i);
+        if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+          nullValueColumnBitmap.mark(i);
+        } else {
+          type.copyArrayElement(originValueColumns, originRowIndex, valueColumns, i);
+        }
       }
+      return valueColumns;
     }
-    return valueColumns;
-  }
 
-  private static Binary[] filterBinaryValueColumn(
-      final Object originValueColumn,
-      final List<Integer> rowIndexList,
-      final boolean isSingleOriginValueColumn,
-      final BitMap originNullValueColumnBitmap,
-      final BitMap nullValueColumnBitmap) {
-    final Binary[] binaryValueColumns =
-        isSingleOriginValueColumn
-            ? new Binary[] {(Binary) originValueColumn}
-            : (Binary[]) originValueColumn;
-    final Binary[] valueColumns = new Binary[rowIndexList.size()];
-    for (int i = 0; i < rowIndexList.size(); ++i) {
-      final int originRowIndex = rowIndexList.get(i);
-      final Binary value = binaryValueColumns[originRowIndex];
-      if (Objects.isNull(value)
-          || Objects.isNull(value.getValues())
-          || isNullValue(originNullValueColumnBitmap, originRowIndex)) {
-        valueColumns[i] = Binary.EMPTY_VALUE;
-        nullValueColumnBitmap.mark(i);
-      } else {
-        valueColumns[i] = new Binary(value.getValues());
+    private static LocalDate[] filterDateValueColumn(
+        final Object originValueColumn,
+        final List<Integer> rowIndexList,
+        final boolean isSingleOriginValueColumn,
+        final BitMap originNullValueColumnBitmap,
+        final BitMap nullValueColumnBitmap) {
+      final LocalDate[] valueColumns = new LocalDate[rowIndexList.size()];
+      final boolean isLocalDateColumn =
+          isSingleOriginValueColumn
+              ? originValueColumn instanceof LocalDate
+              : originValueColumn instanceof LocalDate[];
+      final LocalDate[] dateValueColumns =
+          isLocalDateColumn
+              ? (isSingleOriginValueColumn
+                  ? new LocalDate[] {(LocalDate) originValueColumn}
+                  : (LocalDate[]) originValueColumn)
+              : null;
+      final int[] intValueColumns =
+          isLocalDateColumn
+              ? null
+              : (isSingleOriginValueColumn
+                  ? new int[] {(int) originValueColumn}
+                  : (int[]) originValueColumn);
+      for (int i = 0; i < rowIndexList.size(); ++i) {
+        final int originRowIndex = rowIndexList.get(i);
+        if (isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+          valueColumns[i] = EMPTY_LOCAL_DATE;
+          nullValueColumnBitmap.mark(i);
+        } else {
+          valueColumns[i] =
+              isLocalDateColumn
+                  ? dateValueColumns[originRowIndex]
+                  : DateUtils.parseIntToLocalDate(intValueColumns[originRowIndex]);
+        }
       }
+      return valueColumns;
     }
-    return valueColumns;
-  }
 
-  private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
-    return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
-  }
+    private static Binary[] filterBinaryValueColumn(
+        final Object originValueColumn,
+        final List<Integer> rowIndexList,
+        final boolean isSingleOriginValueColumn,
+        final BitMap originNullValueColumnBitmap,
+        final BitMap nullValueColumnBitmap) {
+      final Binary[] binaryValueColumns =
+          isSingleOriginValueColumn
+              ? new Binary[] {(Binary) originValueColumn}
+              : (Binary[]) originValueColumn;
+      final Binary[] valueColumns = new Binary[rowIndexList.size()];
+      for (int i = 0; i < rowIndexList.size(); ++i) {
+        final int originRowIndex = rowIndexList.get(i);
+        final Binary value = binaryValueColumns[originRowIndex];
+        if (Objects.isNull(value)
+            || Objects.isNull(value.getValues())
+            || isNullValue(originNullValueColumnBitmap, originRowIndex)) {
+          valueColumns[i] = Binary.EMPTY_VALUE;
+          nullValueColumnBitmap.mark(i);
+        } else {
+          valueColumns[i] = new Binary(value.getValues());
+        }
+      }
+      return valueColumns;
+    }
 
-  static {
-    OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
-    STATEMENT_VALUE_SIZE_PER_LINE_SERVICE.check();
-    INSERT_NODE_VALUE_SIZE_SERVICE.check();
-    OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
-    PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
-    PIPE_DATA_TYPE_TRANSFORMER_SERVICE.check();
-    PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
-    PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
-    PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
-    ROUND_TRANSFORMER_SERVICE.check();
-    DIFF_TRANSFORMER_SERVICE.check();
-    NEGATION_TRANSFORMER_SERVICE.check();
-    MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
-    TV_LIST_ARRAY_WRITER_SERVICE.check();
-    TV_LIST_OBJECT_WRITER_SERVICE.check();
-    TV_LIST_PROVIDER_SERVICE.check();
-    TV_LIST_CHUNK_WRITER_SERVICE.check();
-    TV_LIST_BATCH_WRITER_SERVICE.check();
-    ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
-    PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
-    TABLET_COLUMN_ALLOCATOR_SERVICE.check();
-    EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
-    WINDOW_VALUE_ARRAY_BUILDER_SERVICE.check();
-    RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE.check();
-    RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE.check();
-    ARRAY_VALUE_GETTER_SERVICE.check();
-    DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
-    SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
-    ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
-    BATCH_DATA_COLUMN_WRITER_SERVICE.check();
-    OBJECT_VALUE_SERIALIZER_SERVICE.check();
-    TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();
-    EMPTY_TS_PRIMITIVE_TYPE_FACTORY_SERVICE.check();
-    DEFAULT_ENCODING_SERVICE.check();
-    TABLET_COLUMN_DECODER_SERVICE.check();
-    DECODED_ARRAY_VALUE_READER_SERVICE.check();
-    DECODED_CHUNK_WRITER_SERVICE.check();
+    private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
+      return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
+    }
+
+    static {
+      OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
+      PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
+      PIPE_DATA_TYPE_TRANSFORMER_SERVICE.check();
+      PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
+      PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
+      PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
+    }
+
+    private Pipe() {
+      // Utility class
+    }
   }
 
   public static int parseInteger(final String value) {
@@ -1668,35 +1803,6 @@ public class TypeServices {
         String.format(
             DataNodeQueryMessages.TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT,
             value.getClass().getSimpleName()));
-  }
-
-  @FunctionalInterface
-  public interface ColumnToDoubleConverter {
-    double convert(Column column, int index) throws QueryProcessException;
-  }
-
-  @FunctionalInterface
-  public interface RoundTransformer {
-    void transform(RoundFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
-        throws QueryProcessException, IOException;
-  }
-
-  @FunctionalInterface
-  public interface DiffTransformer {
-    void transform(DiffFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
-        throws QueryProcessException;
-  }
-
-  @FunctionalInterface
-  public interface NegationTransformer {
-    void transform(
-        ArithmeticNegationTransformer transformer, Column[] columns, ColumnBuilder builder)
-        throws QueryProcessException, IOException;
-  }
-
-  @FunctionalInterface
-  public interface StateWindowSplitter {
-    boolean split(ValueRecorder valueRecorder, double delta, Column values, int index);
   }
 
   @FunctionalInterface

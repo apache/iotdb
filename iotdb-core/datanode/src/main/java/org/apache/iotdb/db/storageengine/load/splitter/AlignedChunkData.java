@@ -231,7 +231,7 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     final Type type = Type.fromTsDataType(dataType);
     final TypeServices.ValueSerializer<TsPrimitiveType> valueSerializer =
-        TypeServices.TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.call(type);
+        TypeServices.StorageEngine.TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.call(type);
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
@@ -347,7 +347,9 @@ public class AlignedChunkData implements ChunkData {
     final ValueChunkWriter valueChunkWriter =
         isTimeChunk ? null : chunkWriter.getValueChunkWriterByIndex(valueChunkIndex);
     final TypeServices.DecodedValueChunkWriter decodedValueWriter =
-        isTimeChunk ? null : TypeServices.DECODED_VALUE_CHUNK_WRITER_SERVICE.call(type);
+        isTimeChunk
+            ? null
+            : TypeServices.StorageEngine.DECODED_VALUE_CHUNK_WRITER_SERVICE.call(type);
     for (int j = 0; j < pageNumber; j++) {
       needDecode = ReadWriteIOUtils.readBool(stream);
       if (needDecode) {
