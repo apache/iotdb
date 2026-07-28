@@ -100,21 +100,61 @@ public class ExecutableManager {
   // endregion
 
   // ======================================================
+  // region path containment
+  // ======================================================
+
+  /**
+   * Resolves {@code fileName} against {@code root} and verifies the result stays inside it.
+   *
+   * <p>These directories are addressed by a caller-supplied name, and a name carrying {@code ..}
+   * segments or an absolute path would otherwise resolve outside the managed directory. Resolving
+   * and normalizing first, then checking containment, keeps every accessor confined to its root
+   * regardless of what the name contains.
+   *
+   * @throws IOException if the resolved path escapes {@code root}
+   */
+  public static Path resolveUnderRoot(String root, String fileName) throws IOException {
+    Path rootPath = Paths.get(root).toAbsolutePath().normalize();
+    Path resolved = rootPath.resolve(fileName).normalize();
+    if (!resolved.startsWith(rootPath)) {
+      throw new IOException(
+          String.format("The resolved path %s is outside of the directory %s", resolved, rootPath));
+    }
+    return resolved;
+  }
+
+  private Path resolveUnderLibRoot(String fileName) throws IOException {
+    return resolveUnderRoot(this.libRoot, fileName);
+  }
+
+  private Path resolveUnderTemporaryRoot(String fileName) throws IOException {
+    return resolveUnderRoot(this.temporaryLibRoot, fileName);
+  }
+
+  // endregion
+
+  // ======================================================
   // region File under LibRoot
   // ======================================================
 
   public void removeFileUnderLibRoot(String fileName) throws IOException {
-    Path path = Paths.get(this.libRoot + File.separator + fileName);
-    Files.deleteIfExists(path);
+    Files.deleteIfExists(resolveUnderLibRoot(fileName));
   }
 
   public boolean hasFileUnderLibRoot(String fileName) {
-    return Files.exists(Paths.get(this.libRoot + File.separator + fileName));
+    try {
+      return Files.exists(resolveUnderLibRoot(fileName));
+    } catch (IOException e) {
+      return false;
+    }
   }
 
   public boolean hasFileUnderInstallDir(String fileName) {
-    return Files.exists(
-        Paths.get(this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName));
+    try {
+      return Files.exists(resolveUnderLibRoot(INSTALL_DIR + File.separator + fileName));
+    } catch (IOException e) {
+      return false;
+    }
   }
 
   // endregion
@@ -124,7 +164,11 @@ public class ExecutableManager {
   // ======================================================
 
   public boolean hasFileUnderTemporaryRoot(String fileName) {
-    return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
+    try {
+      return Files.exists(resolveUnderTemporaryRoot(fileName));
+    } catch (IOException e) {
+      return false;
+    }
   }
 
   private void removeFromTemporaryLibRoot(long requestId) {
@@ -132,19 +176,17 @@ public class ExecutableManager {
   }
 
   public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
-    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    Path path = resolveUnderTemporaryRoot(fileName);
     Files.deleteIfExists(path);
     Files.write(path, text.getBytes());
   }
 
   public void removeFileUnderTemporaryRoot(String fileName) throws IOException {
-    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
-    Files.deleteIfExists(path);
+    Files.deleteIfExists(resolveUnderTemporaryRoot(fileName));
   }
 
   public String readTextFromFileUnderTemporaryRoot(String fileName) throws IOException {
-    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
-    return new String(Files.readAllBytes(path));
+    return new String(Files.readAllBytes(resolveUnderTemporaryRoot(fileName)));
   }
 
   // endregion
