@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -37,9 +39,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.columnfilter.WritableViewTabletProjector;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -57,6 +61,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
@@ -609,6 +614,17 @@ public class ConsensusSubscriptionSetupHandler {
 
     if (isTableTopic) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
+      final WritableViewTabletProjector writableViewProjector =
+          resolveWritableViewProjector(topicConfig);
+      if (Objects.nonNull(writableViewProjector)) {
+        tablePattern =
+            new TablePattern(
+                true,
+                Pattern.quote(writableViewProjector.getSourceDatabaseName()),
+                Pattern.quote(writableViewProjector.getSourceTableName()));
+        return new ConsensusLogToTabletConverter(
+            null, tablePattern, topicName, null, actualDatabaseName, writableViewProjector);
+      }
       // Table model: database + table name pattern
       tablePattern = buildTablePattern(topicConfig);
       return new ConsensusLogToTabletConverter(
@@ -631,8 +647,37 @@ public class ConsensusSubscriptionSetupHandler {
 
   private static boolean matchesTopicDatabase(
       final TopicConfig topicConfig, final String actualDatabaseName) {
-    return !topicConfig.isTableTopic()
-        || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+    if (!topicConfig.isTableTopic()) {
+      return true;
+    }
+    final WritableViewTabletProjector writableViewProjector =
+        resolveWritableViewProjector(topicConfig);
+    return Objects.nonNull(writableViewProjector)
+        ? Objects.equals(writableViewProjector.getSourceDatabaseName(), actualDatabaseName)
+        : buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+  }
+
+  private static WritableViewTabletProjector resolveWritableViewProjector(
+      final TopicConfig topicConfig) {
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String table =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (!isLiteralTopicPattern(database) || !isLiteralTopicPattern(table)) {
+      return null;
+    }
+
+    final TsTable tableSchema = DataNodeTableCache.getInstance().getTable(database, table, false);
+    return tableSchema instanceof WritableView
+        ? new WritableViewTabletProjector(database, (WritableView) tableSchema)
+        : null;
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {

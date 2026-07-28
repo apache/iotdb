@@ -308,6 +308,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           && (!source.isSkipIfNoPrivileges()
               || notFilteredByAccess(
                   new UserEntity(source.getUserId(), source.getUserName(), source.getCliHostname()),
+                  tablePattern,
                   databaseNameAndTableName))) {
         filteredSources.add(source);
       }
@@ -326,13 +327,23 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   private boolean notFilteredByAccess(
-      final UserEntity userEntity, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final UserEntity userEntity,
+      final TablePattern tablePattern,
+      final Pair<String, IDeviceID> databaseNameAndTableName) {
+    final String databaseName = databaseNameAndTableName.getLeft();
+    final String tableName = databaseNameAndTableName.getRight().getTableName();
+    final String databaseNameForPrivilege =
+        Objects.nonNull(tablePattern)
+            ? tablePattern.getDatabaseNameForPrivilege(databaseName)
+            : databaseName;
+    final String tableNameForPrivilege =
+        Objects.nonNull(tablePattern)
+            ? tablePattern.getTableNameForPrivilege(tableName)
+            : tableName;
     return AuthorityChecker.getAccessControl()
         .checkCanSelectFromTable4Pipe(
             userEntity.getUsername(),
-            new QualifiedObjectName(
-                databaseNameAndTableName.getLeft(),
-                databaseNameAndTableName.getRight().getTableName()),
+            new QualifiedObjectName(databaseNameForPrivilege, tableNameForPrivilege),
             userEntity);
   }
 

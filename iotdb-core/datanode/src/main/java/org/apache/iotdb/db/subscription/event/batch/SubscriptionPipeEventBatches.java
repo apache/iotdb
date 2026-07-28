@@ -46,6 +46,7 @@ public class SubscriptionPipeEventBatches {
 
   private final Map<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
   private final SubscriptionPipeEventBatchSegmentLock segmentLock;
+  private final TableViewTabletProjectorProvider tableViewTabletProjectorProvider;
 
   public SubscriptionPipeEventBatches(
       final SubscriptionPrefetchingQueue prefetchingQueue,
@@ -57,6 +58,11 @@ public class SubscriptionPipeEventBatches {
 
     this.regionIdToBatch = new HashMap<>();
     this.segmentLock = new SubscriptionPipeEventBatchSegmentLock();
+    this.tableViewTabletProjectorProvider =
+        prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+            ? new TableViewTabletProjectorProvider(
+                (SubscriptionPrefetchingTabletQueue) prefetchingQueue)
+            : null;
   }
 
   /**
@@ -108,6 +114,7 @@ public class SubscriptionPipeEventBatches {
                   ? new SubscriptionPipeTabletEventBatch(
                       regionId,
                       (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                      tableViewTabletProjectorProvider,
                       maxDelayInMs,
                       maxBatchSizeInBytes)
                   : new SubscriptionPipeTsFileEventBatch(

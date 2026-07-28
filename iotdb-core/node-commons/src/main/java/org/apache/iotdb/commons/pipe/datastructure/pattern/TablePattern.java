@@ -58,6 +58,8 @@ public class TablePattern {
   private final Pattern databasePattern;
   private final Pattern tablePattern;
   private final Map<String, Set<String>> matchedOriginalDatabaseTables;
+  private final String databaseNameForPrivilege;
+  private final String tableNameForPrivilege;
 
   public TablePattern(
       final boolean isTableModelDataAllowedToBeCaptured,
@@ -67,7 +69,9 @@ public class TablePattern {
         isTableModelDataAllowedToBeCaptured,
         databasePatternString,
         tablePatternString,
-        Collections.emptyMap());
+        Collections.emptyMap(),
+        null,
+        null);
   }
 
   public TablePattern(
@@ -75,6 +79,22 @@ public class TablePattern {
       final String databasePatternString,
       final String tablePatternString,
       final Map<String, Set<String>> matchedOriginalDatabaseTables) {
+    this(
+        isTableModelDataAllowedToBeCaptured,
+        databasePatternString,
+        tablePatternString,
+        matchedOriginalDatabaseTables,
+        null,
+        null);
+  }
+
+  private TablePattern(
+      final boolean isTableModelDataAllowedToBeCaptured,
+      final String databasePatternString,
+      final String tablePatternString,
+      final Map<String, Set<String>> matchedOriginalDatabaseTables,
+      final String databaseNameForPrivilege,
+      final String tableNameForPrivilege) {
     this.isTableModelDataAllowedToBeCaptured = isTableModelDataAllowedToBeCaptured;
     databasePattern =
         databasePatternString == null
@@ -88,6 +108,8 @@ public class TablePattern {
             : Pattern.compile(tablePatternString);
     this.matchedOriginalDatabaseTables =
         deepCopyMatchedOriginalDatabaseTables(matchedOriginalDatabaseTables);
+    this.databaseNameForPrivilege = databaseNameForPrivilege;
+    this.tableNameForPrivilege = tableNameForPrivilege;
   }
 
   public boolean isTableModelDataAllowedToBeCaptured() {
@@ -139,6 +161,16 @@ public class TablePattern {
 
   public boolean hasTablePattern() {
     return tablePattern != null || !matchedOriginalDatabaseTables.isEmpty();
+  }
+
+  public String getDatabaseNameForPrivilege(final String matchedDatabaseName) {
+    return Objects.nonNull(databaseNameForPrivilege)
+        ? databaseNameForPrivilege
+        : matchedDatabaseName;
+  }
+
+  public String getTableNameForPrivilege(final String matchedTableName) {
+    return Objects.nonNull(tableNameForPrivilege) ? tableNameForPrivilege : matchedTableName;
   }
 
   /**
@@ -193,8 +225,13 @@ public class TablePattern {
             sourceParameters.getString(SOURCE_ORIGINAL_DATABASE_KEY);
         final String originalTableName = sourceParameters.getString(SOURCE_ORIGINAL_TABLE_KEY);
         if (originalDatabaseName != null && originalTableName != null) {
-          databaseNamePattern = Pattern.quote(originalDatabaseName);
-          tableNamePattern = Pattern.quote(originalTableName);
+          return new TablePattern(
+              isTableModelDataAllowedToBeCaptured,
+              Pattern.quote(originalDatabaseName),
+              Pattern.quote(originalTableName),
+              Collections.emptyMap(),
+              databaseNamePattern,
+              tableNamePattern);
         }
       }
 
@@ -293,6 +330,12 @@ public class TablePattern {
         + tablePattern
         + ", matchedOriginalDatabaseTables="
         + matchedOriginalDatabaseTables
+        + ", databaseNameForPrivilege='"
+        + databaseNameForPrivilege
+        + '\''
+        + ", tableNameForPrivilege='"
+        + tableNameForPrivilege
+        + '\''
         + '}';
   }
 }

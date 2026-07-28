@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
@@ -40,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -56,6 +59,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -223,6 +228,62 @@ public class CreateSubscriptionProcedureTest {
             existingConsumerGroupMeta, topicAddedMeta, consensusTopicNames));
   }
 
+  @Test
+  public void validateWritableViewTopicShouldAcceptExactRecordFormat() throws Exception {
+    CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+        mockWritableViewValidationEnv(),
+        createWritableViewTopic(
+            "view_topic", "view_db", "view_table", TopicConstant.FORMAT_RECORD_HANDLER_VALUE));
+  }
+
+  @Test
+  public void validateWritableViewTopicShouldRejectTsFileFormat() throws Exception {
+    final TopicMeta topicMeta =
+        createWritableViewTopic(
+            "view_topic", "view_db", "view_table", TopicConstant.FORMAT_TS_FILE_VALUE);
+
+    final SubscriptionException exception =
+        Assert.assertThrows(
+            SubscriptionException.class,
+            () ->
+                CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+                    mockWritableViewValidationEnv(), topicMeta));
+
+    Assert.assertTrue(exception.getMessage().contains("record format"));
+    Assert.assertTrue(exception.getMessage().contains(TopicConstant.FORMAT_TS_FILE_VALUE));
+  }
+
+  @Test
+  public void validateWritableViewTopicShouldRejectRegexPattern() throws Exception {
+    final TopicMeta topicMeta =
+        createWritableViewTopic(
+            "view_topic", "view_db", "view_.*", TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
+
+    final SubscriptionException exception =
+        Assert.assertThrows(
+            SubscriptionException.class,
+            () ->
+                CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+                    mockWritableViewValidationEnv(), topicMeta));
+
+    Assert.assertTrue(exception.getMessage().contains("exact database and table"));
+    Assert.assertTrue(exception.getMessage().contains("view_.*"));
+  }
+
+  @Test
+  public void validateNonViewTopicShouldKeepExistingFormatAndPatternSupport() throws Exception {
+    final ConfigNodeProcedureEnv env = mockWritableViewValidationEnv();
+
+    CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+        env,
+        createWritableViewTopic(
+            "base_tsfile_topic", "view_db", "base_table", TopicConstant.FORMAT_TS_FILE_VALUE));
+    CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+        env,
+        createWritableViewTopic(
+            "base_regex_topic", "view_db", "base_.*", TopicConstant.FORMAT_RECORD_HANDLER_VALUE));
+  }
+
   private static ConfigNodeProcedureEnv mockConsensusFailureEnv(final TSStatus response)
       throws Exception {
     final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
@@ -256,6 +317,37 @@ public class CreateSubscriptionProcedureTest {
         .thenReturn("hashedPassword");
 
     return env;
+  }
+
+  private static ConfigNodeProcedureEnv mockWritableViewValidationEnv() throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = Mockito.mock(ClusterSchemaManager.class);
+    final WritableView writableView =
+        new WritableView("view_table", "source_db", "source_table", false);
+
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    Mockito.when(clusterSchemaManager.getTableIfExists("view_db", "view_table"))
+        .thenReturn(Optional.of(writableView));
+    Mockito.when(clusterSchemaManager.getTableIfExists("view_db", "base_table"))
+        .thenReturn(Optional.empty());
+    Mockito.when(clusterSchemaManager.getAllUsingTables())
+        .thenReturn(
+            Collections.singletonMap("root.view_db", Collections.singletonList(writableView)));
+    return env;
+  }
+
+  private static TopicMeta createWritableViewTopic(
+      final String topicName, final String database, final String table, final String format) {
+    final Properties properties = new Properties();
+    properties.put("__system.sql-dialect", "table");
+    properties.put(TopicConstant.DATABASE_KEY, database);
+    properties.put(TopicConstant.TABLE_KEY, table);
+    properties.put(TopicConstant.FORMAT_KEY, format);
+    final Map<String, String> attributes = new HashMap<>();
+    properties.forEach((key, value) -> attributes.put(key.toString(), value.toString()));
+    return new TopicMeta(topicName, 1, attributes);
   }
 
   private static void setField(final Object target, final String fieldName, final Object value)

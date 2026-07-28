@@ -232,6 +232,9 @@ public final class ProcedureMessages {
       "CreateSubscriptionProcedure: executeFromOperateOnDataNodes";
   public static final String CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMVALIDATE =
       "CreateSubscriptionProcedure: executeFromValidate";
+  public static final String
+      EXCEPTION_WRITABLE_VIEW_SUBSCRIPTION_ONLY_SUPPORTS_AN_EXACT_DATABASE_AND_TABLE_WITH_RECORD_FORMAT_BUT_TOPIC_ARG_USES_DATABASE_PATTERN_ARG_TABLE_PATTERN_ARG_AND_FORMAT_ARG_BE36F2D5 =
+          "可写视图订阅仅支持精确的数据库名和表名以及 Record 格式，但主题 %s 使用了数据库模式 %s、表模式 %s 和格式 %s。";
   public static final String CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES =
       "CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes";
   public static final String CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES =

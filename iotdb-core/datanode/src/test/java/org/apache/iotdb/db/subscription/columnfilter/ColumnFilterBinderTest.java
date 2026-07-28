@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.columnfilter;
 
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -39,6 +40,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ColumnFilterBinderTest {
@@ -190,6 +192,52 @@ public class ColumnFilterBinderTest {
   }
 
   @Test
+  public void testProjectWritableViewTabletUsesLogicalTableAndColumnNamesBeforePruning() {
+    final WritableView writableView = createWritableViewSchema();
+    final Tablet projectedTablet =
+        new WritableViewTabletProjector("view_db", writableView)
+            .project("source_db", createWritableViewSourceTablet());
+
+    Assert.assertNotNull(projectedTablet);
+    Assert.assertEquals("sensors_view", projectedTablet.getTableName());
+    Assert.assertEquals(4, projectedTablet.getSchemas().size());
+    Assert.assertEquals("device_alias", projectedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("site_alias", projectedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("temp_alias", projectedTablet.getSchemas().get(2).getMeasurementName());
+    Assert.assertEquals("status_alias", projectedTablet.getSchemas().get(3).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, projectedTablet.getColumnTypes().get(0));
+    Assert.assertEquals(ColumnCategory.ATTRIBUTE, projectedTablet.getColumnTypes().get(1));
+    Assert.assertEquals(ColumnCategory.FIELD, projectedTablet.getColumnTypes().get(2));
+    Assert.assertEquals(ColumnCategory.FIELD, projectedTablet.getColumnTypes().get(3));
+
+    final BoundColumnFilter boundFilter =
+        new ColumnFilterBinder()
+            .bind(
+                createTableTopicConfig("column_name = \"temp_alias\""),
+                Collections.singletonMap(
+                    "view_db", Collections.singletonMap("sensors_view", writableView)));
+    final Tablet prunedTablet =
+        TabletColumnPruner.pruneTableModelTablet(
+            projectedTablet, "view_db", ColumnFilterMatcher.fromBoundColumnFilter(boundFilter));
+
+    Assert.assertNotNull(prunedTablet);
+    Assert.assertEquals(2, prunedTablet.getSchemas().size());
+    Assert.assertEquals("device_alias", prunedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("temp_alias", prunedTablet.getSchemas().get(1).getMeasurementName());
+  }
+
+  @Test
+  public void testProjectWritableViewTabletRejectsOtherSourceTable() {
+    final WritableViewTabletProjector projector =
+        new WritableViewTabletProjector("view_db", createWritableViewSchema());
+
+    Assert.assertNull(projector.project("other_db", createWritableViewSourceTablet()));
+    final Tablet sourceTablet = createWritableViewSourceTablet();
+    sourceTablet.setTableName("other_table");
+    Assert.assertNull(projector.project("source_db", sourceTablet));
+  }
+
+  @Test
   public void testRuntimeExpressionTimeSelectionUsesTimestampDatatype() {
     final ColumnFilterMatcher matcher =
         ColumnFilterMatcher.fromTopicConfig(createTableTopicConfig("datatype = \"TIMESTAMP\""));
@@ -261,6 +309,24 @@ public class ColumnFilterBinderTest {
     return table;
   }
 
+  private static WritableView createWritableViewSchema() {
+    final WritableView writableView =
+        new WritableView("sensors_view", "source_db", "source_table", false);
+    writableView.addColumnSchema(new TimeColumnSchema("event_time", TSDataType.TIMESTAMP));
+    writableView.addColumnSchema(new TagColumnSchema("device_alias", TSDataType.STRING));
+    writableView.addColumnSchema(new AttributeColumnSchema("site_alias", TSDataType.STRING));
+    writableView.addColumnSchema(new FieldColumnSchema("temp_alias", TSDataType.DOUBLE));
+    writableView.addColumnSchema(new FieldColumnSchema("status_alias", TSDataType.STRING));
+    final Map<String, String> columnMappings = new LinkedHashMap<>();
+    columnMappings.put("event_time", "time");
+    columnMappings.put("device_alias", "device");
+    columnMappings.put("site_alias", "site");
+    columnMappings.put("temp_alias", "temperature");
+    columnMappings.put("status_alias", "status");
+    writableView.setViewColumnToSourceColumnMap(columnMappings);
+    return writableView;
+  }
+
   private static Tablet createRuntimeTabletWithNewTag() {
     final Tablet tablet =
         new Tablet(
@@ -325,6 +391,34 @@ public class ColumnFilterBinderTest {
     tablet.addValue(0, 1, "north");
     tablet.addValue(0, 2, 36.5);
     tablet.addValue(0, 3, "ok");
+    tablet.setRowSize(1);
+    return tablet;
+  }
+
+  private static Tablet createWritableViewSourceTablet() {
+    final Tablet tablet =
+        new Tablet(
+            "source_table",
+            Arrays.asList("device", "site", "temperature", "status", "source_only"),
+            Arrays.asList(
+                TSDataType.STRING,
+                TSDataType.STRING,
+                TSDataType.DOUBLE,
+                TSDataType.STRING,
+                TSDataType.INT64),
+            Arrays.asList(
+                ColumnCategory.TAG,
+                ColumnCategory.ATTRIBUTE,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD),
+            1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, "d1");
+    tablet.addValue(0, 1, "north");
+    tablet.addValue(0, 2, 36.5);
+    tablet.addValue(0, 3, "ok");
+    tablet.addValue(0, 4, 7L);
     tablet.setRowSize(1);
     return tablet;
   }

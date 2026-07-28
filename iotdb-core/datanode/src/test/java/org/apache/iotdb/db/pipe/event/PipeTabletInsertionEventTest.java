@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
@@ -43,8 +45,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -60,7 +64,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
 
@@ -785,6 +791,59 @@ public class PipeTabletInsertionEventTest {
     }
   }
 
+  @Test
+  public void testWritableViewAuthChecksLogicalViewInsteadOfSourceTable() throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    attributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "view_db");
+    attributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "view_table");
+    attributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY, "source_db");
+    attributes.put(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY, "source_table");
+    final TablePattern dataPattern =
+        TablePattern.parsePipeDataPatternFromSourceParameters(new PipeParameters(attributes));
+    final PipeInsertNodeTabletInsertionEvent event =
+        new PipeInsertNodeTabletInsertionEvent(
+            true,
+            "source_db",
+            new RelationalInsertRowNode(
+                new PlanNodeId("view privilege"),
+                new PartialPath("source_table", false),
+                false,
+                new String[] {"tag1", "s1"},
+                new TSDataType[] {TSDataType.STRING, TSDataType.INT64},
+                1L,
+                new Object[] {new Binary("device", TSFileConfig.STRING_CHARSET), 1L},
+                false,
+                new TsTableColumnCategory[] {
+                  TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD
+                }),
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            dataPattern,
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final ViewOnlyAccessControl accessControl = new ViewOnlyAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(accessControl);
+
+      event.throwIfNoPrivilege();
+
+      Assert.assertEquals("view_db", accessControl.checkedTable.getDatabaseName());
+      Assert.assertEquals("view_table", accessControl.checkedTable.getObjectName());
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
+  }
+
   private static class NullMeasurementRejectingAccessControl
       extends PipeTsFileInsertionEventTest.TestAccessControl {
 
@@ -801,6 +860,22 @@ public class PipeTabletInsertionEventTest {
           ? AuthorityChecker.getTSStatus(
               Collections.singletonList(0), checkedPathsSupplier, permission)
           : new TSStatus(org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+  }
+
+  private static class ViewOnlyAccessControl
+      extends PipeTsFileInsertionEventTest.TestAccessControl {
+
+    private QualifiedObjectName checkedTable;
+
+    @Override
+    public boolean checkCanSelectFromTable4Pipe(
+        final String userName,
+        final QualifiedObjectName tableName,
+        final IAuditEntity auditEntity) {
+      checkedTable = tableName;
+      return "view_db".equals(tableName.getDatabaseName())
+          && "view_table".equals(tableName.getObjectName());
     }
   }
 

@@ -21,9 +21,13 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -42,6 +46,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -54,7 +60,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -116,6 +124,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     // Construct CreatePipeProcedureV2s (for non-consensus topics)
     for (final String topicName : subscribeReq.getTopicNames()) {
       final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
+      validateWritableViewTopicCompatibility(env, topicMeta);
 
       final String topicMode = topicMeta.getConfig().getMode();
       final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
@@ -161,6 +170,87 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     }
 
     return true;
+  }
+
+  static void validateWritableViewTopicCompatibility(
+      final ConfigNodeProcedureEnv env, final TopicMeta topicMeta) throws SubscriptionException {
+    final TopicConfig topicConfig = topicMeta.getConfig();
+    if (!topicConfig.isTableTopic()) {
+      return;
+    }
+
+    final String databasePattern =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tablePattern =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    final boolean isExactPattern =
+        !isRegexPattern(databasePattern) && !isRegexPattern(tablePattern);
+
+    final boolean matchesWritableView;
+    try {
+      if (isExactPattern) {
+        final Optional<TsTable> table =
+            env.getConfigManager()
+                .getClusterSchemaManager()
+                .getTableIfExists(databasePattern, tablePattern);
+        matchesWritableView = table.isPresent() && table.get() instanceof WritableView;
+      } else {
+        final TablePattern pattern = new TablePattern(true, databasePattern, tablePattern);
+        final Map<String, List<TsTable>> usingTables =
+            env.getConfigManager().getClusterSchemaManager().getAllUsingTables();
+        matchesWritableView =
+            usingTables.entrySet().stream()
+                .anyMatch(
+                    entry ->
+                        entry.getValue().stream()
+                            .anyMatch(
+                                table ->
+                                    table instanceof WritableView
+                                        && pattern.matchesDatabaseAndTable(
+                                            PathUtils.unQualifyDatabaseName(entry.getKey()),
+                                            table.getTableName())));
+      }
+    } catch (final Exception e) {
+      throw new SubscriptionException(e.getMessage(), e);
+    }
+
+    if (matchesWritableView && (!isExactPattern || !topicConfig.isRecordFormat())) {
+      throw new SubscriptionException(
+          String.format(
+              ProcedureMessages
+                  .EXCEPTION_WRITABLE_VIEW_SUBSCRIPTION_ONLY_SUPPORTS_AN_EXACT_DATABASE_AND_TABLE_WITH_RECORD_FORMAT_BUT_TOPIC_ARG_USES_DATABASE_PATTERN_ARG_TABLE_PATTERN_ARG_AND_FORMAT_ARG_BE36F2D5,
+              topicMeta.getTopicName(),
+              databasePattern,
+              tablePattern,
+              topicConfig.getStringOrDefault(
+                  TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE)));
+    }
+  }
+
+  private static boolean isRegexPattern(final String value) {
+    for (int i = 0; i < value.length(); ++i) {
+      switch (value.charAt(i)) {
+        case '\\':
+        case '^':
+        case '$':
+        case '.':
+        case '*':
+        case '+':
+        case '?':
+        case '(':
+        case ')':
+        case '[':
+        case ']':
+        case '{':
+        case '}':
+        case '|':
+          return true;
+        default:
+          break;
+      }
+    }
+    return false;
   }
 
   @Override

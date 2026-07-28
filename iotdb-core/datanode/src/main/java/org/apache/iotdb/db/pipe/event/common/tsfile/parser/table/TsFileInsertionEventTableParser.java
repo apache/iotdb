@@ -327,14 +327,24 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                 }
 
                 private boolean hasTablePrivilege(final String tableName) {
+                  final String sourceDatabaseName =
+                      Objects.isNull(sourceEvent) ? null : sourceEvent.getTableModelDatabaseName();
+                  final String databaseNameForPrivilege =
+                      Objects.nonNull(tablePattern)
+                          ? tablePattern.getDatabaseNameForPrivilege(sourceDatabaseName)
+                          : sourceDatabaseName;
+                  final String tableNameForPrivilege =
+                      Objects.nonNull(tablePattern)
+                          ? tablePattern.getTableNameForPrivilege(tableName)
+                          : tableName;
                   if (Objects.isNull(entity)
                       || Objects.isNull(sourceEvent)
-                      || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                      || Objects.isNull(sourceDatabaseName)
                       || AuthorityChecker.getAccessControl()
                           .checkCanSelectFromTable4Pipe(
                               entity.getUsername(),
                               new QualifiedObjectName(
-                                  sourceEvent.getTableModelDatabaseName(), tableName),
+                                  databaseNameForPrivilege, tableNameForPrivilege),
                               entity)) {
                     return true;
                   }
@@ -344,8 +354,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                             DataNodePipeMessages
                                 .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
                             entity.getUsername(),
-                            sourceEvent.getTableModelDatabaseName(),
-                            tableName));
+                            databaseNameForPrivilege,
+                            tableNameForPrivilege));
                   }
                   return false;
                 }

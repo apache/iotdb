@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -62,7 +64,9 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -161,6 +165,61 @@ public class PipeTsFileInsertionEventTest {
     } finally {
       AuthorityChecker.setAccessControl(oldControl);
       FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testWritableViewAuthChecksLogicalViewInsteadOfSourceTable() throws Exception {
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final File tempDir = Files.createTempDirectory("pipeWritableViewAuth").toFile();
+    PipeTsFileInsertionEvent event = null;
+    try {
+      final Map<String, String> attributes = new HashMap<>();
+      attributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+      attributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "view_db");
+      attributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "view_table");
+      attributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY, "source_db");
+      attributes.put(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY, "source_table");
+      final TablePattern dataPattern =
+          TablePattern.parsePipeDataPatternFromSourceParameters(new PipeParameters(attributes));
+      final TsFileResource resource =
+          createNonEmptyTsFileResource(tempDir, "view-auth.tsfile", 1L, 1);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+      event =
+          new PipeTsFileInsertionEvent(
+              true,
+              "source_db",
+              resource,
+              null,
+              false,
+              false,
+              false,
+              Collections.singleton("source_table"),
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              dataPattern,
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      final ViewOnlyAccessControl accessControl = new ViewOnlyAccessControl();
+      AuthorityChecker.setAccessControl(accessControl);
+
+      event.throwIfNoPrivilege();
+
+      Assert.assertEquals("view_db", accessControl.checkedTable.getDatabaseName());
+      Assert.assertEquals("view_table", accessControl.checkedTable.getObjectName());
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      if (event != null) {
+        event.close();
+      }
+      FileUtils.deleteFileOrDirectory(tempDir);
     }
   }
 
@@ -437,6 +496,21 @@ public class PipeTsFileInsertionEventTest {
     @Override
     public TSStatus allowUserToLogin(String userName) {
       return null;
+    }
+  }
+
+  private static class ViewOnlyAccessControl extends TestAccessControl {
+
+    private QualifiedObjectName checkedTable;
+
+    @Override
+    public boolean checkCanSelectFromTable4Pipe(
+        final String userName,
+        final QualifiedObjectName tableName,
+        final IAuditEntity auditEntity) {
+      checkedTable = tableName;
+      return "view_db".equals(tableName.getDatabaseName())
+          && "view_table".equals(tableName.getObjectName());
     }
   }
 }

@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -33,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.columnfilter.WritableViewTabletProjector;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -49,7 +54,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ConsensusLogToTabletConverterTest {
 
@@ -245,6 +252,32 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertWritableViewRelationalInsertUsesLogicalNamesBeforeColumnFilter() {
+    final WritableView writableView = createWritableView();
+    final ConsensusLogToTabletConverter converter =
+        new ConsensusLogToTabletConverter(
+            null,
+            new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
+            null,
+            ColumnFilterMatcher.ofSelectedColumnNames(
+                new HashSet<>(Arrays.asList("measurement_alias"))),
+            DATABASE_NAME,
+            new WritableViewTabletProjector("view_db", writableView));
+
+    final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertRowNode(13));
+
+    Assert.assertEquals("view_db", converter.getDatabaseName());
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals("view_table", tablet.getTableName());
+    Assert.assertEquals(2, tablet.getSchemas().size());
+    Assert.assertEquals("device_alias", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("measurement_alias", tablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, tablet.getColumnTypes().get(0));
+    Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(1));
+  }
+
+  @Test
   public void testConvertRelationalInsertNodeReturnsEmptyWhenNoColumnsMatch() {
     final ConsensusLogToTabletConverter converter = createConverter("not_exist");
 
@@ -339,6 +372,20 @@ public class ConsensusLogToTabletConverterTest {
 
   private static ConsensusLogToTabletConverter createTreeConverter() {
     return new ConsensusLogToTabletConverter(new IoTDBTreePattern("root.sg.**"), null, null, null);
+  }
+
+  private static WritableView createWritableView() {
+    final WritableView writableView =
+        new WritableView("view_table", DATABASE_NAME, StatementTestUtils.tableName(), false);
+    writableView.addColumnSchema(new TimeColumnSchema("event_time", TSDataType.TIMESTAMP));
+    writableView.addColumnSchema(new TagColumnSchema("device_alias", TSDataType.STRING));
+    writableView.addColumnSchema(new FieldColumnSchema("measurement_alias", TSDataType.DOUBLE));
+    final Map<String, String> columnMappings = new LinkedHashMap<>();
+    columnMappings.put("event_time", "time");
+    columnMappings.put("device_alias", "id1");
+    columnMappings.put("measurement_alias", "m1");
+    writableView.setViewColumnToSourceColumnMap(columnMappings);
+    return writableView;
   }
 
   private static InsertRowNode createTreeRow(

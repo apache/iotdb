@@ -673,10 +673,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           if (!tablePattern.matchesDatabaseAndTable(getTableModelDatabaseName(), table)) {
             continue;
           }
+          final String databaseNameForPrivilege =
+              tablePattern.getDatabaseNameForPrivilege(getTableModelDatabaseName());
+          final String tableNameForPrivilege = tablePattern.getTableNameForPrivilege(table);
           if (!AuthorityChecker.getAccessControl()
               .checkCanSelectFromTable4Pipe(
                   userName,
-                  new QualifiedObjectName(getTableModelDatabaseName(), table),
+                  new QualifiedObjectName(databaseNameForPrivilege, tableNameForPrivilege),
                   new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
             if (skipIfNoPrivileges) {
               shouldParse4Privilege = true;
@@ -686,8 +689,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                       DataNodePipeMessages
                           .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
                       userName,
-                      getTableModelDatabaseName(),
-                      table));
+                      databaseNameForPrivilege,
+                      tableNameForPrivilege));
             }
           }
         }

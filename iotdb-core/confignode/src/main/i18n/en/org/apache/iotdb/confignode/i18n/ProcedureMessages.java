@@ -231,6 +231,9 @@ public final class ProcedureMessages {
       "CreateSubscriptionProcedure: executeFromOperateOnDataNodes";
   public static final String CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMVALIDATE =
       "CreateSubscriptionProcedure: executeFromValidate";
+  public static final String
+      EXCEPTION_WRITABLE_VIEW_SUBSCRIPTION_ONLY_SUPPORTS_AN_EXACT_DATABASE_AND_TABLE_WITH_RECORD_FORMAT_BUT_TOPIC_ARG_USES_DATABASE_PATTERN_ARG_TABLE_PATTERN_ARG_AND_FORMAT_ARG_BE36F2D5 =
+          "Writable-view subscription only supports an exact database and table with record format, but topic %s uses database pattern %s, table pattern %s, and format %s.";
   public static final String CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES =
       "CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes";
   public static final String CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES =

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
+import org.apache.iotdb.db.subscription.columnfilter.WritableViewTabletProjector;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -71,6 +72,7 @@ public class ConsensusLogToTabletConverter {
   private final TablePattern tablePattern;
   private final String topicName;
   private final ColumnFilterMatcher fallbackColumnFilterMatcher;
+  private final WritableViewTabletProjector writableViewTabletProjector;
 
   /**
    * The actual database name of the DataRegion this converter processes (table-model format without
@@ -83,7 +85,7 @@ public class ConsensusLogToTabletConverter {
       final TablePattern tablePattern,
       final ColumnFilterMatcher columnFilterMatcher,
       final String databaseName) {
-    this(treePattern, tablePattern, null, columnFilterMatcher, databaseName);
+    this(treePattern, tablePattern, null, columnFilterMatcher, databaseName, null);
   }
 
   public ConsensusLogToTabletConverter(
@@ -92,16 +94,29 @@ public class ConsensusLogToTabletConverter {
       final String topicName,
       final ColumnFilterMatcher columnFilterMatcher,
       final String databaseName) {
+    this(treePattern, tablePattern, topicName, columnFilterMatcher, databaseName, null);
+  }
+
+  public ConsensusLogToTabletConverter(
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String topicName,
+      final ColumnFilterMatcher columnFilterMatcher,
+      final String databaseName,
+      final WritableViewTabletProjector writableViewTabletProjector) {
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
     this.topicName = topicName;
     this.fallbackColumnFilterMatcher =
         Objects.nonNull(columnFilterMatcher) ? columnFilterMatcher : ColumnFilterMatcher.matchAll();
     this.databaseName = databaseName;
+    this.writableViewTabletProjector = writableViewTabletProjector;
   }
 
   public String getDatabaseName() {
-    return databaseName;
+    return Objects.nonNull(writableViewTabletProjector)
+        ? writableViewTabletProjector.getDatabaseName()
+        : databaseName;
   }
 
   static String safeDeviceIdForLog(final InsertNode node) {
@@ -491,8 +506,7 @@ public class ConsensusLogToTabletConverter {
       return Collections.emptyList();
     }
 
-    final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+    final Tablet prunedTablet = projectAndPruneTableModelTablet(tablet);
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -563,8 +577,7 @@ public class ConsensusLogToTabletConverter {
             Objects.nonNull(validBitMaps) ? validBitMaps.toArray(new BitMap[0]) : null,
             node.getRowCount());
 
-    final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+    final Tablet prunedTablet = projectAndPruneTableModelTablet(tablet);
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -576,6 +589,22 @@ public class ConsensusLogToTabletConverter {
       tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));
     }
     return tablets;
+  }
+
+  private Tablet projectAndPruneTableModelTablet(final Tablet sourceTablet) {
+    final Tablet emittedTablet;
+    final String emittedDatabaseName;
+    if (Objects.nonNull(writableViewTabletProjector)) {
+      emittedTablet = writableViewTabletProjector.project(databaseName, sourceTablet);
+      emittedDatabaseName = writableViewTabletProjector.getDatabaseName();
+    } else {
+      emittedTablet = sourceTablet;
+      emittedDatabaseName = databaseName;
+    }
+    return Objects.isNull(emittedTablet)
+        ? null
+        : TabletColumnPruner.pruneTableModelTablet(
+            emittedTablet, emittedDatabaseName, getColumnFilterMatcher());
   }
 
   private Tablet buildTableModelTabletFromRow(

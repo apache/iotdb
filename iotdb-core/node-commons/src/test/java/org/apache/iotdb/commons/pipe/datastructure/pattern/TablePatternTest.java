@@ -66,6 +66,8 @@ public class TablePatternTest {
     Assert.assertTrue(tablePattern.matchesTable("source_table"));
     Assert.assertFalse(tablePattern.matchesDatabase("db"));
     Assert.assertFalse(tablePattern.matchesTable("writable_view"));
+    Assert.assertEquals("db", tablePattern.getDatabaseNameForPrivilege("source_db"));
+    Assert.assertEquals("writable_view", tablePattern.getTableNameForPrivilege("source_table"));
   }
 
   @Test
