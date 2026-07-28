@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
@@ -78,6 +81,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -665,6 +669,14 @@ public class SeriesScanUtil implements Accountable {
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    final File tsFile;
+    if (chunkLoader instanceof DiskChunkLoader) {
+      tsFile = ((DiskChunkLoader) chunkLoader).getTsFile();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      tsFile = ((DiskAlignedChunkLoader) chunkLoader).getTsFile();
+    } else {
+      tsFile = null;
+    }
     if ((chunkLoader instanceof MemChunkLoader)
         && ((MemChunkLoader) chunkLoader).isStreamingQueryMemChunk()) {
       unpackOneFakeMemChunkMetaData(
@@ -673,7 +685,7 @@ public class SeriesScanUtil implements Accountable {
     }
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList(), context);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -688,7 +700,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
-                  true));
+                  true,
+                  tsFile));
         }
       } else {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
@@ -699,7 +712,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
-                  true));
+                  true,
+                  tsFile));
         }
       }
     } else {
@@ -712,7 +726,8 @@ public class SeriesScanUtil implements Accountable {
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
-                      false)));
+                      false,
+                      tsFile)));
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -2016,6 +2031,7 @@ public class SeriesScanUtil implements Accountable {
     protected final boolean isSeq;
     protected final boolean isAligned;
     protected final boolean isMem;
+    protected final File tsFile;
 
     VersionPageReader(
         QueryContext context,
@@ -2023,7 +2039,8 @@ public class SeriesScanUtil implements Accountable {
         long version,
         long offset,
         IPageReader data,
-        boolean isSeq) {
+        boolean isSeq,
+        File tsFile) {
       this.context = context;
       this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
@@ -2033,6 +2050,7 @@ public class SeriesScanUtil implements Accountable {
               || data instanceof MemAlignedPageReader
               || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
+      this.tsFile = tsFile;
     }
 
     @SuppressWarnings("squid:S3740")
@@ -2077,6 +2095,21 @@ public class SeriesScanUtil implements Accountable {
               CommonUtils.toString(tsBlock));
         }
         return tsBlock;
+      } catch (Exception e) {
+        if (tsFile != null) {
+          throw new CorruptedTsFileException(
+              tsFile,
+              CorruptedTsFileException.Stage.DECODE_PAGE_DATA,
+              context.isExternalTsFileScan()
+                  ? String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377,
+                      tsFile)
+                  : DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9,
+              e);
+        }
+        throw e;
       } finally {
         long time = System.nanoTime() - startTime;
         if (isAligned) {

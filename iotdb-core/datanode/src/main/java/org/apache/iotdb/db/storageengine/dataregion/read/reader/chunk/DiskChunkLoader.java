@@ -37,6 +37,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_DISK;
@@ -121,5 +122,9 @@ public class DiskChunkLoader implements IChunkLoader {
 
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
+  }
+
+  public File getTsFile() {
+    return resource.getTsFile();
   }
 }
