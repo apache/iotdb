@@ -136,6 +136,14 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
   }
 
   @Override
+  protected boolean isCancellationAllowed() {
+    ReconstructRegionState state = getCurrentState();
+    return state == ReconstructRegionState.RECONSTRUCT_REGION_PREPARE
+        || state == ReconstructRegionState.REMOVE_REGION_PEER
+        || state == ReconstructRegionState.CHECK_REMOVE_REGION_PEER;
+  }
+
+  @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv, ReconstructRegionState reconstructRegionState)
       throws IOException, InterruptedException, ProcedureException {}

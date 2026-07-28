@@ -3094,8 +3094,9 @@ public class ProcedureManager {
 
   /**
    * Cancel all running region migration procedures. Iterates over the same top-level region
-   * operations reported by SHOW MIGRATIONS and sets their cancel flag. The actual cancellation is
-   * cooperative: each procedure checks the flag at safe state transitions.
+   * operations reported by SHOW MIGRATIONS and tries to signal cancellation at their current safe
+   * state. The actual cancellation is cooperative: each procedure checks the flag at safe state
+   * transitions.
    *
    * @return the number of region operation procedures that were signalled to cancel
    */
@@ -3106,8 +3107,7 @@ public class ProcedureManager {
           && !procedure.isFinished()
           && !isChildOfMigrateOrReconstruct(procedure)) {
         RegionOperationProcedure<?> regionOperation = (RegionOperationProcedure<?>) procedure;
-        if (!regionOperation.isCancelled()) {
-          regionOperation.cancel();
+        if (tryCancelRegionOperation(regionOperation)) {
           cancelledCount++;
           LOGGER.info(
               "[pid{}][CancelMigrations] cancel signal sent to {} on {}",
@@ -3120,5 +3120,22 @@ public class ProcedureManager {
     LOGGER.info(
         "[CancelMigrations] total {} region operation(s) signalled to cancel", cancelledCount);
     return cancelledCount;
+  }
+
+  private boolean tryCancelRegionOperation(RegionOperationProcedure<?> regionOperation) {
+    if (regionOperation instanceof ReconstructRegionProcedure) {
+      RemoveRegionPeerProcedure removeRegionPeerProcedure =
+          getExecutor().getProcedures().values().stream()
+              .filter(procedure -> procedure instanceof RemoveRegionPeerProcedure)
+              .map(procedure -> (RemoveRegionPeerProcedure) procedure)
+              .filter(Procedure::hasParent)
+              .filter(procedure -> procedure.getParentProcId() == regionOperation.getProcId())
+              .findFirst()
+              .orElse(null);
+      if (removeRegionPeerProcedure != null) {
+        return !removeRegionPeerProcedure.isFinished() && removeRegionPeerProcedure.tryCancel();
+      }
+    }
+    return regionOperation.tryCancel();
   }
 }

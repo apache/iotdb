@@ -73,6 +73,8 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   private static final String CANCEL_TREE_USER = "cancel_migration_tree_user";
   private static final String CANCEL_TABLE_USER = "cancel_migration_table_user";
   private static final String CANCEL_USER_PASSWORD = "CancelMigration@123456";
+  private static final String ONE_MIGRATION_CANCEL_RESPONSE =
+      "Successfully signalled 1 migration(s) to cancel";
   private static final String NO_MIGRATION_CANCEL_RESPONSE =
       "Successfully signalled 0 migration(s) to cancel";
 
@@ -220,7 +222,9 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
               false);
       Assert.assertEquals(Integer.valueOf(targetDataNode), migration.row.toNodeId);
 
-      executeCancel(BaseEnv.TABLE_SQL_DIALECT);
+      Assert.assertEquals(
+          ONE_MIGRATION_CANCEL_RESPONSE,
+          executeCancelAndGetMessage(BaseEnv.TABLE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS));
 
       awaitNoMigrations(statement);
       awaitRegionMembers(statement, selectedRegion, regionMap.get(selectedRegion));
@@ -256,6 +260,39 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   }
 
   @Test
+  public void rejectCancelRemoveRegionAfterRemoteTaskSubmittedTest() throws Exception {
+    initCluster(2, 1, 3, RemoveRegionPeerState.REMOVE_REGION_PEER);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
+      Set<Integer> allDataNodes = getAllDataNodes(statement);
+      int selectedRegion = selectRegion(regionMap);
+      int targetDataNode = selectDataNodeContainsRegion(allDataNodes, regionMap, selectedRegion);
+
+      CapturedMigration migration =
+          runAndCaptureMigration(
+              String.format(REMOVE_REGION_FORMAT, selectedRegion, targetDataNode),
+              "REMOVE",
+              selectedRegion,
+              false);
+      awaitMigrationState(
+          statement, "REMOVE", selectedRegion, RemoveRegionPeerState.REMOVE_REGION_PEER.name());
+
+      String response = executeCancelAndGetMessage(BaseEnv.TREE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS);
+      Assert.assertEquals(NO_MIGRATION_CANCEL_RESPONSE, response);
+
+      Set<Integer> expectedDataNodes =
+          regionMap.get(selectedRegion).stream()
+              .filter(dataNodeId -> dataNodeId != targetDataNode)
+              .collect(Collectors.toSet());
+      awaitNoMigrations(statement);
+      awaitRegionMembers(statement, selectedRegion, expectedDataNodes);
+      awaitCommandThreadFinished(migration);
+    }
+  }
+
+  @Test
   public void cancelReconstructRegionByTableDialectTest() throws Exception {
     initCluster(2, 1, 3, RemoveRegionPeerState.TRANSFER_REGION_LEADER);
 
@@ -275,7 +312,9 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
       Assert.assertEquals(Integer.valueOf(targetDataNode), migration.row.fromNodeId);
       Assert.assertEquals(Integer.valueOf(targetDataNode), migration.row.toNodeId);
 
-      executeCancel(BaseEnv.TABLE_SQL_DIALECT);
+      Assert.assertEquals(
+          ONE_MIGRATION_CANCEL_RESPONSE,
+          executeCancelAndGetMessage(BaseEnv.TABLE_SQL_DIALECT, CANCEL_ALL_MIGRATIONS));
 
       awaitNoMigrations(statement);
       awaitRegionMembers(statement, selectedRegion, regionMap.get(selectedRegion));
@@ -522,10 +561,23 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
                 operationType,
                 regionId,
                 readNullableInt(rs, ColumnHeaderConstant.FROM_NODE_ID),
-                readNullableInt(rs, ColumnHeaderConstant.TO_NODE_ID)));
+                readNullableInt(rs, ColumnHeaderConstant.TO_NODE_ID),
+                rs.getString(ColumnHeaderConstant.CURRENT_STATE)));
       }
     }
     return rows;
+  }
+
+  private void awaitMigrationState(
+      Statement statement, String operationType, int regionId, String expectedState) {
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .pollInterval(20, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              MigrationRow row = queryMigrationRow(statement, operationType, regionId);
+              return row != null && expectedState.equals(row.currentState);
+            });
   }
 
   private Integer readNullableInt(ResultSet rs, String columnName) throws Exception {
@@ -607,12 +659,19 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
     final int regionId;
     final Integer fromNodeId;
     final Integer toNodeId;
+    final String currentState;
 
-    private MigrationRow(String operationType, int regionId, Integer fromNodeId, Integer toNodeId) {
+    private MigrationRow(
+        String operationType,
+        int regionId,
+        Integer fromNodeId,
+        Integer toNodeId,
+        String currentState) {
       this.operationType = operationType;
       this.regionId = regionId;
       this.fromNodeId = fromNodeId;
       this.toNodeId = toNodeId;
+      this.currentState = currentState;
     }
   }
 }

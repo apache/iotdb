@@ -25,4 +25,6 @@ public enum RemoveRegionPeerState {
   DELETE_OLD_REGION_PEER,
   REMOVE_REGION_LOCATION_CACHE,
   DROP_CONSENSUS_PIPES,
+  // Keep new states appended to preserve the ordinals of serialized procedures.
+  PREPARE_REMOVE_REGION_PEER,
 }

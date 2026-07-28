@@ -242,6 +242,13 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
   }
 
   @Override
+  protected boolean isCancellationAllowed() {
+    RegionTransitionState state = getCurrentState();
+    return state != RegionTransitionState.REMOVE_REGION_PEER
+        && state != RegionTransitionState.CHECK_REMOVE_REGION_PEER;
+  }
+
+  @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RegionTransitionState state)
       throws IOException, InterruptedException, ProcedureException {}
 

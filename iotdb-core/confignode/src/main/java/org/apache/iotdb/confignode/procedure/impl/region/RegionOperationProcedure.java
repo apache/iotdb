@@ -34,6 +34,13 @@ public abstract class RegionOperationProcedure<TState>
    */
   private volatile boolean cancelled = false;
 
+  /**
+   * Whether this procedure has crossed its last cancellable point. This flag is intentionally not
+   * serialized: procedures that need a durable cancellation boundary must enter a persisted state
+   * where {@link #isCancellationAllowed()} returns {@code false} before starting irreversible work.
+   */
+  private boolean cancellationDisabled = false;
+
   public RegionOperationProcedure() {}
 
   public RegionOperationProcedure(TConsensusGroupId regionId) {
@@ -61,12 +68,48 @@ public abstract class RegionOperationProcedure<TState>
     return state != null ? state.toString() : "UNKNOWN";
   }
 
+  /**
+   * Try to accept a cancellation request.
+   *
+   * <p>The state check and cancel flag update are atomic with {@link #disableCancellation()}, so an
+   * irreversible operation and a concurrent CANCEL request have a single well-defined winner.
+   *
+   * @return {@code true} if this request was accepted, {@code false} if the procedure was already
+   *     cancelled or has crossed its cancellation boundary
+   */
+  public synchronized boolean tryCancel() {
+    if (cancelled || cancellationDisabled || !isCancellationAllowed()) {
+      return false;
+    }
+    cancelled = true;
+    return true;
+  }
+
   public void cancel() {
-    this.cancelled = true;
+    tryCancel();
   }
 
   public boolean isCancelled() {
     return cancelled;
+  }
+
+  /** Override this method when cancellation is only valid in specific persisted states. */
+  protected boolean isCancellationAllowed() {
+    return true;
+  }
+
+  /**
+   * Atomically close the cancellation window before entering an irreversible operation.
+   *
+   * @return {@code true} if the cancellation window was closed, {@code false} if a cancellation
+   *     request won the race and the irreversible operation must not start
+   */
+  protected synchronized boolean disableCancellation() {
+    if (cancelled) {
+      return false;
+    }
+    cancellationDisabled = true;
+    return true;
   }
 
   @Override

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -33,6 +34,27 @@ import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
 public class RemoveRegionPeerProcedureTest {
+  @Test
+  public void cancellationBoundaryTest() {
+    RemoveRegionPeerProcedure cancellationWins = new RemoveRegionPeerProcedure();
+    Assert.assertTrue(cancellationWins.tryCancel());
+    Assert.assertFalse(cancellationWins.disableCancellation());
+
+    RemoveRegionPeerProcedure removalWins = new RemoveRegionPeerProcedure();
+    Assert.assertTrue(removalWins.disableCancellation());
+    Assert.assertFalse(removalWins.tryCancel());
+  }
+
+  @Test
+  public void stateOrdinalCompatibilityTest() {
+    Assert.assertEquals(0, RemoveRegionPeerState.TRANSFER_REGION_LEADER.ordinal());
+    Assert.assertEquals(1, RemoveRegionPeerState.REMOVE_REGION_PEER.ordinal());
+    Assert.assertEquals(2, RemoveRegionPeerState.DELETE_OLD_REGION_PEER.ordinal());
+    Assert.assertEquals(3, RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE.ordinal());
+    Assert.assertEquals(4, RemoveRegionPeerState.DROP_CONSENSUS_PIPES.ordinal());
+    Assert.assertEquals(5, RemoveRegionPeerState.PREPARE_REMOVE_REGION_PEER.ordinal());
+  }
+
   @Test
   public void serDeTest() throws Exception {
     RemoveRegionPeerProcedure procedure =

@@ -45,11 +45,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.function.BooleanSupplier;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DROP_CONSENSUS_PIPES;
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.PREPARE_REMOVE_REGION_PEER;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -106,7 +106,7 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
                 regionId,
                 targetDataNode.getDataNodeId());
             return Flow.NO_MORE_STATE;
-          case REMOVE_REGION_PEER:
+          case PREPARE_REMOVE_REGION_PEER:
             return cancelBeforePeerRemoved(handler, state);
           default:
             LOGGER.info(
@@ -121,6 +121,14 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
         case TRANSFER_REGION_LEADER:
           handleTransferLeader(handler);
           setKillPoint(state);
+          setNextState(PREPARE_REMOVE_REGION_PEER);
+          break;
+        case PREPARE_REMOVE_REGION_PEER:
+          // Persist REMOVE_REGION_PEER before submitting the remote task. From that persisted state
+          // onward, CANCEL is rejected even after a ConfigNode leader switch or restart.
+          if (!disableCancellation()) {
+            return cancelBeforePeerRemoved(handler, state);
+          }
           setNextState(REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
@@ -129,13 +137,7 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
               handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, regionId, coordinator);
           setKillPoint(state);
-          if (isCancellationRequested(env)) {
-            return cancelBeforePeerRemoved(handler, state);
-          }
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            if (isCancellationRequested(env)) {
-              return cancelBeforePeerRemoved(handler, state);
-            }
             LOGGER.warn(
                 ProcedureMessages
                     .PID_REMOVEREGION_TASK_SUBMITTED_FAILED_CONFIGNODE_BELIEVE_CURRENT_PEER_LIST,
@@ -150,12 +152,9 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
               handler.waitTaskFinish(
                   this.getProcId(),
                   coordinator,
-                  buildCancelChecker(env),
+                  () -> false,
                   RegionMaintainKillPoints.WAIT_TASK_FINISH_POLLING);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
-            if (isCancellationRequested(env)) {
-              return cancelBeforePeerRemoved(handler, state);
-            }
             LOGGER.warn(
                 ProcedureMessages
                     .PID_REMOVEREGION_EXECUTED_FAILED_CONFIGNODE_BELIEVE_CURRENT_PEER_LIST_OF,
@@ -266,8 +265,11 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
     return Flow.NO_MORE_STATE;
   }
 
-  private BooleanSupplier buildCancelChecker(ConfigNodeProcedureEnv env) {
-    return () -> isCancellationRequested(env);
+  @Override
+  protected boolean isCancellationAllowed() {
+    RemoveRegionPeerState state = getCurrentState();
+    return state == RemoveRegionPeerState.TRANSFER_REGION_LEADER
+        || state == PREPARE_REMOVE_REGION_PEER;
   }
 
   private boolean isCancellationRequested(ConfigNodeProcedureEnv env) {
