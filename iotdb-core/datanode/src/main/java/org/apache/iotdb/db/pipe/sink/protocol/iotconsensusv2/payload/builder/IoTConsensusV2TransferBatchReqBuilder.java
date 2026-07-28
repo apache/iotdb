@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -209,7 +208,6 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
   }
 
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event) throws WALPipeException {
-    final ByteBuffer buffer;
     final TCommitId commitId;
 
     // event instanceof PipeInsertNodeTabletInsertionEvent)
@@ -221,17 +219,15 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-    // Read the bytebuffer from the wal file and transfer it directly without serializing or
-    // deserializing if possible
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // IoTConsensusV2 will transfer binary data to TIoTConsensusV2TransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-    buffer = insertNode.serializeToByteBuffer();
-    batchReqs.add(
+    final IoTConsensusV2TabletInsertNodeReq request =
         IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
+            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId);
+    batchReqs.add(request);
 
-    return buffer.limit();
+    return request.body.remaining();
   }
 
   @Override

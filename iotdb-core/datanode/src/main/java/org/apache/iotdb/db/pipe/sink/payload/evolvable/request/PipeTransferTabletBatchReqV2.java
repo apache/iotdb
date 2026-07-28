@@ -46,6 +46,12 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
+
+  private static final int BATCH_REQUEST_COUNT_SERIALIZED_SIZE =
+      Integer.BYTES // legacy binary request count
+          + Integer.BYTES // insert node request count
+          + Integer.BYTES; // raw tablet request count
+
   private final transient List<PipeTransferTabletInsertNodeReqV2> insertNodeReqs =
       new ArrayList<>();
   private final transient List<PipeTransferTabletRawReqV2> tabletReqs = new ArrayList<>();
@@ -55,7 +61,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   }
 
   public List<InsertBaseStatement> constructStatements() {
-    final List<InsertBaseStatement> statements = new ArrayList<>();
+    final List<InsertBaseStatement> statements =
+        new ArrayList<>(insertNodeReqs.size() + tabletReqs.size());
 
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
         new LinkedHashMap<>();
@@ -186,22 +193,33 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     batchReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(
+                calculateSerializedSize(
+                    insertNodeBuffers, tabletBuffers, insertNodeDataBases, tabletDataBases));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       // Binary buffer, for rolling upgrade
       ReadWriteIOUtils.write(0, outputStream);
 
+      // Insert-node and raw-tablet serializations are self-delimiting, so their lengths are not
+      // written separately.
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (int i = 0; i < insertNodeBuffers.size(); i++) {
         final ByteBuffer insertNodeBuffer = insertNodeBuffers.get(i);
-        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
+        outputStream.write(
+            insertNodeBuffer.array(),
+            insertNodeBuffer.arrayOffset() + insertNodeBuffer.position(),
+            insertNodeBuffer.remaining());
         ReadWriteIOUtils.write(insertNodeDataBases.get(i), outputStream);
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
       for (int i = 0; i < tabletBuffers.size(); i++) {
         final ByteBuffer tabletBuffer = tabletBuffers.get(i);
-        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
+        outputStream.write(
+            tabletBuffer.array(),
+            tabletBuffer.arrayOffset() + tabletBuffer.position(),
+            tabletBuffer.remaining());
         ReadWriteIOUtils.write(tabletDataBases.get(i), outputStream);
       }
 
@@ -210,6 +228,23 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     return batchReq;
+  }
+
+  static int calculateSerializedSize(
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers,
+      final List<String> insertNodeDataBases,
+      final List<String> tabletDataBases) {
+    int size = BATCH_REQUEST_COUNT_SERIALIZED_SIZE;
+    for (int i = 0; i < insertNodeBuffers.size(); i++) {
+      size += insertNodeBuffers.get(i).remaining();
+      size += ReadWriteIOUtils.sizeToWrite(insertNodeDataBases.get(i));
+    }
+    for (int i = 0; i < tabletBuffers.size(); i++) {
+      size += tabletBuffers.get(i).remaining();
+      size += ReadWriteIOUtils.sizeToWrite(tabletDataBases.get(i));
+    }
+    return size;
   }
 
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
