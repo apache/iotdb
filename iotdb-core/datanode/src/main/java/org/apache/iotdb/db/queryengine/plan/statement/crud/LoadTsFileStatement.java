@@ -109,9 +109,9 @@ public class LoadTsFileStatement extends Statement {
 
   public static List<File> processTsFile(final File file, final boolean validateSourcePath)
       throws FileNotFoundException {
-    final Path[] internalTsFileDirCanonicalPaths =
-        IoTDBDescriptor.getInstance().getConfig().getInternalTsFileDirCanonicalPaths();
-    validateNotLoadingInternalTsFile(file, internalTsFileDirCanonicalPaths);
+    final Path[] internalDataDirCanonicalPaths =
+        IoTDBDescriptor.getInstance().getConfig().getInternalDataDirCanonicalPaths();
+    validateNotLoadingInternalTsFile(file, internalDataDirCanonicalPaths);
     if (validateSourcePath) {
       validateLoadSourcePath(file);
     }
@@ -127,7 +127,7 @@ public class LoadTsFileStatement extends Statement {
                     .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
                 file.getPath()));
       }
-      tsFiles.addAll(findAllTsFile(file, validateSourcePath, internalTsFileDirCanonicalPaths));
+      tsFiles.addAll(findAllTsFile(file, validateSourcePath, internalDataDirCanonicalPaths));
     }
     sortTsFiles(tsFiles);
     return tsFiles;
@@ -150,7 +150,7 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private static List<File> findAllTsFile(
-      File file, boolean validateSourcePath, Path[] internalTsFileDirCanonicalPaths)
+      File file, boolean validateSourcePath, Path[] internalDataDirCanonicalPaths)
       throws FileNotFoundException {
     final File[] files = file.listFiles();
     if (files == null) {
@@ -159,14 +159,14 @@ public class LoadTsFileStatement extends Statement {
 
     final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
-      validateNotLoadingInternalTsFile(nowFile, internalTsFileDirCanonicalPaths);
+      validateNotLoadingInternalTsFile(nowFile, internalDataDirCanonicalPaths);
       if (validateSourcePath) {
         validateLoadSourcePath(nowFile);
       }
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath, internalTsFileDirCanonicalPaths));
+        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath, internalDataDirCanonicalPaths));
       }
     }
     return tsFiles;
@@ -201,11 +201,11 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private static void validateNotLoadingInternalTsFile(
-      final File file, final Path[] internalTsFileDirCanonicalPaths) throws FileNotFoundException {
+      final File file, final Path[] internalDataDirCanonicalPaths) throws FileNotFoundException {
     final Path sourcePath = canonicalPath(file);
-    for (final Path internalTsFileDirCanonicalPath : internalTsFileDirCanonicalPaths) {
-      if (sourcePath.startsWith(internalTsFileDirCanonicalPath)
-          || internalTsFileDirCanonicalPath.startsWith(sourcePath)) {
+    for (final Path internalDataDirCanonicalPath : internalDataDirCanonicalPaths) {
+      if (sourcePath.startsWith(internalDataDirCanonicalPath)
+          || internalDataDirCanonicalPath.startsWith(sourcePath)) {
         throw new FileNotFoundException(
             DataNodeQueryMessages
                 .QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D);

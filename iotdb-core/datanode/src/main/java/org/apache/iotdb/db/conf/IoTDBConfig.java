@@ -310,7 +310,7 @@ public class IoTDBConfig {
 
   private CanonicalPaths loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
 
-  private volatile CanonicalPaths internalTsFileDirCanonicalPaths = new CanonicalPaths(new Path[0]);
+  private volatile CanonicalPaths internalDataDirCanonicalPaths = new CanonicalPaths(new Path[0]);
 
   private boolean loadTsFileSourcePathCheckEnabled = false;
 
@@ -1431,7 +1431,7 @@ public class IoTDBConfig {
     queryDir = addDataHomeDir(queryDir);
     sortTmpDir = addDataHomeDir(sortTmpDir);
     formulateDataDirs(tierDataDirs);
-    formulateInternalTsFileDirs(tierDataDirs);
+    formulateInternalDataDirs(tierDataDirs);
   }
 
   private void formulateDataDirs(String[][] tierDataDirs) {
@@ -1483,7 +1483,7 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = newTierDataDirs;
-    formulateInternalTsFileDirs(newTierDataDirs);
+    formulateInternalDataDirs(newTierDataDirs);
     reloadSystemMetrics();
   }
 
@@ -1560,8 +1560,8 @@ public class IoTDBConfig {
         .toArray(String[]::new);
   }
 
-  public Path[] getInternalTsFileDirCanonicalPaths() throws FileNotFoundException {
-    return internalTsFileDirCanonicalPaths.getPaths();
+  public Path[] getInternalDataDirCanonicalPaths() throws FileNotFoundException {
+    return internalDataDirCanonicalPaths.getPaths();
   }
 
   public String[][] getTierDataDirs() {
@@ -1572,7 +1572,7 @@ public class IoTDBConfig {
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
-    formulateInternalTsFileDirs(tierDataDirs);
+    formulateInternalDataDirs(tierDataDirs);
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
@@ -1672,17 +1672,16 @@ public class IoTDBConfig {
     this.loadTsFileDirCanonicalPaths = canonicalPaths(newLoadTsFileDirs);
   }
 
-  private void formulateInternalTsFileDirs(final String[][] tierDataDirs) {
-    final List<String> internalTsFileDirs = new ArrayList<>();
+  private void formulateInternalDataDirs(final String[][] tierDataDirs) {
+    final List<String> internalDataDirs = new ArrayList<>();
     for (final String[] tierDataDir : tierDataDirs) {
       for (final String dataDir : tierDataDir) {
         if (FSUtils.isLocal(dataDir)) {
-          internalTsFileDirs.add(dataDir + File.separator + IoTDBConstant.SEQUENCE_FOLDER_NAME);
-          internalTsFileDirs.add(dataDir + File.separator + IoTDBConstant.UNSEQUENCE_FOLDER_NAME);
+          internalDataDirs.add(dataDir);
         }
       }
     }
-    internalTsFileDirCanonicalPaths = canonicalPaths(internalTsFileDirs.toArray(new String[0]));
+    internalDataDirCanonicalPaths = canonicalPaths(internalDataDirs.toArray(new String[0]));
   }
 
   private static CanonicalPaths canonicalPaths(final String[] dirs) {

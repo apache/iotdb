@@ -116,7 +116,7 @@ public class LoadTsFileStatementTest {
     final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
     final Path dataDir = Files.createTempDirectory("load-tsfile-internal-data");
     final Path internalTsFile =
-        Files.createDirectories(dataDir.resolve("sequence").resolve("root.db")).resolve("a.tsfile");
+        Files.createDirectories(dataDir.resolve("pipe-hardlink")).resolve("a.tsfile");
     Files.createFile(internalTsFile);
 
     try {
@@ -124,7 +124,7 @@ public class LoadTsFileStatementTest {
       config.setLoadTsFileSourcePathCheckEnabled(false);
 
       try {
-        new LoadTsFileStatement(dataDir.toString());
+        new LoadTsFileStatement(internalTsFile.toString());
         Assert.fail("Expected internal IoTDB data directory to be rejected.");
       } catch (final FileNotFoundException e) {
         Assert.assertEquals(
@@ -137,6 +137,30 @@ public class LoadTsFileStatementTest {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
       deleteRecursively(dataDir);
+    }
+  }
+
+  @Test
+  public void testLoadPipeReceiverTsFileOutsideDataDirIsAllowed() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final String[][] originalTierDataDirs = config.getTierDataDirs();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
+    final Path dataDir = Files.createTempDirectory("load-tsfile-internal-data");
+    final Path pipeReceiverDir = Files.createTempDirectory("load-tsfile-pipe-receiver");
+    final Path pipeReceiverTsFile = Files.createFile(pipeReceiverDir.resolve("a.tsfile"));
+
+    try {
+      config.setTierDataDirs(new String[][] {{dataDir.toString()}});
+      config.setLoadTsFileSourcePathCheckEnabled(false);
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement(pipeReceiverTsFile.toString());
+      Assert.assertEquals(1, statement.getTsFiles().size());
+      Assert.assertEquals(pipeReceiverTsFile.toFile(), statement.getTsFiles().get(0));
+    } finally {
+      config.setTierDataDirs(originalTierDataDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
+      deleteRecursively(dataDir);
+      deleteRecursively(pipeReceiverDir);
     }
   }
 
