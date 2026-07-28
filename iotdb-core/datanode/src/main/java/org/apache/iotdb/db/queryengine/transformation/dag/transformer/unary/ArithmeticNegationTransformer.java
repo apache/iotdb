@@ -26,8 +26,11 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
+
+import static org.apache.iotdb.db.utils.TypeServices.NEGATION_TRANSFORMER_SERVICE;
 
 public class ArithmeticNegationTransformer extends UnaryTransformer {
 
@@ -43,33 +46,17 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
   @Override
   protected void transform(Column[] columns, ColumnBuilder builder)
       throws QueryProcessException, IOException {
-    switch (layerReaderDataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case DATE:
-      case TEXT:
-      case TIMESTAMP:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case STRING:
-      default:
-        throw new QueryProcessException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
+    final Type type;
+    try {
+      type = Type.fromTsDataType(layerReaderDataType);
+    } catch (UnsupportedOperationException ignored) {
+      throw new QueryProcessException(
+          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
     }
+    NEGATION_TRANSFORMER_SERVICE.call(type).transform(this, columns, builder);
   }
 
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
+  public void transformInt(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     int[] values = columns[0].getInts();
     boolean[] isNulls = columns[0].isNull();
@@ -83,7 +70,7 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
+  public void transformLong(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     long[] values = columns[0].getLongs();
     boolean[] isNulls = columns[0].isNull();
@@ -97,7 +84,7 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+  public void transformFloat(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     float[] values = columns[0].getFloats();
     boolean[] isNulls = columns[0].isNull();
@@ -111,7 +98,7 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+  public void transformDouble(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
     double[] values = columns[0].getDoubles();
     boolean[] isNulls = columns[0].isNull();

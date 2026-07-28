@@ -27,8 +27,12 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.Unar
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+
+import static org.apache.iotdb.db.utils.TypeServices.DIFF_TRANSFORMER_SERVICE;
 
 public class DiffFunctionTransformer extends UnaryTransformer {
+
   private final boolean ignoreNull;
 
   // cache the last non-null value
@@ -49,33 +53,17 @@ public class DiffFunctionTransformer extends UnaryTransformer {
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException {
-    switch (layerReaderDataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      case BOOLEAN:
-      default:
-        throw new QueryProcessException(
-            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
+    final Type type;
+    try {
+      type = Type.fromTsDataType(layerReaderDataType);
+    } catch (UnsupportedOperationException ignored) {
+      throw new QueryProcessException(
+          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
     }
+    DIFF_TRANSFORMER_SERVICE.call(type).transform(this, columns, builder);
   }
 
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
+  public void transformInt(Column[] columns, ColumnBuilder builder) {
     // Position count at first iteration is count
     // Then it become count - 1 at latter iteration
     int count = columns[0].getPositionCount();
@@ -99,7 +87,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
+  public void transformLong(Column[] columns, ColumnBuilder builder) {
     // Position count at first iteration is count
     // Then it become count - 1 at latter iteration
     int count = columns[0].getPositionCount();
@@ -123,7 +111,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+  public void transformFloat(Column[] columns, ColumnBuilder builder) {
     // Position count at first iteration is count
     // Then it become count - 1 at latter iteration
     int count = columns[0].getPositionCount();
@@ -147,7 +135,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+  public void transformDouble(Column[] columns, ColumnBuilder builder) {
     // Position count at first iteration is count
     // Then it become count - 1 at latter iteration
     int count = columns[0].getPositionCount();

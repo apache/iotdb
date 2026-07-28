@@ -20,6 +20,13 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.calc.execution.aggregation.BinaryModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.BooleanModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
@@ -37,6 +44,9 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.DiffFunctionTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.RoundFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -193,6 +203,64 @@ public class TypeServices {
                 (column, index) -> {
                   throw new QueryProcessException(
                       DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                };
+          };
+
+  public static final TypeService<RoundTransformer> ROUND_TRANSFORMER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> RoundFunctionTransformer::transformInt;
+            case INT64 -> RoundFunctionTransformer::transformLong;
+            case FLOAT -> RoundFunctionTransformer::transformFloat;
+            case DOUBLE -> RoundFunctionTransformer::transformDouble;
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (transformer, columns, builder) -> {
+                  throw new UnsupportedOperationException(
+                      String.format("Unsupported source dataType: %s", type.getTypeEnum()));
+                };
+          };
+
+  public static final TypeService<DiffTransformer> DIFF_TRANSFORMER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> DiffFunctionTransformer::transformInt;
+            case INT64 -> DiffFunctionTransformer::transformLong;
+            case FLOAT -> DiffFunctionTransformer::transformFloat;
+            case DOUBLE -> DiffFunctionTransformer::transformDouble;
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (transformer, columns, builder) -> {
+                  throw new QueryProcessException(
+                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                };
+          };
+
+  public static final TypeService<NegationTransformer> NEGATION_TRANSFORMER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> ArithmeticNegationTransformer::transformInt;
+            case INT64 -> ArithmeticNegationTransformer::transformLong;
+            case FLOAT -> ArithmeticNegationTransformer::transformFloat;
+            case DOUBLE -> ArithmeticNegationTransformer::transformDouble;
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (transformer, columns, builder) -> {
+                  throw new QueryProcessException(
+                      DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                };
+          };
+
+  public static final TypeService<Supplier<Accumulator>> MODE_ACCUMULATOR_PROVIDER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> BooleanModeAccumulator::new;
+            case TEXT, BLOB, STRING -> BinaryModeAccumulator::new;
+            case INT32, DATE -> IntModeAccumulator::new;
+            case INT64, TIMESTAMP -> LongModeAccumulator::new;
+            case FLOAT -> FloatModeAccumulator::new;
+            case DOUBLE -> DoubleModeAccumulator::new;
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                () -> {
+                  throw new IllegalArgumentException(
+                      DataNodeQueryMessages.UNKNOWN_DATA_TYPE + type.getTypeEnum());
                 };
           };
 
@@ -1448,6 +1516,10 @@ public class TypeServices {
     PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
     PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
     PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
+    ROUND_TRANSFORMER_SERVICE.check();
+    DIFF_TRANSFORMER_SERVICE.check();
+    NEGATION_TRANSFORMER_SERVICE.check();
+    MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
     TV_LIST_ARRAY_WRITER_SERVICE.check();
     TV_LIST_OBJECT_WRITER_SERVICE.check();
     TV_LIST_PROVIDER_SERVICE.check();
@@ -1601,6 +1673,25 @@ public class TypeServices {
   @FunctionalInterface
   public interface ColumnToDoubleConverter {
     double convert(Column column, int index) throws QueryProcessException;
+  }
+
+  @FunctionalInterface
+  public interface RoundTransformer {
+    void transform(RoundFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
+        throws QueryProcessException, IOException;
+  }
+
+  @FunctionalInterface
+  public interface DiffTransformer {
+    void transform(DiffFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
+        throws QueryProcessException;
+  }
+
+  @FunctionalInterface
+  public interface NegationTransformer {
+    void transform(
+        ArithmeticNegationTransformer transformer, Column[] columns, ColumnBuilder builder)
+        throws QueryProcessException, IOException;
   }
 
   @FunctionalInterface

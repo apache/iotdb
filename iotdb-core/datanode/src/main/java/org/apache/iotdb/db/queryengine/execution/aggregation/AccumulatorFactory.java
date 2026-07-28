@@ -20,15 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
-import org.apache.iotdb.calc.execution.aggregation.BinaryModeAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.BooleanModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
@@ -39,12 +33,14 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.db.utils.TypeServices.MODE_ACCUMULATOR_PROVIDER_SERVICE;
 
 public class AccumulatorFactory {
 
@@ -196,27 +192,13 @@ public class AccumulatorFactory {
   }
 
   private static Accumulator createModeAccumulator(TSDataType tsDataType) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return new BooleanModeAccumulator();
-      case BLOB:
-      case STRING:
-      case TEXT:
-        return new BinaryModeAccumulator();
-      case DATE:
-      case INT32:
-        return new IntModeAccumulator();
-      case TIMESTAMP:
-      case INT64:
-        return new LongModeAccumulator();
-      case FLOAT:
-        return new FloatModeAccumulator();
-      case DOUBLE:
-        return new DoubleModeAccumulator();
-      case OBJECT:
-      default:
-        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_DATA_TYPE + tsDataType);
+    final Type type;
+    try {
+      type = Type.fromTsDataType(tsDataType);
+    } catch (UnsupportedOperationException ignored) {
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_DATA_TYPE + tsDataType);
     }
+    return MODE_ACCUMULATOR_PROVIDER_SERVICE.call(type).get();
   }
 
   @TestOnly
