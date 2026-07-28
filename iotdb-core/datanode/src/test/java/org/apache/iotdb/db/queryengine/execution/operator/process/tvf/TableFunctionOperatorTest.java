@@ -297,8 +297,14 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
-  public void testVariableWidthResultsAreSplitByActualSize() throws Exception {
-    QueryId queryId = new QueryId("large_finish_result");
+  public void testVariableWidthResultsAreSplitBySerializedSize() throws Exception {
+    assertVariableWidthResultsAreSplitBySerializedSize(false);
+    assertVariableWidthResultsAreSplitBySerializedSize(true);
+  }
+
+  private void assertVariableWidthResultsAreSplitBySerializedSize(boolean withPassThrough)
+      throws Exception {
+    QueryId queryId = new QueryId("large_finish_result_" + withPassThrough);
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
     FragmentInstanceStateMachine stateMachine =
@@ -326,18 +332,23 @@ public class TableFunctionOperatorTest {
                   Record input,
                   List<ColumnBuilder> properColumnBuilders,
                   ColumnBuilder passThroughIndexBuilder) {
-                // Initialize the splitter with a narrow result block.
+                // Produce a narrow block before the wide result returned by finish().
                 properColumnBuilders.get(0).writeBinary(narrowValue);
+                if (passThroughIndexBuilder != null) {
+                  passThroughIndexBuilder.writeLong(0);
+                }
               }
 
               @Override
               public void finish(
                   List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-                // This second result block exceeds both maxLineNumber and maxBlockSize. Reusing a
-                // row-count estimate from the narrow block must not let an oversized slice pass
-                // through.
+                // This result exceeds both limits and must be split after pass-through columns are
+                // appended.
                 for (int i = 0; i < wideRowCount; i++) {
                   properColumnBuilders.get(0).writeBinary(wideValue);
+                  if (passThroughIndexBuilder != null) {
+                    passThroughIndexBuilder.writeLong(0);
+                  }
                 }
               }
             };
@@ -406,11 +417,13 @@ public class TableFunctionOperatorTest {
             provider,
             singleRowChild,
             Collections.singletonList(TSDataType.INT64),
-            Collections.singletonList(TSDataType.TEXT),
+            withPassThrough
+                ? Arrays.asList(TSDataType.TEXT, TSDataType.INT64)
+                : Collections.singletonList(TSDataType.TEXT),
             1,
             Collections.singletonList(0),
-            Collections.emptyList(),
-            false,
+            withPassThrough ? Collections.singletonList(0) : Collections.emptyList(),
+            withPassThrough,
             Collections.emptyList(),
             false,
             mock(IoTDBLocal.class))) {
@@ -423,12 +436,14 @@ public class TableFunctionOperatorTest {
         returnedBlocks++;
         returnedRows += block.getPositionCount();
         Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
-        Assert.assertTrue(block.getSizeInBytes() <= maxBlockSize);
         Assert.assertTrue(new TsBlockSerde().serialize(block).remaining() <= maxBlockSize);
         for (int i = 0; i < block.getPositionCount(); i++) {
           int expectedLength =
               returnedRows - block.getPositionCount() + i == 0 ? 6 : wideValueLength;
           assertEquals(expectedLength, block.getColumn(0).getBinary(i).getLength());
+          if (withPassThrough) {
+            assertEquals(1, block.getColumn(1).getLong(i));
+          }
         }
       }
     }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.calc.execution.operator.process.function;
 
-import org.apache.iotdb.calc.execution.operator.AbstractOperator;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AggregationMergeSortOperator;
@@ -44,8 +43,10 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,18 +59,17 @@ import java.util.Queue;
 import static com.google.common.base.Preconditions.checkArgument;
 
 // only one input source is supported now
-public class TableFunctionOperator extends AbstractOperator implements ProcessOperator {
+public class TableFunctionOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-
+  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
   private final PartitionRecognizer partitionRecognizer;
   private final TsBlockBuilder properBlockBuilder;
+  private final int maxTsBlockSizeInBytes;
   private final int maxTsBlockLineNumber;
   private final int properChannelCount;
   private final boolean needPassThrough;
@@ -84,6 +84,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   private boolean finished = false;
 
   private final Queue<TsBlock> resultTsBlocks;
+  private final TsBlockSerde tsBlockSerde;
 
   public TableFunctionOperator(
       CommonOperatorContext operatorContext,
@@ -110,10 +111,13 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
+    this.maxTsBlockSizeInBytes =
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     this.maxTsBlockLineNumber =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
+    this.tsBlockSerde = new TsBlockSerde();
     this.requireRecordSnapshot = requireRecordSnapshot;
     this.ioTDBLocal = ioTDBLocal;
   }
@@ -151,8 +155,8 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public TsBlock next() throws Exception {
-    if (retainedTsBlock != null || !resultTsBlocks.isEmpty()) {
-      return getNextResultTsBlock();
+    if (!resultTsBlocks.isEmpty()) {
+      return resultTsBlocks.poll();
     }
     if (partitionState == null) {
       partitionState = partitionRecognizer.nextState();
@@ -175,7 +179,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
         partitionCache.clear();
         consumeCurrentPartitionState();
-        return getNextResultTsBlock();
+        return resultTsBlocks.poll();
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
@@ -185,7 +189,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
           partitionCache.clear();
           destroyProcessor(processor);
           processor = null;
-          return getNextResultTsBlock();
+          return resultTsBlocks.poll();
         } else {
           processor = processorProvider.getDataProcessor();
           processor.beforeStart(ioTDBLocal);
@@ -199,70 +203,8 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
       }
       consumeCurrentPartitionState();
       resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-      return getNextResultTsBlock();
+      return resultTsBlocks.poll();
     }
-  }
-
-  private TsBlock getNextResultTsBlock() {
-    if (retainedTsBlock == null) {
-      retainedTsBlock = resultTsBlocks.poll();
-      startOffset = 0;
-    }
-    return retainedTsBlock == null ? null : getResultFromRetainedTsBlock();
-  }
-
-  @Override
-  public TsBlock getResultFromRetainedTsBlock() {
-    int remainingPositionCount = retainedTsBlock.getPositionCount() - startOffset;
-    int candidatePositionCount =
-        Math.min(remainingPositionCount, Math.max(1, maxTsBlockLineNumber));
-    int resultPositionCount = getMaxResultPositionCount(candidatePositionCount);
-    TsBlock result =
-        startOffset == 0 && resultPositionCount == retainedTsBlock.getPositionCount()
-            ? retainedTsBlock
-            : copyTsBlockRegion(retainedTsBlock, startOffset, resultPositionCount);
-    startOffset += resultPositionCount;
-    if (startOffset == retainedTsBlock.getPositionCount()) {
-      retainedTsBlock = null;
-      startOffset = 0;
-    }
-    return result;
-  }
-
-  private int getMaxResultPositionCount(int candidatePositionCount) {
-    if (getRegionSizeInBytes(candidatePositionCount) <= maxReturnSize) {
-      return candidatePositionCount;
-    }
-
-    // A row is indivisible, so keep the existing one-row-at-a-time fallback when a single row is
-    // larger than maxReturnSize.
-    int left = 1;
-    int right = candidatePositionCount - 1;
-    while (left < right) {
-      int mid = left + (right - left + 1) / 2;
-      if (getRegionSizeInBytes(mid) <= maxReturnSize) {
-        left = mid;
-      } else {
-        right = mid - 1;
-      }
-    }
-    return left;
-  }
-
-  private long getRegionSizeInBytes(int positionCount) {
-    // getRegion() keeps the source column's backing arrays and estimates a region's size from their
-    // capacity. Copying the region first makes variable-width columns report the logical size of
-    // exactly the rows being considered.
-    return copyTsBlockRegion(retainedTsBlock, startOffset, positionCount).getSizeInBytes();
-  }
-
-  private TsBlock copyTsBlockRegion(TsBlock source, int offset, int positionCount) {
-    Column[] valueColumns = new Column[source.getValueColumnCount()];
-    for (int i = 0; i < valueColumns.length; i++) {
-      valueColumns[i] = source.getColumn(i).getRegionCopy(offset, positionCount);
-    }
-    return new TsBlock(
-        positionCount, source.getTimeColumn().getRegionCopy(offset, positionCount), valueColumns);
   }
 
   private List<ColumnBuilder> getProperColumnBuilders() {
@@ -274,7 +216,8 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   }
 
   private List<TsBlock> buildTsBlock(
-      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder)
+      throws IOException {
     int positionCount = 0;
     if (properChannelCount > 0) {
       // if there is proper column, use its position count
@@ -306,14 +249,50 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         int subBlockPositionCount = passThroughColumns[0].getPositionCount();
         TsBlock subProperBlock = properBlock.getRegion(builtCount, subBlockPositionCount);
         builtCount += subBlockPositionCount;
-        result.add(subProperBlock.appendValueColumns(passThroughColumns));
+        addSplitTsBlocks(result, subProperBlock.appendValueColumns(passThroughColumns));
       }
     } else {
-      // split the proper block into smaller blocks
-      result.add(properBlock);
+      addSplitTsBlocks(result, properBlock);
     }
     properBlockBuilder.reset();
     return result;
+  }
+
+  private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) throws IOException {
+    int offset = 0;
+    while (offset < source.getPositionCount()) {
+      int candidatePositionCount =
+          Math.min(source.getPositionCount() - offset, Math.max(1, maxTsBlockLineNumber));
+      int resultPositionCount =
+          getMaxSerializedPositionCount(source, offset, candidatePositionCount);
+      result.add(source.getRegion(offset, resultPositionCount));
+      offset += resultPositionCount;
+    }
+  }
+
+  private int getMaxSerializedPositionCount(TsBlock source, int offset, int candidatePositionCount)
+      throws IOException {
+    if (getSerializedSizeInBytes(source, offset, candidatePositionCount) <= maxTsBlockSizeInBytes) {
+      return candidatePositionCount;
+    }
+
+    // A row is indivisible, so return it alone if it is larger than maxTsBlockSizeInBytes.
+    int left = 1;
+    int right = candidatePositionCount - 1;
+    while (left < right) {
+      int mid = left + (right - left + 1) / 2;
+      if (getSerializedSizeInBytes(source, offset, mid) <= maxTsBlockSizeInBytes) {
+        left = mid;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return left;
+  }
+
+  private int getSerializedSizeInBytes(TsBlock source, int offset, int positionCount)
+      throws IOException {
+    return tsBlockSerde.serialize(source.getRegion(offset, positionCount)).remaining();
   }
 
   private void consumeCurrentPartitionState() {
@@ -330,7 +309,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public boolean hasNext() throws Exception {
-    return !finished || retainedTsBlock != null || !resultTsBlocks.isEmpty();
+    return !finished || !resultTsBlocks.isEmpty();
   }
 
   @Override
@@ -338,9 +317,6 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     partitionCache.close();
     inputOperator.close();
     resultTsBlocks.clear();
-    resultTsBlock = null;
-    retainedTsBlock = null;
-    startOffset = 0;
     if (processor != null) {
       destroyProcessor(processor);
       processor = null;
@@ -350,18 +326,18 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished && retainedTsBlock == null && resultTsBlocks.isEmpty();
+    return finished && resultTsBlocks.isEmpty();
   }
 
   @Override
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemory()
-        + Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, properBlockBuilder.getRetainedSizeInBytes());
+        + Math.max(maxTsBlockSizeInBytes, properBlockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return maxReturnSize;
+    return maxTsBlockSizeInBytes;
   }
 
   @Override
