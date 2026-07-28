@@ -481,12 +481,21 @@ public class DataNodeMemoryConfig {
       final String[] proportions = configuredProportions.split(":");
       if (proportions.length != LEGACY_QUERY_MEMORY_COMPONENT_COUNT
           && proportions.length != QUERY_MEMORY_COMPONENT_COUNT) {
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeMiscMessages
+                    .EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941,
+                proportions.length));
       }
       for (int i = 0; i < proportions.length; i++) {
         resolvedProportions[i] = Integer.parseInt(proportions[i].trim());
         if (resolvedProportions[i] < 0) {
-          throw new IllegalArgumentException();
+          throw new IllegalArgumentException(
+              String.format(
+                  DataNodeMiscMessages
+                      .EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75,
+                  i + 1,
+                  resolvedProportions[i]));
         }
       }
       if (proportions.length == LEGACY_QUERY_MEMORY_COMPONENT_COUNT) {
@@ -505,7 +514,11 @@ public class DataNodeMemoryConfig {
       proportionSum += proportion;
     }
     if (proportionSum <= 0) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6,
+              proportionSum));
     }
     return resolvedProportions;
   }

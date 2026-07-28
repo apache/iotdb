@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.junit.Test;
 
@@ -28,6 +29,7 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class DataNodeMemoryConfigTest {
@@ -47,14 +49,51 @@ public class DataNodeMemoryConfigTest {
             "1:100:200:50:200:200:200:50:1000", false));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testRejectInvalidSubscriptionQueryMemoryProportions() {
-    DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200", true);
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                DataNodeMemoryConfig.resolveQueryMemoryProportions(
+                    "1:100:200:50:200:200:200", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941,
+            7),
+        exception.getMessage());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testRejectNegativeSubscriptionQueryMemoryProportion() {
-    DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50:-1", true);
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                DataNodeMemoryConfig.resolveQueryMemoryProportions(
+                    "1:100:200:50:200:200:200:50:-1", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75,
+            9,
+            -1),
+        exception.getMessage());
+  }
+
+  @Test
+  public void testRejectNonPositiveSubscriptionQueryMemoryProportionSum() {
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataNodeMemoryConfig.resolveQueryMemoryProportions("0:0:0:0:0:0:0:0:0", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6,
+            0),
+        exception.getMessage());
   }
 
   @Test

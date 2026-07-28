@@ -1364,11 +1364,8 @@ public class ConsensusPrefetchingQueue {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
       }
-      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-        blockRealtimeAdmission();
-        return computeIdleRoundResult();
-      }
-      if (!realtimeEntriesByWriter.isEmpty()) {
+      if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE
+          || !realtimeEntriesByWriter.isEmpty()) {
         blockRealtimeAdmission();
         return computeIdleRoundResult();
       }

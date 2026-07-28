@@ -354,7 +354,7 @@ public class ConsensusPrefetchingQueueTest {
                   1L, Collections.singletonList(StatementTestUtils.genInsertRowNode(1)))
               .setPhysicalTime(1000L)
               .setNodeId(7);
-      final IndexedConsensusRequest emptyRequest =
+      final IndexedConsensusRequest requestWithEmptyConversionResult =
           new IndexedConsensusRequest(
                   2L, Collections.singletonList(StatementTestUtils.genInsertRowNode(2)))
               .setPhysicalTime(1001L)
@@ -363,7 +363,7 @@ public class ConsensusPrefetchingQueueTest {
 
       assertNull(queue.poll("consumer"));
       pendingEntries(queue).offer(dataRequest);
-      pendingEntries(queue).offer(emptyRequest);
+      pendingEntries(queue).offer(requestWithEmptyConversionResult);
       queue.drivePrefetchOnce();
 
       final WriterId writerId = new WriterId(regionId.toString(), 7);
@@ -897,14 +897,14 @@ public class ConsensusPrefetchingQueueTest {
                   1L, Collections.singletonList(StatementTestUtils.genInsertRowNode(1)))
               .setPhysicalTime(1000L)
               .setNodeId(7);
-      final IndexedConsensusRequest emptyRequest =
+      final IndexedConsensusRequest requestWithEmptyConversionResult =
           new IndexedConsensusRequest(
                   2L, Collections.singletonList(StatementTestUtils.genInsertRowNode(2)))
               .setPhysicalTime(1001L)
               .setNodeId(7);
       reader.currentSearchIndex = 2L;
       pendingEntries(queue).offer(dataRequest);
-      pendingEntries(queue).offer(emptyRequest);
+      pendingEntries(queue).offer(requestWithEmptyConversionResult);
 
       assertNull(queue.poll("consumer"));
       queue.drivePrefetchOnce();
@@ -1130,6 +1130,9 @@ public class ConsensusPrefetchingQueueTest {
       queue.setSubscriptionMemoryManager(memoryManager);
 
       final int writeCount = 256;
+      // One scheduling attempt per submitted write proves repeated prefetch cannot bypass
+      // backpressure.
+      final int backpressureVerificationRounds = writeCount;
       for (long searchIndex = 1L; searchIndex <= writeCount; searchIndex++) {
         assertTrue(pendingEntries(queue).offer(createRequest(searchIndex)));
       }
@@ -1147,7 +1150,7 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals("0", queue.coreReportMessage().get("bufferedRealtimeEntryCount"));
       assertEquals("true", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
 
-      for (int round = 0; round < 20; round++) {
+      for (int round = 0; round < backpressureVerificationRounds; round++) {
         queue.drivePrefetchOnce();
       }
       assertEquals(3, conversionCount.get());
@@ -1158,7 +1161,7 @@ public class ConsensusPrefetchingQueueTest {
       assertNotNull(pausedEvent);
       assertEquals(0, queue.getPrefetchedEventCount());
       assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
-      for (int round = 0; round < 20; round++) {
+      for (int round = 0; round < backpressureVerificationRounds; round++) {
         queue.drivePrefetchOnce();
       }
       assertEquals(3, conversionCount.get());
