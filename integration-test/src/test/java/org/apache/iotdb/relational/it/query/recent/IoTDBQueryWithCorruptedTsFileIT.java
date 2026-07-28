@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -89,26 +90,33 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     File tsFile = new File(tmpDir, "corrupt-meta.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {
       generateTable(
-          writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), TSDataType.INT64, 1, 10);
+          writer,
+          "table1",
+          Arrays.asList("tag1"),
+          Arrays.asList("s1"),
+          TSDataType.INT64,
+          1,
+          1,
+          TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode() + 1);
     }
 
     // TsFile layout: [Header] [Data] [MetadataIndex Tree] [TsFileMetadata] [Magic][Size]
-    //                                    ↑ metaOffset           ↑ fileMetadataPos
+    //                                    ↑                         ↑ fileMetadataPos
     //
+    // More devices than the maximum index-node degree force the root device node into
+    // TsFileMetadata and its child device index nodes onto disk immediately before it.
     // MetadataIndexNode serialization:
     //   [entryCount (varInt)] [entry1]...[entryN] [endOffset (long, 8B)] [nodeType (1B)]
     //   nodeType valid values: 0=INTERNAL_DEVICE, 1=LEAF_DEVICE, 2=INTERNAL_MEASUREMENT,
     // 3=LEAF_MEASUREMENT
-    //   nodeType is the LAST byte before TsFileMetadata, i.e. at fileMetadataPos - 1
-    long metaOffset;
+    //   Therefore fileMetadataPos - 1 is the nodeType of the last child device index node.
     long fileMetadataPos;
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      metaOffset = reader.readFileMetadata().getMetaOffset();
       fileMetadataPos = reader.getFileMetadataPos();
     }
 
-    // Corrupt the nodeType byte to 0xFF (all valid types are 0-3)
     byte[] fileBytes = Files.readAllBytes(tsFile.toPath());
+    // Corrupt the nodeType byte to 0xFF (all valid types are 0-3).
     fileBytes[(int) fileMetadataPos - 1] = (byte) 0xFF;
     Files.write(tsFile.toPath(), fileBytes);
 
@@ -123,7 +131,14 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     File tsFile = new File(tmpDir, "corrupt-chunk-or-page-reader.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsFile)) {
       generateTable(
-          writer, "table1", Arrays.asList("tag1"), Arrays.asList("s1"), TSDataType.INT64, 1, 100);
+          writer,
+          "table1",
+          Arrays.asList("tag1"),
+          Arrays.asList("s1"),
+          TSDataType.INT64,
+          1,
+          100,
+          2);
     }
 
     corruptDataSection(tsFile);
@@ -250,7 +265,8 @@ public class IoTDBQueryWithCorruptedTsFileIT {
       List<String> fieldColumns,
       TSDataType fieldType,
       long startTime,
-      long endTime)
+      long endTime,
+      int deviceCount)
       throws IOException, WriteProcessException {
     List<String> columnNames = new ArrayList<>(tagColumns.size() + fieldColumns.size());
     List<TSDataType> columnTypes = new ArrayList<>(tagColumns.size() + fieldColumns.size());
@@ -270,7 +286,7 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     writer.registerTableSchema(
         new TableSchema(tableName, columnNames, columnTypes, columnCategories));
     Tablet tablet = new Tablet(tableName, columnNames, columnTypes, columnCategories);
-    for (int deviceIndex = 1; deviceIndex <= 2; deviceIndex++) {
+    for (int deviceIndex = 1; deviceIndex <= deviceCount; deviceIndex++) {
       for (long time = startTime; time <= endTime; time++) {
         int row = tablet.getRowSize();
         tablet.addTimestamp(row, time);
