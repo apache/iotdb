@@ -2265,8 +2265,10 @@ public class ProcedureManager {
 
   private static String wrapTimeoutMessageForPipeProcedure(final TSStatus status) {
     if (isProcedureTimeout(status)) {
-      return status.getMessage()
-          + " Please manually check later whether the procedure is executed successfully.";
+      return String.format(
+          ManagerMessages
+              .MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D,
+          status.getMessage());
     }
     return status.getMessage();
   }
