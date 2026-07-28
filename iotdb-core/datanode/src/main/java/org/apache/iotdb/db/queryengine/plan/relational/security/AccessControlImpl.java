@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -65,7 +66,8 @@ public class AccessControlImpl implements AccessControl {
   static String getUnsupportedAuditDatabaseOperationMessage(String databaseName) {
     return String.format(
         DataNodeQueryMessages
-            .EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7,
+            .EXCEPTION_ARG_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_775BD103,
+        IoTDBConstant.BRAND_NAME,
         databaseName);
   }
 

@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BRAND_NAME;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CHILD_NODES;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PATHS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TEMPLATE_NAME;
@@ -88,12 +89,14 @@ public class IoTDBTemplateAuthIT {
       assertNonQueryTestFail(
           adminStmt,
           "delete database root.__audit",
-          "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
+          String.format(
+              "803: %s does not support this operation on database 'root.__audit'.", BRAND_NAME));
 
       assertNonQueryTestFail(
           adminStmt,
           "set device template t1 to root.__audit",
-          "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
+          String.format(
+              "803: %s does not support this operation on database 'root.__audit'.", BRAND_NAME));
 
       Set<String> retSet = new HashSet<>(Arrays.asList("t1", "t2", "t3"));
 

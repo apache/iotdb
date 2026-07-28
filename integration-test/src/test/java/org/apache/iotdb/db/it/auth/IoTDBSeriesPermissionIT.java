@@ -38,6 +38,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BRAND_NAME;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TIME;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countDevicesColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countNodesColumnHeaders;
@@ -383,7 +384,8 @@ public class IoTDBSeriesPermissionIT {
         assertNonQueryTestFail(
             statement,
             "set ttl to root.__audit.** 1",
-            "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
+            String.format(
+                "803: %s does not support this operation on database 'root.__audit'.", BRAND_NAME));
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());

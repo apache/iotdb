@@ -3072,8 +3072,8 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
       "getOutputColumnNames of AlterLogicalViewNode is not implemented";
   public static final String
-      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
-          "Apache IoTDB does not support this operation on database '%s'.";
+      EXCEPTION_ARG_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_775BD103 =
+          "%s does not support this operation on database '%s'.";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
       "The database '%s' can only be queried by AUDIT admin.";
   public static final String QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8 =

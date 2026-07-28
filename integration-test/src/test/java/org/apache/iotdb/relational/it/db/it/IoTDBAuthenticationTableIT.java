@@ -52,6 +52,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Locale;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BRAND_NAME;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -111,7 +112,9 @@ public class IoTDBAuthenticationTableIT {
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
         assertEquals(
-            "803: Access Denied: Apache IoTDB does not support this operation on database '__audit'.",
+            String.format(
+                "803: Access Denied: %s does not support this operation on database '__audit'.",
+                BRAND_NAME),
             e.getMessage());
       }
 
