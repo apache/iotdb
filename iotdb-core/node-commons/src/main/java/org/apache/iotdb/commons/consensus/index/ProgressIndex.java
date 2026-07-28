@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -157,6 +158,45 @@ public abstract class ProgressIndex implements Accountable {
    * @return the type of this {@link ProgressIndex}
    */
   public abstract ProgressIndexType getType();
+
+  /**
+   * Extracts a progress index of the given type from this progress index.
+   *
+   * <p>{@link StateProgressIndex} and {@link HybridProgressIndex} are recursively unwrapped because
+   * they may contain progress indexes from other causal chains.
+   */
+  public final <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    if (progressIndexClass.isInstance(this)) {
+      return Optional.of(progressIndexClass.cast(this));
+    }
+
+    if (this instanceof StateProgressIndex) {
+      return ((StateProgressIndex) this)
+          .getInnerProgressIndex()
+          .getProgressIndexByType(progressIndexClass);
+    }
+
+    if (this instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index = ((HybridProgressIndex) this).getType2Index();
+
+      // Prefer a direct component over one nested in another composite progress index.
+      for (final ProgressIndex progressIndex : type2Index.values()) {
+        if (progressIndexClass.isInstance(progressIndex)) {
+          return Optional.of(progressIndexClass.cast(progressIndex));
+        }
+      }
+      for (final ProgressIndex progressIndex : type2Index.values()) {
+        final Optional<T> extractedProgressIndex =
+            progressIndex.getProgressIndexByType(progressIndexClass);
+        if (extractedProgressIndex.isPresent()) {
+          return extractedProgressIndex;
+        }
+      }
+    }
+
+    return Optional.empty();
+  }
 
   /**
    * Get the sum of the tuples of each total order relation of the {@link ProgressIndex}, which is

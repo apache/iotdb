@@ -210,7 +210,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof TimeWindowStateProgressIndex)) {
-        return this;
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
       final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
