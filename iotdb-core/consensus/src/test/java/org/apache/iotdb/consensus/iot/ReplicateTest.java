@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
@@ -402,6 +403,55 @@ public class ReplicateTest {
     Assert.assertTrue(failingStateMachine.getData().contains(entry));
   }
 
+  /**
+   * Verifies that retrying a SyncLog batch after a transient write failure preserves the original
+   * application order on the follower.
+   */
+  @Test
+  public void syncLogWriteProcessErrorRetryPreservesRequestOrderTest() throws Exception {
+    IoTConsensusConfig retryConfig =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder().setMaxPendingBatchesNum(1).build())
+            .build();
+    servers
+        .get(0)
+        .reloadConsensusConfig(
+            ConsensusConfig.newBuilder().setIoTConsensusConfig(retryConfig).build());
+
+    OrderTrackingWriteProcessErrorOnceTestStateMachine failingStateMachine =
+        new OrderTrackingWriteProcessErrorOnceTestStateMachine();
+    stateMachines.set(0, failingStateMachine);
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    IoTConsensusServerImpl server = servers.get(0).getImpl(gid);
+
+    DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 2, 2, peers.get(1).getNodeId(), 2);
+    request.add(
+        new IndexedConsensusRequest(
+            1, 1, Collections.singletonList(new TestEntry(1, peers.get(1)))));
+    request.add(
+        new IndexedConsensusRequest(
+            2, 2, Collections.singletonList(new TestEntry(2, peers.get(1)))));
+
+    TSStatus firstAttempt = server.syncLog(peers.get(1).getNodeId(), request);
+    Assert.assertEquals(
+        TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(),
+        firstAttempt.getSubStatus().get(0).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), firstAttempt.getSubStatus().get(1).getCode());
+    Assert.assertTrue(
+        firstAttempt.getSubStatus().stream()
+            .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode())));
+
+    TSStatus retryAttempt = server.syncLog(peers.get(1).getNodeId(), request);
+    Assert.assertTrue(
+        retryAttempt.getSubStatus().stream()
+            .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    Assert.assertEquals(
+        Arrays.asList(1L, 2L), failingStateMachine.getFirstSuccessfullyAppliedSyncIndexes());
+  }
+
   @Test
   public void parsingAndConstructIDTest() throws Exception {
     logger.info("Start ParsingAndConstructIDTest");
@@ -451,6 +501,34 @@ public class ReplicateTest {
 
     private int getWriteAttempts() {
       return writeAttempts.get();
+    }
+  }
+
+  private static class OrderTrackingWriteProcessErrorOnceTestStateMachine
+      extends WriteProcessErrorOnceTestStateMachine {
+
+    private final List<Long> firstSuccessfullyAppliedSyncIndexes =
+        Collections.synchronizedList(new ArrayList<>());
+
+    @Override
+    public TSStatus write(IConsensusRequest request) {
+      TSStatus status = super.write(request);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && request instanceof IndexedConsensusRequest) {
+        long syncIndex = ((IndexedConsensusRequest) request).getSyncIndex();
+        synchronized (firstSuccessfullyAppliedSyncIndexes) {
+          if (!firstSuccessfullyAppliedSyncIndexes.contains(syncIndex)) {
+            firstSuccessfullyAppliedSyncIndexes.add(syncIndex);
+          }
+        }
+      }
+      return status;
+    }
+
+    private List<Long> getFirstSuccessfullyAppliedSyncIndexes() {
+      synchronized (firstSuccessfullyAppliedSyncIndexes) {
+        return new ArrayList<>(firstSuccessfullyAppliedSyncIndexes);
+      }
     }
   }
 }
