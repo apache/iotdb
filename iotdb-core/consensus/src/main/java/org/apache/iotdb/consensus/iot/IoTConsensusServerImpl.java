@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -1453,9 +1454,22 @@ public class IoTConsensusServerImpl {
         long sortTime = System.nanoTime();
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
-        for (IConsensusRequest insertNode : request.getInsertNodes()) {
+        List<IConsensusRequest> insertNodes = request.getInsertNodes();
+        for (int i = 0; i < insertNodes.size(); i++) {
+          IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          subStatus.add(stateMachine.write(insertNode));
+          TSStatus status = stateMachine.write(insertNode);
+          subStatus.add(status);
+          if (RetryUtils.needRetryForWrite(status.getCode())) {
+            for (int j = i + 1; j < insertNodes.size(); j++) {
+              subStatus.add(
+                  RpcUtils.getStatus(
+                      TSStatusCode.WRITE_PROCESS_REJECT,
+                      IoTConsensusMessages
+                          .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7));
+            }
+            break;
+          }
         }
         if (subStatus.stream()
             .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {

@@ -257,6 +257,9 @@ public final class IoTConsensusMessages {
   public static final String
       MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2 =
           "等待期间 SyncLog 请求（SyncIndex %d）被中断";
+  public static final String
+      MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7 =
+          "该请求必须等待前置请求完成";
 
   // ===================== SyncStatus =====================
 

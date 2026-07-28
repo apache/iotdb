@@ -439,7 +439,12 @@ public class ReplicateTest {
         TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(),
         firstAttempt.getSubStatus().get(0).getCode());
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), firstAttempt.getSubStatus().get(1).getCode());
+        TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+        firstAttempt.getSubStatus().get(1).getCode());
+    Assert.assertEquals(
+        IoTConsensusMessages
+            .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7,
+        firstAttempt.getSubStatus().get(1).getMessage());
     Assert.assertTrue(
         firstAttempt.getSubStatus().stream()
             .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode())));
