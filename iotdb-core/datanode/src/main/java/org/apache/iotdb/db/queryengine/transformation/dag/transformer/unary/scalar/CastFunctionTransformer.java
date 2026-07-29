@@ -20,24 +20,18 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
-import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
+import org.apache.iotdb.db.utils.TypeServices.Transformation.CastColumnStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
-import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
-import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
-import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
+
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.CAST_COLUMN_SERVICE;
 
 public class CastFunctionTransformer extends UnaryTransformer {
   private final TSDataType targetDataType;
@@ -54,488 +48,39 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
   @Override
   protected Column[] transform(Column[] columns) throws QueryProcessException, IOException {
-    switch (layerReaderDataType) {
-      case INT32:
-        return castInts(columns);
-      case INT64:
-        return castLongs(columns);
-      case FLOAT:
-        return castFloats(columns);
-      case DOUBLE:
-        return castDoubles(columns);
-      case BOOLEAN:
-        return castBooleans(columns);
-      case TEXT:
-        return castBinaries(columns);
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", layerReaderDataType));
+    final Type sourceType;
+    try {
+      sourceType = Type.fromTsDataType(layerReaderDataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format("Unsupported source dataType: %s", layerReaderDataType));
     }
-  }
 
-  private Column[] castInts(Column[] columns) {
-    if (targetDataType == TSDataType.INT32) {
+    final Type targetType;
+    try {
+      targetType = Type.fromTsDataType(targetDataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format("Unsupported target dataType: %s", layerReaderDataType));
+    }
+
+    final CastColumnStrategy strategy = CAST_COLUMN_SERVICE.call(sourceType).call(targetType);
+    strategy.validate();
+    if (layerReaderDataType == targetDataType) {
       return columns;
     }
 
-    int count = columns[0].getPositionCount();
-    int[] values = columns[0].getInts();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT64:
-        builder = new LongColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeLong(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeFloat(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeDouble(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBoolean(values[i] != 0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TEXT:
-        builder = new BinaryColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TIMESTAMP:
-      case DATE:
-      case INT32:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+    final Column valueColumn = columns[0];
+    final int positionCount = valueColumn.getPositionCount();
+    final boolean[] isNulls = valueColumn.isNull();
+    final ColumnBuilder builder = strategy.createBuilder(positionCount);
+    for (int i = 0; i < positionCount; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        strategy.cast(valueColumn, i, builder);
+      }
     }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
-  }
-
-  private Column[] castLongs(Column[] columns) {
-    if (targetDataType == TSDataType.INT64) {
-      return columns;
-    }
-
-    int count = columns[0].getPositionCount();
-    long[] values = columns[0].getLongs();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT32:
-        builder = new IntColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeInt(CastFunctionUtils.castLongToInt(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeFloat(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeDouble(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBoolean(values[i] != 0L);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TEXT:
-        builder = new BinaryColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case DATE:
-      case TIMESTAMP:
-      case INT64:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
-    }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
-  }
-
-  private Column[] castFloats(Column[] columns) {
-    if (targetDataType == TSDataType.FLOAT) {
-      return columns;
-    }
-
-    int count = columns[0].getPositionCount();
-    float[] values = columns[0].getFloats();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT32:
-        builder = new IntColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeInt(CastFunctionUtils.castFloatToInt(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case INT64:
-        builder = new LongColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeLong(CastFunctionUtils.castFloatToLong(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeDouble(values[i]);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBoolean(values[i] != 0f);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TEXT:
-        builder = new BinaryColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      case FLOAT:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
-    }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
-  }
-
-  private Column[] castDoubles(Column[] columns) {
-    if (targetDataType == TSDataType.DOUBLE) {
-      return columns;
-    }
-
-    int count = columns[0].getPositionCount();
-    double[] values = columns[0].getDoubles();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT32:
-        builder = new IntColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeInt(CastFunctionUtils.castDoubleToInt(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case INT64:
-        builder = new LongColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeLong(CastFunctionUtils.castDoubleToLong(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeFloat(CastFunctionUtils.castDoubleToFloat(values[i]));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBoolean(values[i] != 0.0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TEXT:
-        builder = new BinaryColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      case DOUBLE:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
-    }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
-  }
-
-  private Column[] castBooleans(Column[] columns) {
-    if (targetDataType == TSDataType.BOOLEAN) {
-      return columns;
-    }
-
-    int count = columns[0].getPositionCount();
-    boolean[] values = columns[0].getBooleans();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT32:
-        builder = new IntColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeInt(values[i] ? 1 : 0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case INT64:
-        builder = new LongColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeLong(values[i] ? 1L : 0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeFloat(values[i] ? 1.0f : 0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeDouble(values[i] ? 1.0 : 0);
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TEXT:
-        builder = new BinaryColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case DATE:
-      case TIMESTAMP:
-      case BOOLEAN:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
-    }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
-  }
-
-  private Column[] castBinaries(Column[] columns) {
-    if (targetDataType == TSDataType.TEXT) {
-      return columns;
-    }
-
-    int count = columns[0].getPositionCount();
-    Binary[] values = columns[0].getBinaries();
-    boolean[] isNulls = columns[0].isNull();
-    ColumnBuilder builder;
-    switch (targetDataType) {
-      case INT32:
-        builder = new IntColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeInt(Integer.parseInt(str));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case INT64:
-        builder = new LongColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeLong(Long.parseLong(str));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeFloat(CastFunctionUtils.castTextToFloat(str));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeDouble(CastFunctionUtils.castTextToDouble(str));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, count);
-        for (int i = 0; i < count; i++) {
-          if (!isNulls[i]) {
-            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeBoolean(CastFunctionUtils.castTextToBoolean(str));
-          } else {
-            builder.appendNull();
-          }
-        }
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
-    }
-
-    Column valueColumn = builder.build();
-    Column timeColumn = columns[1];
-    return new Column[] {valueColumn, timeColumn};
+    return new Column[] {builder.build(), columns[1]};
   }
 }

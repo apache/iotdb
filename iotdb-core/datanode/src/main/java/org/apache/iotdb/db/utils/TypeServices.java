@@ -36,6 +36,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstan
 import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -431,6 +432,354 @@ public class TypeServices {
                       };
                 };
 
+    public static final TypeService<TypeService<CastColumnStrategy>> CAST_COLUMN_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeInt(builder, type.getInt(column, index)));
+                        case INT64 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeLong(builder, type.getInt(column, index)));
+                        case FLOAT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeFloat(builder, type.getInt(column, index)));
+                        case DOUBLE ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeDouble(builder, type.getInt(column, index)));
+                        case BOOLEAN ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, type.getInt(column, index) != 0));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(
+                                        builder,
+                                        BytesUtils.valueOf(
+                                            String.valueOf(type.getInt(column, index)))));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case INT64 ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeInt(
+                                        builder,
+                                        CastFunctionUtils.castLongToInt(
+                                            type.getLong(column, index))));
+                        case INT64 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeLong(builder, type.getLong(column, index)));
+                        case FLOAT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeFloat(builder, type.getLong(column, index)));
+                        case DOUBLE ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeDouble(builder, type.getLong(column, index)));
+                        case BOOLEAN ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, type.getLong(column, index) != 0L));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(
+                                        builder,
+                                        BytesUtils.valueOf(
+                                            String.valueOf(type.getLong(column, index)))));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case FLOAT ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeInt(
+                                        builder,
+                                        CastFunctionUtils.castFloatToInt(
+                                            type.getFloat(column, index))));
+                        case INT64 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeLong(
+                                        builder,
+                                        CastFunctionUtils.castFloatToLong(
+                                            type.getFloat(column, index))));
+                        case FLOAT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeFloat(builder, type.getFloat(column, index)));
+                        case DOUBLE ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeDouble(builder, type.getFloat(column, index)));
+                        case BOOLEAN ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, type.getFloat(column, index) != 0.0f));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(
+                                        builder,
+                                        BytesUtils.valueOf(
+                                            String.valueOf(type.getFloat(column, index)))));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case DOUBLE ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeInt(
+                                        builder,
+                                        CastFunctionUtils.castDoubleToInt(
+                                            type.getDouble(column, index))));
+                        case INT64 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeLong(
+                                        builder,
+                                        CastFunctionUtils.castDoubleToLong(
+                                            type.getDouble(column, index))));
+                        case FLOAT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeFloat(
+                                        builder,
+                                        CastFunctionUtils.castDoubleToFloat(
+                                            type.getDouble(column, index))));
+                        case DOUBLE ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeDouble(builder, type.getDouble(column, index)));
+                        case BOOLEAN ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, type.getDouble(column, index) != 0.0));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(
+                                        builder,
+                                        BytesUtils.valueOf(
+                                            String.valueOf(type.getDouble(column, index)))));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case BOOLEAN ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeInt(
+                                        builder, type.getBoolean(column, index) ? 1 : 0));
+                        case INT64 ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeLong(
+                                        builder, type.getBoolean(column, index) ? 1L : 0L));
+                        case FLOAT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeFloat(
+                                        builder, type.getBoolean(column, index) ? 1.0f : 0.0f));
+                        case DOUBLE ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeDouble(
+                                        builder, type.getBoolean(column, index) ? 1.0 : 0.0));
+                        case BOOLEAN ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, type.getBoolean(column, index)));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(
+                                        builder,
+                                        BytesUtils.valueOf(
+                                            String.valueOf(type.getBoolean(column, index)))));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case TEXT ->
+                  targetType ->
+                      switch (targetType.getTypeEnum()) {
+                        case INT32 ->
+                            castBinaryColumnStrategy(
+                                type,
+                                targetType,
+                                (value, builder) ->
+                                    targetType.writeInt(builder, Integer.parseInt(value)));
+                        case INT64 ->
+                            castBinaryColumnStrategy(
+                                type,
+                                targetType,
+                                (value, builder) ->
+                                    targetType.writeLong(builder, Long.parseLong(value)));
+                        case FLOAT ->
+                            castBinaryColumnStrategy(
+                                type,
+                                targetType,
+                                (value, builder) ->
+                                    targetType.writeFloat(
+                                        builder, CastFunctionUtils.castTextToFloat(value)));
+                        case DOUBLE ->
+                            castBinaryColumnStrategy(
+                                type,
+                                targetType,
+                                (value, builder) ->
+                                    targetType.writeDouble(
+                                        builder, CastFunctionUtils.castTextToDouble(value)));
+                        case BOOLEAN ->
+                            castBinaryColumnStrategy(
+                                type,
+                                targetType,
+                                (value, builder) ->
+                                    targetType.writeBoolean(
+                                        builder, CastFunctionUtils.castTextToBoolean(value)));
+                        case TEXT ->
+                            castColumnStrategy(
+                                targetType,
+                                (column, index, builder) ->
+                                    targetType.writeBinary(builder, type.getBinary(column, index)));
+                        case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                            unsupportedTargetCastStrategy(type);
+                      };
+              case DATE, TIMESTAMP, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                  targetType -> unsupportedSourceCastStrategy(type);
+            };
+
+    private static CastColumnStrategy castColumnStrategy(
+        final Type targetType, final CastColumnWriter writer) {
+      return new CastColumnStrategy(() -> {}, targetType::createColumnBuilder, writer);
+    }
+
+    private static CastColumnStrategy castBinaryColumnStrategy(
+        final Type sourceType, final Type targetType, final BinaryStringCastWriter writer) {
+      return castColumnStrategy(
+          targetType,
+          (column, index, builder) ->
+              writer.write(
+                  sourceType.getBinary(column, index).getStringValue(TSFileConfig.STRING_CHARSET),
+                  builder));
+    }
+
+    private static CastColumnStrategy unsupportedSourceCastStrategy(final Type sourceType) {
+      return unsupportedCastStrategy(
+          String.format("Unsupported source dataType: %s", sourceType.getTypeEnum()));
+    }
+
+    private static CastColumnStrategy unsupportedTargetCastStrategy(final Type sourceType) {
+      return unsupportedCastStrategy(
+          String.format("Unsupported target dataType: %s", sourceType.getTypeEnum()));
+    }
+
+    private static CastColumnStrategy unsupportedCastStrategy(final String message) {
+      return new CastColumnStrategy(
+          () -> {
+            throw new UnsupportedOperationException(message);
+          },
+          ignored -> {
+            throw new UnsupportedOperationException(message);
+          },
+          (column, index, builder) -> {
+            throw new UnsupportedOperationException(message);
+          });
+    }
+
+    public static final class CastColumnStrategy {
+      private final Runnable validator;
+      private final IntFunction<ColumnBuilder> builderFactory;
+      private final CastColumnWriter writer;
+
+      private CastColumnStrategy(
+          final Runnable validator,
+          final IntFunction<ColumnBuilder> builderFactory,
+          final CastColumnWriter writer) {
+        this.validator = validator;
+        this.builderFactory = builderFactory;
+        this.writer = writer;
+      }
+
+      public void validate() {
+        validator.run();
+      }
+
+      public ColumnBuilder createBuilder(final int expectedEntries) {
+        return builderFactory.apply(expectedEntries);
+      }
+
+      public void cast(final Column column, final int index, final ColumnBuilder builder) {
+        writer.write(column, index, builder);
+      }
+    }
+
+    @FunctionalInterface
+    private interface CastColumnWriter {
+      void write(Column column, int index, ColumnBuilder builder);
+    }
+
+    @FunctionalInterface
+    private interface BinaryStringCastWriter {
+      void write(String value, ColumnBuilder builder);
+    }
+
     @FunctionalInterface
     public interface ColumnToDoubleConverter {
       double convert(Column column, int index) throws QueryProcessException;
@@ -488,6 +837,7 @@ public class TypeServices {
       STATE_WINDOW_SPLITTER_SERVICE.check();
       IN_TRANSFORMER_SET_INITIALIZER_SERVICE.check();
       IN_TRANSFORMER_COLUMN_TRANSFORMER_SERVICE.check();
+      CAST_COLUMN_SERVICE.check();
     }
 
     private Transformation() {
