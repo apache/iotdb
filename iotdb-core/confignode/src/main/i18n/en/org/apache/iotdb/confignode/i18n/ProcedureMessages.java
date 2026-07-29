@@ -1408,4 +1408,32 @@ public final class ProcedureMessages {
   public static final String MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
       "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
 
+  public static final String MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595 =
+      "no Procedure worker is currently available; workers may be busy or blocked by other procedures.";
+  public static final String MESSAGE_PIPE_OPERATION_ARG_TIMED_OUT_PROCEDUREID_ARG_STUCK_AT_ARG_REASON_ARG_THE_PROCEDURE_IS_STILL_RUNNING_7EEAC50E =
+      "Pipe operation %s timed out (procedureId=%d). Stuck at %s. Reason: %s. The procedure is still running.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_PIPETASKCOORDINATOR_LOCK_BECAUSE_ANOTHER_PIPE_OPERATION_IS_HOLDING_IT_25A3B6B8 =
+      "waiting to acquire the PipeTaskCoordinator lock because another Pipe operation is holding it.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
+      "waiting to acquire the ConfigNode node lock because another node procedure is holding it.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+      "waiting to acquire the ConfigNode node lock held by %s (procedureId=%d).";
+  public static final String MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
+      "Pipe request or plugin validation has not completed; a plugin check or metadata access may be slow.";
+  public static final String MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
+      "Pipe metadata calculation has not completed; metadata access or local calculation may be slow.";
+  public static final String MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+      "the ConfigNode consensus write has not returned; run SHOW CLUSTER to check node status.";
+  public static final String MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+      "DataNodes %s have not responded to the Pipe metadata push; run SHOW CLUSTER to check their status.";
+  public static final String MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+      "the Pipe metadata push has not completed; run SHOW CLUSTER to check DataNode status.";
+  public static final String MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
+      "the previous attempt failed with '%s' and this state is being retried.";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "the state failed with '%s' and rollback is pending.";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
+      "rolling back after failure: %s.";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
+      "rolling back after an earlier failure.";
 }
