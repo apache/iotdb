@@ -59,6 +59,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -105,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Tr
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -130,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -329,7 +332,25 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSExecuteStatementResp executeStatementInternal(
       NativeStatementRequest request, SelectResult setResult) {
+    UserRoleModificationAuditContext userRoleModificationAuditContext =
+        new UserRoleModificationAuditContext(request.getSql());
+    TSExecuteStatementResp response = null;
+    try {
+      response =
+          executeStatementInternalWithoutUserRoleModificationAudit(
+              request, setResult, userRoleModificationAuditContext);
+      return response;
+    } finally {
+      userRoleModificationAuditContext.log(response == null ? null : response.getStatus());
+    }
+  }
+
+  private TSExecuteStatementResp executeStatementInternalWithoutUserRoleModificationAudit(
+      NativeStatementRequest request,
+      SelectResult setResult,
+      UserRoleModificationAuditContext userRoleModificationAuditContext) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    userRoleModificationAuditContext.setClientSession(clientSession);
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
@@ -353,6 +374,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ExecutionResult result;
       if (clientSession.getSqlDialect() == SqlDialect.TREE) {
         Statement s = request.getTreeStatement(clientSession.getZoneId());
+        if (s instanceof AuthorStatement) {
+          userRoleModificationAuditContext.track((AuthorStatement) s);
+        }
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
         }
@@ -426,6 +450,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else {
         org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement s =
             request.getTableStatement(relationSqlParser, clientSession.getZoneId(), clientSession);
+        if (s instanceof RelationalAuthorStatement) {
+          userRoleModificationAuditContext.track((RelationalAuthorStatement) s);
+        }
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -2144,6 +2171,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       for (int i = 0; i < req.getStatements().size(); i++) {
         String statement = req.getStatements().get(i);
+        UserRoleModificationAuditContext userRoleModificationAuditContext =
+            new UserRoleModificationAuditContext(statement);
+        userRoleModificationAuditContext.setClientSession(clientSession);
+        TSStatus statementStatus = null;
         long t2 = System.nanoTime();
         String type = null;
         OperationQuota quota = null;
@@ -2155,6 +2186,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (s == null) {
               return RpcUtils.getStatus(
                   TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+            }
+            if (s instanceof AuthorStatement) {
+              userRoleModificationAuditContext.track((AuthorStatement) s);
             }
 
             if (s instanceof CreateTableViewStatement) {
@@ -2223,6 +2257,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement s =
                 relationSqlParser.createStatement(
                     statement, clientSession.getZoneId(), clientSession);
+            if (s instanceof RelationalAuthorStatement) {
+              userRoleModificationAuditContext.track((RelationalAuthorStatement) s);
+            }
 
             if (s instanceof Use) {
               useDatabase = true;
@@ -2266,15 +2303,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           }
 
-          results.add(result.status);
+          statementStatus = result.status;
+          results.add(statementStatus);
         } catch (Exception e) {
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
-          TSStatus status =
+          statementStatus =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
           isAllSuccessful = false;
-          results.add(status);
+          results.add(statementStatus);
         } finally {
+          userRoleModificationAuditContext.log(statementStatus);
           CommonUtils.addStatementExecutionLatency(
               OperationType.EXECUTE_STATEMENT, type, System.nanoTime() - t2);
           if (quota != null) {
