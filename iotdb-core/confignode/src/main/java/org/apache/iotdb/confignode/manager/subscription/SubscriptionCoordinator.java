@@ -220,11 +220,24 @@ public class SubscriptionCoordinator {
     }
 
     final Long leaseDurationMs = currentTopicMeta.getOwnerLeaseDurationMs();
-    final Long blockSinceMs = blockedOwnerLeaseRenewalTopics.get(req.getTopicName());
-    if (Objects.isNull(leaseDurationMs) || Objects.isNull(blockSinceMs)) {
-      // No lease configured (no drain to wait for) or renewal not blocked: epoch fencing applies on
-      // reachable DataNodes; nothing further to wait on here.
+    if (Objects.isNull(leaseDurationMs)) {
+      // No lease configured, so there is nothing to drain.
       return updatedTopicMeta;
+    }
+
+    waitForOwnerLeaseExpiration(req.getTopicName(), leaseDurationMs);
+
+    // Another alteration may have completed while this owner transfer was waiting for the old
+    // lease to drain. Rebuild from the latest TopicMeta so that this request only applies its own
+    // attributes instead of restoring the stale snapshot captured before the wait.
+    return buildAlteredTopicMeta(req);
+  }
+
+  void waitForOwnerLeaseExpiration(final String topicName, final long leaseDurationMs)
+      throws InterruptedException {
+    final Long blockSinceMs = blockedOwnerLeaseRenewalTopics.get(topicName);
+    if (Objects.isNull(blockSinceMs)) {
+      return;
     }
 
     final long drainDeadlineMs =
@@ -233,7 +246,6 @@ public class SubscriptionCoordinator {
     while ((remainingMs = drainDeadlineMs - System.currentTimeMillis()) > 0) {
       Thread.sleep(Math.min(remainingMs, 1000L));
     }
-    return updatedTopicMeta;
   }
 
   public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {
