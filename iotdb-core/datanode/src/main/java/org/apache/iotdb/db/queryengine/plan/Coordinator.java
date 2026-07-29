@@ -42,7 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.audit.RevokeFailureAuditLogger;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -413,8 +413,8 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
-      RevokeFailureAuditLogger.getInstance()
-          .log(statement, session, sql, result == null ? null : result.status);
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
     }
   }
 
@@ -561,8 +561,8 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
-      RevokeFailureAuditLogger.getInstance()
-          .log(statement, session, sql, result == null ? null : result.status);
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
     }
   }
 

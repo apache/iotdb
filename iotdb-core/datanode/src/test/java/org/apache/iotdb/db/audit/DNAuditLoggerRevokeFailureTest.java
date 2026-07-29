@@ -43,34 +43,34 @@ import java.util.function.Supplier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-public class RevokeFailureAuditLoggerTest {
+public class DNAuditLoggerRevokeFailureTest {
 
   @Test
   public void testTreeRevokeUserFailure() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     String sql = "REVOKE READ ON root.** FROM user1";
     AuthorStatement statement = new AuthorStatement(AuthorType.REVOKE_USER);
     statement.setUserName("user1");
 
-    logger.log(statement, treeAuditEntity(sql), RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    auditLogger.logRevokeFailure(
+        statement, treeAuditEntity(sql), RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
 
     assertAuditLog(auditLogger, "user1", sql);
   }
 
   @Test
   public void testTableRevokeRoleFailure() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     String sql = "REVOKE SELECT ON DATABASE db FROM ROLE role1";
     RelationalAuthorStatement statement = new RelationalAuthorStatement(AuthorRType.REVOKE_ROLE_DB);
     statement.setRoleName("role1");
 
-    logger.log(
+    auditLogger.logRevokeFailure(
         statement, sessionInfo(), sql, RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
 
     assertAuditLog(auditLogger, "role1", sql);
@@ -78,24 +78,22 @@ public class RevokeFailureAuditLoggerTest {
 
   @Test
   public void testSuccessfulRevokeIsIgnored() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     AuthorStatement statement = new AuthorStatement(AuthorType.REVOKE_USER);
     statement.setUserName("user1");
 
-    logger.log(statement, sessionInfo(), "revoke", RpcUtils.SUCCESS_STATUS);
+    auditLogger.logRevokeFailure(statement, sessionInfo(), "revoke", RpcUtils.SUCCESS_STATUS);
 
     verify(auditLogger, never()).log(any(), any());
   }
 
   @Test
   public void testRedirectedRevokeIsIgnored() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     AuthorStatement statement = new AuthorStatement(AuthorType.REVOKE_USER);
     statement.setUserName("user1");
 
-    logger.log(
+    auditLogger.logRevokeFailure(
         statement, sessionInfo(), "revoke", RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND));
 
     verify(auditLogger, never()).log(any(), any());
@@ -103,37 +101,35 @@ public class RevokeFailureAuditLoggerTest {
 
   @Test
   public void testMissingStatusIsFailure() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     AuthorStatement statement = new AuthorStatement(AuthorType.REVOKE_USER);
     statement.setUserName("user1");
 
-    logger.log(statement, sessionInfo(), "revoke", null);
+    auditLogger.logRevokeFailure(statement, sessionInfo(), "revoke", null);
 
     assertAuditLog(auditLogger, "user1", "revoke");
   }
 
   @Test
   public void testNonRevokeFailureIsIgnored() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     AuthorStatement statement = new AuthorStatement(AuthorType.GRANT_USER);
     statement.setUserName("user1");
 
-    logger.log(statement, sessionInfo(), "grant", RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    auditLogger.logRevokeFailure(
+        statement, sessionInfo(), "grant", RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
 
     verify(auditLogger, never()).log(any(), any());
   }
 
   @Test
   public void testRoleMembershipRevokeFailure() {
-    DNAuditLogger auditLogger = mock(DNAuditLogger.class);
-    RevokeFailureAuditLogger logger = new RevokeFailureAuditLogger(auditLogger);
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     RelationalAuthorStatement statement =
         new RelationalAuthorStatement(AuthorRType.REVOKE_USER_ROLE);
     statement.setUserName("user1");
 
-    logger.log(
+    auditLogger.logRevokeFailure(
         statement, sessionInfo(), "revoke role", RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
 
     assertAuditLog(auditLogger, "user1", "revoke role");
