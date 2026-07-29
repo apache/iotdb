@@ -248,9 +248,7 @@ public class ActiveLoadTsFileLoader {
       throws FileNotFoundException {
     final File tsFile = new File(entry.getFile());
     final LoadTsFileStatement statement =
-        entry.isGeneratedByPipe()
-            ? LoadTsFileStatement.createForPipe(tsFile.getAbsolutePath())
-            : LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
     final List<File> files = statement.getTsFiles();
 
     statement.setDeleteAfterLoad(true);
