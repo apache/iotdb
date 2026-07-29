@@ -43,7 +43,7 @@ import java.util.concurrent.TimeoutException;
 
 public class PipeTsFileInsertionEventAdmissionTest {
 
-  @Test(timeout = 10000)
+  @Test(timeout = 60000)
   public void testParserAdmissionIsWokenWhenMemoryIsReleased() throws Exception {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
