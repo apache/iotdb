@@ -73,19 +73,25 @@ public class LoadTsFile extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    this(location, filePath, loadAttributes, true);
+    this(location, filePath, loadAttributes, true, true);
   }
 
   public static LoadTsFile createUnchecked(
       NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    return new LoadTsFile(location, filePath, loadAttributes, false);
+    return new LoadTsFile(location, filePath, loadAttributes, false, true);
+  }
+
+  public static LoadTsFile createForPipe(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, false);
   }
 
   private LoadTsFile(
       NodeLocation location,
       String filePath,
       Map<String, String> loadAttributes,
-      boolean validateSourcePath) {
+      boolean validateSourcePath,
+      boolean validateInternalDataDir) {
     super(location);
     this.filePath =
         requireNonNull(filePath, DataNodeQueryMessages.EXCEPTION_FILEPATH_IS_NULL_84CE8A66);
@@ -103,8 +109,11 @@ public class LoadTsFile extends Statement {
 
     try {
       this.tsFiles =
-          org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath), validateSourcePath);
+          validateInternalDataDir
+              ? org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement
+                  .processTsFile(new File(filePath), validateSourcePath)
+              : org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement
+                  .processTsFileForPipe(new File(filePath));
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));

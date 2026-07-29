@@ -117,6 +117,10 @@ public class LoadTsFileStatement extends Statement {
     return processTsFile(file, validateSourcePath, true);
   }
 
+  public static List<File> processTsFileForPipe(final File file) throws FileNotFoundException {
+    return processTsFile(file, false, false);
+  }
+
   private static List<File> processTsFile(
       final File file, final boolean validateSourcePath, final boolean validateInternalDataDir)
       throws FileNotFoundException {
