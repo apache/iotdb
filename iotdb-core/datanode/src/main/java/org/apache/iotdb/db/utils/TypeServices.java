@@ -84,7 +84,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -1041,6 +1043,22 @@ public class TypeServices {
 
   public static final class StorageEngine {
 
+    private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
+
+    public static final TypeService<ChunkMetadataStatisticsConverter>
+        CHUNK_METADATA_STATISTICS_CONVERTER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, INT64, TIMESTAMP, FLOAT, DOUBLE, BOOLEAN ->
+                      StorageEngine::convertNumericOrBooleanStatistics;
+                  case DATE -> StorageEngine::convertDateStatistics;
+                  case STRING -> StorageEngine::convertStringStatistics;
+                  case TEXT -> StorageEngine::convertTextStatistics;
+                  case BLOB -> StorageEngine::convertBlobStatistics;
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (chunkMetadata, targetDataType, statistics) -> statistics;
+                };
+
     public static final TypeService<BiConsumer<Object, IWALByteBufferView>>
         WAL_VALUE_WRITER_SERVICE =
             type ->
@@ -1892,6 +1910,7 @@ public class TypeServices {
             };
 
     static {
+      CHUNK_METADATA_STATISTICS_CONVERTER_SERVICE.check();
       TV_LIST_ARRAY_WRITER_SERVICE.check();
       TV_LIST_OBJECT_WRITER_SERVICE.check();
       TV_LIST_PROVIDER_SERVICE.check();
@@ -1916,6 +1935,131 @@ public class TypeServices {
       TABLET_COLUMN_DECODER_SERVICE.check();
       DECODED_ARRAY_VALUE_READER_SERVICE.check();
       DECODED_CHUNK_WRITER_SERVICE.check();
+    }
+
+    private static Statistics<?> convertNumericOrBooleanStatistics(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+      if (targetDataType == TSDataType.STRING) {
+        Binary[] binaryValues = new Binary[4];
+        binaryValues[0] =
+            new Binary(
+                chunkMetadata.getStatistics().getFirstValue().toString(), StandardCharsets.UTF_8);
+        binaryValues[1] =
+            new Binary(
+                chunkMetadata.getStatistics().getLastValue().toString(), StandardCharsets.UTF_8);
+        if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+          binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+          binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+        } else {
+          binaryValues[2] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[3] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+        }
+        updateStatistics(statistics, chunkMetadata, binaryValues);
+        return statistics;
+      }
+      if (targetDataType == TSDataType.TEXT) {
+        Binary[] binaryValues = new Binary[2];
+        if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+          binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+          binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+        } else {
+          binaryValues[0] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+        }
+        updateStatistics(statistics, chunkMetadata, binaryValues);
+        return statistics;
+      }
+      return chunkMetadata.getStatistics();
+    }
+
+    private static Statistics<?> convertDateStatistics(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+      if (targetDataType != TSDataType.STRING && targetDataType != TSDataType.TEXT) {
+        return statistics;
+      }
+      int valueCount = targetDataType == TSDataType.STRING ? 4 : 2;
+      Binary[] binaryValues = new Binary[valueCount];
+      binaryValues[0] = toDateBinary(chunkMetadata.getStatistics().getFirstValue());
+      binaryValues[1] = toDateBinary(chunkMetadata.getStatistics().getLastValue());
+      if (targetDataType == TSDataType.STRING) {
+        binaryValues[2] = toDateBinary(chunkMetadata.getStatistics().getMinValue());
+        binaryValues[3] = toDateBinary(chunkMetadata.getStatistics().getMaxValue());
+      }
+      updateStatistics(statistics, chunkMetadata, binaryValues);
+      return statistics;
+    }
+
+    private static Statistics<?> convertStringStatistics(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+      if (targetDataType == TSDataType.TEXT) {
+        Binary[] binaryValues = {
+          new Binary(
+              chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8),
+          new Binary(chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8)
+        };
+        updateStatistics(statistics, chunkMetadata, binaryValues);
+        return statistics;
+      }
+      if (targetDataType == TSDataType.BLOB) {
+        statistics.update(
+            chunkMetadata.getStatistics().getStartTime(),
+            new Binary(
+                chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8));
+        statistics.update(
+            chunkMetadata.getStatistics().getEndTime(),
+            new Binary(
+                chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8));
+        return statistics;
+      }
+      return chunkMetadata.getStatistics();
+    }
+
+    private static Statistics<?> convertTextStatistics(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+      if (targetDataType == TSDataType.STRING) {
+        Binary[] binaryValues = {
+          (Binary) chunkMetadata.getStatistics().getFirstValue(),
+          (Binary) chunkMetadata.getStatistics().getLastValue()
+        };
+        updateStatistics(statistics, chunkMetadata, binaryValues);
+        return statistics;
+      }
+      if (targetDataType == TSDataType.BLOB) {
+        statistics.update(chunkMetadata.getStatistics().getStartTime(), EMPTY_BINARY);
+        statistics.update(chunkMetadata.getStatistics().getEndTime(), EMPTY_BINARY);
+        return statistics;
+      }
+      return chunkMetadata.getStatistics();
+    }
+
+    private static Statistics<?> convertBlobStatistics(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+      if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
+        updateStatistics(statistics, chunkMetadata, new Binary[] {EMPTY_BINARY, EMPTY_BINARY});
+        return statistics;
+      }
+      return chunkMetadata.getStatistics();
+    }
+
+    private static Binary toDateBinary(Object value) {
+      return new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+    }
+
+    private static void updateStatistics(
+        Statistics<?> statistics, IChunkMetadata chunkMetadata, Binary[] binaryValues) {
+      long[] longValues = new long[binaryValues.length];
+      longValues[0] = chunkMetadata.getStatistics().getStartTime();
+      longValues[1] = chunkMetadata.getStatistics().getEndTime();
+      Arrays.fill(longValues, 2, longValues.length, longValues[1]);
+      statistics.update(longValues, binaryValues, binaryValues.length);
     }
 
     private StorageEngine() {
@@ -2874,5 +3018,11 @@ public class TypeServices {
   @FunctionalInterface
   public interface DecodedChunkWriter {
     void write(ChunkWriterImpl writer, long time, InputStream stream) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface ChunkMetadataStatisticsConverter {
+    Statistics<?> convert(
+        IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics);
   }
 }
