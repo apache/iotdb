@@ -55,7 +55,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -470,7 +469,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
           tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
       }
     } finally {
       // reset the session info to the original one

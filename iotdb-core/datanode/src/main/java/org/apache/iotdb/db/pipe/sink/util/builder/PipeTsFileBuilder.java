@@ -91,7 +91,7 @@ public abstract class PipeTsFileBuilder {
               .getNextWithRetry(
                   folder -> {
                     File dir = new File(folder, Long.toString(currentBatchId.get()));
-                    FileUtils.deleteQuietly(dir);
+                    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dir, true);
                     if (dir.mkdirs()) {
                       LOGGER.info(
                           DataNodePipeMessages.BATCH_ID_CREATE_BATCH_DIR_SUCCESSFULLY_BATCH,

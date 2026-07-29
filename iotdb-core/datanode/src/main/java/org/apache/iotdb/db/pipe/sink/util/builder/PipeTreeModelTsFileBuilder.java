@@ -180,7 +180,8 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         }
 
         for (final Pair<String, File> sealedFile : sealedFiles) {
-          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
+          final boolean deleteSuccess =
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile.right);
           LOGGER.warn(
               DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),

@@ -37,6 +37,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -201,11 +202,11 @@ public class LocalTextModificationAccessor
 
   @Override
   public void truncate(long size) {
-    try (FileOutputStream outputStream =
-        new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
-      outputStream.getChannel().truncate(size);
+    try {
+      org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+          FSFactoryProducer.getFSFactory().getFile(filePath), size);
       logger.warn(StorageEngineMessages.MODIFICATIONS_WILL_BE_TRUNCATED, filePath, size);
-    } catch (FileNotFoundException e) {
+    } catch (NoSuchFileException e) {
       logger.debug(NO_MODIFICATION_MSG, filePath);
     } catch (IOException e) {
       logger.error(

@@ -65,7 +65,8 @@ public class ObjectWriter implements AutoCloseable {
       throws IOException {
     if (file.length() != offset) {
       if (isGeneratedByConsensus || offset == 0) {
-        fos.getChannel().truncate(offset);
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(file, offset);
+        fos.getChannel().position(offset);
       } else {
         throw new IOException(
             String.format(

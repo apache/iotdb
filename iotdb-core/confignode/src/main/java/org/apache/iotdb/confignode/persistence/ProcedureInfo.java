@@ -187,7 +187,7 @@ public class ProcedureInfo implements SnapshotProcessor {
       }
     } catch (Exception e) {
       LOGGER.error(ConfigNodeMessages.LOAD_FAILED_IT_WILL_BE_DELETED, procedureFilePath, e);
-      if (!procedureFilePath.toFile().delete()) {
+      if (!FileUtils.deleteFileIfExist(procedureFilePath.toFile())) {
         LOGGER.error(
             ConfigNodeMessages.DELETED_FAILED_TAKE_APPROPRIATE_ACTION, procedureFilePath, e);
       }

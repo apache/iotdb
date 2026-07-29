@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
@@ -276,8 +277,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private void deleteIncompleteSnapshot(File snapshotDir) throws IOException {
     // this takeSnapshot failed, clean up files and directories
     // statemachine is supposed to clear snapshotDir on failure
-    boolean isEmpty = snapshotDir.delete();
-    if (!isEmpty) {
+    try {
+      Files.deleteIfExists(snapshotDir.toPath());
+    } catch (DirectoryNotEmptyException e) {
       logger.info(RatisMessages.SNAPSHOT_DIR_INCOMPLETE_DELETING, snapshotDir.getAbsolutePath());
       FileUtils.deleteFully(snapshotDir);
     }

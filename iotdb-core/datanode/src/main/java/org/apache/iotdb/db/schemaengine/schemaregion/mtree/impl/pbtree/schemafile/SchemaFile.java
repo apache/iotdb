@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -464,7 +465,7 @@ public class SchemaFile implements ISchemaFile {
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     try {
       sync();
-      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+      if (schemaFileSnapshot.exists() && !FileUtils.deleteFileIfExist(schemaFileSnapshot)) {
         logger.error(
             DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_PBTREE_SNAPSHOT,
             schemaFileSnapshot.getName());
@@ -474,7 +475,7 @@ public class SchemaFile implements ISchemaFile {
       return true;
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT, e.getMessage(), e);
-      schemaFileSnapshot.delete();
+      FileUtils.deleteFileIfExist(schemaFileSnapshot);
       return false;
     }
   }

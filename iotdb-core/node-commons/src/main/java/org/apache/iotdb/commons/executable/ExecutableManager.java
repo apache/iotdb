@@ -128,7 +128,8 @@ public class ExecutableManager {
   }
 
   private void removeFromTemporaryLibRoot(long requestId) {
-    FileUtils.deleteQuietly(getDirUnderTempRootByRequestId(requestId));
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
+        getDirUnderTempRootByRequestId(requestId), true);
   }
 
   public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {

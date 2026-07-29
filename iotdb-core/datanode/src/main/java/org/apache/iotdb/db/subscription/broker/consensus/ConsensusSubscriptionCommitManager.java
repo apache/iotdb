@@ -1154,7 +1154,7 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   private static void deleteFileIfExists(final File file) {
-    if (file.exists() && !file.delete()) {
+    if (file.exists() && !org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file)) {
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_FAILED_TO_DELETE_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_51C57096,
