@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -50,10 +51,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
+import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
@@ -73,6 +78,8 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -81,6 +88,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.when;
 
@@ -227,6 +235,66 @@ public class DataNodeInternalRPCServiceImplTest {
     ((IoTConsensus) DataRegionConsensusImpl.getInstance())
         .getImpl(new DataRegionId(1))
         .setActive(true);
+  }
+
+  @Test
+  public void testHeartbeatSkipsSchemaUsageWhenMetadataLeaseIsFenced() throws Exception {
+    final MetadataLeaseManager leaseManager = MetadataLeaseManager.getInstance();
+    final Field hasPullTaskNowRefField =
+        MetadataLeaseManager.class.getDeclaredField("hasPullTaskNowRef");
+    hasPullTaskNowRefField.setAccessible(true);
+    final AtomicBoolean hasPullTaskNowRef =
+        (AtomicBoolean) hasPullTaskNowRefField.get(leaseManager);
+    final Map<String, Long> tableDeviceNumberMap =
+        SchemaEngine.getInstance()
+            .getSchemaRegion(new SchemaRegionId(0))
+            .getSchemaRegionStatistics()
+            .getTable2DevicesNumMap();
+
+    try {
+      hasPullTaskNowRef.set(true);
+      tableDeviceNumberMap.put("table", 1L);
+      leaseManager.recoveryLeaseForTest(false);
+      final Method checkLeaseStatus =
+          MetadataLeaseManager.class.getDeclaredMethod("checkLeaseStatus");
+      checkLeaseStatus.setAccessible(true);
+      checkLeaseStatus.invoke(leaseManager);
+      Assert.assertTrue(leaseManager.isFenced());
+
+      final TDataNodeHeartbeatReq req =
+          new TDataNodeHeartbeatReq()
+              .setHeartbeatTimestamp(1L)
+              .setNeedJudgeLeader(false)
+              .setNeedSamplingLoad(false)
+              .setTimeSeriesQuotaRemain(10L)
+              .setDeviceQuotaRemain(10L)
+              .setLogicalClock(0L);
+      final Map<Integer, Long> previousDeviceCountMap = new HashMap<>();
+      previousDeviceCountMap.put(-1, 1L);
+      final Map<Integer, Long> previousSeriesCountMap = new HashMap<>();
+      previousSeriesCountMap.put(-1, 2L);
+      final TDataNodeHeartbeatResp schemaCountResp =
+          new TDataNodeHeartbeatResp()
+              .setRegionDeviceUsageMap(new HashMap<>(previousDeviceCountMap))
+              .setRegionSeriesUsageMap(new HashMap<>(previousSeriesCountMap));
+
+      Assert.assertThrows(
+          MetadataLeaseFencedException.class,
+          () -> SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, schemaCountResp));
+      Assert.assertEquals(previousDeviceCountMap, schemaCountResp.getRegionDeviceUsageMap());
+      Assert.assertEquals(previousSeriesCountMap, schemaCountResp.getRegionSeriesUsageMap());
+
+      final TDataNodeHeartbeatResp resp = dataNodeInternalRPCServiceImpl.getDataNodeHeartBeat(req);
+
+      Assert.assertEquals(req.getHeartbeatTimestamp(), resp.getHeartbeatTimestamp());
+      Assert.assertFalse(resp.isSetRegionDeviceUsageMap());
+      Assert.assertFalse(resp.isSetRegionSeriesUsageMap());
+    } finally {
+      tableDeviceNumberMap.remove("table");
+      hasPullTaskNowRef.set(false);
+      leaseManager.recoveryLeaseForTest(true);
+      DataNodeSchemaQuotaManager.getInstance().updateRemain(-1, -1);
+    }
   }
 
   @Test
