@@ -27,7 +27,15 @@ import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
+import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -48,6 +56,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.DiffFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.RoundFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
@@ -108,6 +117,7 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -177,6 +187,25 @@ public class TypeServices {
                           DataNodeQueryMessages.UNSUPPORTED_TYPE + type.getTypeEnum())
                       .setChecked(true);
             };
+
+    public static final TypeService<
+            Function<org.apache.iotdb.db.queryengine.plan.statement.literal.Literal, IFill>>
+        CONSTANT_FILL_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> literal -> new BooleanConstantFill(literal.getBoolean());
+                  case INT32 -> literal -> new IntConstantFill(literal.getInt());
+                  case DATE -> literal -> new IntConstantFill(literal.getDate());
+                  case INT64, TIMESTAMP -> literal -> new LongConstantFill(literal.getLong());
+                  case FLOAT -> literal -> new FloatConstantFill(literal.getFloat());
+                  case DOUBLE -> literal -> new DoubleConstantFill(literal.getDouble());
+                  case TEXT, BLOB, STRING -> literal -> new BinaryConstantFill(literal.getBinary());
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      literal -> {
+                        throw new IllegalArgumentException(
+                            CommonOperatorUtils.UNKNOWN_DATATYPE + type.getTypeEnum());
+                      };
+                };
 
     public static final TypeService<IntFunction<ColumnBuilder>> COLUMN_BUILDER_SERVICE =
         type ->
@@ -368,6 +397,40 @@ public class TypeServices {
                   };
             };
 
+    public static final TypeService<InTransformerSetInitializer>
+        IN_TRANSFORMER_SET_INITIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE -> InTransformer::initIntSet;
+                  case INT64, TIMESTAMP -> InTransformer::initLongSet;
+                  case FLOAT -> InTransformer::initFloatSet;
+                  case DOUBLE -> InTransformer::initDoubleSet;
+                  case BOOLEAN -> InTransformer::initBooleanSet;
+                  case TEXT, STRING -> InTransformer::initStringSet;
+                  case BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (transformer, values) -> {
+                        throw new UnsupportedOperationException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + type.getTypeEnum());
+                      };
+                };
+
+    public static final TypeService<InTransformerColumnTransformer>
+        IN_TRANSFORMER_COLUMN_TRANSFORMER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE -> InTransformer::transformInt;
+                  case INT64, TIMESTAMP -> InTransformer::transformLong;
+                  case FLOAT -> InTransformer::transformFloat;
+                  case DOUBLE -> InTransformer::transformDouble;
+                  case BOOLEAN -> InTransformer::transformBoolean;
+                  case TEXT, STRING -> InTransformer::transformBinary;
+                  case BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (transformer, columns, builder) -> {
+                        throw new QueryProcessException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_3 + type.getTypeEnum());
+                      };
+                };
+
     @FunctionalInterface
     public interface ColumnToDoubleConverter {
       double convert(Column column, int index) throws QueryProcessException;
@@ -402,8 +465,20 @@ public class TypeServices {
       boolean split(ValueRecorder valueRecorder, double delta, Column values, int index);
     }
 
+    @FunctionalInterface
+    public interface InTransformerSetInitializer {
+      void initialize(InTransformer transformer, Set<String> values);
+    }
+
+    @FunctionalInterface
+    public interface InTransformerColumnTransformer {
+      void transform(InTransformer transformer, Column[] columns, ColumnBuilder builder)
+          throws QueryProcessException;
+    }
+
     static {
       CONSTANT_COLUMN_BUILDER_SERVICE.check();
+      CONSTANT_FILL_SERVICE.check();
       COLUMN_BUILDER_SERVICE.check();
       VALUE_TO_DOUBLE_SERVICE.check();
       TRANSFORM_COLUMN_VALUE_WRITER_SERVICE.check();
@@ -411,6 +486,8 @@ public class TypeServices {
       DIFF_TRANSFORMER_SERVICE.check();
       NEGATION_TRANSFORMER_SERVICE.check();
       STATE_WINDOW_SPLITTER_SERVICE.check();
+      IN_TRANSFORMER_SET_INITIALIZER_SERVICE.check();
+      IN_TRANSFORMER_COLUMN_TRANSFORMER_SERVICE.check();
     }
 
     private Transformation() {

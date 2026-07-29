@@ -29,12 +29,6 @@ import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BinaryConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BooleanConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.DoubleConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -263,6 +257,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
@@ -305,6 +300,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.CONSTANT_FILL_SERVICE;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -1350,35 +1346,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         constantFill[i] = CommonOperatorUtils.IDENTITY_FILL;
         continue;
       }
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          constantFill[i] = new BooleanConstantFill(literal.getBoolean());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          constantFill[i] = new BinaryConstantFill(literal.getBinary());
-          break;
-        case INT32:
-          constantFill[i] = new IntConstantFill(literal.getInt());
-          break;
-        case DATE:
-          constantFill[i] = new IntConstantFill(literal.getDate());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          constantFill[i] = new LongConstantFill(literal.getLong());
-          break;
-        case FLOAT:
-          constantFill[i] = new FloatConstantFill(literal.getFloat());
-          break;
-        case DOUBLE:
-          constantFill[i] = new DoubleConstantFill(literal.getDouble());
-          break;
-        default:
-          throw new IllegalArgumentException(
-              CommonOperatorUtils.UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      constantFill[i] =
+          CONSTANT_FILL_SERVICE.call(Type.fromTsDataType(inputDataTypes.get(i))).apply(literal);
     }
     return constantFill;
   }
