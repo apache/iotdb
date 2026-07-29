@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
@@ -479,6 +480,87 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<ContextualValueParser> VALUE_PARSER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> (value, zoneId) -> CommonUtils.parseBoolean(value);
+              case INT32 ->
+                  (value, zoneId) -> {
+                    try {
+                      return Integer.parseInt(StringUtils.trim(value));
+                    } catch (final NumberFormatException e) {
+                      throw inconsistentValueException(value, type);
+                    }
+                  };
+              case INT64 ->
+                  (value, zoneId) -> {
+                    try {
+                      return Long.parseLong(StringUtils.trim(value));
+                    } catch (final NumberFormatException e) {
+                      throw inconsistentValueException(value, type);
+                    }
+                  };
+              case TIMESTAMP ->
+                  (value, zoneId) -> {
+                    try {
+                      return TypeInferenceUtils.isNumber(value)
+                          ? Long.parseLong(value)
+                          : DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+                              StringUtils.trim(value), zoneId);
+                    } catch (final Throwable e) {
+                      throw new NumberFormatException(
+                          String.format(
+                              DataNodeMiscMessages.DATA_TYPE_NOT_CONSISTENT_WITH_CAUSE_FMT,
+                              value,
+                              type.getTypeEnum(),
+                              e.getMessage()));
+                    }
+                  };
+              case DATE -> (value, zoneId) -> CommonUtils.parseIntFromString(value);
+              case FLOAT ->
+                  (value, zoneId) -> {
+                    final float result;
+                    try {
+                      result = Float.parseFloat(value);
+                    } catch (final NumberFormatException e) {
+                      throw inconsistentValueException(value, type);
+                    }
+                    if (Float.isInfinite(result)) {
+                      throw new NumberFormatException(DataNodeMiscMessages.INPUT_FLOAT_INFINITY);
+                    }
+                    return result;
+                  };
+              case DOUBLE ->
+                  (value, zoneId) -> {
+                    final double result;
+                    try {
+                      result = Double.parseDouble(value);
+                    } catch (final NumberFormatException e) {
+                      throw inconsistentValueException(value, type);
+                    }
+                    if (Double.isInfinite(result)) {
+                      throw new NumberFormatException(DataNodeMiscMessages.INPUT_DOUBLE_INFINITY);
+                    }
+                    return result;
+                  };
+              case TEXT, STRING ->
+                  (value, zoneId) ->
+                      new Binary(stripQuotesIfPresent(value), TSFileConfig.STRING_CHARSET);
+              case BLOB ->
+                  (value, zoneId) ->
+                      new Binary(
+                          CommonUtils.parseBlobStringToByteArray(stripQuotesIfPresent(value)));
+              case OBJECT ->
+                  (value, zoneId) -> {
+                    throw inconsistentValueException(value, type);
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  (value, zoneId) -> {
+                    throw new QueryProcessException(
+                        DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                  };
+            };
+
     public static final TypeService<java.util.function.Predicate<TSDataType>> AUTO_CAST_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -499,7 +581,28 @@ public class TypeServices {
 
     static {
       VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
+      VALUE_PARSER_SERVICE.check();
       AUTO_CAST_SERVICE.check();
+    }
+
+    private static NumberFormatException inconsistentValueException(
+        final String value, final Type type) {
+      return new NumberFormatException(
+          String.format(
+              DataNodeMiscMessages.DATA_TYPE_NOT_CONSISTENT_FMT, value, type.getTypeEnum()));
+    }
+
+    private static String stripQuotesIfPresent(final String value) {
+      if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+          || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+        return value.length() == 1 ? value : value.substring(1, value.length() - 1);
+      }
+      return value;
+    }
+
+    @FunctionalInterface
+    public interface ContextualValueParser {
+      Object parse(String value, ZoneId zoneId) throws QueryProcessException;
     }
 
     private ValueConversion() {

@@ -558,6 +558,10 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "输入的双精度数值为 Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "BOOLEAN 值应为 true/TRUE、false/FALSE 或 0/1";
+  public static final String DATA_TYPE_NOT_CONSISTENT_FMT =
+      "数据类型不一致，输入值 %s，注册类型 %s";
+  public static final String DATA_TYPE_NOT_CONSISTENT_WITH_CAUSE_FMT =
+      "数据类型不一致，输入值 %s，注册类型 %s，原因：%s";
   public static final String UNSUPPORTED_DATA_TYPE_FMT = "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
