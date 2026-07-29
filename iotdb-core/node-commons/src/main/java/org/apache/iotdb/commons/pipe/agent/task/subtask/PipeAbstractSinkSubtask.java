@@ -178,7 +178,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           LOGGER::warn,
           throwable,
           "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
-      super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
+      super.onFailure(
+          new PipeRuntimeSinkCriticalException(
+              throwable.getMessage() != null ? throwable.getMessage() : throwable.toString(),
+              throwable));
     }
   }
 
@@ -231,7 +234,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
-              throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
+              throwable.getMessage() + ", root cause: " + getRootCause(throwable), throwable));
       LOGGER.warn(
           "{} failed to handshake with the target system after {} times, "
               + "stopping current subtask {} (creation time: {}, simple class: {}). "
@@ -346,7 +349,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
                 event instanceof EnrichedEvent
                     ? ((EnrichedEvent) event).coreReportMessage()
                     : event,
-                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).toString()),
             e);
       } else {
         LOGGER.info(
