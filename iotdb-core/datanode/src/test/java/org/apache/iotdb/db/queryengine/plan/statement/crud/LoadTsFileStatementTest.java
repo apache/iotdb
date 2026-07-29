@@ -114,7 +114,8 @@ public class LoadTsFileStatementTest {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final String[][] originalTierDataDirs = config.getTierDataDirs();
     final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
-    final Path dataDir = Files.createTempDirectory("load-tsfile-internal-data");
+    final Path dataNodeDir = Files.createTempDirectory("load-tsfile-datanode");
+    final Path dataDir = dataNodeDir.resolve("data");
     final Path internalTsFile =
         Files.createDirectories(dataDir.resolve("pipe-hardlink")).resolve("a.tsfile");
     Files.createFile(internalTsFile);
@@ -136,7 +137,7 @@ public class LoadTsFileStatementTest {
     } finally {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
-      deleteRecursively(dataDir);
+      deleteRecursively(dataNodeDir);
     }
   }
 
@@ -145,8 +146,10 @@ public class LoadTsFileStatementTest {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final String[][] originalTierDataDirs = config.getTierDataDirs();
     final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
-    final Path dataDir = Files.createTempDirectory("load-tsfile-internal-data");
-    final Path pipeReceiverDir = Files.createTempDirectory("load-tsfile-pipe-receiver");
+    final Path dataNodeDir = Files.createTempDirectory("load-tsfile-datanode");
+    final Path dataDir = dataNodeDir.resolve("data");
+    final Path pipeReceiverDir =
+        Files.createDirectories(dataNodeDir.resolve("system").resolve("pipe").resolve("receiver"));
     final Path pipeReceiverTsFile = Files.createFile(pipeReceiverDir.resolve("a.tsfile"));
 
     try {
@@ -159,8 +162,7 @@ public class LoadTsFileStatementTest {
     } finally {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
-      deleteRecursively(dataDir);
-      deleteRecursively(pipeReceiverDir);
+      deleteRecursively(dataNodeDir);
     }
   }
 
