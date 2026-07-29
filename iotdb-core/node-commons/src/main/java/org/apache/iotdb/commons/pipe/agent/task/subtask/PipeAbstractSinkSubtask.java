@@ -176,7 +176,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       // Print stack trace for better debugging
       PipeLogger.log(
           LOGGER::warn, throwable, PipeMessages.NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL);
-      super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
+      super.onFailure(
+          new PipeRuntimeSinkCriticalException(
+              throwable.getMessage() != null ? throwable.getMessage() : throwable.toString(),
+              throwable));
     }
   }
 
@@ -227,7 +230,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           new PipeRuntimeSinkCriticalException(
               throwable.getMessage()
                   + PipeMessages.EXCEPTION_ROOT_CAUSE_A22E94DE
-                  + getRootCause(throwable)));
+                  + getRootCause(throwable),
+              throwable));
       LOGGER.warn(
           PipeMessages.HANDSHAKE_FAILED_STOPPING,
           outputPipeSink.getClass().getName(),
@@ -374,7 +378,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
                 event instanceof EnrichedEvent
                     ? ((EnrichedEvent) event).coreReportMessage()
                     : event,
-                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).toString()),
             e);
       } else {
         LOGGER.info(
