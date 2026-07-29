@@ -625,7 +625,10 @@ public class LoadTsFileScheduler implements IScheduler {
             failedNode.isTableModel()
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, filePath, Collections.emptyMap()))
                             .setDatabase(failedNode.getDatabase())
                             .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
                             .setConvertOnTypeMismatch(true))
@@ -684,7 +687,9 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath, final boolean deleteAfterLoad, final String database)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
-        LoadTsFileStatement.createUnchecked(filePath)
+        (isGeneratedByPipe
+                ? LoadTsFileStatement.createForPipe(filePath)
+                : LoadTsFileStatement.createUnchecked(filePath))
             .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
     if (database != null) {
