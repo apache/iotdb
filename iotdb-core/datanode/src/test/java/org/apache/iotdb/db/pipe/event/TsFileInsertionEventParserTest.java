@@ -172,6 +172,16 @@ public class TsFileInsertionEventParserTest {
             null,
             null,
             false)) {
+      replaceAllocatedTabletMemory(
+          parser,
+          new PipeMemoryBlock(0) {
+            @Override
+            public void close() {
+              Assert.assertEquals(0, getMemoryUsageInBytes());
+              super.close();
+            }
+          });
+
       final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
 
       Assert.assertTrue(iterator.hasNext());
