@@ -546,6 +546,9 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "移除 ConfigNode 失败，该 ConfigNode 不在当前集群中。";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "成功移除 ConfigNode。";
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "移除 ConfigNode 失败，转移 ConfigNode leader 失败。";
+  public static final String LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92 = "将 ConfigNode leader 从 {} 转移到 {} 失败，将尝试其他候选节点。";
+  public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "无法确认存在除 ConfigNode {} 以外的 leader；此前尝试的转移目标为 {}，将尝试其他候选节点。";
+  public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "剩余 RPC 超时时间不足，停止重试 ConfigNode leader 转移。";
 
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
