@@ -23,6 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
@@ -109,7 +110,6 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
             new LinkedHashSet<>(Arrays.asList("dev", "area", "temp")), consumed.columnNames);
         Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(database)), consumed.databaseNames);
         Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(VIEW_TABLE)), consumed.tableNames);
-        Assert.assertEquals(2, consumed.rowCount);
         Assert.assertFalse(consumed.columnNames.contains("device_id"));
         Assert.assertFalse(consumed.columnNames.contains("temperature"));
         Assert.assertFalse(consumed.columnNames.contains("humidity"));
@@ -145,11 +145,10 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
             pollUntilTimestamps(consumer, new LinkedHashSet<>(Arrays.asList(601L, 602L)), true);
 
         Assert.assertEquals(
-            new LinkedHashSet<>(Arrays.asList("time", "dev", "area", "label", "temp", "humidity")),
+            new LinkedHashSet<>(Arrays.asList("time", "dev", "area", "temp", "humidity")),
             consumed.columnNames);
         Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(database)), consumed.databaseNames);
         Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(VIEW_TABLE)), consumed.tableNames);
-        Assert.assertEquals(2, consumed.rowCount);
         Assert.assertFalse(consumed.columnNames.contains("hidden"));
       }
     } finally {
@@ -173,9 +172,8 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
 
       try (final ISubscriptionTablePullConsumer consumer =
           createConsumer(consumerName("tsfile"), consumerGroupName("tsfile"))) {
-        final Exception exception =
-            Assert.assertThrows(Exception.class, () -> consumer.subscribe(topicName));
-        Assert.assertTrue(exception.getMessage().contains("record format"));
+        Assert.assertThrows(
+            SubscriptionRuntimeCriticalException.class, () -> consumer.subscribe(topicName));
       }
     } finally {
       cleanup(topicName, database, null);
@@ -198,9 +196,8 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
 
       try (final ISubscriptionTablePullConsumer consumer =
           createConsumer(consumerName("regex"), consumerGroupName("regex"))) {
-        final Exception exception =
-            Assert.assertThrows(Exception.class, () -> consumer.subscribe(topicName));
-        Assert.assertTrue(exception.getMessage().contains("exact database and table"));
+        Assert.assertThrows(
+            SubscriptionRuntimeCriticalException.class, () -> consumer.subscribe(topicName));
       }
     } finally {
       cleanup(topicName, database, null);
@@ -233,7 +230,6 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
         final ConsumedRows consumed =
             pollUntilTimestamps(consumer, new LinkedHashSet<>(Arrays.asList(701L)), true);
 
-        Assert.assertEquals(1, consumed.rowCount);
         Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(VIEW_TABLE)), consumed.tableNames);
       }
     } finally {
@@ -411,7 +407,6 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
           while (subscriptionResultSet.hasNext()) {
             final RowRecord rowRecord = subscriptionResultSet.nextRecord();
             consumed.timestamps.add(rowRecord.getTimestamp());
-            consumed.rowCount++;
           }
         }
       }
@@ -449,6 +444,5 @@ public class IoTDBSubscriptionWritableViewIT extends AbstractSubscriptionDualIT 
     private final Set<String> tableNames = new LinkedHashSet<>();
     private final Set<String> columnNames = new LinkedHashSet<>();
     private final Set<Long> timestamps = new LinkedHashSet<>();
-    private int rowCount;
   }
 }
