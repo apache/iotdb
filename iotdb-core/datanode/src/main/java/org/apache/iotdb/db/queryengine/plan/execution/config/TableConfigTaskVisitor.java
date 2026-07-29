@@ -52,6 +52,8 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
+import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -1626,18 +1628,30 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
-    context.setQueryType(node.getQueryType());
-    node.setExecutedByUserId(context.getUserId());
-    TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AccessDeniedException(status.getMessage());
+    PasswordChangeAuditContext auditContext =
+        PasswordChangeAuditContext.forTableStatement(node, context.getSession());
+    boolean executionDelegated = false;
+    try {
+      context.setQueryType(node.getQueryType());
+      node.setExecutedByUserId(context.getUserId());
+      TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AccessDeniedException(status.getMessage());
+      }
+      accessControl.checkUserCanRunRelationalAuthorStatement(
+          context.getSession().getUserName(), node, context);
+      if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
+        visitUpdateUser(node);
+      }
+      IConfigTask task =
+          PasswordChangeAuditTask.wrap(new RelationalAuthorizerTask(node), auditContext);
+      executionDelegated = true;
+      return task;
+    } finally {
+      if (!executionDelegated) {
+        auditContext.log(null);
+      }
     }
-    accessControl.checkUserCanRunRelationalAuthorStatement(
-        context.getSession().getUserName(), node, context);
-    if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
-      visitUpdateUser(node);
-    }
-    return new RelationalAuthorizerTask(node);
   }
 
   private void visitUpdateUser(RelationalAuthorStatement node) {

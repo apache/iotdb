@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -569,30 +570,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             PrivilegeType.MANAGE_USER,
             statement::getUserName);
       case UPDATE_USER:
+        return checkCanUpdateUser(statement, context);
       case RENAME_USER:
-        context.setAuditLogOperation(AuditLogOperation.DDL);
-        if (statement.getUserName().equals(context.getUsername())) {
-          // users can change the username and password of themselves
-          AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-              context.setResult(true), context::getUsername);
-          return RpcUtils.SUCCESS_STATUS;
-        }
-        if (AuthorityChecker.SUPER_USER_ID
-            == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
-          // Only the superuser can alter him/herself
-          AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-              context.setResult(false), context::getUsername);
-          return AuthorityChecker.getTSStatus(
-              false,
-              "Has no permission to execute "
-                  + authorType
-                  + ", because only the superuser can alter him/herself.");
-        }
-        context.setPrivilegeType(PrivilegeType.SECURITY);
-        return checkGlobalAuth(
-            context.setAuditLogOperation(AuditLogOperation.DDL),
-            PrivilegeType.MANAGE_USER,
-            statement::getUserName);
+        return checkCanAlterUser(statement, context);
       case LIST_USER:
         context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true);
         if (checkHasGlobalAuth(
@@ -696,6 +676,48 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       default:
         throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_AUTHORTYPE + authorType);
     }
+  }
+
+  private TSStatus checkCanUpdateUser(AuthorStatement statement, TreeAccessCheckContext context) {
+    context.setSqlString(null);
+    PasswordChangeAuditContext auditContext =
+        PasswordChangeAuditContext.forTreeAuthorization(statement, context);
+    TSStatus status = null;
+    try {
+      status = checkCanAlterUser(statement, context);
+      return status;
+    } finally {
+      if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        auditContext.log(status);
+      }
+    }
+  }
+
+  private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
+    if (statement.getUserName().equals(context.getUsername())) {
+      // users can change the username and password of themselves
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(true), context::getUsername);
+      return RpcUtils.SUCCESS_STATUS;
+    }
+    if (AuthorityChecker.SUPER_USER_ID
+        == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
+      // Only the superuser can alter him/herself
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false), context::getUsername);
+      return AuthorityChecker.getTSStatus(
+          false,
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893,
+              statement.getAuthorType()));
+    }
+    context.setPrivilegeType(PrivilegeType.SECURITY);
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.DDL),
+        PrivilegeType.MANAGE_USER,
+        statement::getUserName);
   }
 
   // =================================== CQ related ====================================

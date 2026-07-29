@@ -288,6 +288,9 @@ public class AccessControlImpl implements AccessControl {
         return;
       case RENAME_USER:
       case UPDATE_USER:
+        if (type == AuthorRType.UPDATE_USER) {
+          auditEntity.setSqlString(null);
+        }
         auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
         if (statement.getUserName().equals(userName)) {
           // users can change the username and password of themselves
