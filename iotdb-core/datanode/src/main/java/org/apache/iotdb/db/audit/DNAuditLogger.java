@@ -104,9 +104,12 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private void logRevokeFailure(
       @Nullable String targetName,
-      SessionInfo sessionInfo,
+      @Nullable SessionInfo sessionInfo,
       @Nullable String sql,
       @Nullable TSStatus status) {
+    if (targetName == null || isSuccessful(status) || sessionInfo == null) {
+      return;
+    }
     logRevokeFailure(
         targetName,
         sessionInfo.getUserId(),

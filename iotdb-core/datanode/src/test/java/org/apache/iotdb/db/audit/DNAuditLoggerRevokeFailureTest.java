@@ -123,6 +123,18 @@ public class DNAuditLoggerRevokeFailureTest {
   }
 
   @Test
+  public void testNonRevokeWithMissingSessionIsIgnored() {
+    DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
+    AuthorStatement statement = new AuthorStatement(AuthorType.GRANT_USER);
+    statement.setUserName("user1");
+
+    auditLogger.logRevokeFailure(
+        statement, (SessionInfo) null, "grant", RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+
+    verify(auditLogger, never()).log(any(), any());
+  }
+
+  @Test
   public void testRoleMembershipRevokeFailure() {
     DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     RelationalAuthorStatement statement =
