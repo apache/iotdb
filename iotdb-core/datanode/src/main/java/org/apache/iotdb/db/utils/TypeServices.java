@@ -55,6 +55,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.AbstractSameTypeNumericOperator;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
@@ -95,6 +96,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -2007,6 +2009,117 @@ public class TypeServices {
 
   public static final class Pipe {
 
+    public static final TypeService<SameTypeNumericOperatorStrategy>
+        SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 ->
+                      sameTypeNumericOperatorStrategy(
+                          TSDataType.INT32,
+                          AbstractSameTypeNumericOperator::getIntValue,
+                          (operator, stream) ->
+                              ReadWriteIOUtils.write(operator.getIntValue(), stream),
+                          (operator, buffer) ->
+                              operator.setIntValue(ReadWriteIOUtils.readInt(buffer)));
+                  case INT64 ->
+                      sameTypeNumericOperatorStrategy(
+                          TSDataType.INT64,
+                          AbstractSameTypeNumericOperator::getLongValue,
+                          (operator, stream) ->
+                              ReadWriteIOUtils.write(operator.getLongValue(), stream),
+                          (operator, buffer) ->
+                              operator.setLongValue(ReadWriteIOUtils.readLong(buffer)));
+                  case FLOAT ->
+                      sameTypeNumericOperatorStrategy(
+                          TSDataType.FLOAT,
+                          AbstractSameTypeNumericOperator::getFloatValue,
+                          (operator, stream) ->
+                              ReadWriteIOUtils.write(operator.getFloatValue(), stream),
+                          (operator, buffer) ->
+                              operator.setFloatValue(ReadWriteIOUtils.readFloat(buffer)));
+                  case DOUBLE ->
+                      sameTypeNumericOperatorStrategy(
+                          TSDataType.DOUBLE,
+                          AbstractSameTypeNumericOperator::getDoubleValue,
+                          (operator, stream) ->
+                              ReadWriteIOUtils.write(operator.getDoubleValue(), stream),
+                          (operator, buffer) ->
+                              operator.setDoubleValue(ReadWriteIOUtils.readDouble(buffer)));
+                  case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      unsupportedSameTypeNumericOperatorStrategy(
+                          TSDataType.valueOf(type.getTypeEnum().name()));
+                };
+
+    private static SameTypeNumericOperatorStrategy sameTypeNumericOperatorStrategy(
+        final TSDataType dataType,
+        final Function<AbstractSameTypeNumericOperator, Object> valueGetter,
+        final SameTypeNumericOperatorSerializer serializer,
+        final SameTypeNumericOperatorDeserializer deserializer) {
+      return new SameTypeNumericOperatorStrategy(dataType, valueGetter, serializer, deserializer);
+    }
+
+    private static SameTypeNumericOperatorStrategy unsupportedSameTypeNumericOperatorStrategy(
+        final TSDataType dataType) {
+      return new SameTypeNumericOperatorStrategy(
+          dataType,
+          operator -> null,
+          (operator, stream) -> {
+            throw new IOException(
+                String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, dataType));
+          },
+          (operator, buffer) -> {
+            throw new IOException(
+                String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, dataType));
+          });
+    }
+
+    public static final class SameTypeNumericOperatorStrategy {
+      private final TSDataType dataType;
+      private final Function<AbstractSameTypeNumericOperator, Object> valueGetter;
+      private final SameTypeNumericOperatorSerializer serializer;
+      private final SameTypeNumericOperatorDeserializer deserializer;
+
+      private SameTypeNumericOperatorStrategy(
+          final TSDataType dataType,
+          final Function<AbstractSameTypeNumericOperator, Object> valueGetter,
+          final SameTypeNumericOperatorSerializer serializer,
+          final SameTypeNumericOperatorDeserializer deserializer) {
+        this.dataType = dataType;
+        this.valueGetter = valueGetter;
+        this.serializer = serializer;
+        this.deserializer = deserializer;
+      }
+
+      public Pair<TSDataType, Object> getResult(final AbstractSameTypeNumericOperator operator) {
+        final Object value = valueGetter.apply(operator);
+        return value == null ? null : new Pair<>(dataType, value);
+      }
+
+      public void serialize(
+          final AbstractSameTypeNumericOperator operator, final DataOutputStream stream)
+          throws IOException {
+        serializer.serialize(operator, stream);
+      }
+
+      public void deserialize(
+          final AbstractSameTypeNumericOperator operator, final ByteBuffer buffer)
+          throws IOException {
+        deserializer.deserialize(operator, buffer);
+      }
+    }
+
+    @FunctionalInterface
+    private interface SameTypeNumericOperatorSerializer {
+      void serialize(AbstractSameTypeNumericOperator operator, DataOutputStream stream)
+          throws IOException;
+    }
+
+    @FunctionalInterface
+    private interface SameTypeNumericOperatorDeserializer {
+      void deserialize(AbstractSameTypeNumericOperator operator, ByteBuffer buffer)
+          throws IOException;
+    }
+
     public static final TypeService<Short> OPC_DA_VARIANT_TYPE_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -2463,6 +2576,7 @@ public class TypeServices {
     }
 
     static {
+      SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE.check();
       OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE.check();
