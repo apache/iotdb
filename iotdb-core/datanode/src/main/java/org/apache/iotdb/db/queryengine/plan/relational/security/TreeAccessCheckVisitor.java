@@ -1160,7 +1160,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
     return checkTimeSeriesPermission(
         context,
-        () -> statement.getPathsStream().distinct().collect(Collectors.toList()),
+        () -> statement.getPathsStream().distinct().toList(),
         PrivilegeType.WRITE_DATA,
         statement::getPathsStringForLog);
   }
@@ -1243,8 +1243,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       IAuditEntity context,
       Supplier<List<? extends PartialPath>> checkedPathsSupplier,
       PrivilegeType permission) {
-    return checkTimeSeriesPermission(
-        context, checkedPathsSupplier, permission, checkedPaths -> checkedPaths.toString());
+    return checkTimeSeriesPermission(context, checkedPathsSupplier, permission, Object::toString);
   }
 
   private static TSStatus checkTimeSeriesPermission(

@@ -234,11 +234,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   private static String getPathsStringForLog(Stream<? extends PartialPath> pathStream) {
     final int maxSize = Math.max(1, CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
-    final List<String> paths =
-        pathStream
-            .limit((long) maxSize + 1)
-            .map(path -> String.valueOf(path))
-            .collect(Collectors.toList());
+    final List<String> paths = pathStream.limit((long) maxSize + 1).map(String::valueOf).toList();
     final boolean truncated = paths.size() > maxSize;
     final int size = truncated ? maxSize : paths.size();
 
