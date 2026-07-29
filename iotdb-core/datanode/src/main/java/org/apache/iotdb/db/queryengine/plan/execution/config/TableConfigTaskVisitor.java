@@ -1659,7 +1659,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1679,7 +1679,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 
