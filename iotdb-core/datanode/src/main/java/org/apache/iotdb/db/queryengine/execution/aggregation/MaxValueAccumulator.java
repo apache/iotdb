@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulator;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulatorStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -33,46 +36,25 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class MaxValueAccumulator implements Accumulator {
+public class MaxValueAccumulator implements Accumulator, ExtremeValueAccumulator {
 
   private final TSDataType seriesDataType;
   private final TsPrimitiveType maxResult;
+  private final ExtremeValueAccumulatorStrategy strategy;
   private boolean initResult;
 
   public MaxValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.maxResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    final Type type = Type.fromTsDataType(seriesDataType);
+    this.maxResult = type.getTsPrimitiveType();
+    this.strategy = TypeServices.Aggregation.EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.call(type);
   }
 
   // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case STRING:
-        addBinaryInput(columns, bitMap);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addInput(this, columns, bitMap);
   }
 
   // partialResult should be like: | partialMaxValue1 |
@@ -82,32 +64,8 @@ public class MaxValueAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntResult(partialResult[0].getInt(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongResult(partialResult[0].getLong(0));
-        break;
-      case FLOAT:
-        updateFloatResult(partialResult[0].getFloat(0));
-        break;
-      case DOUBLE:
-        updateDoubleResult(partialResult[0].getDouble(0));
-        break;
-      case STRING:
-        updateBinaryResult(partialResult[0].getBinary(0));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addIntermediate(this, partialResult[0]);
   }
 
   @Override
@@ -115,32 +73,8 @@ public class MaxValueAccumulator implements Accumulator {
     if (statistics == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntResult(((Number) statistics.getMaxValue()).intValue());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongResult(((Number) statistics.getMaxValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatResult(((Number) statistics.getMaxValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleResult(((Number) statistics.getMaxValue()).doubleValue());
-        break;
-      case STRING:
-        updateBinaryResult((Binary) statistics.getMaxValue());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addStatistics(this, statistics.getMaxValue());
   }
 
   // finalResult should be single column, like: | finalCountValue |
@@ -150,32 +84,8 @@ public class MaxValueAccumulator implements Accumulator {
       return;
     }
     initResult = true;
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        maxResult.setInt(finalResult.getInt(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        maxResult.setLong(finalResult.getLong(0));
-        break;
-      case FLOAT:
-        maxResult.setFloat(finalResult.getFloat(0));
-        break;
-      case DOUBLE:
-        maxResult.setDouble(finalResult.getDouble(0));
-        break;
-      case STRING:
-        maxResult.setBinary(finalResult.getBinary(0));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.setFinal(this, finalResult);
   }
 
   // columnBuilder should be single in countAccumulator
@@ -186,32 +96,8 @@ public class MaxValueAccumulator implements Accumulator {
       columnBuilders[0].appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilders[0].writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilders[0].writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilders[0].writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilders[0].writeDouble(maxResult.getDouble());
-        break;
-      case STRING:
-        columnBuilders[0].writeBinary(maxResult.getBinary());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilders[0], maxResult);
   }
 
   @Override
@@ -220,32 +106,8 @@ public class MaxValueAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
-        break;
-      case STRING:
-        columnBuilder.writeBinary(maxResult.getBinary());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilder, maxResult);
   }
 
   @Override
@@ -269,98 +131,55 @@ public class MaxValueAccumulator implements Accumulator {
     return maxResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateIntResult(column[1].getInt(i));
-      }
-    }
+  @Override
+  public TsPrimitiveType getResult() {
+    return maxResult;
   }
 
-  private void updateIntResult(int maxVal) {
-    if (!initResult || maxVal > maxResult.getInt()) {
+  @Override
+  public void updateIntResult(final int value) {
+    if (!initResult || value > maxResult.getInt()) {
       initResult = true;
-      maxResult.setInt(maxVal);
+      maxResult.setInt(value);
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateLongResult(column[1].getLong(i));
-      }
-    }
-  }
-
-  private void updateLongResult(long maxVal) {
-    if (!initResult || maxVal > maxResult.getLong()) {
+  @Override
+  public void updateLongResult(final long value) {
+    if (!initResult || value > maxResult.getLong()) {
       initResult = true;
-      maxResult.setLong(maxVal);
+      maxResult.setLong(value);
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateFloatResult(column[1].getFloat(i));
-      }
-    }
-  }
-
-  private void updateFloatResult(float maxVal) {
-    if (!initResult || maxVal > maxResult.getFloat()) {
+  @Override
+  public void updateFloatResult(final float value) {
+    if (!initResult || value > maxResult.getFloat()) {
       initResult = true;
-      maxResult.setFloat(maxVal);
+      maxResult.setFloat(value);
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateDoubleResult(column[1].getDouble(i));
-      }
-    }
-  }
-
-  private void updateDoubleResult(double maxVal) {
-    if (!initResult || maxVal > maxResult.getDouble()) {
+  @Override
+  public void updateDoubleResult(final double value) {
+    if (!initResult || value > maxResult.getDouble()) {
       initResult = true;
-      maxResult.setDouble(maxVal);
+      maxResult.setDouble(value);
     }
   }
 
-  private void addBinaryInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBinaryResult(column[1].getBinary(i));
-      }
-    }
-  }
-
-  private void updateBinaryResult(Binary maxVal) {
-    if (!initResult || maxVal.compareTo(maxResult.getBinary()) > 0) {
+  @Override
+  public void updateBinaryResult(final Binary value) {
+    if (!initResult || value.compareTo(maxResult.getBinary()) > 0) {
       initResult = true;
-      maxResult.setBinary(maxVal);
+      maxResult.setBinary(value);
+    }
+  }
+
+  private void ensureSupported() {
+    if (!strategy.isSupported()) {
+      throw new UnSupportedDataTypeException(
+          String.format("Unsupported data type in MaxValue: %s", seriesDataType));
     }
   }
 }

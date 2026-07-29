@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulator;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulatorStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -33,46 +36,25 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class MinValueAccumulator implements Accumulator {
+public class MinValueAccumulator implements Accumulator, ExtremeValueAccumulator {
 
   private final TSDataType seriesDataType;
   private final TsPrimitiveType minResult;
+  private final ExtremeValueAccumulatorStrategy strategy;
   private boolean initResult = false;
 
   public MinValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.minResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    final Type type = Type.fromTsDataType(seriesDataType);
+    this.minResult = type.getTsPrimitiveType();
+    this.strategy = TypeServices.Aggregation.EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.call(type);
   }
 
   // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case STRING:
-        addBinaryInput(columns, bitMap);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addInput(this, columns, bitMap);
   }
 
   // partialResult should be like: | partialMinValue1 |
@@ -82,32 +64,8 @@ public class MinValueAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntResult(partialResult[0].getInt(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongResult(partialResult[0].getLong(0));
-        break;
-      case FLOAT:
-        updateFloatResult(partialResult[0].getFloat(0));
-        break;
-      case DOUBLE:
-        updateDoubleResult(partialResult[0].getDouble(0));
-        break;
-      case STRING:
-        updateBinaryResult(partialResult[0].getBinary(0));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addIntermediate(this, partialResult[0]);
   }
 
   @Override
@@ -115,32 +73,8 @@ public class MinValueAccumulator implements Accumulator {
     if (statistics == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntResult(((Number) statistics.getMinValue()).intValue());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongResult(((Number) statistics.getMinValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatResult(((Number) statistics.getMinValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleResult(((Number) statistics.getMinValue()).doubleValue());
-        break;
-      case STRING:
-        updateBinaryResult((Binary) statistics.getMinValue());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addStatistics(this, statistics.getMinValue());
   }
 
   // finalResult should be single column, like: | finalCountValue |
@@ -150,32 +84,8 @@ public class MinValueAccumulator implements Accumulator {
       return;
     }
     initResult = true;
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        minResult.setInt(finalResult.getInt(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        minResult.setLong(finalResult.getLong(0));
-        break;
-      case FLOAT:
-        minResult.setFloat(finalResult.getFloat(0));
-        break;
-      case DOUBLE:
-        minResult.setDouble(finalResult.getDouble(0));
-        break;
-      case STRING:
-        minResult.setBinary(finalResult.getBinary(0));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.setFinal(this, finalResult);
   }
 
   // columnBuilder should be single in MinValueAccumulator
@@ -186,32 +96,8 @@ public class MinValueAccumulator implements Accumulator {
       columnBuilders[0].appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilders[0].writeInt(minResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilders[0].writeLong(minResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilders[0].writeFloat(minResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilders[0].writeDouble(minResult.getDouble());
-        break;
-      case STRING:
-        columnBuilders[0].writeBinary(minResult.getBinary());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilders[0], minResult);
   }
 
   @Override
@@ -220,32 +106,8 @@ public class MinValueAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(minResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(minResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(minResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(minResult.getDouble());
-        break;
-      case STRING:
-        columnBuilder.writeBinary(minResult.getBinary());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MinValue: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilder, minResult);
   }
 
   @Override
@@ -269,99 +131,55 @@ public class MinValueAccumulator implements Accumulator {
     return minResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateIntResult(column[1].getInt(i));
-      }
-    }
+  @Override
+  public TsPrimitiveType getResult() {
+    return minResult;
   }
 
-  private void updateIntResult(int minVal) {
-    if (!initResult || minVal < minResult.getInt()) {
+  @Override
+  public void updateIntResult(final int value) {
+    if (!initResult || value < minResult.getInt()) {
       initResult = true;
-      minResult.setInt(minVal);
+      minResult.setInt(value);
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      // skip null value in control column
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateLongResult(column[1].getLong(i));
-      }
-    }
-  }
-
-  private void updateLongResult(long minVal) {
-    if (!initResult || minVal < minResult.getLong()) {
+  @Override
+  public void updateLongResult(final long value) {
+    if (!initResult || value < minResult.getLong()) {
       initResult = true;
-      minResult.setLong(minVal);
+      minResult.setLong(value);
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateFloatResult(column[1].getFloat(i));
-      }
-    }
-  }
-
-  private void updateFloatResult(float minVal) {
-    if (!initResult || minVal < minResult.getFloat()) {
+  @Override
+  public void updateFloatResult(final float value) {
+    if (!initResult || value < minResult.getFloat()) {
       initResult = true;
-      minResult.setFloat(minVal);
+      minResult.setFloat(value);
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateDoubleResult(column[1].getDouble(i));
-      }
-    }
-  }
-
-  private void updateDoubleResult(double minVal) {
-    if (!initResult || minVal < minResult.getDouble()) {
+  @Override
+  public void updateDoubleResult(final double value) {
+    if (!initResult || value < minResult.getDouble()) {
       initResult = true;
-      minResult.setDouble(minVal);
+      minResult.setDouble(value);
     }
   }
 
-  private void addBinaryInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBinaryResult(column[1].getBinary(i));
-      }
-    }
-  }
-
-  private void updateBinaryResult(Binary minVal) {
-    if (!initResult || minVal.compareTo(minResult.getBinary()) < 0) {
+  @Override
+  public void updateBinaryResult(final Binary value) {
+    if (!initResult || value.compareTo(minResult.getBinary()) < 0) {
       initResult = true;
-      minResult.setBinary(minVal);
+      minResult.setBinary(value);
+    }
+  }
+
+  private void ensureSupported() {
+    if (!strategy.isSupported()) {
+      throw new UnSupportedDataTypeException(
+          String.format("Unsupported data type in MinValue: %s", seriesDataType));
     }
   }
 }

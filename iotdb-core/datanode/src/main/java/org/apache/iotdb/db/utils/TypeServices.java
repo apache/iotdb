@@ -856,6 +856,122 @@ public class TypeServices {
 
   public static final class Aggregation {
 
+    public static final TypeService<ExtremeValueAccumulatorStrategy>
+        EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      extremeValueAccumulatorStrategy(
+                          (accumulator, column, index) ->
+                              accumulator.updateIntResult(column.getInt(index)),
+                          (accumulator, value) ->
+                              accumulator.updateIntResult(((Number) value).intValue()),
+                          (accumulator, column) -> accumulator.getResult().setInt(column.getInt(0)),
+                          (builder, result) -> builder.writeInt(result.getInt()));
+                  case INT64, TIMESTAMP ->
+                      extremeValueAccumulatorStrategy(
+                          (accumulator, column, index) ->
+                              accumulator.updateLongResult(column.getLong(index)),
+                          (accumulator, value) ->
+                              accumulator.updateLongResult(((Number) value).longValue()),
+                          (accumulator, column) ->
+                              accumulator.getResult().setLong(column.getLong(0)),
+                          (builder, result) -> builder.writeLong(result.getLong()));
+                  case FLOAT ->
+                      extremeValueAccumulatorStrategy(
+                          (accumulator, column, index) ->
+                              accumulator.updateFloatResult(column.getFloat(index)),
+                          (accumulator, value) ->
+                              accumulator.updateFloatResult(((Number) value).floatValue()),
+                          (accumulator, column) ->
+                              accumulator.getResult().setFloat(column.getFloat(0)),
+                          (builder, result) -> builder.writeFloat(result.getFloat()));
+                  case DOUBLE ->
+                      extremeValueAccumulatorStrategy(
+                          (accumulator, column, index) ->
+                              accumulator.updateDoubleResult(column.getDouble(index)),
+                          (accumulator, value) ->
+                              accumulator.updateDoubleResult(((Number) value).doubleValue()),
+                          (accumulator, column) ->
+                              accumulator.getResult().setDouble(column.getDouble(0)),
+                          (builder, result) -> builder.writeDouble(result.getDouble()));
+                  case STRING ->
+                      extremeValueAccumulatorStrategy(
+                          (accumulator, column, index) ->
+                              accumulator.updateBinaryResult(column.getBinary(index)),
+                          (accumulator, value) -> accumulator.updateBinaryResult((Binary) value),
+                          (accumulator, column) ->
+                              accumulator.getResult().setBinary(column.getBinary(0)),
+                          (builder, result) -> builder.writeBinary(result.getBinary()));
+                  case BOOLEAN, TEXT, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      ExtremeValueAccumulatorStrategy.unsupported();
+                };
+
+    private static ExtremeValueAccumulatorStrategy extremeValueAccumulatorStrategy(
+        final ExtremeValueColumnUpdater columnUpdater,
+        final ExtremeValueStatisticsUpdater statisticsUpdater,
+        final ExtremeValueFinalSetter finalSetter,
+        final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter) {
+      return new ExtremeValueAccumulatorStrategy(
+          columnUpdater, statisticsUpdater, finalSetter, resultWriter);
+    }
+
+    public static final class ExtremeValueAccumulatorStrategy {
+      private final ExtremeValueColumnUpdater columnUpdater;
+      private final ExtremeValueStatisticsUpdater statisticsUpdater;
+      private final ExtremeValueFinalSetter finalSetter;
+      private final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter;
+
+      private ExtremeValueAccumulatorStrategy(
+          final ExtremeValueColumnUpdater columnUpdater,
+          final ExtremeValueStatisticsUpdater statisticsUpdater,
+          final ExtremeValueFinalSetter finalSetter,
+          final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter) {
+        this.columnUpdater = columnUpdater;
+        this.statisticsUpdater = statisticsUpdater;
+        this.finalSetter = finalSetter;
+        this.resultWriter = resultWriter;
+      }
+
+      private static ExtremeValueAccumulatorStrategy unsupported() {
+        return new ExtremeValueAccumulatorStrategy(null, null, null, null);
+      }
+
+      public boolean isSupported() {
+        return columnUpdater != null;
+      }
+
+      public void addInput(
+          final ExtremeValueAccumulator accumulator, final Column[] columns, final BitMap bitMap) {
+        final int count = columns[0].getPositionCount();
+        for (int i = 0; i < count; i++) {
+          if (bitMap != null && !bitMap.isMarked(i)) {
+            continue;
+          }
+          if (!columns[1].isNull(i)) {
+            columnUpdater.update(accumulator, columns[1], i);
+          }
+        }
+      }
+
+      public void addIntermediate(final ExtremeValueAccumulator accumulator, final Column column) {
+        columnUpdater.update(accumulator, column, 0);
+      }
+
+      public void addStatistics(
+          final ExtremeValueAccumulator accumulator, final Object statisticsValue) {
+        statisticsUpdater.update(accumulator, statisticsValue);
+      }
+
+      public void setFinal(final ExtremeValueAccumulator accumulator, final Column column) {
+        finalSetter.set(accumulator, column);
+      }
+
+      public void writeResult(final ColumnBuilder builder, final TsPrimitiveType result) {
+        resultWriter.accept(builder, result);
+      }
+    }
+
     public static final TypeService<LongSupplier> OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -887,12 +1003,42 @@ public class TypeServices {
             };
 
     static {
+      EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
       OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
       MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
     }
 
     private Aggregation() {
       // Utility class
+    }
+
+    public interface ExtremeValueAccumulator {
+      TsPrimitiveType getResult();
+
+      void updateIntResult(int value);
+
+      void updateLongResult(long value);
+
+      void updateFloatResult(float value);
+
+      void updateDoubleResult(double value);
+
+      void updateBinaryResult(Binary value);
+    }
+
+    @FunctionalInterface
+    private interface ExtremeValueColumnUpdater {
+      void update(ExtremeValueAccumulator accumulator, Column column, int index);
+    }
+
+    @FunctionalInterface
+    private interface ExtremeValueStatisticsUpdater {
+      void update(ExtremeValueAccumulator accumulator, Object value);
+    }
+
+    @FunctionalInterface
+    private interface ExtremeValueFinalSetter {
+      void set(ExtremeValueAccumulator accumulator, Column column);
     }
   }
 
