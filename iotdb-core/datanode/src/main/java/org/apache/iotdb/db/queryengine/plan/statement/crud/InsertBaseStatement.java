@@ -59,6 +59,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class InsertBaseStatement extends Statement implements Accountable {
 
@@ -203,6 +204,19 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  public Stream<PartialPath> getPathsStream() {
+    if (measurements == null) {
+      return Stream.empty();
+    }
+    return Arrays.stream(measurements)
+        .filter(Objects::nonNull)
+        .map(devicePath::concatAsMeasurementPath);
+  }
+
+  public Stream<PartialPath> getDevicePathsStream() {
+    return Stream.of(devicePath);
   }
 
   public abstract ISchemaValidation getSchemaValidation();

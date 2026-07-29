@@ -1136,25 +1136,31 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DML).setPrivilegeType(PrivilegeType.WRITE_DATA);
-    for (PartialPath path : statement.getDevicePaths()) {
-      // External users cannot modify the audit database.
-      if (includeByAuditTreeDB(path)
-          && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
-        AUDIT_LOGGER.recordObjectAuthenticationAuditLog(context.setResult(false), path::toString);
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
-      }
+    // External users cannot modify the audit database.
+    final PartialPath unsupportedAuditPath =
+        context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+            ? null
+            : statement
+                .getDevicePathsStream()
+                .filter(Audit::includeByAuditTreeDB)
+                .findFirst()
+                .orElse(null);
+    if (unsupportedAuditPath != null) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false), unsupportedAuditPath::toString);
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
     }
 
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true),
-          () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+          () -> AuthorityChecker.getPathListStringForLog(statement.getPathsStream().distinct()));
       return SUCCEED;
     }
     return checkTimeSeriesPermission(
         context,
-        () -> statement.getPaths().stream().distinct().collect(Collectors.toList()),
+        () -> statement.getPathsStream().distinct().collect(Collectors.toList()),
         PrivilegeType.WRITE_DATA);
   }
 
@@ -1239,7 +1245,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     context.setPrivilegeType(permission);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          context.setResult(true), () -> checkedPathsSupplier.get().toString());
+          context.setResult(true),
+          () -> AuthorityChecker.getPathListStringForLog(checkedPathsSupplier.get()));
       return SUCCEED;
     }
     List<? extends PartialPath> checkedPaths = checkedPathsSupplier.get();
@@ -1253,7 +1260,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       // Internal auditor no needs audit log
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          checkedPaths::toString);
+          () -> AuthorityChecker.getPathListStringForLog(checkedPaths));
     }
     return result;
   }
@@ -1263,14 +1270,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     context.setPrivilegeType(permission);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          context.setResult(true), checkedPaths::toString);
+          context.setResult(true), () -> AuthorityChecker.getPathListStringForLog(checkedPaths));
       return Collections.emptyList();
     }
     final List<Integer> results =
         AuthorityChecker.checkFullPathOrPatternListPermission(
             context.getUsername(), checkedPaths, permission);
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-        context.setResult(true), checkedPaths::toString);
+        context.setResult(true), () -> AuthorityChecker.getPathListStringForLog(checkedPaths));
     return results;
   }
 

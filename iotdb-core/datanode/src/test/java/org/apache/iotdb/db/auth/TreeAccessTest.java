@@ -21,6 +21,8 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
@@ -37,6 +39,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.List;
 
 public class TreeAccessTest {
 
@@ -233,6 +236,30 @@ public class TreeAccessTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         treeAccessCheckVisitor.checkUnsupportedAuditDatabaseWriteStatus(
             new TreeAccessCheckContext(10000L, "user1", ""), new PartialPath("root.sg")));
+  }
+
+  @Test
+  public void testPathLogLimitDoesNotLimitPermissionCheck() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final int oldSize = config.getPathLogMaxSize();
+    final User user = new User("user1", "password");
+    user.grantPathPrivilege(new PartialPath("root.db.device.s1"), PrivilegeType.WRITE_DATA, false);
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+    final List<PartialPath> checkedPaths =
+        List.of(new PartialPath("root.db.device.s1"), new PartialPath("root.db.device.s2"));
+
+    try {
+      config.setPathLogMaxSize(1);
+      Assert.assertEquals(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          TreeAccessCheckVisitor.checkTimeSeriesPermission(
+                  new TreeAccessCheckContext(10000L, "user1", ""),
+                  () -> checkedPaths,
+                  PrivilegeType.WRITE_DATA)
+              .getCode());
+    } finally {
+      config.setPathLogMaxSize(oldSize);
+    }
   }
 
   private static class TestTreeAccessCheckVisitor extends TreeAccessCheckVisitor {

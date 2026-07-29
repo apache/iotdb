@@ -70,6 +70,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_COLUMN_HEADERS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
@@ -347,6 +348,33 @@ public class AuthorityChecker {
     }
     prompt.append("]");
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
+  }
+
+  public static String getPathListStringForLog(List<? extends PartialPath> pathList) {
+    return getPathListStringForLog(pathList.stream());
+  }
+
+  public static String getPathListStringForLog(Stream<? extends PartialPath> pathStream) {
+    final int maxSize = Math.max(1, CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
+    final List<String> paths =
+        pathStream
+            .limit((long) maxSize + 1)
+            .map(path -> String.valueOf(path))
+            .collect(Collectors.toList());
+    final boolean truncated = paths.size() > maxSize;
+    final int size = truncated ? maxSize : paths.size();
+
+    final StringBuilder result = new StringBuilder("[");
+    if (size > 0) {
+      result.append(paths.get(0));
+      for (int i = 1; i < size; i++) {
+        result.append(", ").append(paths.get(i));
+      }
+      if (truncated) {
+        result.append(", ...");
+      }
+    }
+    return result.append("]").toString();
   }
 
   public static boolean checkFullPathOrPatternPermission(
