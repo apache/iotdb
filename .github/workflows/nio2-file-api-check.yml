@@ -1,0 +1,62 @@
+name: Check NIO.2-compatible File APIs in Changed Java Files
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'dev/*'
+      - 'rel/*'
+      - "rc/*"
+      - 'force_ci/**'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+jobs:
+  nio2-file-api-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check changed Java lines for non-NIO.2 file APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Fetch the target branch. Fall back to master when manually triggered.
+          BASE_REF="${GITHUB_BASE_REF:-master}"
+          git fetch origin "$BASE_REF"
+
+          git switch -c check_branch
+
+          # Get Java diffs only. This check intentionally only scans added lines.
+          echo "Get Java diff of the changes"
+          DIFF=$(git diff "origin/$BASE_REF" check_branch -- '*.java')
+
+          if [ -z "$DIFF" ]; then
+            echo "No Java changes detected."
+            exit 0
+          fi
+
+          # These APIs bypass java.nio.file.spi.FileSystemProvider interception. Use NIO.2
+          # alternatives such as Files.delete/deleteIfExists and FileChannel.open(Path, ...)
+          # or the project helper FileUtils.truncateFile instead.
+          echo "Check the diff for non-NIO.2-compatible file APIs"
+          NON_NIO2_PATTERN='^\+.*(\.delete\(\)|\.deleteOnExit\(\)|getChannel\(\)\.truncate\(|\.setLength\(|new RandomAccessFile\()'
+          VIOLATIONS=$(echo "$DIFF" | grep -E "$NON_NIO2_PATTERN" || true)
+
+          if [ -z "$VIOLATIONS" ]; then
+            echo "No non-NIO.2-compatible file APIs found in changed content."
+            exit 0
+          fi
+
+          echo "Non-NIO.2-compatible file API usage found in the changes."
+          echo "Please use provider-compatible APIs before merging:"
+          echo "- Files.delete(...) or Files.deleteIfExists(...) instead of File.delete()/deleteOnExit()"
+          echo "- FileChannel.open(Path, ...) or FileUtils.truncateFile(...) instead of getChannel().truncate()/setLength()"
+          echo "$VIOLATIONS" | tee -a output.log
+          exit 1
