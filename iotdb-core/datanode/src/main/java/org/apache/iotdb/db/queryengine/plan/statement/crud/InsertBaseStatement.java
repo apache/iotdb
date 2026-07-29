@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -217,6 +218,41 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public Stream<PartialPath> getDevicePathsStream() {
     return Stream.of(devicePath);
+  }
+
+  /** Returns a bounded log representation generated lazily from this statement's distinct paths. */
+  public String getPathsStringForLog() {
+    return getPathsStringForLog(getPathsStream().distinct());
+  }
+
+  /**
+   * Returns a bounded log representation of paths that were already collected for authorization.
+   */
+  public String getPathsStringForLog(List<? extends PartialPath> paths) {
+    return getPathsStringForLog(paths.stream());
+  }
+
+  private static String getPathsStringForLog(Stream<? extends PartialPath> pathStream) {
+    final int maxSize = Math.max(1, CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
+    final List<String> paths =
+        pathStream
+            .limit((long) maxSize + 1)
+            .map(path -> String.valueOf(path))
+            .collect(Collectors.toList());
+    final boolean truncated = paths.size() > maxSize;
+    final int size = truncated ? maxSize : paths.size();
+
+    final StringBuilder result = new StringBuilder("[");
+    if (size > 0) {
+      result.append(paths.get(0));
+      for (int i = 1; i < size; i++) {
+        result.append(", ").append(paths.get(i));
+      }
+      if (truncated) {
+        result.append(", ...");
+      }
+    }
+    return result.append("]").toString();
   }
 
   public abstract ISchemaValidation getSchemaValidation();
