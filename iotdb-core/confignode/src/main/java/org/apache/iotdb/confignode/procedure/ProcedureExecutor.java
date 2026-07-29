@@ -68,7 +68,9 @@ public class ProcedureExecutor<Env> {
   private final ThreadGroup threadGroup =
       new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
 
-  private CopyOnWriteArrayList<WorkerThread> workerThreads;
+  // Metrics may be scraped before init() and concurrently with initialization during a ConfigNode
+  // leader transition.
+  private volatile CopyOnWriteArrayList<WorkerThread> workerThreads;
 
   private TimeoutExecutorThread<Env> timeoutExecutor;
 
@@ -1026,11 +1028,15 @@ public class ProcedureExecutor<Env> {
   }
 
   public int getWorkerThreadCount() {
-    return workerThreads.size();
+    final CopyOnWriteArrayList<WorkerThread> workers = workerThreads;
+    return workers == null ? 0 : workers.size();
   }
 
   public long getActiveWorkerThreadCount() {
-    return workerThreads.stream().filter(worker -> worker.activeProcedure.get() != null).count();
+    final CopyOnWriteArrayList<WorkerThread> workers = workerThreads;
+    return workers == null
+        ? 0
+        : workers.stream().filter(worker -> worker.activeProcedure.get() != null).count();
   }
 
   public boolean isRunning() {
