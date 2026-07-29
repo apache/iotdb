@@ -529,7 +529,9 @@ public class LoadTsFileStatement extends Statement {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }
 
-    return LoadTsFile.createUnchecked(null, file.getAbsolutePath(), loadAttributes);
+    return isGeneratedByPipe
+        ? LoadTsFile.createForPipe(null, file.getAbsolutePath(), loadAttributes)
+        : LoadTsFile.createUnchecked(null, file.getAbsolutePath(), loadAttributes);
   }
 
   @Override

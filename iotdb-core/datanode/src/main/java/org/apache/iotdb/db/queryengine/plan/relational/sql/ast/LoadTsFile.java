@@ -307,7 +307,9 @@ public class LoadTsFile extends Statement {
       final Map<String, String> properties = this.loadAttributes;
 
       final LoadTsFile subStatement =
-          LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
+          isGeneratedByPipe
+              ? LoadTsFile.createForPipe(getLocation().orElse(null), filePath, properties)
+              : LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
 
       // Copy all configuration properties
       subStatement.databaseLevel = this.databaseLevel;
