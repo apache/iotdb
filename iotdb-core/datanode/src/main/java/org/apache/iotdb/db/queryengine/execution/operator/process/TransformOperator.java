@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.builder.EvaluationDAGB
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -47,6 +49,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -328,35 +331,17 @@ public class TransformOperator implements ProcessOperator {
     if (valueColumn.isNull(currentIndex)) {
       writer.appendNull();
     } else {
-      TSDataType type = transformers[index].getDataTypes()[0];
-      switch (type) {
-        case INT32:
-        case DATE:
-          writer.writeInt(valueColumn.getInt(currentIndex));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          writer.writeLong(valueColumn.getLong(currentIndex));
-          break;
-        case FLOAT:
-          writer.writeFloat(valueColumn.getFloat(currentIndex));
-          break;
-        case DOUBLE:
-          writer.writeDouble(valueColumn.getDouble(currentIndex));
-          break;
-        case BOOLEAN:
-          writer.writeBoolean(valueColumn.getBoolean(currentIndex));
-          break;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          writer.writeBinary(valueColumn.getBinary(currentIndex));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", type));
+      final TSDataType dataType = transformers[index].getDataTypes()[0];
+      final Type type;
+      try {
+        type = Type.fromTsDataType(dataType);
+      } catch (final UnsupportedOperationException ignored) {
+        throw new UnSupportedDataTypeException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, dataType));
       }
+      TypeServices.Transformation.TRANSFORM_COLUMN_VALUE_WRITER_SERVICE
+          .call(type)
+          .write(writer, valueColumn, currentIndex);
     }
 
     shouldIterateReadersToNextValid[index] = true;

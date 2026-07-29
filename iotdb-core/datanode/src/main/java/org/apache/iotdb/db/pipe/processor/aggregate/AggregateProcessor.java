@@ -45,6 +45,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractO
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -59,17 +60,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -655,6 +654,7 @@ public class AggregateProcessor implements PipeProcessor {
     final MeasurementSchema[] measurementSchemaList =
         new MeasurementSchema[columnNameStringList.length];
     final TSDataType[] valueColumnTypes = new TSDataType[columnNameStringList.length];
+    final Type[] valueTypes = new Type[columnNameStringList.length];
     final Object[] valueColumns = new Object[columnNameStringList.length];
     final BitMap[] bitMaps = new BitMap[columnNameStringList.length];
 
@@ -677,88 +677,19 @@ public class AggregateProcessor implements PipeProcessor {
             measurementSchemaList[columnIndex] =
                 new MeasurementSchema(
                     columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
-            switch (valueColumnTypes[columnIndex]) {
-              case BOOLEAN:
-                valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
-                break;
-              case INT32:
-                valueColumns[columnIndex] = new int[distinctOutputs.size()];
-                break;
-              case DATE:
-                valueColumns[columnIndex] = new LocalDate[distinctOutputs.size()];
-                break;
-              case INT64:
-              case TIMESTAMP:
-                valueColumns[columnIndex] = new long[distinctOutputs.size()];
-                break;
-              case FLOAT:
-                valueColumns[columnIndex] = new float[distinctOutputs.size()];
-                break;
-              case DOUBLE:
-                valueColumns[columnIndex] = new double[distinctOutputs.size()];
-                break;
-              case TEXT:
-              case BLOB:
-              case OBJECT:
-              case STRING:
-                valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
-                break;
-              default:
-                throw new UnsupportedOperationException(
-                    String.format(
-                        "The output tablet does not support column type %s",
-                        valueColumnTypes[columnIndex]));
-            }
+            valueTypes[columnIndex] = getOutputTabletType(valueColumnTypes[columnIndex]);
+            valueColumns[columnIndex] =
+                TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE
+                    .call(valueTypes[columnIndex])
+                    .apply(distinctOutputs.size());
           }
           // Fill in values
-          switch (valueColumnTypes[columnIndex]) {
-            case BOOLEAN:
-              ((boolean[]) valueColumns[columnIndex])[rowIndex] =
-                  (boolean) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT32:
-              ((int[]) valueColumns[columnIndex])[rowIndex] =
-                  (int) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DATE:
-              ((LocalDate[]) valueColumns[columnIndex])[rowIndex] =
-                  (LocalDate) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case INT64:
-            case TIMESTAMP:
-              ((long[]) valueColumns[columnIndex])[rowIndex] =
-                  (long) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case FLOAT:
-              ((float[]) valueColumns[columnIndex])[rowIndex] =
-                  (float) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case DOUBLE:
-              ((double[]) valueColumns[columnIndex])[rowIndex] =
-                  (double) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            case TEXT:
-            case STRING:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                          instanceof Binary
-                      ? (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
-                      : new Binary(
-                          (String)
-                              aggregatedResults.get(columnNameStringList[columnIndex]).getRight(),
-                          TSFileConfig.STRING_CHARSET);
-              break;
-            case BLOB:
-            case OBJECT:
-              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
-                  (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format(
-                      "The output tablet does not support column type %s",
-                      valueColumnTypes[columnIndex]));
-          }
+          TypeServices.Pipe.AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE
+              .call(valueTypes[columnIndex])
+              .write(
+                  valueColumns[columnIndex],
+                  rowIndex,
+                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight());
         } else {
           bitMaps[columnIndex].mark(rowIndex);
         }
@@ -850,6 +781,15 @@ public class AggregateProcessor implements PipeProcessor {
                     filteredBitMaps,
                     filteredColumnNameStringList));
       }
+    }
+  }
+
+  private static Type getOutputTabletType(final TSDataType dataType) {
+    try {
+      return Type.fromTsDataType(dataType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, dataType));
     }
   }
 

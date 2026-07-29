@@ -214,6 +214,29 @@ public class TypeServices {
                   };
             };
 
+    public static final TypeService<ColumnValueWriter> TRANSFORM_COLUMN_VALUE_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN,
+                  INT32,
+                  DATE,
+                  INT64,
+                  TIMESTAMP,
+                  FLOAT,
+                  DOUBLE,
+                  TEXT,
+                  BLOB,
+                  STRING,
+                  OBJECT ->
+                  type::write;
+              case ROW, UNKNOWN, VECTOR ->
+                  (builder, column, index) -> {
+                    throw new UnSupportedDataTypeException(
+                        String.format(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+                  };
+            };
+
     public static final TypeService<RoundTransformer> ROUND_TRANSFORMER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -350,6 +373,11 @@ public class TypeServices {
     }
 
     @FunctionalInterface
+    public interface ColumnValueWriter {
+      void write(ColumnBuilder builder, Column column, int index);
+    }
+
+    @FunctionalInterface
     public interface RoundTransformer {
       void transform(RoundFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
           throws QueryProcessException, IOException;
@@ -377,6 +405,7 @@ public class TypeServices {
       CONSTANT_COLUMN_BUILDER_SERVICE.check();
       COLUMN_BUILDER_SERVICE.check();
       VALUE_TO_DOUBLE_SERVICE.check();
+      TRANSFORM_COLUMN_VALUE_WRITER_SERVICE.check();
       ROUND_TRANSFORMER_SERVICE.check();
       DIFF_TRANSFORMER_SERVICE.check();
       NEGATION_TRANSFORMER_SERVICE.check();
@@ -1556,6 +1585,55 @@ public class TypeServices {
                       };
                 };
 
+    public static final TypeService<IntFunction<Object>> AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN,
+                  INT32,
+                  DATE,
+                  INT64,
+                  TIMESTAMP,
+                  FLOAT,
+                  DOUBLE,
+                  TEXT,
+                  BLOB,
+                  STRING,
+                  OBJECT ->
+                  type::createArray;
+              case ROW, UNKNOWN, VECTOR ->
+                  size -> {
+                    throw new UnsupportedOperationException(
+                        String.format(
+                            DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT,
+                            type.getTypeEnum()));
+                  };
+            };
+
+    public static final TypeService<AggregateTabletColumnValueWriter>
+        AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN,
+                      INT32,
+                      DATE,
+                      INT64,
+                      TIMESTAMP,
+                      FLOAT,
+                      DOUBLE,
+                      TEXT,
+                      BLOB,
+                      STRING,
+                      OBJECT ->
+                      (column, rowIndex, value) -> type.addValue(rowIndex, value, column);
+                  case ROW, UNKNOWN, VECTOR ->
+                      (column, rowIndex, value) -> {
+                        throw new UnsupportedOperationException(
+                            String.format(
+                                DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT,
+                                type.getTypeEnum()));
+                      };
+                };
+
     public static final TypeService<TabletObjectValueGetter>
         OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE =
             type ->
@@ -1604,6 +1682,11 @@ public class TypeServices {
     @FunctionalInterface
     public interface TabletObjectValueGetter {
       Object get(Object column, int rowIndex);
+    }
+
+    @FunctionalInterface
+    public interface AggregateTabletColumnValueWriter {
+      void write(Object column, int rowIndex, Object value);
     }
 
     public static final TypeService<Function<Boolean, Type>>
@@ -1833,6 +1916,8 @@ public class TypeServices {
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_DOUBLE_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE.check();
+      AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE.check();
+      AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE.check();
       OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE.check();
       OPC_UA_DATA_TYPE_SERVICE.check();
       PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
