@@ -232,7 +232,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       reader = new RandomAccessFile(currentFile, "r");
     }
 
-    final int readLength = reader.read(readBuffer);
+    final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
       if (advanceToNextFile()) {
@@ -272,11 +272,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       }
       return;
     }
-    PipeResourceMetrics.getInstance().recordDiskIO(readLength);
-    if (sink.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readLength);
-    }
-
     final byte[] payload =
         readLength == readFileBufferSize
             ? readBuffer
@@ -302,6 +297,22 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     position += readLength;
+  }
+
+  protected int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
+      throws IOException {
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
+  }
+
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
+    }
   }
 
   @Override
