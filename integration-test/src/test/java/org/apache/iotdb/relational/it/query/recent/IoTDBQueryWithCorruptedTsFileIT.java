@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -175,17 +176,19 @@ public class IoTDBQueryWithCorruptedTsFileIT {
       statement.execute("FLUSH");
     }
 
-    // 2. Find the generated TsFile in the data directory
-    File sequenceDir =
+    // 2. Find a generated TsFile in this database's data directory
+    File databaseSequenceDir =
         new File(
             EnvFactory.getEnv().getDataNodeWrapper(0).getDataNodeDir()
                 + File.separator
                 + "data"
                 + File.separator
-                + "sequence");
-    File tsFile = findTsFileRecursively(sequenceDir);
+                + "sequence"
+                + File.separator
+                + DATABASE_NAME);
+    File tsFile = findTsFileRecursively(databaseSequenceDir);
     if (tsFile == null) {
-      fail("Could not find TsFile in data directory: " + sequenceDir.getAbsolutePath());
+      fail("Could not find TsFile in data directory: " + databaseSequenceDir.getAbsolutePath());
     }
 
     // 3. Corrupt the data section of the TsFile
@@ -196,7 +199,13 @@ public class IoTDBQueryWithCorruptedTsFileIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       try {
-        statement.execute("SELECT * FROM " + tableName + " ORDER BY time");
+        try (ResultSet resultSet =
+            statement.executeQuery("SELECT * FROM " + tableName + " ORDER BY time")) {
+          while (resultSet.next()) {
+            // Consume all rows because corruption may be detected while fetching later result
+            // blocks.
+          }
+        }
         fail("Expected query on corrupted TsFile to fail");
       } catch (SQLException e) {
         assertTrue(
