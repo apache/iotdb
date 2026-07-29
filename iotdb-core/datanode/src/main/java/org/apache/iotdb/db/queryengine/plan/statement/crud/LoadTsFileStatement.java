@@ -78,14 +78,19 @@ public class LoadTsFileStatement extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
-    this(filePath, true);
+    this(filePath, true, true);
   }
 
   public static LoadTsFileStatement createUnchecked(String filePath) throws FileNotFoundException {
-    return new LoadTsFileStatement(filePath, false);
+    return new LoadTsFileStatement(filePath, false, true);
   }
 
-  private LoadTsFileStatement(String filePath, boolean validateSourcePath)
+  public static LoadTsFileStatement createForPipe(String filePath) throws FileNotFoundException {
+    return new LoadTsFileStatement(filePath, false, false);
+  }
+
+  private LoadTsFileStatement(
+      String filePath, boolean validateSourcePath, boolean validateInternalDataDir)
       throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
@@ -96,7 +101,7 @@ public class LoadTsFileStatement extends Statement {
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
 
-    this.tsFiles = processTsFile(file, validateSourcePath);
+    this.tsFiles = processTsFile(file, validateSourcePath, validateInternalDataDir);
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
@@ -104,14 +109,22 @@ public class LoadTsFileStatement extends Statement {
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
-    return processTsFile(file, true);
+    return processTsFile(file, true, true);
   }
 
   public static List<File> processTsFile(final File file, final boolean validateSourcePath)
       throws FileNotFoundException {
+    return processTsFile(file, validateSourcePath, true);
+  }
+
+  private static List<File> processTsFile(
+      final File file, final boolean validateSourcePath, final boolean validateInternalDataDir)
+      throws FileNotFoundException {
     final Path[] internalDataDirCanonicalPaths =
         IoTDBDescriptor.getInstance().getConfig().getInternalDataDirCanonicalPaths();
-    validateNotLoadingInternalTsFile(file, internalDataDirCanonicalPaths);
+    if (validateInternalDataDir) {
+      validateNotLoadingInternalTsFile(file, internalDataDirCanonicalPaths);
+    }
     if (validateSourcePath) {
       validateLoadSourcePath(file);
     }
@@ -127,7 +140,9 @@ public class LoadTsFileStatement extends Statement {
                     .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
                 file.getPath()));
       }
-      tsFiles.addAll(findAllTsFile(file, validateSourcePath, internalDataDirCanonicalPaths));
+      tsFiles.addAll(
+          findAllTsFile(
+              file, validateSourcePath, validateInternalDataDir, internalDataDirCanonicalPaths));
     }
     sortTsFiles(tsFiles);
     return tsFiles;
@@ -150,7 +165,10 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private static List<File> findAllTsFile(
-      File file, boolean validateSourcePath, Path[] internalDataDirCanonicalPaths)
+      File file,
+      boolean validateSourcePath,
+      boolean validateInternalDataDir,
+      Path[] internalDataDirCanonicalPaths)
       throws FileNotFoundException {
     final File[] files = file.listFiles();
     if (files == null) {
@@ -159,14 +177,21 @@ public class LoadTsFileStatement extends Statement {
 
     final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
-      validateNotLoadingInternalTsFile(nowFile, internalDataDirCanonicalPaths);
+      if (validateInternalDataDir) {
+        validateNotLoadingInternalTsFile(nowFile, internalDataDirCanonicalPaths);
+      }
       if (validateSourcePath) {
         validateLoadSourcePath(nowFile);
       }
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        tsFiles.addAll(findAllTsFile(nowFile, validateSourcePath, internalDataDirCanonicalPaths));
+        tsFiles.addAll(
+            findAllTsFile(
+                nowFile,
+                validateSourcePath,
+                validateInternalDataDir,
+                internalDataDirCanonicalPaths));
       }
     }
     return tsFiles;

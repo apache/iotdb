@@ -676,7 +676,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean validateTsFile,
       final boolean shouldConvertDataTypeOnTypeMismatch)
       throws FileNotFoundException {
-    final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(fileAbsolutePath);
+    final LoadTsFileStatement statement = LoadTsFileStatement.createForPipe(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(shouldConvertDataTypeOnTypeMismatch);
     statement.setVerifySchema(validateTsFile || shouldConvertDataTypeOnTypeMismatch);

@@ -1674,6 +1674,7 @@ public class IoTDBConfig {
 
   private void formulateInternalDataDirs(final String[][] tierDataDirs) {
     final List<String> internalDataDirs = new ArrayList<>();
+    internalDataDirs.add(addDataHomeDir("data"));
     for (final String[] tierDataDir : tierDataDirs) {
       for (final String dataDir : tierDataDir) {
         if (FSUtils.isLocal(dataDir)) {

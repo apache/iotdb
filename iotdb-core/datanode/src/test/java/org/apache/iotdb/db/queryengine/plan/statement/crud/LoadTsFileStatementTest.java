@@ -134,6 +134,9 @@ public class LoadTsFileStatementTest {
         Assert.assertFalse(e.getMessage().contains(dataDir.toString()));
         Assert.assertFalse(e.getMessage().contains(internalTsFile.toString()));
       }
+
+      Assert.assertEquals(
+          1, LoadTsFileStatement.createForPipe(internalTsFile.toString()).getTsFiles().size());
     } finally {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
