@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -43,6 +45,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
   private final List<Integer> needRetryInstanceIndex;
   private final long sendTime;
+  private final TEndPoint targetEndPoint;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -51,12 +54,14 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
       AtomicLong pendingNumber,
       Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap,
       List<Integer> needRetryInstanceIndex,
-      long sendTime) {
+      long sendTime,
+      TEndPoint targetEndPoint) {
     this.instanceIds = instanceIds;
     this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
     this.needRetryInstanceIndex = needRetryInstanceIndex;
     this.sendTime = sendTime;
+    this.targetEndPoint = targetEndPoint;
   }
 
   @Override
@@ -78,6 +83,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   @Override
   public void onError(Exception e) {
+    DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(e, targetEndPoint);
     if (needRetry(e)) {
       needRetryInstanceIndex.addAll(instanceIds);
     }

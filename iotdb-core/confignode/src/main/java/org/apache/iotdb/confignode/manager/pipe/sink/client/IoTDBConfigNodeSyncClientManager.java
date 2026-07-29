@@ -85,4 +85,16 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
   protected String getClusterId() {
     return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
   }
+
+  @Override
+  protected void onClientConnectionFailure(
+      final Exception failure, final TEndPoint targetEndPoint) {
+    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
+      return;
+    }
+    ConfigNode.getInstance()
+        .getConfigManager()
+        .getAuditLogger()
+        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
+  }
 }

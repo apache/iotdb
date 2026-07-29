@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.audit;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -43,4 +44,9 @@ public class CNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public void log(IAuditEntity auditLogFields, Supplier<String> log) {}
+
+  public void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
+    recordTrustedChannelFailureAuditLogIfNecessary(
+        failure, new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()), target);
+  }
 }

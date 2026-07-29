@@ -91,7 +91,8 @@ public class AsyncPlanNodeSender {
               pendingNumber,
               instanceId2RespMap,
               needRetryInstanceIndex,
-              startSendTime);
+              startSendTime,
+              entry.getKey());
       try {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());

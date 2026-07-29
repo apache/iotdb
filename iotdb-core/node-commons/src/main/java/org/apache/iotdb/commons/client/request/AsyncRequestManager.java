@@ -210,6 +210,13 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           endPoint,
           e.getMessage(),
           retryCount);
+      try {
+        onRequestFailure(e, endPoint);
+      } catch (final RuntimeException reportingFailure) {
+        if (reportingFailure != e) {
+          e.addSuppressed(reportingFailure);
+        }
+      }
       if (handler != null) {
         try {
           handler.onError(e);
@@ -234,6 +241,10 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
   }
 
   protected void adjustClientTimeoutIfNecessary(RequestType type, Client client, Long timeoutInMs) {
+    // In default, no need to do this
+  }
+
+  protected void onRequestFailure(Exception failure, TEndPoint targetEndPoint) {
     // In default, no need to do this
   }
 

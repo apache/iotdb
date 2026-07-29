@@ -19,12 +19,23 @@
 
 package org.apache.iotdb.commons.audit;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+
+import javax.net.ssl.SSLException;
 
 import java.util.function.Supplier;
 
 public abstract class AbstractAuditLogger {
+  private static final long INTERNAL_AUDIT_LOG_USER_ID = 4;
+  private static final ThreadLocal<Boolean> RECORDING_TRUSTED_CHANNEL_FAILURE =
+      ThreadLocal.withInitial(() -> false);
+
   public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
       "User %s (ID=%d) requests authority on object %s with result %s";
   public static final String AUDIT_LOG_NODE_ID = "node_id";
@@ -60,5 +71,69 @@ public abstract class AbstractAuditLogger {
                 auditEntity.getUserId(),
                 auditObject.get(),
                 auditEntity.getResult()));
+  }
+
+  /**
+   * Records a failure of the trusted-channel function.
+   *
+   * <p>The caller determines the channel direction and supplies the actual initiator and target
+   * identifiers. This keeps the audit hook independent of any concrete SSL/TLS implementation.
+   */
+  public void recordTrustedChannelFailureAuditLog(
+      final IAuditEntity auditEntity,
+      final Supplier<String> initiator,
+      final Supplier<String> target) {
+    log(
+        auditEntity
+            .setAuditEventType(AuditEventType.TRUSTED_CHANNEL_FUNCTION_FAILURE)
+            .setAuditLogOperation(AuditLogOperation.CONTROL)
+            .setResult(false),
+        () ->
+            String.format(
+                CommonMessages
+                    .LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443,
+                initiator.get(),
+                target.get()));
+  }
+
+  public static boolean isSslFailure(Throwable failure) {
+    Throwable cause = failure;
+    while (cause != null) {
+      if (cause instanceof SSLException) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
+  }
+
+  public void recordTrustedChannelFailureAuditLogIfNecessary(
+      Throwable failure, TEndPoint initiator, TEndPoint target) {
+    if (RECORDING_TRUSTED_CHANNEL_FAILURE.get()
+        || !isSslFailure(failure)
+        || initiator == null
+        || target == null) {
+      return;
+    }
+
+    final String initiatorIdentifier = NodeUrlUtils.convertTEndPointUrl(initiator);
+    final String targetIdentifier = NodeUrlUtils.convertTEndPointUrl(target);
+    RECORDING_TRUSTED_CHANNEL_FAILURE.set(true);
+    try {
+      recordTrustedChannelFailureAuditLog(
+          new UserEntity(
+                  INTERNAL_AUDIT_LOG_USER_ID,
+                  User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
+                  initiatorIdentifier)
+              .setPrivilegeType(PrivilegeType.AUDIT),
+          () -> initiatorIdentifier,
+          () -> targetIdentifier);
+    } catch (RuntimeException auditFailure) {
+      if (auditFailure != failure) {
+        failure.addSuppressed(auditFailure);
+      }
+    } finally {
+      RECORDING_TRUSTED_CHANNEL_FAILURE.remove();
+    }
   }
 }
