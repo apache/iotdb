@@ -181,6 +181,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -1136,26 +1137,32 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DML).setPrivilegeType(PrivilegeType.WRITE_DATA);
-    for (PartialPath path : statement.getDevicePaths()) {
-      // External users cannot modify the audit database.
-      if (includeByAuditTreeDB(path)
-          && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
-        AUDIT_LOGGER.recordObjectAuthenticationAuditLog(context.setResult(false), path::toString);
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
-      }
+    // External users cannot modify the audit database.
+    final PartialPath unsupportedAuditPath =
+        context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)
+            ? null
+            : statement
+                .getDevicePathsStream()
+                .filter(Audit::includeByAuditTreeDB)
+                .findFirst()
+                .orElse(null);
+    if (unsupportedAuditPath != null) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false), unsupportedAuditPath::toString);
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
     }
 
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          context.setResult(true),
-          () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+          context.setResult(true), statement::getPathsStringForLog);
       return SUCCEED;
     }
     return checkTimeSeriesPermission(
         context,
-        () -> statement.getPaths().stream().distinct().collect(Collectors.toList()),
-        PrivilegeType.WRITE_DATA);
+        () -> statement.getPathsStream().distinct().toList(),
+        PrivilegeType.WRITE_DATA,
+        statement::getPathsStringForLog);
   }
 
   @Override
@@ -1236,10 +1243,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       IAuditEntity context,
       Supplier<List<? extends PartialPath>> checkedPathsSupplier,
       PrivilegeType permission) {
+    return checkTimeSeriesPermission(context, checkedPathsSupplier, permission, Object::toString);
+  }
+
+  private static TSStatus checkTimeSeriesPermission(
+      IAuditEntity context,
+      Supplier<List<? extends PartialPath>> checkedPathsSupplier,
+      PrivilegeType permission,
+      Function<List<? extends PartialPath>, String> auditObjectFormatter) {
     context.setPrivilegeType(permission);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          context.setResult(true), () -> checkedPathsSupplier.get().toString());
+          context.setResult(true), () -> auditObjectFormatter.apply(checkedPathsSupplier.get()));
       return SUCCEED;
     }
     List<? extends PartialPath> checkedPaths = checkedPathsSupplier.get();
@@ -1253,7 +1268,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       // Internal auditor no needs audit log
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          checkedPaths::toString);
+          () -> auditObjectFormatter.apply(checkedPaths));
     }
     return result;
   }
