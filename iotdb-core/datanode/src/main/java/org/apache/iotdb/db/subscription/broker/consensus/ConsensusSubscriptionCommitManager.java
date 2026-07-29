@@ -58,12 +58,13 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
@@ -1220,11 +1221,15 @@ public class ConsensusSubscriptionCommitManager {
 
   private void overwriteRegionPayload(
       final File metaFile, final long payloadOffset, final byte[] payload) throws IOException {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(metaFile, "rw")) {
-      randomAccessFile.seek(payloadOffset);
-      randomAccessFile.write(payload);
+    try (final FileChannel channel =
+        FileChannel.open(metaFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.position(payloadOffset);
+      final ByteBuffer payloadBuffer = ByteBuffer.wrap(payload);
+      while (payloadBuffer.hasRemaining()) {
+        channel.write(payloadBuffer);
+      }
       if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
-        randomAccessFile.getFD().sync();
+        channel.force(true);
       }
     }
   }

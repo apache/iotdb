@@ -46,11 +46,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
 /**
@@ -124,7 +124,7 @@ public class SchemaFile implements ISchemaFile {
       pmtFile.createNewFile();
     }
 
-    this.channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    this.channel = openReadWriteChannel(pmtFile);
     this.headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
@@ -139,7 +139,7 @@ public class SchemaFile implements ISchemaFile {
     pmtFile = file;
     filePath = pmtFile.getPath();
     logPath = file.getParent() + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
-    channel = new RandomAccessFile(file, "rw").getChannel();
+    channel = openReadWriteChannel(file);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
     if (channel.size() <= 0) {
@@ -294,9 +294,17 @@ public class SchemaFile implements ISchemaFile {
     }
     pmtFile.createNewFile();
 
-    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    channel = openReadWriteChannel(pmtFile);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     initFileHeader();
+  }
+
+  private static FileChannel openReadWriteChannel(File file) throws IOException {
+    return FileChannel.open(
+        file.toPath(),
+        StandardOpenOption.READ,
+        StandardOpenOption.WRITE,
+        StandardOpenOption.CREATE);
   }
 
   public String inspect() throws MetadataException, IOException {
