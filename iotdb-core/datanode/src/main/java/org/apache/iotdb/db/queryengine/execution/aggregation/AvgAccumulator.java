@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -44,29 +45,27 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
+    final boolean isNumeric;
+    try {
+      isNumeric = seriesDataType.isNumeric();
+    } catch (final UnSupportedDataTypeException ignored) {
+      throw new UnSupportedDataTypeException(
+          String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, seriesDataType));
+    }
+    if (!isNumeric) {
+      throw new UnSupportedDataTypeException(
+          String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, seriesDataType));
+    }
+    final int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
+        continue;
+      }
+      if (!columns[1].isNull(i)) {
+        initResult = true;
+        countValue++;
+        sumValue += columns[1].getDouble(i);
+      }
     }
   }
 
@@ -173,61 +172,5 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public int getPartialResultSize() {
     return 2;
-  }
-
-  private void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column[1].getInt(i);
-      }
-    }
-  }
-
-  private void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column[1].getLong(i);
-      }
-    }
-  }
-
-  private void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column[1].getFloat(i);
-      }
-    }
-  }
-
-  private void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column[1].getDouble(i);
-      }
-    }
   }
 }

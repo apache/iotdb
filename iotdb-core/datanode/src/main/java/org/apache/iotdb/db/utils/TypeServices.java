@@ -479,6 +479,29 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<java.util.function.Predicate<TSDataType>> AUTO_CAST_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 ->
+                  targetType ->
+                      targetType == TSDataType.INT64
+                          || targetType == TSDataType.FLOAT
+                          || targetType == TSDataType.DOUBLE;
+              case INT64, FLOAT -> targetType -> targetType == TSDataType.DOUBLE;
+              case BOOLEAN, DATE, TIMESTAMP, DOUBLE, TEXT, BLOB, STRING, OBJECT ->
+                  targetType -> false;
+              case ROW, UNKNOWN, VECTOR ->
+                  targetType -> {
+                    throw new IllegalArgumentException(
+                        DataNodeMiscMessages.UNKNOWN_DATA_TYPE + type.getTypeEnum());
+                  };
+            };
+
+    static {
+      VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
+      AUTO_CAST_SERVICE.check();
+    }
+
     private ValueConversion() {
       // Utility class
     }

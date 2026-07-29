@@ -35,9 +35,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.AUTO_CAST_SERVICE;
 
 public class TypeInferenceUtils {
 
@@ -365,30 +368,10 @@ public class TypeInferenceUtils {
       return true;
     }
 
-    switch (fromType) {
-      case INT32:
-        switch (toType) {
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
-            return true;
-          default:
-            return false;
-        }
-      case INT64:
-      case FLOAT:
-        return toType.equals(TSDataType.DOUBLE);
-      case DOUBLE:
-      case BOOLEAN:
-      case TEXT:
-      case DATE:
-      case TIMESTAMP:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return false;
-      default:
-        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
+    try {
+      return AUTO_CAST_SERVICE.call(Type.fromTsDataType(fromType)).test(toType);
+    } catch (final UnsupportedOperationException ignored) {
+      throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
     }
   }
 }
