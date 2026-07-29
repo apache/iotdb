@@ -77,7 +77,11 @@ import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.io.BaseEncoding;
+import com.sun.jna.platform.win32.OaIdl;
+import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
+import com.sun.jna.platform.win32.WTypes;
+import com.sun.jna.platform.win32.WinDef;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -2283,6 +2287,63 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<OpcDaTabletValueSetter> OPC_DA_TABLET_VALUE_SETTER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(
+                        Variant.VT_BOOL, new OaIdl.VARIANT_BOOL(((boolean[]) column)[rowIndex]));
+                    return null;
+                  };
+              case INT32 ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(Variant.VT_I4, new WinDef.LONG(((int[]) column)[rowIndex]));
+                    return null;
+                  };
+              case DATE ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(
+                        Variant.VT_DATE,
+                        new OaIdl.DATE(Date.valueOf(((LocalDate[]) column)[rowIndex])));
+                    return null;
+                  };
+              case INT64 ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(Variant.VT_I8, new WinDef.LONGLONG(((long[]) column)[rowIndex]));
+                    return null;
+                  };
+              case TIMESTAMP ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(
+                        Variant.VT_DATE,
+                        new OaIdl.DATE(new java.util.Date(((long[]) column)[rowIndex])));
+                    return null;
+                  };
+              case FLOAT ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(Variant.VT_R4, ((float[]) column)[rowIndex]);
+                    return null;
+                  };
+              case DOUBLE ->
+                  (value, column, rowIndex) -> {
+                    value.setValue(Variant.VT_R8, ((double[]) column)[rowIndex]);
+                    return null;
+                  };
+              case TEXT, STRING, BLOB, OBJECT ->
+                  (value, column, rowIndex) -> {
+                    final WTypes.BSTR bstr =
+                        OleAuto.INSTANCE.SysAllocString(((Binary[]) column)[rowIndex].toString());
+                    value.setValue(Variant.VT_BSTR, bstr);
+                    return bstr;
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  (value, column, rowIndex) -> {
+                    throw new UnSupportedDataTypeException(
+                        DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
+                  };
+            };
+
     public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -2722,6 +2783,7 @@ public class TypeServices {
 
     static {
       SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE.check();
+      OPC_DA_TABLET_VALUE_SETTER_SERVICE.check();
       OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE.check();
@@ -3025,5 +3087,10 @@ public class TypeServices {
   public interface ChunkMetadataStatisticsConverter {
     Statistics<?> convert(
         IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics);
+  }
+
+  @FunctionalInterface
+  public interface OpcDaTabletValueSetter {
+    WTypes.BSTR set(Variant.VARIANT value, Object column, int rowIndex);
   }
 }
