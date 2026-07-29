@@ -82,7 +82,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelMigrateRegionByTreeDialectTest() throws Exception {
     initCluster(1, 1, 3, AddRegionPeerState.DO_ADD_REGION_PEER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -114,7 +114,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelAllMigrationsIdleIsIdempotentForBothDialectsTest() throws Exception {
     initCluster(1, 1, 3);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       awaitNoMigrations(statement);
@@ -137,7 +137,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelAllMigrationsPermissionTest() throws Exception {
     initCluster(1, 1, 1);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       statement.execute(
           String.format("create user %s '%s'", CANCEL_TREE_USER, CANCEL_USER_PASSWORD));
@@ -171,7 +171,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelAllMigrationsClientReceiptIncludesCancelledCountTest() throws Exception {
     initClusterWithDataRegionGroups(1, 1, 3, 4, AddRegionPeerState.DO_ADD_REGION_PEER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -207,7 +207,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelExtendRegionByTableDialectTest() throws Exception {
     initCluster(1, 1, 3, AddRegionPeerState.DO_ADD_REGION_PEER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -236,7 +236,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelRemoveRegionByTreeDialectTest() throws Exception {
     initCluster(2, 1, 3, RemoveRegionPeerState.TRANSFER_REGION_LEADER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -263,7 +263,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void rejectCancelRemoveRegionAfterRemoteTaskSubmittedTest() throws Exception {
     initCluster(2, 1, 3, RemoveRegionPeerState.REMOVE_REGION_PEER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -296,7 +296,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
   public void cancelReconstructRegionByTableDialectTest() throws Exception {
     initCluster(2, 1, 3, RemoveRegionPeerState.TRANSFER_REGION_LEADER);
 
-    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection connection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
       Map<Integer, Set<Integer>> regionMap = prepareTreeData(statement);
       Set<Integer> allDataNodes = getAllDataNodes(statement);
@@ -367,6 +367,14 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
     return Arrays.stream(killPoints).map(KillPoint::enumToString).collect(Collectors.toList());
   }
 
+  private Connection getSingleDataNodeConnection() throws SQLException {
+    // SHOW MIGRATIONS reflects live procedure state. A default cluster-test connection fans out
+    // reads to every DataNode and requires identical results, but those requests can reach the
+    // ConfigNode on opposite sides of a migration state transition. Pin all test polling to one
+    // DataNode so each observation comes from a single point in time.
+    return EnvFactory.getEnv().getConnection(EnvFactory.getEnv().getDataNodeWrapperList().get(0));
+  }
+
   private void executeCancel(String sqlDialect) throws Exception {
     executeCancelAndGetMessage(sqlDialect, CANCEL_ALL_MIGRATIONS);
   }
@@ -430,7 +438,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
     commandThread.start();
 
     AtomicReference<MigrationRow> captured = new AtomicReference<>();
-    try (Connection pollConnection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection pollConnection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement pollStatement = makeItCloseQuietly(pollConnection.createStatement())) {
       Awaitility.await()
           .atMost(2, TimeUnit.MINUTES)
@@ -468,7 +476,7 @@ public class IoTDBCancelMigrationsIT extends IoTDBRegionOperationReliabilityITFr
             "cancel-migrations-multi-region-command");
     commandThread.start();
 
-    try (Connection pollConnection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+    try (Connection pollConnection = makeItCloseQuietly(getSingleDataNodeConnection());
         Statement pollStatement = makeItCloseQuietly(pollConnection.createStatement())) {
       Awaitility.await()
           .atMost(2, TimeUnit.MINUTES)
