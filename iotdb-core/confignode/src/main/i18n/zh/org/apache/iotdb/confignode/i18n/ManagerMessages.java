@@ -680,5 +680,8 @@ public final class ManagerMessages {
           "[{}] Phase 1：已修正 Region {} 的溢出，迁移从 Node {} 指向 Node {}（原目标：{}）";
   public static final String LOG_ARG_PHASE_1_APPLIED_ARG_OVERSHOOT_CORRECTION_S_FA477C14 =
       "[{}] Phase 1：已应用 {} 项溢出修正";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s 请稍后手动检查该 Procedure 是否执行成功。";
 
 }

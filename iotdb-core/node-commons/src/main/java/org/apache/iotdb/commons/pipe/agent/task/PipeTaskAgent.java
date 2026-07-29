@@ -220,6 +220,12 @@ public abstract class PipeTaskAgent {
       return;
     }
 
+    // PRE_DELETE is a coordinator-only marker. The drop procedure will push DROPPED explicitly
+    // after the marker is persisted, so task agents should retain their current runtime state here.
+    if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.PRE_DELETE) {
+      return;
+    }
+
     if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED) {
       dropPipe(pipeName, creationTime);
       return;

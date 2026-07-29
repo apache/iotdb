@@ -701,5 +701,8 @@ public final class ManagerMessages {
           "[{}] Phase 1: Corrected overshoot for Region {} from Node {} to Node {} (previous target: {})";
   public static final String LOG_ARG_PHASE_1_APPLIED_ARG_OVERSHOOT_CORRECTION_S_FA477C14 =
       "[{}] Phase 1: Applied {} overshoot correction(s)";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s Please manually check later whether the procedure is executed successfully.";
 
 }

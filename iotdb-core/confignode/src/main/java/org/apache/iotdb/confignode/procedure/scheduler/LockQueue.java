@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.scheduler;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Lock queue for procedures. Supports both exclusive mode (maxPermits=1, the default) and semaphore
@@ -33,7 +33,7 @@ import java.util.Set;
  */
 public class LockQueue {
   private final ArrayDeque<Procedure<?>> waitingQueue = new ArrayDeque<>();
-  private final Set<Long> lockOwnerProcedureIds = new HashSet<>();
+  private final Map<Long, Procedure<?>> lockOwnerProcedures = new HashMap<>();
   private volatile int maxPermits;
 
   /** Creates an exclusive lock queue (maxPermits = 1). */
@@ -56,18 +56,18 @@ public class LockQueue {
       return true;
     }
     // Reentrant check
-    if (lockOwnerProcedureIds.contains(procedure.getProcId())) {
+    if (lockOwnerProcedures.containsKey(procedure.getProcId())) {
       return true;
     }
-    if (lockOwnerProcedureIds.size() < maxPermits) {
-      lockOwnerProcedureIds.add(procedure.getProcId());
+    if (lockOwnerProcedures.size() < maxPermits) {
+      lockOwnerProcedures.put(procedure.getProcId(), procedure);
       return true;
     }
     return false;
   }
 
   public synchronized boolean releaseLock(Procedure<?> procedure) {
-    return lockOwnerProcedureIds.remove(procedure.getProcId());
+    return lockOwnerProcedures.remove(procedure.getProcId()) != null;
   }
 
   public synchronized void waitProcedure(Procedure<?> procedure) {
@@ -86,6 +86,10 @@ public class LockQueue {
     }
     waitingQueue.addLast(procedure);
     return true;
+  }
+
+  public synchronized Procedure<?> getLockOwnerProcedure() {
+    return lockOwnerProcedures.values().stream().findFirst().orElse(null);
   }
 
   public synchronized void waitProcedure(
@@ -115,8 +119,8 @@ public class LockQueue {
 
   private boolean isLockAvailable(Procedure<?> procedure) {
     return maxPermits <= 0
-        || lockOwnerProcedureIds.contains(procedure.getProcId())
-        || lockOwnerProcedureIds.size() < maxPermits;
+        || lockOwnerProcedures.containsKey(procedure.getProcId())
+        || lockOwnerProcedures.size() < maxPermits;
   }
 
   private boolean hasWaitingProcedure(Procedure<?> procedure) {
