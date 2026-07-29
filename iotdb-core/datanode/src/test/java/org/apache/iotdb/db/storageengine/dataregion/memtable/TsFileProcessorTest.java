@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -63,6 +64,7 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -537,21 +539,21 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1752552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1752552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1752552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
     // Test records
@@ -560,7 +562,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(1754168, memTable.getTVListsRamCost());
+    Assert.assertEquals(1598168, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
   }
@@ -587,7 +589,9 @@ public class TsFileProcessorTest {
 
     Assert.assertEquals(
         expectedProcessor.getWorkMemTable().getTVListsRamCost()
-            - AlignedTVList.primitiveArrayMemCost(dataType),
+            - AlignedTVList.valueListArrayMemCost(dataType)
+            + 2 * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
@@ -616,7 +620,10 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost - AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        denseBlockCost
+            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
+            + 2 * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -642,8 +649,61 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost - AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        denseBlockCost
+            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
+            + 2 * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
+  }
+
+  @Test
+  public void alignedBitmapMemoryAccountingMatchesActualAllocations()
+      throws MetadataException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".bitmap-accounting");
+    int denseRowCount = PrimitiveArrayManager.ARRAY_SIZE * 2 + 1;
+    processor.insertTablet(
+        genAlignedTablet(new String[] {"s0", "s1"}, denseRowCount, 0),
+        Collections.singletonList(new int[] {0, denseRowCount}),
+        new TSStatus[denseRowCount],
+        true,
+        new long[5]);
+
+    AlignedWritableMemChunk alignedMemChunk = getAlignedMemChunk(deviceId);
+    Assert.assertNull(alignedMemChunk.getWorkingTVList().getBitMaps());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    InsertTabletNode nullTablet = genAlignedTablet(new String[] {"s0", "s1"}, 2, denseRowCount);
+    BitMap secondColumnNulls = new BitMap(2);
+    secondColumnNulls.markAll();
+    nullTablet.setBitMaps(new BitMap[] {null, secondColumnNulls});
+    processor.insertTablet(
+        nullTablet,
+        Arrays.asList(new int[] {0, 1}, new int[] {1, 2}),
+        new TSStatus[2],
+        true,
+        new long[5]);
+
+    List<BitMap> secondColumnBitMaps = alignedMemChunk.getWorkingTVList().getBitMaps().get(1);
+    Assert.assertNull(secondColumnBitMaps.get(0));
+    Assert.assertNull(secondColumnBitMaps.get(1));
+    Assert.assertNotNull(secondColumnBitMaps.get(2));
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    TSRecord extendedColumnRecord = new TSRecord(deviceId, denseRowCount + 2L);
+    extendedColumnRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT32, "s2", "1"));
+    InsertRowNode extendedColumnRow = buildInsertRowNodeByTSRecord(extendedColumnRecord);
+    extendedColumnRow.setAligned(true);
+    processor.insert(extendedColumnRow, new long[5]);
+
+    int extendedColumnIndex = alignedMemChunk.getMeasurementIndex("s2");
+    Assert.assertNull(
+        alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(0));
+    Assert.assertNull(
+        alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(1));
+    for (BitMap bitMap : alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex)) {
+      Assert.assertNotNull(bitMap);
+    }
+    assertAlignedTvListRamCostMatchesActual(deviceId);
   }
 
   @Test
@@ -669,7 +729,7 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1752552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(0, true),
         Collections.singletonList(new int[] {0, 10}),
@@ -711,7 +771,7 @@ public class TsFileProcessorTest {
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(5425104, memTable.getTVListsRamCost());
+    Assert.assertEquals(5269104, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
@@ -1009,7 +1069,9 @@ public class TsFileProcessorTest {
     long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
 
     Assert.assertEquals(
-        AlignedTVList.primitiveArrayMemCost(dataType),
+        AlignedTVList.valueListArrayMemCost(dataType)
+            - 2 * AlignedTVList.bitmapReferenceRamCost()
+            - AlignedTVList.bitmapRamCost(),
         denseRowRamIncrement - sparseRowRamIncrement);
   }
 
@@ -1402,6 +1464,23 @@ public class TsFileProcessorTest {
     InsertRowNode node = buildInsertRowNodeByTSRecord(record);
     node.setAligned(true);
     targetProcessor.insert(node, new long[5]);
+  }
+
+  private AlignedWritableMemChunk getAlignedMemChunk(String targetDevice) {
+    IWritableMemChunk memChunk =
+        processor
+            .getWorkMemTable()
+            .getWritableMemChunk(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(targetDevice),
+                AlignedPath.VECTOR_PLACEHOLDER);
+    Assert.assertNotNull(memChunk);
+    return (AlignedWritableMemChunk) memChunk;
+  }
+
+  private void assertAlignedTvListRamCostMatchesActual(String targetDevice) {
+    Assert.assertEquals(
+        getAlignedMemChunk(targetDevice).getWorkingTVList().calculateRamSize().getRamSize(),
+        processor.getWorkMemTable().getTVListsRamCost());
   }
 
   private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)
