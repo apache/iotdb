@@ -23,9 +23,16 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.IOException;
 
 public class PipeSchemaRegionListenerManagerTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
   public void testLeaderStateDoesNotCreateListener() {
@@ -68,5 +75,30 @@ public class PipeSchemaRegionListenerManagerTest {
     Assert.assertEquals(0, manager.decreaseAndGetReferenceCount(schemaRegionId));
     Assert.assertNull(manager.listenerIfPresent(schemaRegionId));
     Assert.assertTrue(manager.regionIds().isEmpty());
+  }
+
+  @Test
+  public void testCreateListenerForSnapshotLoadOnlyWhenSnapshotExists() throws IOException {
+    final PipeSchemaRegionListenerManager manager = new PipeSchemaRegionListenerManager();
+    final SchemaRegionId schemaRegionId = new SchemaRegionId(4);
+    final File snapshotDir = temporaryFolder.newFolder();
+
+    Assert.assertNull(manager.listenerForSnapshotLoad(schemaRegionId, snapshotDir));
+    Assert.assertTrue(manager.regionIds().isEmpty());
+
+    final SchemaRegionListeningQueue originalListener = manager.listener(schemaRegionId);
+    originalListener.open();
+    Assert.assertTrue(originalListener.createSnapshot(snapshotDir));
+    originalListener.close();
+    manager.clearSchemaRegionState(schemaRegionId);
+
+    final SchemaRegionListeningQueue restoredListener =
+        manager.listenerForSnapshotLoad(schemaRegionId, snapshotDir);
+    Assert.assertNotNull(restoredListener);
+    restoredListener.loadSnapshot(snapshotDir);
+    Assert.assertTrue(restoredListener.isOpened());
+
+    restoredListener.close();
+    manager.clearSchemaRegionState(schemaRegionId);
   }
 }

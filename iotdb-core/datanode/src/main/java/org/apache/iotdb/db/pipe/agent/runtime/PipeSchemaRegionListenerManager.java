@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 
+import java.io.File;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,6 +49,15 @@ public class PipeSchemaRegionListenerManager {
       final SchemaRegionId schemaRegionId) {
     final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
     return listener == null ? null : listener.listeningQueue;
+  }
+
+  public synchronized SchemaRegionListeningQueue listenerForSnapshotLoad(
+      final SchemaRegionId schemaRegionId, final File snapshotDir) {
+    final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
+    if (listener != null) {
+      return listener.listeningQueue;
+    }
+    return SchemaRegionListeningQueue.hasSnapshot(snapshotDir) ? listener(schemaRegionId) : null;
   }
 
   public synchronized int increaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {

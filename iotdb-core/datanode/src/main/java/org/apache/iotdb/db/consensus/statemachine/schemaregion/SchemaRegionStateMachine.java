@@ -153,7 +153,9 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       // failure instead of treating a fallback-to-empty load as success.
       final boolean loadSucceeded = schemaRegion.loadSnapshot(latestSnapshotRootDir);
       final SchemaRegionListeningQueue listener =
-          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+          PipeDataNodeAgent.runtime()
+              .schemaListenerForSnapshotLoad(
+                  schemaRegion.getSchemaRegionId(), latestSnapshotRootDir);
       if (listener != null) {
         listener.loadSnapshot(latestSnapshotRootDir);
         // We recompute the snapshot for pipe listener when loading snapshot
