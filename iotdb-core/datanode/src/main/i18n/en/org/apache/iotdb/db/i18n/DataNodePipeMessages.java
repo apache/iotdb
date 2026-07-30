@@ -1318,8 +1318,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: Failure status encountered while executing statement {}: {}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: Exception encountered while executing statement {}: ";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}, statement = {}, exception = {}, message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "Unknown PipeRequestType %s.";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "Exception %s encountered while handling request %s.";
@@ -2585,4 +2583,6 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
+      "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
 }

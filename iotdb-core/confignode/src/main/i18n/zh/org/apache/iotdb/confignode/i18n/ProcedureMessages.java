@@ -1152,9 +1152,6 @@ public final class ProcedureMessages {
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
       "Procedure workers：{} 正在运行，{} 正在运行且卡住";
-  public static final String
-      LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 =
-          "ProcedureExecutor threadGroup {} 包含被非 procedure 模块使用的运行线程。";
   public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 =
       "将 procedure {} 添加为第 {} 个回滚步骤";
   public static final String
@@ -1487,4 +1484,44 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
           "非预期的 DataPartitionTableIntegrityCheckProcedureState {}（显示进度时）";
+  public static final String
+      MESSAGE_PIPE_OPERATION_ARG_TIMED_OUT_PROCEDUREID_ARG_STUCK_AT_ARG_REASON_ARG_THE_PROCEDURE_IS_STILL_RUNNING_7EEAC50E =
+          "Pipe 操作 %s 超时（procedureId=%d）。卡在 %s。原因：%s。该 Procedure 仍在运行。";
+  public static final String
+      MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595 =
+          "当前没有可用的 Procedure worker；worker 可能正忙或被其他 Procedure 阻塞。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_PIPETASKCOORDINATOR_LOCK_BECAUSE_ANOTHER_PIPE_OPERATION_IS_HOLDING_IT_25A3B6B8 =
+          "正在等待获取 PipeTaskCoordinator 锁，因为另一个 Pipe 操作正在持有该锁。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
+          "正在等待获取 ConfigNode 节点锁，因为另一个节点 Procedure 正在持有该锁。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+          "正在等待获取由 %s（procedureId=%d）持有的 ConfigNode 节点锁。";
+  public static final String
+      MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
+          "Pipe 请求或插件校验尚未完成；插件检查或元数据访问可能过慢。";
+  public static final String
+      MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
+          "Pipe 元数据计算尚未完成；元数据访问或本地计算可能过慢。";
+  public static final String
+      MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+          "ConfigNode 共识写尚未返回；请执行 SHOW CLUSTER 检查节点状态。";
+  public static final String
+      MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+          "DataNode %s 尚未响应 Pipe 元数据推送；请执行 SHOW CLUSTER 检查其状态。";
+  public static final String
+      MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+          "Pipe 元数据推送尚未完成；请执行 SHOW CLUSTER 检查 DataNode 状态。";
+  public static final String
+      MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
+          "上一次尝试因“%s”失败，正在重试此状态。";
+  public static final String
+      MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+          "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
+      "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
+      "正在回滚此前发生的失败。";
 }

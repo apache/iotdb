@@ -414,6 +414,26 @@ public final class CalcMessages {
       "通知 {} 的状态变更监听器时出错";
   public static final String SERVER_IS_SHUTTING_DOWN =
       "服务器正在关闭";
+  public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor 不能为空";
+  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState 不能为空";
+  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates 不能为空";
+  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState 不能为空";
+  public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState 不能为空";
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 =
+      "stateChangeListener 不能为空";
+  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 =
+      "%s 无法从 %s 转换到 %s";
+  public static final String
+      EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
+          "持有锁时无法触发状态变更事件。";
+  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
+      "持有锁时无法通知。";
+  public static final String EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188 =
+      "持有锁时无法设置状态。";
+  public static final String
+      EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
+          "持有锁时无法等待状态变更。";
+  public static final String EXCEPTION_NEWSTATE_IS_NULL_D29A5454 = "newState 不能为空";
 
   public static final String EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 =
       "百分比应在 [0,1] 范围内，实际为 ";

@@ -559,10 +559,11 @@ public final class StorageEngineMessages {
   // ---------------------------------------------------------------------------
   // 补充日志消息
   // ---------------------------------------------------------------------------
-  public static final String STORAGE_LOG_STORAGE_ENGINE_RECOVER_COST_S_C8AEE9D9 =
-      "存储引擎恢复耗时：{}s。";
-  public static final String STORAGE_LOG_DATA_REGIONS_HAVE_BEEN_RECOVERED_D5BD3A80 =
-      "DataRegion 已恢复 {}/{}";
+  public static final String
+      STORAGE_LOG_STORAGE_ENGINE_LOCAL_RECOVERY_TASKS_FINISHED_IN_ARGS_03F9135F =
+          "存储引擎本地恢复任务已完成，耗时：{}s。";
+  public static final String STORAGE_LOG_LOCAL_DATAREGION_LOADING_PROGRESS_ARG_ARG_8146929B =
+      "本地 DataRegion 加载进度：{}/{}。";
   public static final String STORAGE_LOG_TSFILE_RESOURCE_RECOVER_COST_S_41F074E0 =
       "TsFileResource 恢复耗时：{}s。";
   public static final String STORAGE_LOG_CONSTRUCT_A_DATA_REGION_INSTANCE_THE_DATABASE_IS_THREAD_17A16BDF =
@@ -613,8 +614,6 @@ public final class StorageEngineMessages {
       "DataRegion {}[{}] 的 TsFiles 已完全恢复 {}/{}。";
   public static final String STORAGE_LOG_THE_DATA_REGION_IS_CREATED_SUCCESSFULLY_B991F1D4 =
       "DataRegion {}[{}] 创建成功";
-  public static final String STORAGE_LOG_THE_DATA_REGION_IS_RECOVERED_SUCCESSFULLY_5AAFF7B7 =
-      "DataRegion {}[{}] 恢复成功";
   public static final String STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_REGION_IS_DELETED_34D893A7 =
       "不会插入 tablet {}，原因：Region 已删除";
   public static final String STORAGE_LOG_ASYNC_CLOSE_TSFILE_FILE_START_TIME_FILE_END_TIME_65020832 =
@@ -746,6 +745,8 @@ public final class StorageEngineMessages {
       "{}：{} 在 flush 期间已关闭，放弃 flush 任务";
   public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3 =
       "TsFile {} 的压缩率为 {}，totalMemTableSize：{}，文件大小：{}";
+  public static final String STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_FILE_SIZE_NULL_VALUE_RATIO_46F3B1F7 =
+      "TsFile {} 的压缩率为 {}，totalMemTableSize：{}，文件大小：{}，空值比例：{}";
   public static final String STORAGE_LOG_STORAGE_GROUP_CLOSE_AND_REMOVE_EMPTY_FILE_72D42293 =
       "Storage group {} 关闭并移除空文件 {}";
   public static final String STORAGE_LOG_PUT_THE_MEMTABLE_SIGNAL_OUT_OF_FLUSHINGMEMTABLES_BUT_IT_D78AF257 =

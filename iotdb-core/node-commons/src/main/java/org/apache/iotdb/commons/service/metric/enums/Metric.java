@@ -30,6 +30,8 @@ public enum Metric {
   // cluster related
   NODE_NUM("node_num"),
   DATABASE_NUM("database_num"),
+  TABLE_DATABASE_NUM("table_database_num"),
+  TABLE_NUM("table_num"),
   REGION_NUM("region_num"),
   REGION_NUM_IN_DATA_NODE("region_num_in_data_node"),
   REGION_GROUP_LEADER_NUM_IN_DATA_NODE("region_group_leader_num_in_data_node"),
@@ -212,6 +214,9 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
   SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
+  SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
+  SUBSCRIPTION_CONSENSUS_ACTIVE("subscription_consensus_active"),
+  SUBSCRIPTION_CONSENSUS_INITIALIZED("subscription_consensus_initialized"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
   ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),
