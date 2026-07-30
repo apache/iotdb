@@ -23,6 +23,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,8 +32,22 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVListTest {
+
+  @Test
+  public void testValueListArrayMemCostExcludesBitmapReservation() {
+    long expected = (long) ARRAY_SIZE * Long.BYTES + NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF;
+
+    Assert.assertEquals(expected, AlignedTVList.valueListArrayMemCost(TSDataType.INT64));
+    Assert.assertEquals(
+        RamUsageEstimator.shallowSizeOfInstance(BitMap.class)
+            + RamUsageEstimator.sizeOfByteArray(ARRAY_SIZE / Byte.SIZE + 1),
+        AlignedTVList.bitmapRamCost());
+    Assert.assertEquals(NUM_BYTES_OBJECT_REF, AlignedTVList.bitmapReferenceRamCost());
+  }
 
   @Test
   public void testAlignedTVList1() {
@@ -166,6 +181,35 @@ public class AlignedTVListTest {
         ARRAY_SIZE / Byte.SIZE + 1, firstColumnBitMaps.get(2).getByteArray().length);
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
+    Assert.assertEquals(
+        3L * tvList.alignedTvListArrayMemCost()
+            + 3L * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
+        tvList.getRamSize());
+    Assert.assertEquals(tvList.getRamSize(), tvList.calculateRamSize().getRamSize());
+    Assert.assertEquals(tvList.getRamSize(), tvList.clone().getRamSize());
+    Assert.assertEquals(tvList.getRamSize(), tvList.cloneForFlushSort().getRamSize());
+  }
+
+  @Test
+  public void testExtendedColumnRamCostIncludesActualBitmaps() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(new ArrayList<>(Arrays.asList(TSDataType.INT64)));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i});
+    }
+
+    long ramSizeBeforeExtension = tvList.getRamSize();
+    tvList.extendColumn(TSDataType.INT32);
+
+    Assert.assertEquals(
+        2L
+            * (AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
+                + AlignedTVList.bitmapReferenceRamCost()
+                + AlignedTVList.bitmapRamCost()),
+        tvList.getRamSize() - ramSizeBeforeExtension);
+    tvList.clear();
+    Assert.assertEquals(0, tvList.getRamSize());
   }
 
   @Test
