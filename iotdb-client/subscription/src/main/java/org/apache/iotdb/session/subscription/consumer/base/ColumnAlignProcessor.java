@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.session.subscription.consumer.base;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 
@@ -61,7 +62,7 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
   }
 
   public ColumnAlignProcessor(final Dialect dialect) {
-    this.dialect = Objects.requireNonNull(dialect, "dialect");
+    this.dialect = Objects.requireNonNull(dialect, SubscriptionMessages.DIALECT_NOT_NULL);
   }
 
   @Override

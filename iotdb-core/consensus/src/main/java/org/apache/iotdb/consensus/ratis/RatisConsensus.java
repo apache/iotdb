@@ -56,6 +56,7 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
+import org.apache.ratis.RaftConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -159,6 +160,7 @@ class RatisConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
+    RaftConfigKeys.Rpc.setType(properties, new RateLimitedGrpcRpcType());
     GrpcConfigKeys.Server.setHost(properties, config.getThisNodeEndPoint().getIp());
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
@@ -484,7 +486,8 @@ class RatisConsensus implements IConsensus {
                         .setGroupId(request.getRaftGroupId())
                         .setException(
                             new ReadIndexException(
-                                "internal GRPC connection error:", ioe.getCause()))
+                                RatisMessages.EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15,
+                                ioe.getCause()))
                         .setSuccess(false)
                         .build();
                   } else {
@@ -673,7 +676,7 @@ class RatisConsensus implements IConsensus {
     if (localRaftPeerSet.equals(correctRaftPeerSet)) {
       // configurations are the same
       logger.info(
-          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          RatisMessages.LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA,
           localRaftPeerSet);
       return;
     }

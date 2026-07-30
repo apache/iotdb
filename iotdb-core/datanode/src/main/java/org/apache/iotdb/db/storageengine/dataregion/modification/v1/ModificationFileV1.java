@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationReader;
@@ -181,7 +182,7 @@ public class ModificationFileV1 implements AutoCloseable {
       File hardlink = new File(filePath + hardlinkSuffix);
 
       try {
-        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath));
+        FileUtils.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath), true);
         return new ModificationFileV1(hardlink.getAbsolutePath());
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
@@ -243,7 +244,8 @@ public class ModificationFileV1 implements AutoCloseable {
 
         if (getSize() > COMPACT_THRESHOLD) {
           logger.warn(
-              "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_AFTER_THE_MOD_FILE_IS_SETTLED_THE_FILE_SIZE_IS_STILL_GREATER_FA454979,
               originFileSize,
               getSize());
         }

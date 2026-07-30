@@ -262,7 +262,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                     () ->
                         new PipeRuntimeCriticalException(
                             String.format(
-                                "The folder node for %s does not exist.",
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_FOLDER_NODE_FOR_S_DOES_NOT_EXIST_CC0776AE,
                                 Arrays.toString(segments))));
       }
     }
@@ -291,7 +292,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         PipeLogger.log(
             LOGGER::warn,
-            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+            DataNodePipeMessages.WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME);
         continue;
       }
       final UaVariableNode measurementNode;
@@ -376,7 +377,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .orElseThrow(
                       () ->
                           new PipeRuntimeCriticalException(
-                              String.format("The Node %s does not exist.", nodeId)));
+                              String.format(
+                                  DataNodePipeMessages
+                                      .PIPE_EXCEPTION_THE_NODE_S_DOES_NOT_EXIST_52F98935,
+                                  nodeId)));
     }
     return measurementNode;
   }
@@ -699,6 +703,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   public void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final String securityDir,
@@ -706,6 +711,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final Set<SecurityPolicy> securityPolicies,
       final long debounceTimeMs) {
     builder.checkEquals(
+        advertisedHost,
         user,
         password,
         Paths.get(securityDir),

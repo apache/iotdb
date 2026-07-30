@@ -214,7 +214,8 @@ public class CheckpointManager implements AutoCloseable {
         currentLogWriter.force();
       } catch (IOException e) {
         logger.error(
-            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_FSYNC_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_6E1EE226,
             identifier,
             e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
@@ -233,7 +234,8 @@ public class CheckpointManager implements AutoCloseable {
         }
       } catch (IOException e) {
         logger.error(
-            "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_791DDAB7,
             identifier,
             e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();

@@ -67,7 +67,7 @@ public class MQTTService implements IExternalService {
     }
 
     LOG.info(
-        "Start MQTT service successfully, listening on ip {} port {}",
+        MqttMessages.LOG_START_MQTT_SERVICE_SUCCESSFULLY_LISTENING_IP_ARG_PORT_ARG_47CE46D5,
         iotDBConfig.getMqttHost(),
         iotDBConfig.getMqttPort());
 

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -51,9 +52,10 @@ public class ClusterNodeStartUtils {
 
   public static final TSStatus ACCEPT_NODE_REGISTRATION =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Accept Node registration.");
+          .setMessage(ManagerMessages.MESSAGE_ACCEPT_NODE_REGISTRATION_4133276A);
   public static final TSStatus ACCEPT_NODE_RESTART =
-      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("Accept Node restart.");
+      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_ACCEPT_NODE_RESTART_1BC1A8DD);
 
   private ClusterNodeStartUtils() {
     // Empty constructor
@@ -65,11 +67,15 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s start. Because the ClusterName of the current %s and the target cluster are inconsistent. "
-                  + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
+              ManagerMessages
+                      .MESSAGE_REJECT_ARG_START_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_B9E197DB
+                  + ManagerMessages
+                      .MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the seed_config_node parameter in %s to join the correct cluster."
-                  + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
+                  + ManagerMessages
+                      .MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C
+                  + ManagerMessages
+                      .MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235,
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterName,
@@ -87,10 +93,13 @@ public class ClusterNodeStartUtils {
     status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
     status.setMessage(
         String.format(
-            "Reject %s registration. Because the following ip:port: %s of the current %s is conflicted with other registered Nodes in the cluster."
+            ManagerMessages
+                    .MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B
                 + POSSIBLE_SOLUTIONS
-                + "\t1. Use SQL: \"show cluster details\" to find out the conflict Nodes. Remove them and retry start."
-                + "\n\t2. Change the conflict ip:port configurations in %s file and retry start.",
+                + ManagerMessages
+                    .MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA
+                + ManagerMessages
+                    .MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6,
             nodeType.getNodeType(),
             conflictEndPoints,
             nodeType.getNodeType(),
@@ -108,7 +117,8 @@ public class ClusterNodeStartUtils {
     if (clusterId == null) {
       status
           .setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
-          .setMessage("cluster id has not generated, please try again later");
+          .setMessage(
+              ManagerMessages.MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2);
       return status;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -222,11 +232,15 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because the ClusterName of the current %s and the target cluster are inconsistent. "
-                  + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
+              ManagerMessages
+                      .MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_2075F29D
+                  + ManagerMessages
+                      .MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the seed_config_node parameter in %s to join the correct cluster."
-                  + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
+                  + ManagerMessages
+                      .MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C
+                  + ManagerMessages
+                      .MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235,
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterName,
@@ -241,9 +255,9 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because the nodeId of the current %s is %d."
+              ManagerMessages.MESSAGE_REJECT_ARG_RESTART_BECAUSE_NODEID_CURRENT_ARG_ARG_AC13EDD5
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Delete \"data\" dir and retry.",
+                  + ManagerMessages.MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473,
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               nodeId));
@@ -284,9 +298,11 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because there are no corresponding %s(whose nodeId=%d) in the cluster."
+              ManagerMessages
+                      .MESSAGE_REJECT_ARG_RESTART_BECAUSE_THERE_NO_CORRESPONDING_ARG_WHOSE_NODEID_455578E9
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Maybe you've already removed the current %s(whose nodeId=%d). Please delete the useless 'data' dir and retry start.",
+                  + ManagerMessages
+                      .MESSAGE_1_MAYBE_YOU_VE_ALREADY_REMOVED_CURRENT_ARG_WHOSE_NODEID_92165504,
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               nodeId,
@@ -330,10 +346,13 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because the clusterId of the current %s and the target cluster are inconsistent. "
-                  + "ClusterId of the current Node: %s, ClusterId of the target cluster: %s."
+              ManagerMessages
+                      .MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERID_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_0398A6CE
+                  + ManagerMessages
+                      .MESSAGE_CLUSTERID_CURRENT_NODE_ARG_CLUSTERID_TARGET_CLUSTER_ARG_23C42434
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Please check if the node configuration or path is correct.",
+                  + ManagerMessages
+                      .MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559,
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterId,
@@ -346,9 +365,11 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because the internal TEndPoints of this %s can't be modified."
+              ManagerMessages
+                      .MESSAGE_REJECT_ARG_RESTART_BECAUSE_INTERNAL_TENDPOINTS_ARG_CAN_T_MODIFIED_A58B99F0
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Please keep the internal TEndPoints of this Node the same as before.",
+                  + ManagerMessages
+                      .MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034,
               nodeType.getNodeType(),
               nodeType.getNodeType()));
       return status;

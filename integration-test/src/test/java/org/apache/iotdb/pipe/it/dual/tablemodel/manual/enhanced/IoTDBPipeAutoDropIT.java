@@ -178,6 +178,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("mode.snapshot", "true");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("start-time", "0");
       sourceAttributes.put("end-time", "49");
       sourceAttributes.put("user", "root");

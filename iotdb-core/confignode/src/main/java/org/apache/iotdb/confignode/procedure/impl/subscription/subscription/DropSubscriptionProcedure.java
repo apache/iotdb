@@ -112,8 +112,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
         if (isConsensusBasedTopic) {
           LOGGER.info(
-              "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode "
-                  + "(mode={}), skipping pipe removal",
+              ProcedureMessages
+                      .LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C
+                  + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6,
               topic,
               topicMode);
           continue;
@@ -124,6 +125,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
             new DropPipeProcedureV2(
                 PipeStaticMeta.generateSubscriptionPipeName(
                     topic, unsubscribeReq.getConsumerGroupId()),
+                topicMeta.visibleUnderTableModel(),
                 pipeTaskInfo));
       }
     }
@@ -147,7 +149,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     // Execute DropPipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
         dropPipeProcedures.stream()
-            .map(proc -> new DropPipePlanV2(proc.getPipeName()))
+            .map(
+                proc ->
+                    proc.isTableModelSet()
+                        ? new DropPipePlanV2(proc.getPipeName(), proc.isTableModel())
+                        : new DropPipePlanV2(proc.getPipeName()))
             .collect(Collectors.toList());
     TSStatus response;
     try {
@@ -178,20 +184,18 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     // Push pipe meta to data nodes
-    final List<String> pipeNames =
-        dropPipeProcedures.stream()
-            .map(DropPipeProcedureV2::getPipeName)
-            .collect(Collectors.toList());
     final String exceptionMessage =
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, dropMultiPipeOnDataNodes(pipeNames, env));
+            null, dropMultiPipeOnDataNodes(dropPipeProcedures, env));
     if (!exceptionMessage.isEmpty()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               ProcedureMessages
                   .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
-              pipeNames,
+              dropPipeProcedures.stream()
+                  .map(DropPipeProcedureV2::getPipeName)
+                  .collect(Collectors.toList()),
               unsubscribeReq,
               exceptionMessage));
     }

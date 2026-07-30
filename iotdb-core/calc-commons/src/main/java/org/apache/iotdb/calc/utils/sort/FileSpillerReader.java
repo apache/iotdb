@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.utils.sort;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.IOUtils;
@@ -105,7 +106,7 @@ public class FileSpillerReader implements SortReader {
       return cachedTsBlock.getRetainedSizeInBytes();
     } catch (IOException e) {
       throw new IoTDBException(
-          "Can't read a new tsBlock in FileSpillerReader: " + fileName,
+          CalcMessages.EXCEPTION_CAN_T_READ_NEW_TSBLOCK_FILESPILLERREADER_072AF71D + fileName,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -149,7 +150,7 @@ public class FileSpillerReader implements SortReader {
       fileChannel.close();
     } catch (IOException e) {
       throw new IoTDBException(
-          "Can't close fileChannel in FileSpillerReader: " + fileName,
+          CalcMessages.EXCEPTION_CAN_T_CLOSE_FILECHANNEL_FILESPILLERREADER_E46979F0 + fileName,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }

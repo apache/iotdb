@@ -162,7 +162,9 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
       extractorAttributes.put("extractor", "iotdb-extractor");
       extractorAttributes.put("extractor.realtime.mode", realtimeMode);
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
@@ -250,7 +252,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         statement.execute(
             String.format(
                 "create pipe p1"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s1','table-name'='test1','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s1','table-name'='test1','capture.table'='true','capture.tree'='true','mode.double-living'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -267,7 +269,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s2','table-name'='test2','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s2','table-name'='test2','capture.table'='true','capture.tree'='true','mode.double-living'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -285,7 +287,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s3','table-name'='test3','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s3','table-name'='test3','capture.table'='true','capture.tree'='true','mode.double-living'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -302,7 +304,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s4','table-name'='test4','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s4','table-name'='test4','capture.table'='true','capture.tree'='true','mode.double-living'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -320,7 +322,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         statement.execute(
             String.format(
                 "create pipe p5"
-                    + " with extractor ('extractor.pattern'='root.db.d1.s5','table-name'='test5','capture.table'='true','capture.tree'='true')"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s5','table-name'='test5','capture.table'='true','capture.tree'='true','mode.double-living'='true')"
                     + " with connector ("
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
@@ -334,7 +336,9 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
       }
 
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,

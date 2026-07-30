@@ -20,9 +20,12 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -133,19 +136,20 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
   /**
    * Pushing multiple pipeMetas to all the dataNodes, forcing an update to the pipes' runtime state.
    *
-   * @param pipeNames pipe names of the pipes to push
+   * @param pipeStaticMetas pipe static metas of the pipes to push
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
    * @throws IOException Exception when Serializing to byte buffer
    */
   protected Map<Integer, TPushPipeMetaResp> pushMultiPipeMetaToDataNodes(
-      List<String> pipeNames, ConfigNodeProcedureEnv env) throws IOException {
+      List<PipeStaticMeta> pipeStaticMetas, ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (String pipeName : pipeNames) {
-      PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    for (PipeStaticMeta pipeStaticMeta : pipeStaticMetas) {
+      PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta);
       if (pipeMeta == null) {
         LOGGER.warn(
-            ProcedureMessages.PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META, pipeName);
+            ProcedureMessages.PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META,
+            pipeStaticMeta.getPipeName());
         continue;
       }
       pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
@@ -157,12 +161,31 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
   /**
    * Drop multiple pipes on all the dataNodes.
    *
-   * @param pipeNames pipe names of the pipes to drop
+   * @param dropPipeProcedures drop pipe procedures that captured the pipe metas to drop
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
    */
   protected Map<Integer, TPushPipeMetaResp> dropMultiPipeOnDataNodes(
-      List<String> pipeNames, ConfigNodeProcedureEnv env) {
-    return env.dropMultiPipeOnDataNodes(pipeNames);
+      List<DropPipeProcedureV2> dropPipeProcedures, ConfigNodeProcedureEnv env) throws IOException {
+    boolean hasMissingPipeMeta = false;
+    final List<String> pipeNamesToDrop = new ArrayList<>();
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (final DropPipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
+      pipeNamesToDrop.add(dropPipeProcedure.getPipeName());
+      final PipeMeta pipeMetaToDrop = dropPipeProcedure.getPipeMetaToDrop();
+      if (pipeMetaToDrop == null) {
+        hasMissingPipeMeta = true;
+        continue;
+      }
+
+      final PipeMeta droppedPipeMeta =
+          copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMetaToDrop);
+      droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+      pipeMetaBinaryList.add(droppedPipeMeta.serialize());
+    }
+
+    return hasMissingPipeMeta
+        ? env.dropMultiPipeOnDataNodes(pipeNamesToDrop)
+        : env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 }

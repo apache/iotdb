@@ -32,6 +32,8 @@ public interface CommonConfig {
 
   CommonConfig setMemtableSizeThreshold(long memtableSizeThreshold);
 
+  CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
+
   CommonConfig setPartitionInterval(long partitionInterval);
 
   CommonConfig setCompressor(String compressor);
@@ -202,6 +204,8 @@ public interface CommonConfig {
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
   CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
+
+  CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth);
 
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 

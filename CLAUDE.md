@@ -25,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.7-SNAPSHOT.
+Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.11-SNAPSHOT.
 
 ## Build Commands
 
@@ -172,10 +172,20 @@ Generated source directories that need to be on the source path:
 
 - **Missing Thrift compiler**: The local machine may not have the `thrift` binary installed. Running `mvn clean package -pl <module> -am -DskipTests` will fail at the `iotdb-thrift` module. **Workaround**: To verify your changes compile, use `mvn compile -pl <module>` (without `-am` or `clean`) to leverage existing target caches.
 - **Pre-existing compilation errors in unrelated modules**: The datanode module may have pre-existing compile errors in other subsystems (e.g., pipe, copyto) that cause `mvn clean test -pl iotdb-core/datanode -Dtest=XxxTest` to fail during compilation. **Workaround**: First run `mvn compile -pl iotdb-core/datanode` to confirm your changed files compile successfully. If the errors are in files you did not modify, they are pre-existing and do not affect your changes.
+- **Single-module / no-`clean` compiles hide cross-module and i18n errors**: `mvn compile -pl <module>` (the thrift workaround above) builds only that module against the **installed** jars in `~/.m2` and the existing `target/` classes; an incremental `mvn test-compile` without `clean` reuses stale `target/*.class`. If you add/rename a `*Messages` constant (or any cross-module API) in module B but `~/.m2`/`target/` still holds B's old artifact, module A referencing the new symbol compiles fine against the stale class — the real `cannot find symbol` only surfaces in CI or a clean build. **Workaround**: for i18n / cross-module edits, verify with a full-reactor compile (no `-pl`, no `clean`): `mvn test-compile -DskipTests` and `mvn test-compile -DskipTests -P with-zh-locale`. Capture the maven exit code directly (`mvn ... ; echo $?`), not via `mvn ... && echo OK` — `set -e` does NOT fail on a command inside a `&&` list, so a `&&` chain can print a false success.
 
 ### i18n (Chinese Messages)
 
 The project uses compile-time i18n via the `build-helper-maven-plugin`. The property `i18n.locale` (default: `en`) controls which source directory is added: `src/main/i18n/${i18n.locale}`. Activating `-P with-zh-locale` sets `i18n.locale=zh`, swapping English message constant classes for Chinese ones. Each module that participates has both `src/main/i18n/en/` and `src/main/i18n/zh/` directories containing Java classes with identical structure but different string literals.
+
+**Rule — never inline a user-facing English string literal.** Every string a user, operator, or log reader will see MUST be a `public static final String` constant in the module's `*Messages` class (e.g. `DataNodeQueryMessages`), referenced as `MessagesClass.CONSTANT` — never a `"raw literal"`. This applies to: `LOGGER/log.info|warn|error|debug|trace(...)`, `throw new …Exception(…)`, `super(…)` in exception constructors, `resp.setMessage(…)`, the message arg of `requireNonNull/checkArgument/checkState/checkNotNull`, and the template of `String.format(…)`. A raw literal is invisible to the zh build and renders English under `-P with-zh-locale` — that is the bug this rule prevents. (`toString()` debug output is exempt.) Reviewers and AI agents must reject/fix any new code that introduces such a literal.
+
+**Naming a new constant** (deterministic, matches existing files): `<PREFIX>_<NORMALIZED>_<HASH>` where `PREFIX` is `LOG_` for `LOGGER`/log calls, `MESSAGE_` for `setMessage(...)`, and `EXCEPTION_` for `throw new …(…)`, `super(…)`, and the message arg of `requireNonNull/checkArgument/checkState/checkNotNull` (the three prefixes the codebase already uses — ~`LOG_`/`MESSAGE_`/`EXCEPTION_`); `NORMALIZED` is the English value uppercased with non-alphanumeric runs collapsed to `_` and `%s`/`%d`/`{}` replaced by `ARG`; `HASH` is the first 8 hex chars of `md5(englishValue)`, uppercased — compute with `python3 -c "import hashlib;print(hashlib.md5(b'the english').hexdigest()[:8].upper())"`. Add the constant to **both** the `en` and `zh` files under the **same name** (zh gets a natural Chinese translation; preserve every `%s`/`%d`/`{}` exactly; keep config keys, SQL keywords, class/method names, and product terms like TsFile/DataRegion/Consensus/ConfigNode in English inside the Chinese string). Reuse an existing same-named constant instead of duplicating. **Pure-punctuation fragments** (`. `, `, `, `: `, `.`, etc.) are **exempt** — inline them, do not create a constant (punctuation does not localize, and a hashed `. ` constant hurts readability). A single message that is built from several pieces should be ONE constant holding the full template, not several fragments concatenated at the call site.
+
+**Verify before commit**:
+- `mvn spotless:apply -pl <module>` (the PostToolUse formatter does not add the i18n import; spotless does).
+- Compile **both** locales: `mvn test-compile -DskipTests` AND `mvn test-compile -P with-zh-locale -DskipTests` (the `.github/workflows/zh-locale-compile.yml` CI enforces the zh build).
+- The `en` and `zh` files must stay in key parity (same constant names) with identical format-specifier counts; a raw-literal scan of main java must return nothing.
 
 ### Code Style
 

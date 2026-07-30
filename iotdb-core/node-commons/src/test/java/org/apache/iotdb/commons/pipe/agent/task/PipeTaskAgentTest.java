@@ -47,19 +47,25 @@ public class PipeTaskAgentTest {
     agent.addFloatingMemoryUsageInByte("pipe", 1L, 100L);
     Assert.assertEquals(100L, agent.getAllFloatingMemoryUsageInByte());
     Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe"));
+    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
 
     agent.dropPipeForTest("pipe", 1L);
     Assert.assertEquals(100L, agent.getAllFloatingMemoryUsageInByte());
     Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe"));
+    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
 
     agent.createPipeForTest(generatePipeMeta("pipe", 2L));
     agent.addFloatingMemoryUsageInByte("pipe", 2L, 20L);
     Assert.assertEquals(120L, agent.getAllFloatingMemoryUsageInByte());
     Assert.assertEquals(120L, agent.getFloatingMemoryUsageInByte("pipe"));
+    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
+    Assert.assertEquals(20L, agent.getFloatingMemoryUsageInByte("pipe", 2L));
 
     agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 100L);
     Assert.assertEquals(20L, agent.getAllFloatingMemoryUsageInByte());
     Assert.assertEquals(20L, agent.getFloatingMemoryUsageInByte("pipe"));
+    Assert.assertEquals(0L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
+    Assert.assertEquals(20L, agent.getFloatingMemoryUsageInByte("pipe", 2L));
 
     agent.dropPipeForTest("pipe", 2L);
     agent.decreaseFloatingMemoryUsageInByte("pipe", 2L, 20L);

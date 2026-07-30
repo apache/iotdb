@@ -46,16 +46,21 @@ public class TypeVariableConstraint {
       Optional<String> variadicBound,
       Set<TypeSignature> castableTo,
       Set<TypeSignature> castableFrom) {
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.comparableRequired = comparableRequired;
     this.orderableRequired = orderableRequired;
-    this.variadicBound = requireNonNull(variadicBound, "variadicBound is null");
+    this.variadicBound =
+        requireNonNull(variadicBound, QueryMessages.EXCEPTION_VARIADICBOUND_IS_NULL_33A6BCC2);
     if (variadicBound.map(bound -> !bound.equalsIgnoreCase("row")).orElse(false)) {
       throw new IllegalArgumentException(
           String.format(QueryMessages.VARIADIC_BOUND_MUST_BE_ROW, variadicBound.get()));
     }
-    this.castableTo = new HashSet<>(requireNonNull(castableTo, "castableTo is null"));
-    this.castableFrom = new HashSet<>(requireNonNull(castableFrom, "castableFrom is null"));
+    this.castableTo =
+        new HashSet<>(
+            requireNonNull(castableTo, QueryMessages.EXCEPTION_CASTABLETO_IS_NULL_0F2A5B36));
+    this.castableFrom =
+        new HashSet<>(
+            requireNonNull(castableFrom, QueryMessages.EXCEPTION_CASTABLEFROM_IS_NULL_DE5158C7));
   }
 
   public String getName() {

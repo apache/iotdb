@@ -46,6 +46,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -127,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -213,6 +215,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -336,6 +339,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
+    final TDataNodeLeaseRecoveryResp resp = configManager.reloadCacheAfterLeaseRecovery();
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GET_METADATA_WITH_RESULT, resp.getStatus());
+    return resp;
+  }
+
+  @Override
   public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) {
     TAINodeRegisterResp resp =
         ((AINodeRegisterResp) configManager.registerAINode(req)).convertToAINodeRegisterResp();
@@ -447,27 +457,31 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER SchemaReplicationFactor yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_SCHEMAREPLICATIONFACTOR_YET_AD96111F);
     }
     if (databaseSchema.isSetDataReplicationFactor()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7);
     }
 
     if (databaseSchema.isSetTimePartitionOrigin()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3);
     }
 
     if (databaseSchema.isSetTimePartitionInterval()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F);
     }
 
     if (errorResp != null) {
@@ -637,6 +651,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dataPartitionTableIntegrityCheck() {
     return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager.showRepairDataPartitionTableProgress();
   }
 
   @Override
@@ -867,7 +886,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         && configNodeLocation.getConfigNodeId() != configNodeConfig.getConfigNodeId()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
-              "remove ConsensusGroup failed because the target ConfigNode is not current ConfigNode.");
+              ConfigNodeMessages
+                  .MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_TARGET_CONFIGNODE_NOT_CURRENT_CONFIGNODE_608E64F9);
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
@@ -879,7 +899,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
-              "remove ConsensusGroup failed because internal failure. See other logs for more details");
+              ConfigNodeMessages
+                  .MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_INTERNAL_FAILURE_SEE_OTHER_LOGS_MORE_51858EC2);
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -1489,8 +1510,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
-    return configManager.fetchTables(fetchTableMap);
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final byte tableNodeStatus) {
+    return configManager.fetchTables(fetchTableMap, TableNodeStatus.deserialize(tableNodeStatus));
   }
 
   @Override

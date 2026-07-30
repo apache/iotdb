@@ -186,6 +186,43 @@ public class CreateSubscriptionProcedureTest {
     Assert.assertEquals(1, proc.getCreatePipeProcedures().size());
   }
 
+  @Test
+  public void newlySubscribedConsensusTopicsShouldBeBasedOnGroupTopics() {
+    final ConsumerMeta firstConsumer =
+        new ConsumerMeta("first_consumer", 1, Collections.emptyMap());
+    final ConsumerGroupMeta existingConsumerGroupMeta =
+        new ConsumerGroupMeta("test_consumer_group", 1, firstConsumer);
+    existingConsumerGroupMeta.addSubscription(
+        firstConsumer.getConsumerId(), Collections.singleton("existing_consensus_topic"));
+
+    final ConsumerMeta secondConsumer =
+        new ConsumerMeta("second_consumer", 2, Collections.emptyMap());
+    final ConsumerGroupMeta consumerAddedMeta = existingConsumerGroupMeta.deepCopy();
+    consumerAddedMeta.addConsumer(secondConsumer);
+    consumerAddedMeta.addSubscription(
+        secondConsumer.getConsumerId(), Collections.singleton("existing_consensus_topic"));
+
+    final Set<String> consensusTopicNames = new HashSet<>();
+    consensusTopicNames.add("existing_consensus_topic");
+    consensusTopicNames.add("new_consensus_topic");
+
+    Assert.assertTrue(
+        CreateSubscriptionProcedure.getNewlySubscribedConsensusTopicNames(
+                existingConsumerGroupMeta, consumerAddedMeta, consensusTopicNames)
+            .isEmpty());
+
+    final ConsumerGroupMeta topicAddedMeta = consumerAddedMeta.deepCopy();
+    final Set<String> newlySubscribedTopics = new HashSet<>();
+    newlySubscribedTopics.add("new_consensus_topic");
+    newlySubscribedTopics.add("new_pipe_topic");
+    topicAddedMeta.addSubscription(secondConsumer.getConsumerId(), newlySubscribedTopics);
+
+    assertEquals(
+        Collections.singleton("new_consensus_topic"),
+        CreateSubscriptionProcedure.getNewlySubscribedConsensusTopicNames(
+            existingConsumerGroupMeta, topicAddedMeta, consensusTopicNames));
+  }
+
   private static ConfigNodeProcedureEnv mockConsensusFailureEnv(final TSStatus response)
       throws Exception {
     final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);

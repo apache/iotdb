@@ -699,7 +699,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureException(ProcedureMessages.OPERATION_TIMED_OUT_AFTER + timeDiff + " ms."));
+          new ProcedureException(
+              ProcedureMessages.OPERATION_TIMED_OUT_AFTER
+                  + timeDiff
+                  + ProcedureMessages.EXCEPTION_MS_95BA098D));
       return true;
     }
     return false;

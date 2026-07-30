@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -39,10 +40,11 @@ public class LimitOperator implements ProcessOperator {
   private final Operator child;
 
   public LimitOperator(CommonOperatorContext operatorContext, long limit, Operator child) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    checkArgument(limit >= 0, "limit must be at least zero");
+    this.operatorContext =
+        requireNonNull(operatorContext, CalcMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
+    checkArgument(limit >= 0, CalcMessages.EXCEPTION_LIMIT_MUST_BE_AT_LEAST_ZERO_E960530F);
     this.remainingLimit = limit;
-    this.child = requireNonNull(child, "child operator is null");
+    this.child = requireNonNull(child, CalcMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
   }
 
   public LimitOperator(LimitOperator limitOperator, Operator child) {
