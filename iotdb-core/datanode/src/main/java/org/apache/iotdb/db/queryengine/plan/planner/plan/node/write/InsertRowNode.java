@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -57,7 +58,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -928,28 +929,44 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (measurements == null
-        || columnIndex < 0
-        || columnIndex >= measurements.length
-        || values == null
-        || columnIndex >= values.length
-        || values[columnIndex] == null
-        || dataTypes == null
-        || columnIndex >= dataTypes.length
-        || Objects.isNull(dataTypes[columnIndex])) {
+    if (!canComposeTimeValuePair(columnIndex)) {
       return null;
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 
+  @Override
+  public long getLastCacheTimestamp() {
+    return time;
+  }
+
+  @Override
+  public boolean hasLastCacheValue(final int index) {
+    return canComposeTimeValuePair(index);
+  }
+
+  @Override
+  public TimeValuePair getLastCacheValue(final int index) {
+    return composeTimeValuePair(index);
+  }
+
+  private boolean canComposeTimeValuePair(final int columnIndex) {
+    return measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && measurements[columnIndex] != null
+        && values != null
+        && columnIndex < values.length
+        && values[columnIndex] != null
+        && dataTypes != null
+        && columnIndex < dataTypes.length
+        && dataTypes[columnIndex] != null;
+  }
+
   public void updateLastCache(String databaseName) {
-    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(
-            databaseName, devicePath, measurements, timeValuePairs, isAligned, measurementSchemas);
+            databaseName, devicePath, measurements, this, isAligned, measurementSchemas);
   }
 }

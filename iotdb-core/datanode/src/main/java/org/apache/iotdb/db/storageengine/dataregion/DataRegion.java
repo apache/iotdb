@@ -675,9 +675,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
       logger.info(
           "The data region {}[{}] is created successfully", databaseName, dataRegionIdString);
-    } else {
-      logger.info(
-          "The data region {}[{}] is recovered successfully", databaseName, dataRegionIdString);
     }
   }
 

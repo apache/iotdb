@@ -83,6 +83,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTsFileParserMemory();
   }
 
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNum();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+  }
+
   public long getSinkBatchMemoryInsertNode() {
     return COMMON_CONFIG.getPipeSinkBatchMemoryInsertNode();
   }
@@ -502,6 +510,10 @@ public class PipeConfig {
 
     LOGGER.info("IsPipeEnableMemoryCheck: {}", isPipeEnableMemoryCheck());
     LOGGER.info("PipeTsFileParserMemory: {}", getTsFileParserMemory());
+    LOGGER.info("PipeTsFileParserInFlightMaxNum: {}", getPipeTsFileParserInFlightMaxNum());
+    LOGGER.info(
+        "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}",
+        getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     LOGGER.info("SinkBatchMemoryInsertNode: {}", getSinkBatchMemoryInsertNode());
     LOGGER.info("SinkBatchMemoryTsFile: {}", getSinkBatchMemoryTsFile());
     LOGGER.info("SendTsFileReadBuffer: {}", getSendTsFileReadBuffer());
