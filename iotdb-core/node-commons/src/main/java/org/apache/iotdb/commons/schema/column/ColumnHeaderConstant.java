@@ -194,7 +194,6 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR = "PipeProcessor";
   public static final String PIPE_SINK = "PipeSink";
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
-  public static final String LAST_EXCEPTION = "LastException";
   public static final String SUGGESTED_ACTION = "SuggestedAction";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
@@ -277,7 +276,6 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
   public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
-  public static final String LAST_EXCEPTION_TABLE_MODEL = "last_exception";
   public static final String SUGGESTED_ACTION_TABLE_MODEL = "suggested_action";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
@@ -608,7 +606,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_SOURCE, TSDataType.TEXT),
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_SINK, TSDataType.TEXT),
-          new ColumnHeader(LAST_EXCEPTION, TSDataType.TEXT),
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(SUGGESTED_ACTION, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
