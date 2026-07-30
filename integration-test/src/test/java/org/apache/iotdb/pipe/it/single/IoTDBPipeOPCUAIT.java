@@ -312,6 +312,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "opc-ua-sink");

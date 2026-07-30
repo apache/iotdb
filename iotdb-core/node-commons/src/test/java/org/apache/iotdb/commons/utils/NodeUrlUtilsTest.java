@@ -69,6 +69,9 @@ public class NodeUrlUtilsTest {
             new TEndPoint("::13.1.68.3", 6669));
     final String endPointUrls =
         "AD80:E32B:CA25:B3AE:DC4C:DAAF:CCDE:2345:6667,[0:0:0:0:0:FFFF:129.144.52.38]:6668,[::13.1.68.3]:6669";
+    final String convertedEndPointUrls =
+        "[AD80:E32B:CA25:B3AE:DC4C:DAAF:CCDE:2345]:6667,[0:0:0:0:0:FFFF:129.144.52.38]:6668,[::13.1.68.3]:6669";
+    Assert.assertEquals(convertedEndPointUrls, NodeUrlUtils.convertTEndPointUrls(endPoints));
     Assert.assertEquals(endPoints, NodeUrlUtils.parseTEndPointUrls(endPointUrls));
   }
 
@@ -90,6 +93,10 @@ public class NodeUrlUtilsTest {
                 new TEndPoint("AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD", 22282)));
     final String configNodeUrls =
         "0,AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD:22277,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22278;1,AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD:22279,AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD:22280;2,AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD:22281,AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD:22282";
+    final String convertedConfigNodeUrls =
+        "0,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22277,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22278;1,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22279,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22280;2,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22281,[AD80:E32B:CA25:B3AE:DC4C:DAAF:CDDE:ABFD]:22282";
+    Assert.assertEquals(
+        convertedConfigNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
   }
 }

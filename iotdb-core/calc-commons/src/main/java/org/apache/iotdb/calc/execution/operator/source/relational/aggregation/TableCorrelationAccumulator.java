@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -101,7 +103,9 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         return column.getDouble(position);
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Correlation Aggregation: %s", dataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_CORRELATION_AGGREGATION_ARG_2FF29597,
+                dataType));
     }
   }
 
@@ -120,7 +124,8 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 2, "Input of Correlation should be 2");
+    checkArgument(
+        arguments.length == 2, CalcMessages.EXCEPTION_INPUT_OF_CORRELATION_SHOULD_BE_2_64BB37B5);
     if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
       return;
     }
@@ -164,7 +169,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -223,7 +228,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (count == 0) {
       columnBuilder.appendNull();

@@ -567,6 +567,89 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by {@link #subSerialize(DataOutputStream)}.
+   *
+   * <p>This deliberately excludes the plan-node type, id, and children. {@link
+   * InsertMultiTabletsNode} embeds tablet nodes by calling {@code subSerialize}, rather than their
+   * complete plan-node serialization.
+   *
+   * @return the serialized tablet field size
+   */
+  final int serializedSubAttributesSize() {
+    int size = ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+
+    size += Integer.BYTES; // valid measurement count
+    size += Byte.BYTES; // whether measurement schemas are serialized
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += TSDataType.getSerializedSize();
+      }
+    }
+
+    size += Integer.BYTES; // row count
+    size += rowCount * Long.BYTES; // timestamps
+
+    size += Byte.BYTES; // whether bitmaps are serialized
+    if (bitMaps != null) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (!shouldSerializeMeasurement(i)) {
+          continue;
+        }
+        size += Byte.BYTES; // whether the current measurement has a bitmap
+        if (getBitMapIfPresent(i) != null) {
+          size += BitMap.getSizeOfBytes(rowCount);
+        }
+      }
+    }
+
+    for (int i = 0; columns != null && i < columns.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += serializedColumnSize(dataTypes[i], columns[i]);
+      }
+    }
+
+    return size + Byte.BYTES; // isAligned
+  }
+
+  private int serializedColumnSize(final TSDataType dataType, final Object column) {
+    return switch (dataType) {
+      case BOOLEAN -> rowCount * Byte.BYTES;
+      case INT32, DATE -> rowCount * Integer.BYTES;
+      case INT64, TIMESTAMP -> rowCount * Long.BYTES;
+      case FLOAT -> rowCount * Float.BYTES;
+      case DOUBLE -> rowCount * Double.BYTES;
+      case TEXT, BLOB, STRING, OBJECT -> serializedBinaryColumnSize((Binary[]) column);
+      case VECTOR, UNKNOWN ->
+          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    };
+  }
+
+  private int serializedBinaryColumnSize(final Binary[] binaryValues) {
+    int size = 0;
+    for (int i = 0; i < rowCount; i++) {
+      final Binary binary = binaryValues[i];
+      final byte[] values = binary == null ? null : binary.getValues();
+      size += values == null ? Integer.BYTES : Integer.BYTES + values.length;
+    }
+    return size;
+  }
+
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
     ReadWriteIOUtils.write(getValidMeasurementNumber(), buffer);
@@ -1570,16 +1653,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(final String databaseName, final TSStatus[] results) {
-    final String[] rawMeasurements = getRawMeasurements();
-    final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
+    final TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
       timeValuePairs[i] = composeLastTimeValuePair(i, results, 0, rowCount);
     }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
             databaseName,
             getDeviceID(),
-            rawMeasurements,
+            measurements,
             timeValuePairs,
             isAligned,
             measurementSchemas);

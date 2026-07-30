@@ -169,6 +169,11 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowRepairDataPartitionTableProgressHeader() {
+    return new DatasetHeader(
+        ColumnHeaderConstant.showRepairDataPartitionTableProgressColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowTopicHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTopicColumnHeaders, true);
   }

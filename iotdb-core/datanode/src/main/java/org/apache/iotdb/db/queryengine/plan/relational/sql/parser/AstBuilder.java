@@ -962,9 +962,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     List<TsTableColumnSchema> columnList = table.getColumnList();
     if (expressions.size() != columnList.size()) {
       throw new SemanticException(
-          "expressions and columns do not match, expressions size: "
+          DataNodeQueryMessages.EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE
               + expressions.size()
-              + ", columns size: "
+              + DataNodeQueryMessages.COLUMNS_SIZE
               + columnList.size());
     }
 
@@ -1031,7 +1031,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       if (timeColumnIndex >= expressions.size()) {
         throw new SemanticException(
             String.format(
-                "TimeColumnIndex out of bound: %d-%d", timeColumnIndex, expressions.size()));
+                DataNodeQueryMessages.TIMECOLUMNINDEX_OUT_OF_BOUND_D_D,
+                timeColumnIndex,
+                expressions.size()));
       }
 
       Expression timeExpression = expressions.get(timeColumnIndex);
@@ -1052,8 +1054,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (nonTimeColCnt != nonTimeColumnNames.length) {
       throw new SemanticException(
           String.format(
-              "Inconsistent numbers of non-time column names and values: %d-%d",
-              nonTimeColumnNames.length, nonTimeColCnt));
+              DataNodeQueryMessages.INCONSISTENT_NUMBERS_OF_NON_TIME_COLUMN_NAMES_AND_VALUES_D_D,
+              nonTimeColumnNames.length,
+              nonTimeColCnt));
     }
 
     TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
@@ -1571,10 +1574,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitMigrateRegionStatement(RelationalSqlParser.MigrateRegionStatementContext ctx) {
+    List<Integer> regionIds =
+        ctx.regionIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new MigrateRegion(
-        Integer.parseInt(ctx.regionId.getText()),
-        Integer.parseInt(ctx.fromId.getText()),
-        Integer.parseInt(ctx.toId.getText()));
+        regionIds, Integer.parseInt(ctx.fromId.getText()), Integer.parseInt(ctx.toId.getText()));
   }
 
   @Override
@@ -1606,7 +1609,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
     List<Integer> nodeIds =
-        Collections.singletonList(Integer.parseInt(ctx.INTEGER_VALUE().getText()));
+        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
     return new RemoveDataNode(nodeIds);
   }
 
@@ -1790,8 +1793,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
         throw new SemanticException(
             propertyValue.getExpressionType()
-                + " is not supported for property value of 'set configuration'. "
-                + "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.");
+                + DataNodeQueryMessages.IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION
+                + DataNodeQueryMessages
+                    .NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS);
       }
       String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key.trim(), value.trim());
@@ -1864,7 +1868,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           break;
         default:
           throw new SemanticException(
-              "Invalid EXPLAIN format: " + formatStr + ". Supported formats: GRAPHVIZ, JSON");
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_EXPLAIN_FORMAT_ARG_SUPPORTED_FORMATS_GRAPHVIZ_JSON_441A1D48,
+                  formatStr));
       }
     }
     return new Explain(getLocation(ctx), innerStatement, format);
@@ -1892,7 +1899,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           break;
         default:
           throw new SemanticException(
-              "Invalid EXPLAIN ANALYZE format: " + formatStr + ". Supported formats: TEXT, JSON");
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_EXPLAIN_ANALYZE_FORMAT_ARG_SUPPORTED_FORMATS_TEXT_JSON_77FA30EB,
+                  formatStr));
       }
     }
     return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement, format);
@@ -2032,11 +2042,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       PrivilegeType privilegeType = PrivilegeType.valueOf(privilege.getText().toUpperCase());
       if (privilegeType.isDeprecated()) {
         throw new SemanticException(
-            "Privilege type "
+            DataNodeQueryMessages.PRIVILEGE_TYPE
                 + privilege.getText().toUpperCase()
-                + " is deprecated, use "
+                + DataNodeQueryMessages.IS_DEPRECATED_USE
                 + privilegeType.getReplacedPrivilegeType()
-                + " to instead it");
+                + DataNodeQueryMessages.TO_INSTEAD_IT);
       }
       privileges.add(privilegeType);
     }
@@ -2070,7 +2080,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (!CommonDescriptor.getInstance().getConfig().getEnableGrantOption()
         && ctx.grantOpt() != null) {
       throw new SemanticException(
-          "Grant Option is disabled, Please check the parameter enable_grant_option.");
+          DataNodeQueryMessages
+              .GRANT_OPTION_IS_DISABLED_PLEASE_CHECK_THE_PARAMETER_ENABLE_GRANT_OPTION);
     }
     boolean grantOption = ctx.grantOpt() != null;
     boolean toTable;
@@ -2300,8 +2311,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .collect(Collectors.joining(", "));
         throw new SemanticException(
             String.format(
-                "Unsupported COPY TO format '%s'. Supported formats: %s",
-                formatIdentifier.getValue(), supportedFormats));
+                DataNodeQueryMessages.UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S,
+                formatIdentifier.getValue(),
+                supportedFormats));
       }
     } else if (context.TABLE() != null) {
       Identifier targetTableIdentifier = (Identifier) visit(context.identifier());
@@ -2435,7 +2447,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
       if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
         throw new SemanticException(
-            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+            DataNodeQueryMessages
+                .SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
       }
     }
 
@@ -2455,7 +2468,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
       throw new SemanticException(
-          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+          DataNodeQueryMessages
+              .DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT);
     }
     return new Fill(getLocation(ctx), timeBound, timeColumn, fillGroupingElements);
   }
@@ -2472,7 +2486,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
       if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
         throw new SemanticException(
-            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+            DataNodeQueryMessages
+                .SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
       }
     }
 
@@ -2492,7 +2507,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     if (timeColumn != null && (timeBound == null && fillGroupingElements == null)) {
       throw new SemanticException(
-          "Don't need to specify TIME_COLUMN while either TIME_BOUND or FILL_GROUP parameter is not specified");
+          DataNodeQueryMessages
+              .DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT);
     }
     return new Fill(getLocation(ctx), FillPolicy.NEXT, timeBound, timeColumn, fillGroupingElements);
   }
@@ -2666,7 +2682,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       for (RelationalSqlParser.GroupingElementContext element : ctx.groupingElement()) {
         if (element.getText().equalsIgnoreCase("ALL")) {
           throw new SemanticException(
-              "GROUP BY ALL cannot be combined with explicit grouping elements");
+              DataNodeQueryMessages
+                  .EXCEPTION_GROUP_BY_ALL_CANNOT_BE_COMBINED_WITH_EXPLICIT_GROUPING_ELEMENTS_4CFE411D);
         }
       }
     }
@@ -2879,7 +2896,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
             if (timeDuration.monthDuration != 0) {
               throw new SemanticException(
-                  "Month or year interval in tolerance is not supported now.");
+                  DataNodeQueryMessages.MONTH_OR_YEAR_INTERVAL_IN_TOLERANCE_IS_NOT_SUPPORTED_NOW);
             }
           }
           criteria =
@@ -2909,7 +2926,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (criteria instanceof AsofJoinOn) {
       if (joinType == Join.Type.RIGHT || joinType == Join.Type.FULL) {
         throw new SemanticException(
-            String.format("ASOF JOIN does not support %s type now", joinType));
+            String.format(DataNodeQueryMessages.ASOF_JOIN_DOES_NOT_SUPPORT_S_TYPE_NOW, joinType));
       }
 
       if (joinType != Join.Type.INNER && timeDuration != null) {
@@ -3428,7 +3445,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         return new FrameBound(getLocation(ctx), FrameBound.Type.UNBOUNDED_FOLLOWING);
       default:
         throw new IllegalArgumentException(
-            "Unsupported unbounded type: " + ctx.boundType.getText());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_UNBOUNDED_TYPE_S_2D943211,
+                ctx.boundType.getText()));
     }
   }
 
@@ -3714,27 +3733,32 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               || arguments.get(1) instanceof LongLiteral
               || arguments.get(1) instanceof StringLiteral)) {
         throw new SemanticException(
-            "The second argument of 'approx_count_distinct' function must be a literal");
+            DataNodeQueryMessages
+                .THE_SECOND_ARGUMENT_OF_APPROX_COUNT_DISTINCT_FUNCTION_MUST_BE_A_LITERAL);
       }
     } else if (name.toString().equalsIgnoreCase(APPROX_MOST_FREQUENT)) {
       if (arguments.size() == 3
           && (!(arguments.get(1) instanceof LongLiteral)
               || !(arguments.get(2) instanceof LongLiteral))) {
         throw new SemanticException(
-            "The second and third argument of 'approx_most_frequent' function must be positive integer literal");
+            DataNodeQueryMessages
+                .THE_SECOND_AND_THIRD_ARGUMENT_OF_APPROX_MOST_FREQUENT_FUNCTION_MUST_BE_POSITIVE_INTEGER);
       }
     } else if (name.toString().equalsIgnoreCase(APPROX_PERCENTILE)) {
       if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
         throw new SemanticException(
-            "The second argument of 'approx_percentile' function percentage must be a double literal");
+            DataNodeQueryMessages
+                .THE_SECOND_ARGUMENT_OF_APPROX_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL);
       } else if (arguments.size() == 3 && !(arguments.get(2) instanceof DoubleLiteral)) {
         throw new SemanticException(
-            "The third argument of 'approx_percentile' function percentage must be a double literal");
+            DataNodeQueryMessages
+                .THE_THIRD_ARGUMENT_OF_APPROX_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL);
       }
     } else if (name.toString().equalsIgnoreCase(PERCENTILE)) {
       if (arguments.size() == 2 && !(arguments.get(1) instanceof DoubleLiteral)) {
         throw new SemanticException(
-            "The second argument of 'percentile' function percentage must be a double literal");
+            DataNodeQueryMessages
+                .EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46);
       }
     }
 
@@ -3748,7 +3772,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
       throw new SemanticException(
-          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+          DataNodeQueryMessages
+              .SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
     }
 
     LongLiteral monthDuration =
@@ -3782,7 +3807,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
       throw new SemanticException(
-          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+          DataNodeQueryMessages
+              .SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
     }
 
     LongLiteral monthDuration =
@@ -3814,7 +3840,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         return parseLong(ctx.INTEGER_VALUE().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
-            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
+            String.format(
+                DataNodeQueryMessages.CAN_NOT_PARSE_S_TO_LONG_VALUE,
+                ctx.INTEGER_VALUE().getText()));
       }
     } else {
       return parseDateExpression(ctx.dateExpression(), currentTime);
@@ -4325,7 +4353,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         return FIELD;
       default:
         throw new UnsupportedOperationException(
-            "Unsupported ColumnCategory: " + category.getText());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COLUMNCATEGORY_S_1260CFFD,
+                category.getText()));
     }
   }
 
@@ -4435,17 +4465,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private NodeLocation getLocation(TerminalNode terminalNode) {
-    requireNonNull(terminalNode, "terminalNode is null");
+    requireNonNull(terminalNode, DataNodeQueryMessages.EXCEPTION_TERMINALNODE_IS_NULL_578F27FD);
     return getLocation(terminalNode.getSymbol());
   }
 
   private NodeLocation getLocation(ParserRuleContext parserRuleContext) {
-    requireNonNull(parserRuleContext, "parserRuleContext is null");
+    requireNonNull(
+        parserRuleContext, DataNodeQueryMessages.EXCEPTION_PARSERRULECONTEXT_IS_NULL_9E0DD3B5);
     return getLocation(parserRuleContext.getStart());
   }
 
   private NodeLocation getLocation(Token token) {
-    requireNonNull(token, "token is null");
+    requireNonNull(token, DataNodeQueryMessages.EXCEPTION_TOKEN_IS_NULL_43094C56);
     return baseLocation != null
         ? new NodeLocation(
             token.getLine() + baseLocation.getLineNumber() - 1,

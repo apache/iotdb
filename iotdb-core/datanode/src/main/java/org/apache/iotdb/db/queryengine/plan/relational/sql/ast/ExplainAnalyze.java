@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -45,7 +46,8 @@ public class ExplainAnalyze extends Statement {
 
   public ExplainAnalyze(Statement statement, boolean verbose) {
     super(null);
-    this.statement = requireNonNull(statement, "statement is null");
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
     this.verbose = verbose;
     this.outputFormat = ExplainOutputFormat.TEXT;
   }
@@ -58,8 +60,9 @@ public class ExplainAnalyze extends Statement {
   }
 
   public ExplainAnalyze(NodeLocation location, boolean verbose, Statement statement) {
-    super(requireNonNull(location, "location is null"));
-    this.statement = requireNonNull(statement, "statement is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
     this.verbose = verbose;
     this.outputFormat = ExplainOutputFormat.TEXT;
   }

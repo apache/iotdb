@@ -25,6 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -194,5 +197,40 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testInjectTreeViewSourceAttributes() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    final TsTable treeViewTable = new TsTable("tree_view");
+    treeViewTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.sg.**");
+
+    ProcedureManager.injectTreeViewSourceAttributes(topicAttributes, treeViewTable);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
+        "root.sg.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
+  }
+
+  @Test
+  public void testInjectTreeViewSourceAttributesPreservesUserTreePattern() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.custom.**");
+    final TsTable treeViewTable = new TsTable("tree_view");
+    treeViewTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.sg.**");
+
+    ProcedureManager.injectTreeViewSourceAttributes(topicAttributes, treeViewTable);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), topicAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
+        "root.custom.**", topicAttributes.get(PipeSourceConstant.SOURCE_PATTERN_KEY));
+    Assert.assertFalse(
+        topicAttributes.containsKey(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
   }
 }

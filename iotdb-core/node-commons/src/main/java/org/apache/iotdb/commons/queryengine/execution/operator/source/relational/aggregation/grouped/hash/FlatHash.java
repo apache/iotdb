@@ -175,7 +175,7 @@ public final class FlatHash {
 
   public long hashPosition(int groupId) {
     // for spilling
-    checkArgument(groupId < nextGroupId, "groupId out of range");
+    checkArgument(groupId < nextGroupId, QueryMessages.EXCEPTION_GROUPID_OUT_OF_RANGE_8B10E54B);
 
     int index = groupRecordIndex[groupId];
     byte[] records = getRecords(index);
@@ -187,7 +187,7 @@ public final class FlatHash {
   }
 
   public void appendTo(int groupId, ColumnBuilder[] columnBuilders) {
-    checkArgument(groupId < nextGroupId, "groupId out of range");
+    checkArgument(groupId < nextGroupId, QueryMessages.EXCEPTION_GROUPID_OUT_OF_RANGE_8B10E54B);
     int index = groupRecordIndex[groupId];
     byte[] records = getRecords(index);
     int recordOffset = getRecordOffset(index);
@@ -361,7 +361,9 @@ public final class FlatHash {
     // while the rehash is in progress, the old control array is retained, and one additional record
     // group is retained
     rehashMemoryReservation = sumExact(sizeOf(control), sizeOf(recordGroups[0]));
-    verify(rehashMemoryReservation >= 0, "rehashMemoryReservation is negative");
+    verify(
+        rehashMemoryReservation >= 0,
+        QueryMessages.EXCEPTION_REHASHMEMORYRESERVATION_IS_NEGATIVE_7EFEFCC2);
     if (!checkMemoryReservation.update()) {
       return false;
     }
@@ -459,7 +461,9 @@ public final class FlatHash {
   }
 
   private int computeNewCapacity(int minimumRequiredCapacity) {
-    checkArgument(minimumRequiredCapacity >= 0, "minimumRequiredCapacity must be positive");
+    checkArgument(
+        minimumRequiredCapacity >= 0,
+        QueryMessages.EXCEPTION_MINIMUMREQUIREDCAPACITY_MUST_BE_POSITIVE_81638118);
     long newCapacityLong = capacity * 2L;
     while (newCapacityLong < minimumRequiredCapacity) {
       newCapacityLong = multiplyExact(newCapacityLong, 2);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.specification;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
@@ -41,7 +42,10 @@ public class ScalarParameterSpecification extends ParameterSpecification {
     if (defaultValue != null && !type.checkObjectType(defaultValue)) {
       throw new IllegalArgumentException(
           String.format(
-              "default value %s does not match the declared type: %s", defaultValue, type));
+              UdfApiMessages
+                  .EXCEPTION_DEFAULT_VALUE_ARG_DOES_NOT_MATCH_THE_DECLARED_TYPE_ARG_76648C9D,
+              defaultValue,
+              type));
     }
     this.checkers = checkers;
   }

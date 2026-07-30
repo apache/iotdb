@@ -205,7 +205,8 @@ public class LoadTsFileManager {
         } else {
           final long waitTimeInMs = cleanupTask.scheduledTime - System.currentTimeMillis();
           LOGGER.info(
-              "Next load cleanup task {} is not ready to run, wait for at least {} ms ({}s).",
+              StorageEngineMessages
+                  .STORAGE_LOG_NEXT_LOAD_CLEANUP_TASK_IS_NOT_READY_TO_RUN_WAIT_FOR_AT_LEAST_CBE0023F,
               cleanupTask.uuid,
               waitTimeInMs,
               waitTimeInMs / 1000.0);
@@ -272,9 +273,10 @@ public class LoadTsFileManager {
 
       if (exception.get() != null || writerManager == null) {
         throw new IOException(
-            "Failed to create TsFileWriterManager for uuid "
-                + uuid
-                + " because of insufficient disk space.",
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FAILED_TO_CREATE_TSFILEWRITERMANAGER_FOR_UUID_S_BECAUSE_A0D68950,
+                uuid),
             exception.get());
       }
 
@@ -551,7 +553,8 @@ public class LoadTsFileManager {
         }
         if (writer.isWritingChunkGroup()) {
           LOGGER.warn(
-              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              StorageEngineMessages
+                  .STORAGE_LOG_WRITER_FOR_PARTITION_IS_ALREADY_WRITING_CHUNK_GROUP_FOR_903B1D66,
               writer.getFile().getAbsolutePath(),
               partitionInfo,
               device,
@@ -578,7 +581,9 @@ public class LoadTsFileManager {
             File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
-                  "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
+                  StorageEngineMessages
+                      .STORAGE_LOG_CAN_NOT_CREATE_MODIFICATIONFILE_FOR_WRITING_17D14C11,
+                  newModificationFile.getPath());
               return;
             }
 

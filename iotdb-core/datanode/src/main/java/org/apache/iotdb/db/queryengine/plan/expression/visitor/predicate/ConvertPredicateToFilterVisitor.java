@@ -356,7 +356,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -375,7 +377,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -393,7 +397,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -418,7 +424,9 @@ public class ConvertPredicateToFilterVisitor
         return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -500,7 +508,10 @@ public class ConvertPredicateToFilterVisitor
             return (T) Boolean.FALSE;
           } else {
             throw new IllegalArgumentException(
-                String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
+                String.format(
+                    DataNodeQueryMessages.QUERY_EXCEPTION_S_CANNOT_BE_CAST_TO_S_DABC2DA0,
+                    valueString,
+                    dataType));
           }
         case BLOB:
           return (T) new Binary(BaseEncoding.base16().decode(valueString));
@@ -511,11 +522,16 @@ public class ConvertPredicateToFilterVisitor
           return (T) DateTimeUtils.parseDateExpressionToInt(valueString);
         default:
           throw new UnsupportedOperationException(
-              String.format("Unsupported data type %s", dataType));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_4CB21D47,
+                  dataType));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-          String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_CANNOT_BE_CAST_TO_S_DABC2DA0,
+              valueString,
+              dataType));
     }
   }
 
@@ -552,7 +568,9 @@ public class ConvertPredicateToFilterVisitor
       int measurementIndex = allMeasurements.indexOf(measurement);
       if (measurementIndex == -1) {
         throw new IllegalArgumentException(
-            String.format("Measurement %s does not exist", measurement));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_MEASUREMENT_S_DOES_NOT_EXIST_23D2B5BE,
+                measurement));
       }
       return measurementIndex;
     }

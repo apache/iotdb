@@ -362,8 +362,8 @@ public class FastCompactionPerformer
   public void setSummary(CompactionTaskSummary summary) {
     if (!(summary instanceof FastCompactionTaskSummary)) {
       throw new IllegalCompactionTaskSummaryException(
-          "CompactionTaskSummary for FastCompactionPerformer "
-              + "should be FastCompactionTaskSummary");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_COMPACTIONTASKSUMMARY_FOR_FASTCOMPACTIONPERFORMER_SHOULD_F5710AA8);
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
   }
@@ -378,7 +378,9 @@ public class FastCompactionPerformer
     if (Thread.interrupted() || subTaskSummary.isCancel()) {
       throw new InterruptedException(
           String.format(
-              "[Compaction] compaction for target file %s abort", targetFiles.toString()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILE_S_ABORT_46ECFF41,
+              targetFiles.toString()));
     }
   }
 

@@ -32,6 +32,7 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Boolean> nodeId2IsDegradedMap = new ConcurrentHashMap<>();
 
   public void markDataNodeCompleted(final int dataNodeId) {
     completedDataNodeIds.add(dataNodeId);
@@ -49,6 +50,14 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     nodeId2RemainingTimeMap.put(dataNodeId, remainingTime);
   }
 
+  public void setDegraded(final int dataNodeId, final Boolean isDegraded) {
+    if (Objects.isNull(isDegraded)) {
+      nodeId2IsDegradedMap.remove(dataNodeId);
+    } else {
+      nodeId2IsDegradedMap.put(dataNodeId, isDegraded);
+    }
+  }
+
   public Set<Integer> getCompletedDataNodeIds() {
     return completedDataNodeIds;
   }
@@ -59,6 +68,13 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
 
   public double getGlobalRemainingTime() {
     return nodeId2RemainingTimeMap.values().stream().reduce(Math::max).orElse(0d);
+  }
+
+  public Boolean getGlobalDegraded() {
+    if (nodeId2IsDegradedMap.values().stream().anyMatch(Boolean.TRUE::equals)) {
+      return true;
+    }
+    return nodeId2IsDegradedMap.isEmpty() ? null : false;
   }
 
   @Override
@@ -72,12 +88,17 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     final PipeTemporaryMetaInCoordinator that = (PipeTemporaryMetaInCoordinator) o;
     return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds)
         && Objects.equals(this.nodeId2RemainingEventMap, that.nodeId2RemainingEventMap)
-        && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap);
+        && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap)
+        && Objects.equals(this.nodeId2IsDegradedMap, that.nodeId2IsDegradedMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(completedDataNodeIds, nodeId2RemainingEventMap, nodeId2RemainingTimeMap);
+    return Objects.hash(
+        completedDataNodeIds,
+        nodeId2RemainingEventMap,
+        nodeId2RemainingTimeMap,
+        nodeId2IsDegradedMap);
   }
 
   @Override
@@ -87,8 +108,10 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
         + completedDataNodeIds
         + ", nodeId2RemainingEventMap="
         + nodeId2RemainingEventMap
-        + ", nodeId2RemainingTimeMap"
+        + ", nodeId2RemainingTimeMap="
         + nodeId2RemainingTimeMap
+        + ", nodeId2IsDegradedMap="
+        + nodeId2IsDegradedMap
         + '}';
   }
 }

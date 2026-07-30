@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.PageMetadata;
 
 import org.apache.tsfile.block.column.Column;
@@ -316,7 +317,9 @@ public class MemPageReader implements IPageReader {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", tsDataType));
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  tsDataType));
       }
     }
   }

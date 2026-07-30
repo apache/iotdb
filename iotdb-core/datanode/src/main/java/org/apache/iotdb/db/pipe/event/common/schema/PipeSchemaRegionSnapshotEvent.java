@@ -176,8 +176,10 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
-              mTreeSnapshotPath, tagLogSnapshotPath, holderMessage),
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT,
+              mTreeSnapshotPath,
+              tagLogSnapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -197,8 +199,10 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
-              mTreeSnapshotPath, tagLogSnapshotPath, holderMessage),
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT,
+              mTreeSnapshotPath,
+              tagLogSnapshotPath,
+              holderMessage),
           e);
       return false;
     }

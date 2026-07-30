@@ -279,7 +279,9 @@ public class IoTDBStatement implements Statement {
     } catch (TException e) {
       throw new SQLException(
           String.format(
-              "Fail to reconnect to server when executing %s. please check server status", sql),
+              JdbcMessages
+                  .EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_ARG_PLEASE_CHECK_SERVER_STATUS_34668040,
+              sql),
           e);
     }
   }
@@ -363,7 +365,14 @@ public class IoTDBStatement implements Statement {
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeStatementV2(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeStatementV2(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
 
     if (execResp.isSetOperationType() && execResp.getOperationType().equals("dropDB")) {
       connection.changeDefaultDatabase(null);
@@ -420,7 +429,9 @@ public class IoTDBStatement implements Statement {
       return executeBatchSQL();
     } catch (TException e) {
       throw new SQLException(
-          "Fail to reconnect to server when executing batch sqls. please check server status", e);
+          JdbcMessages
+              .EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_BATCH_SQLS_PLEASE_CHECK_SERVER_STATUS_1E4C0C24,
+          e);
     } finally {
       clearBatch();
     }
@@ -430,7 +441,13 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
     TSStatus execResp =
-        callWithRetryAndReconnect(() -> client.executeBatchStatement(execReq), status -> status);
+        callWithRetryAndReconnect(
+            () -> {
+              // reConnect() may have replaced the session id, so refresh it on every attempt.
+              execReq.setSessionId(sessionId);
+              return client.executeBatchStatement(execReq);
+            },
+            status -> status);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
     StringBuilder message = new StringBuilder(System.lineSeparator());
@@ -483,7 +500,9 @@ public class IoTDBStatement implements Statement {
       return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
       throw new SQLException(
-          "Fail to reconnect to server when execute query " + sql + ". please check server status",
+          JdbcMessages.EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_QUERY_B6F770F5
+              + sql
+              + JdbcMessages.EXCEPTION_PLEASE_CHECK_SERVER_STATUS_DA9E1E33,
           e);
     }
   }
@@ -500,7 +519,14 @@ public class IoTDBStatement implements Statement {
     execReq.setJdbcQuery(true);
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeQueryStatementV2(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeQueryStatementV2(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -550,7 +576,9 @@ public class IoTDBStatement implements Statement {
       return executeUpdateSQL(sql);
     } catch (TException e) {
       throw new SQLException(
-          "Fail to reconnect to server when execute update " + sql + ". please check server status",
+          JdbcMessages.EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_UPDATE_7F009AA4
+              + sql
+              + JdbcMessages.EXCEPTION_PLEASE_CHECK_SERVER_STATUS_DA9E1E33,
           e);
     }
   }
@@ -575,7 +603,14 @@ public class IoTDBStatement implements Statement {
     final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     final TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
-            () -> client.executeUpdateStatement(execReq), TSExecuteStatementResp::getStatus);
+            () -> {
+              // reConnect() may have replaced the session/statement id, so refresh them on every
+              // attempt; otherwise the server reports "StatementId doesn't exist in this session".
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(stmtId);
+              return client.executeUpdateStatement(execReq);
+            },
+            TSExecuteStatementResp::getStatus);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }
@@ -748,7 +783,9 @@ public class IoTDBStatement implements Statement {
       return true;
     } catch (Exception e) {
       throw new SQLException(
-          "Cannot get id for statement after reconnecting. please check server status", e);
+          JdbcMessages
+              .EXCEPTION_CANNOT_GET_ID_STATEMENT_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_D4C1F67E,
+          e);
     }
   }
 
@@ -761,11 +798,15 @@ public class IoTDBStatement implements Statement {
           this.stmtId = client.requestStatementId(sessionId);
         } catch (TException e2) {
           throw new SQLException(
-              "Cannot get id for statement after reconnecting. please check server status", e2);
+              JdbcMessages
+                  .EXCEPTION_CANNOT_GET_ID_STATEMENT_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_D4C1F67E,
+              e2);
         }
       } else {
         throw new SQLException(
-            "Cannot get id for statement after reconnecting. please check server status", e);
+            JdbcMessages
+                .EXCEPTION_CANNOT_GET_ID_STATEMENT_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_D4C1F67E,
+            e);
       }
     }
   }

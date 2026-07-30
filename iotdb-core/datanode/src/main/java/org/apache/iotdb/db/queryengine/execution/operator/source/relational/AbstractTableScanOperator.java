@@ -82,7 +82,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private TsBlock measurementDataBlock;
 
-  private QueryDataSource queryDataSource;
+  protected QueryDataSource queryDataSource;
 
   protected int currentDeviceIndex;
 
@@ -217,8 +217,16 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public boolean isFinished() throws Exception {
-    return (retainedTsBlock == null)
-        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
+    if (retainedTsBlock != null) {
+      return false;
+    }
+    if (seriesScanOptions.limitConsumedUp()) {
+      return true;
+    }
+    if (currentDeviceIndex >= deviceCount) {
+      return true;
+    }
+    return shouldStopScanByRuntimeFilter();
   }
 
   @Override
@@ -251,6 +259,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   protected void moveToNextDevice() {
+    if (shouldStopScanByRuntimeFilter()) {
+      currentDeviceIndex = deviceCount;
+      return;
+    }
     currentDeviceIndex++;
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
@@ -264,6 +276,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     }
   }
 
+  /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
+  protected boolean shouldStopScanByRuntimeFilter() {
+    return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
+  }
+
   protected void constructAlignedSeriesScanUtil() {
     if (this.deviceEntries.isEmpty() || currentDeviceIndex >= deviceCount) {
       // no need to construct SeriesScanUtil, hasNext will return false
@@ -272,7 +289,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
     if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
       throw new IllegalStateException(
-          "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_TABLESCANOPERATOR_IS_EMPTY_FDEB574F,
+              this.currentDeviceIndex));
     }
 
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);

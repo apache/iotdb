@@ -120,8 +120,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       try {
         cachedOccupiedSpace[i] = JVMCommonUtils.getOccupiedSpace(folder);
       } catch (IOException | UncheckedIOException e) {
-        LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
-        cachedOccupiedSpace[i] = Long.MAX_VALUE;
+        LOGGER.warn(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
       }
     }
     selectionsSinceRefresh = 0;

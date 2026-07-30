@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -97,12 +98,18 @@ public class QueryId {
   }
 
   public static List<String> parseDottedId(String id, int expectedParts, String name) {
-    requireNonNull(id, "id is null");
-    checkArgument(expectedParts > 0, "expectedParts must be at least 1");
-    requireNonNull(name, "name is null");
+    requireNonNull(id, DataNodeQueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
+    checkArgument(
+        expectedParts > 0,
+        DataNodeQueryMessages.EXCEPTION_EXPECTEDPARTS_MUST_BE_AT_LEAST_1_B867DB08);
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
 
     List<String> ids = Arrays.asList(id.split("\\."));
-    checkArgument(ids.size() == expectedParts, "Invalid %s %s", name, id);
+    checkArgument(
+        ids.size() == expectedParts,
+        DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
+        name,
+        id);
 
     for (String part : ids) {
       checkArgument(!part.isEmpty(), INVALID_ID_ERROR_MSG, id);
@@ -137,8 +144,8 @@ public class QueryId {
   }
 
   public static String validateId(String id) {
-    requireNonNull(id, "id is null");
-    checkArgument(!id.isEmpty(), "id is empty");
+    requireNonNull(id, DataNodeQueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
+    checkArgument(!id.isEmpty(), DataNodeQueryMessages.EXCEPTION_ID_IS_EMPTY_28C94FC0);
     checkArgument(isValidId(id), INVALID_ID_ERROR_MSG, id);
     return id;
   }

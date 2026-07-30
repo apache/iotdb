@@ -56,12 +56,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllRegionMap;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.awaitUntilSuccess;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.generateRemoveString;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.getConnectionWithSQLType;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.restartDataNodes;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodes;
+import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodesWithoutRegionConflict;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 @Category({ClusterIT.class})
@@ -153,6 +155,13 @@ public class IoTDBRemoveDataNodeNormalIT {
   public void success1C4DIoTTestUseTableSQL() throws Exception {
     // Setup 1C4D, and remove 1D, this test should success
     successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
+  }
+
+  @Test
+  public void success1C5DRemoveTwoDataNodesUseSQL() throws Exception {
+    // Setup 1C5D, and remove 2D in a single "remove datanode a, b" statement; 3 DataNodes remain
+    // which is enough to keep both the data (factor 2) and schema (factor 3) replicas.
+    successTest(2, 3, 1, 5, 2, 2, true, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
   }
 
   //  @Test
@@ -279,8 +288,17 @@ public class IoTDBRemoveDataNodeNormalIT {
         allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
-      // Select data nodes to remove
-      final Set<Integer> removeDataNodes = selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
+      // Select data nodes to remove. When removing more than one DataNode we must avoid picking two
+      // DataNodes that host replicas of the same consensus group, otherwise the
+      // RemoveDataNodesProcedure would try to migrate two replicas of one group at once, which the
+      // ConfigNode rejects ("Only one replica of the same consensus group is allowed to be migrated
+      // at the same time."). Selecting purely at random therefore makes this test flaky, so use a
+      // conflict-free selection.
+      final Set<Integer> removeDataNodes =
+          removeDataNodeNum > 1
+              ? selectRemoveDataNodesWithoutRegionConflict(
+                  allDataNodeId, removeDataNodeNum, getAllRegionMap(statement))
+              : selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
 
       List<DataNodeWrapper> removeDataNodeWrappers =
           removeDataNodes.stream()
@@ -339,7 +357,7 @@ public class IoTDBRemoveDataNodeNormalIT {
         removeSuccess = true;
       } catch (ConditionTimeoutException e) {
         if (expectRemoveSuccess) {
-          LOGGER.error("Remove DataNodes timeout in 2 minutes");
+          LOGGER.error("Remove DataNodes timeout in 5 minutes");
           Assert.fail();
         }
       }

@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.transformation.dag.column.udf;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.IoTDBLocalFactory;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
@@ -95,7 +96,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
         }
       } catch (Exception e) {
         throw new RuntimeException(
-            "Error occurs when evaluating user-defined scalar function "
+            CalcMessages.EXCEPTION_ERROR_OCCURS_EVALUATING_USER_DEFINED_SCALAR_FUNCTION_05903C18
                 + scalarFunction.getClass().getName(),
             e);
       }
@@ -123,7 +124,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
         }
       } catch (Throwable e) {
         throw new RuntimeException(
-            "Error occurs when evaluating user-defined scalar function "
+            CalcMessages.EXCEPTION_ERROR_OCCURS_EVALUATING_USER_DEFINED_SCALAR_FUNCTION_05903C18
                 + scalarFunction.getClass().getName(),
             e);
       }

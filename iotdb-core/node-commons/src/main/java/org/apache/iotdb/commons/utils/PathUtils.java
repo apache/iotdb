@@ -79,7 +79,7 @@ public class PathUtils {
     }
     // skip checking duplicated measurements
     Map<String, String> checkedMeasurements = new HashMap<>();
-    List<List<String>> res = new ArrayList<>();
+    List<List<String>> res = new ArrayList<>(measurementLists.size());
     for (List<String> measurements : measurementLists) {
       res.add(checkLegalSingleMeasurementsAndSkipDuplicate(measurements, checkedMeasurements));
     }
@@ -95,7 +95,7 @@ public class PathUtils {
     if (measurements == null) {
       return null;
     }
-    List<String> res = new ArrayList<>();
+    List<String> res = new ArrayList<>(measurements.size());
     for (String measurement : measurements) {
       if (measurement == null) {
         res.add(null);
@@ -120,7 +120,7 @@ public class PathUtils {
     if (measurements == null) {
       return null;
     }
-    List<String> res = new ArrayList<>();
+    List<String> res = new ArrayList<>(measurements.size());
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         res.add(null);
@@ -129,6 +129,67 @@ public class PathUtils {
       res.add(checkAndReturnSingleMeasurement(measurement));
     }
     return res;
+  }
+
+  /**
+   * Check and canonicalize single measurements in place. This avoids allocating another list when
+   * the input is a mutable list created by Thrift.
+   */
+  public static void checkIsLegalSingleMeasurementsAndUpdateInPlace(List<String> measurements)
+      throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.size(); i++) {
+      String measurement = measurements.get(i);
+      measurements.set(
+          i,
+          measurement == null || measurement.isEmpty()
+              ? null
+              : checkAndReturnSingleMeasurement(measurement));
+    }
+  }
+
+  /**
+   * Check and canonicalize lists of single measurements in place. Duplicate measurements in one
+   * request are checked only once.
+   */
+  public static void checkIsLegalSingleMeasurementListsAndUpdateInPlace(
+      List<List<String>> measurementLists) throws MetadataException {
+    if (measurementLists == null || measurementLists.isEmpty()) {
+      return;
+    }
+    if (measurementLists.size() == 1) {
+      List<String> measurements = measurementLists.get(0);
+      if (measurements == null) {
+        return;
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        if (measurement != null) {
+          measurements.set(i, checkAndReturnSingleMeasurement(measurement));
+        }
+      }
+      return;
+    }
+    Map<String, String> checkedMeasurements = new HashMap<>();
+    for (List<String> measurements : measurementLists) {
+      if (measurements == null) {
+        continue;
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        if (measurement == null) {
+          continue;
+        }
+        String checked = checkedMeasurements.get(measurement);
+        if (checked == null) {
+          checked = checkAndReturnSingleMeasurement(measurement);
+          checkedMeasurements.put(measurement, checked);
+        }
+        measurements.set(i, checked);
+      }
+    }
   }
 
   /**

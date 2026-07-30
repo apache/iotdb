@@ -20,13 +20,14 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 
 public class StatementExecutionException extends Exception {
 
   private int statusCode;
 
   public StatementExecutionException(TSStatus status) {
-    super(String.format("%d: %s", status.code, status.message));
+    super(String.format(RpcMessages.EXCEPTION_ARG_ARG_046AFB8B, status.code, status.message));
     this.statusCode = status.code;
   }
 

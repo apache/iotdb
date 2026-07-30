@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -143,6 +145,11 @@ public class PartitionCache {
     this.cacheMetrics = new CacheMetrics();
   }
 
+  protected void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
   // region database cache
 
   /**
@@ -158,6 +165,7 @@ public class PartitionCache {
       final boolean tryToFetch,
       final boolean isAutoCreate,
       final String userName) {
+    failIfMetadataLeaseFenced();
     final DatabaseCacheResult<String, List<IDeviceID>> result =
         new DatabaseCacheResult<String, List<IDeviceID>>() {
           @Override
@@ -182,6 +190,7 @@ public class PartitionCache {
       final boolean tryToFetch,
       final boolean isAutoCreate,
       final String userName) {
+    failIfMetadataLeaseFenced();
     final DatabaseCacheResult<IDeviceID, String> result =
         new DatabaseCacheResult<IDeviceID, String>() {
           @Override
@@ -345,7 +354,7 @@ public class PartitionCache {
             // Try to update cache by databases successfully created
             updateDatabaseCache(successFullyCreatedDatabase);
             logger.warn(
-                "[{} Cache] failed to create database {}",
+                DataNodeQueryMessages.ARG_CACHE_FAILED_TO_CREATE_DATABASE_ARG,
                 CacheMetrics.DATABASE_CACHE_NAME,
                 databaseName);
             throw new IoTDBRuntimeException(tsStatus.message, tsStatus.code);
@@ -390,7 +399,9 @@ public class PartitionCache {
         updateDatabaseCache(Collections.singleton(database));
       } else {
         logger.warn(
-            "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
+            DataNodeQueryMessages.ARG_CACHE_FAILED_TO_CREATE_DATABASE_ARG,
+            CacheMetrics.DATABASE_CACHE_NAME,
+            database);
         throw new IoTDBRuntimeException(tsStatus.message, tsStatus.code);
       }
     } finally {
@@ -420,7 +431,7 @@ public class PartitionCache {
         if (null == databaseName) {
           if (logger.isDebugEnabled()) {
             logger.debug(
-                "[{} Cache] miss when search device {}",
+                DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DEVICE_ARG,
                 CacheMetrics.DATABASE_CACHE_NAME,
                 devicePath);
           }
@@ -440,7 +451,9 @@ public class PartitionCache {
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "[{} Cache] hit when search device {}", CacheMetrics.DATABASE_CACHE_NAME, deviceIDs);
+            DataNodeQueryMessages.ARG_CACHE_HIT_WHEN_SEARCH_DEVICE_ARG,
+            CacheMetrics.DATABASE_CACHE_NAME,
+            deviceIDs);
       }
       cacheMetrics.record(status, CacheMetrics.DATABASE_CACHE_NAME);
     } finally {
@@ -505,17 +518,25 @@ public class PartitionCache {
         }
       } catch (MetadataException e) {
         throw new IoTDBRuntimeException(
-            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(),
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDEVICETODATABASE_S_CCA611CC,
+                e.getMessage()),
             e.getErrorCode());
       } catch (TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(), e);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDEVICETODATABASE_S_CCA611CC,
+                e.getMessage()),
+            e);
       }
     }
   }
 
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
+    failIfMetadataLeaseFenced();
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
@@ -528,7 +549,10 @@ public class PartitionCache {
         }
       } catch (final TException | ClientManagerException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDEVICETODATABASE_S_CCA611CC,
+                e.getMessage()));
       }
     }
   }
@@ -577,6 +601,7 @@ public class PartitionCache {
     // try to get regionReplicaSet from cache
     regionReplicaSetLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       result = getRegionReplicaSetInternal(consensusGroupIds);
     } finally {
       regionReplicaSetLock.readLock().unlock();
@@ -595,7 +620,8 @@ public class PartitionCache {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
             } else {
               logger.warn(
-                  "Unexpected error when getRegionReplicaSet: status {}， regionMap: {}",
+                  DataNodeQueryMessages
+                      .UNEXPECTED_ERROR_WHEN_GETREGIONREPLICASET_STATUS_ARG_REGIONMAP_ARG,
                   resp.getStatus(),
                   resp.getRegionRouteMap());
             }
@@ -604,11 +630,17 @@ public class PartitionCache {
             if (result.isEmpty()) {
               // failed to get RegionReplicaSet from configNode
               throw new RuntimeException(
-                  "Failed to get replicaSet of consensus groups[ids= " + consensusGroupIds + "]");
+                  String.format(
+                      DataNodeQueryMessages
+                          .QUERY_EXCEPTION_FAILED_TO_GET_REPLICASET_OF_CONSENSUS_GROUPS_IDS_S_CC30C7A6,
+                      consensusGroupIds));
             }
           } catch (ClientManagerException | TException e) {
             throw new StatementAnalyzeException(
-                "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETREGIONREPLICASET_S_370D5526,
+                    e.getMessage()));
           }
         }
       } finally {
@@ -680,6 +712,7 @@ public class PartitionCache {
       final Map<String, List<IDeviceID>> databaseToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       if (databaseToDeviceMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
@@ -697,7 +730,7 @@ public class PartitionCache {
           // if database not find, then return cache miss.
           if (logger.isDebugEnabled()) {
             logger.debug(
-                "[{} Cache] miss when search database {}",
+                DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DATABASE_ARG,
                 CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
                 databaseName);
           }
@@ -716,7 +749,7 @@ public class PartitionCache {
             // if one device not find, then return cache miss.
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "[{} Cache] miss when search device {}",
+                  DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DEVICE_ARG,
                   CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
                   device);
             }
@@ -752,12 +785,13 @@ public class PartitionCache {
   public SchemaPartition getSchemaPartition(String database) {
     schemaPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(database);
       if (null == schemaPartitionTable) {
         // if database not find, then return cache miss.
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "[{} Cache] miss when search database {}",
+              DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DATABASE_ARG,
               CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
               database);
         }
@@ -841,6 +875,7 @@ public class PartitionCache {
       Map<String, List<DataPartitionQueryParam>> databaseToQueryParamsMap) {
     dataPartitionCacheLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced();
       if (databaseToQueryParamsMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
         return null;
@@ -864,7 +899,7 @@ public class PartitionCache {
         if (null == dataPartitionTable) {
           if (logger.isDebugEnabled()) {
             logger.debug(
-                "[{} Cache] miss when search database {}",
+                DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DATABASE_ARG,
                 CacheMetrics.DATA_PARTITION_CACHE_NAME,
                 databaseName);
           }
@@ -888,7 +923,7 @@ public class PartitionCache {
           if (null == cachedSeriesPartitionTable) {
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "[{} Cache] miss when search device {}",
+                  DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DEVICE_ARG,
                   CacheMetrics.DATA_PARTITION_CACHE_NAME,
                   param.getDeviceID());
             }
@@ -911,7 +946,7 @@ public class PartitionCache {
                 || null == timePartitionSlot) {
               if (logger.isDebugEnabled()) {
                 logger.debug(
-                    "[{} Cache] miss when search time partition {}",
+                    DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_TIME_PARTITION_ARG,
                     CacheMetrics.DATA_PARTITION_CACHE_NAME,
                     timePartitionSlot);
               }

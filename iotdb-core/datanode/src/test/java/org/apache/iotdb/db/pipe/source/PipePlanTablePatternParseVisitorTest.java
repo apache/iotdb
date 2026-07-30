@@ -19,18 +19,26 @@
 
 package org.apache.iotdb.db.pipe.source;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
+import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTablePrivilegeParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
@@ -115,15 +123,56 @@ public class PipePlanTablePatternParseVisitorTest {
                         new TableDeletionEntry(
                             new DeletionPredicate(
                                 "ac",
-                                new IDPredicate.And(
-                                    new IDPredicate.FullExactMatch(
+                                new TagPredicate.And(
+                                    new TagPredicate.FullExactMatch(
                                         DeviceIDFactory.getInstance()
                                             .getDeviceID(
                                                 new PartialPath(new String[] {"ac", "device1"}))),
-                                    new IDPredicate.SegmentExactMatch("device2", 1))),
+                                    new TagPredicate.SegmentExactMatch("device2", 1))),
                             new TimeRange(0, 1))),
                     "db1"),
                 tablePattern)
             .orElse(null));
+  }
+
+  @Test
+  public void testDeleteDataPrivilegeRespectsSkipOption() {
+    final AccessControl oldAccessControl = AuthorityChecker.getAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(
+          new AllowAllAccessControl() {
+            @Override
+            public boolean checkCanSelectFromTable4Pipe(
+                final String userName,
+                final QualifiedObjectName tableName,
+                final IAuditEntity auditEntity) {
+              return "ab".equals(tableName.getObjectName());
+            }
+          });
+
+      final RelationalDeleteDataNode input =
+          new RelationalDeleteDataNode(
+              new PlanNodeId(""),
+              Arrays.asList(
+                  new TableDeletionEntry(
+                      new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                  new TableDeletionEntry(
+                      new DeletionPredicate("ac"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+              "db1");
+      final UserEntity userEntity = new UserEntity(1, "test", "127.0.0.1");
+
+      Assert.assertEquals(
+          new RelationalDeleteDataNode(
+              new PlanNodeId(""),
+              new TableDeletionEntry(
+                  new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+              "db1"),
+          new PipePlanTablePrivilegeParseVisitor(true).process(input, userEntity).orElse(null));
+      Assert.assertThrows(
+          AccessDeniedException.class,
+          () -> new PipePlanTablePrivilegeParseVisitor(false).process(input, userEntity));
+    } finally {
+      AuthorityChecker.setAccessControl(oldAccessControl);
+    }
   }
 }

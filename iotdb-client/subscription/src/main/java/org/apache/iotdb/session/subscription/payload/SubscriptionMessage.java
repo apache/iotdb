@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.thrift.annotation.Nullable;
@@ -40,6 +41,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionMessageHandler handler;
 
+  private final boolean timeSelected;
+
   /** Watermark timestamp, valid only when messageType == WATERMARK. */
   private final long watermarkTimestamp;
 
@@ -47,9 +50,25 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
+    this(commitContext, tablets, true);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final Map<String, List<Tablet>> tablets,
+      final boolean timeSelected) {
+    this(commitContext, tablets, timeSelected, null);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final Map<String, List<Tablet>> tablets,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
-    this.handler = new SubscriptionRecordHandler(tablets);
+    this.handler = new SubscriptionRecordHandler(tablets, timeSelected, timeSelectedByTable);
+    this.timeSelected = timeSelected;
     this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
@@ -57,9 +76,18 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       final SubscriptionCommitContext commitContext,
       final String absolutePath,
       @Nullable final String databaseName) {
+    this(commitContext, absolutePath, databaseName, true);
+  }
+
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext,
+      final String absolutePath,
+      @Nullable final String databaseName,
+      final boolean timeSelected) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
+    this.timeSelected = timeSelected;
     this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
@@ -69,6 +97,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.WATERMARK.getType();
     this.handler = null;
+    this.timeSelected = true;
     this.watermarkTimestamp = watermarkTimestamp;
   }
 
@@ -78,6 +107,10 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public short getMessageType() {
     return messageType;
+  }
+
+  public boolean isTimeSelected() {
+    return timeSelected;
   }
 
   /**
@@ -90,7 +123,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   public long getWatermarkTimestamp() {
     if (messageType != SubscriptionMessageType.WATERMARK.getType()) {
       throw new IllegalStateException(
-          "Watermark timestamp is only available for watermark messages, actual message type: "
+          SubscriptionMessages
+                  .EXCEPTION_WATERMARK_TIMESTAMP_ONLY_AVAILABLE_WATERMARK_MESSAGES_ACTUAL_MESSAGE_TYPE_F8E32C57
               + messageType);
     }
     return watermarkTimestamp;
@@ -140,13 +174,14 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     final SubscriptionMessage that = (SubscriptionMessage) obj;
     return Objects.equals(this.commitContext, that.commitContext)
         && this.watermarkTimestamp == that.watermarkTimestamp
+        && this.timeSelected == that.timeSelected
         && Objects.equals(this.messageType, that.messageType)
         && Objects.equals(this.handler, that.handler);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContext, messageType, handler, watermarkTimestamp);
+    return Objects.hash(commitContext, messageType, handler, timeSelected, watermarkTimestamp);
   }
 
   @Override
@@ -160,6 +195,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
         + commitContext
         + ", messageType="
         + SubscriptionMessageType.valueOf(messageType).toString()
+        + ", timeSelected="
+        + timeSelected
         + ", watermarkTimestamp="
         + watermarkTimestamp
         + "}";
@@ -173,7 +210,9 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       return ((SubscriptionRecordHandler) handler).getResultSets();
     }
     throw new SubscriptionIncompatibleHandlerException(
-        String.format("%s do not support getResultSets().", handler.getClass().getSimpleName()));
+        String.format(
+            SubscriptionMessages.EXCEPTION_ARG_DO_NOT_SUPPORT_GETRESULTSETS_7789852D,
+            handler.getClass().getSimpleName()));
   }
 
   public Iterator<Tablet> getRecordTabletIterator() {
@@ -186,7 +225,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     }
     throw new SubscriptionIncompatibleHandlerException(
         String.format(
-            "%s do not support getRecordTabletIterator().", handler.getClass().getSimpleName()));
+            SubscriptionMessages.EXCEPTION_ARG_DO_NOT_SUPPORT_GETRECORDTABLETITERATOR_46B4A489,
+            handler.getClass().getSimpleName()));
   }
 
   public SubscriptionTsFileHandler getTsFile() {
@@ -194,13 +234,17 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       return (SubscriptionTsFileHandler) handler;
     }
     throw new SubscriptionIncompatibleHandlerException(
-        String.format("%s do not support getTsFile().", handler.getClass().getSimpleName()));
+        String.format(
+            SubscriptionMessages.EXCEPTION_ARG_DO_NOT_SUPPORT_GETTSFILE_40D23462,
+            handler.getClass().getSimpleName()));
   }
 
   private void ensureUserDataAvailable() {
     if (userDataRemoved) {
       throw new SubscriptionRuntimeException(
-          String.format("User data has been removed from %s.", getClass().getSimpleName()));
+          String.format(
+              SubscriptionMessages.EXCEPTION_USER_DATA_HAS_BEEN_REMOVED_ARG_7093644B,
+              getClass().getSimpleName()));
     }
   }
 }
