@@ -569,6 +569,8 @@ public final class DataNodeSchemaMessages {
   public static final String COMMIT_DELETE_TABLE_SUCCESS = "提交删除表 {}.{} 操作成功。";
   public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
       "从configNode拉取元数据更新DataNodeTableCache失败";
+  public static final String FAILED_TO_GET_FENCE_THRESHOLD_FROM_CN =
+      "在租约恢复期间未能从 ConfigNode 获取隔离阈值";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
@@ -599,6 +601,8 @@ public final class DataNodeSchemaMessages {
       "无法将元数据状态 {} 标记为 PULLING，因为已有其他元数据拉取线程正在运行。";
   public static final String FAILED_TO_PULL_OR_INIT_METADATA = "拉取元数据失败。";
   public static final String METADATA_LEASE_IS_FENCED = "元数据租约已过期, 本地缓存不可用";
+  public static final String UPDATED_METADATA_LEASE_FENCE_THRESHOLD =
+      "元数据租约隔离阈值已更新为 {} 毫秒";
 
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------
@@ -646,6 +650,9 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
       "%s。为路径 %s 创建时间序列失败";
   public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "路径 [%s] 不存在";
+  public static final String
+      EXCEPTION_TIMESERIES_ARG_DOES_NOT_EXIST_AND_ITS_DATA_TYPE_CANNOT_BE_INFERRED_FROM_THE_NULL_VALUE_36406D43 =
+          "时间序列 [%s] 不存在，且无法从 null 值推断其数据类型";
   public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
       "源路径 [%s] 对应视图 [%s] 不存在。";
   public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
@@ -711,6 +718,7 @@ public final class DataNodeSchemaMessages {
       "该视图包含名为 [%s] 的聚合函数";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext 不能为空";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator 不能为空";
+  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "共识组 %s 的状态机创建失败，因为 SchemaRegion 不存在";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";

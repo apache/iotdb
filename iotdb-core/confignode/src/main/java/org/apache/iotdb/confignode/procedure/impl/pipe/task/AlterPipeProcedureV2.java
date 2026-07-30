@@ -333,7 +333,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeMetaBinaryList.add(
         copyAndFilterOutNonWorkingDataRegionPipeTasks(updatedPipeMeta).serialize());
 
-    return env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);
+    return env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList, this::setPendingDataNodeIds);
   }
 
   @Override

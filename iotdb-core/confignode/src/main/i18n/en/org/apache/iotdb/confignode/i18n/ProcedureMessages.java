@@ -1213,9 +1213,6 @@ public final class ProcedureMessages {
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 = "Worker stuck {}({}), run time {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D = "Procedure workers: {} is running, {} is running and stuck";
-  public static final String LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 =
-      "ProcedureExecutor threadGroup {} contains running threads which are used by non-procedure"
-      + " module.";
   public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 = "Add procedure {} as the {}th rollback step";
   public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_NOT_SET_NEXT_STATE_BUT_RETURN_HAS_7F93E63F =
       "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE. It is likely that"
@@ -1384,12 +1381,14 @@ public final class ProcedureMessages {
   public static final String LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026 = "(mode={}), skipping pipe creation";
   public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD = "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode ";
   public static final String LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31 = "via consumer group meta push (no pipe creation needed)";
+  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_SYNCHRONIZING_COMMIT_PROGRESS_AFTER_CONSUMER_GROUP_NEWLY_SUBSCRIBED_CONSENSUS_TOPICS_ARG_F5687D36 = "CreateSubscriptionProcedure: synchronizing commit progress after consumer group newly subscribed consensus topics {}";
   public static final String LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C = "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode ";
   public static final String LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6 = "(mode={}), skipping pipe removal";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ACQUIRELOCK_SKIP_PROCEDURE_LAST_EXECUTION_TIME_ARG_CE3DD247 = "CommitProgressSyncProcedure: acquireLock, skip the procedure due to the last execution time {}";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMVALIDATE_CF220E1F = "CommitProgressSyncProcedure: executeFromValidate";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA = "CommitProgressSyncProcedure: executeFromOperateOnConfigNodes";
   public static final String LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29 = "Failed to pull commit progress from DataNode {}, status: {}";
+  public static final String EXCEPTION_FAILED_TO_PULL_REQUIRED_COMMIT_PROGRESS_FROM_DATANODE_ARG_STATUS_ARG_E08A2450 = "Failed to pull required commit progress from DataNode %s, status: %s";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360 = "CommitProgressSyncProcedure: executeFromOperateOnDataNodes (no-op)";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMVALIDATE_2309D4D2 = "CommitProgressSyncProcedure: rollbackFromValidate";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_57CB907B = "CommitProgressSyncProcedure: rollbackFromOperateOnConfigNodes";
@@ -1409,4 +1408,32 @@ public final class ProcedureMessages {
   public static final String MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
       "Unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";
 
+  public static final String MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595 =
+      "no Procedure worker is currently available; workers may be busy or blocked by other procedures.";
+  public static final String MESSAGE_PIPE_OPERATION_ARG_TIMED_OUT_PROCEDUREID_ARG_STUCK_AT_ARG_REASON_ARG_THE_PROCEDURE_IS_STILL_RUNNING_7EEAC50E =
+      "Pipe operation %s timed out (procedureId=%d). Stuck at %s. Reason: %s. The procedure is still running.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_PIPETASKCOORDINATOR_LOCK_BECAUSE_ANOTHER_PIPE_OPERATION_IS_HOLDING_IT_25A3B6B8 =
+      "waiting to acquire the PipeTaskCoordinator lock because another Pipe operation is holding it.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
+      "waiting to acquire the ConfigNode node lock because another node procedure is holding it.";
+  public static final String MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+      "waiting to acquire the ConfigNode node lock held by %s (procedureId=%d).";
+  public static final String MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
+      "Pipe request or plugin validation has not completed; a plugin check or metadata access may be slow.";
+  public static final String MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
+      "Pipe metadata calculation has not completed; metadata access or local calculation may be slow.";
+  public static final String MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+      "the ConfigNode consensus write has not returned; run SHOW CLUSTER to check node status.";
+  public static final String MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+      "DataNodes %s have not responded to the Pipe metadata push; run SHOW CLUSTER to check their status.";
+  public static final String MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+      "the Pipe metadata push has not completed; run SHOW CLUSTER to check DataNode status.";
+  public static final String MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
+      "the previous attempt failed with '%s' and this state is being retried.";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "the state failed with '%s' and rollback is pending.";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
+      "rolling back after failure: %s.";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
+      "rolling back after an earlier failure.";
 }

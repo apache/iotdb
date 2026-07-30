@@ -62,6 +62,7 @@ import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -149,9 +150,8 @@ public abstract class AbstractEnv implements BaseEnv {
       final String configNodeMetricContent =
           getUrlContent(
               Config.IOTDB_HTTP_URL_PREFIX
-                  + configNode.getIp()
-                  + ":"
-                  + configNode.getMetricPort()
+                  + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                      configNode.getIp(), configNode.getMetricPort())
                   + "/metrics",
               authHeader);
       result.add(configNodeMetricContent);
@@ -161,9 +161,8 @@ public abstract class AbstractEnv implements BaseEnv {
       final String dataNodeMetricContent =
           getUrlContent(
               Config.IOTDB_HTTP_URL_PREFIX
-                  + dataNode.getIp()
-                  + ":"
-                  + dataNode.getMetricPort()
+                  + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                      dataNode.getIp(), dataNode.getMetricPort())
                   + "/metrics",
               authHeader);
       result.add(dataNodeMetricContent);
@@ -1040,7 +1039,8 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
-    final String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+    final String endpoint =
+        UrlUtils.formatTEndPointIpv4AndIpv6Url(dataNode.getIp(), dataNode.getPort());
     final Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX
@@ -1631,18 +1631,14 @@ public abstract class AbstractEnv implements BaseEnv {
             .forEach(
                 node ->
                     nodeIds.put(
-                        node.getInternalEndPoint().getIp()
-                            + ":"
-                            + node.getInternalEndPoint().getPort(),
+                        UrlUtils.convertTEndPointIpv4AndIpv6Url(node.getInternalEndPoint()),
                         node.getConfigNodeId()));
         showClusterResp
             .getDataNodeList()
             .forEach(
                 node ->
                     nodeIds.put(
-                        node.getClientRpcEndPoint().getIp()
-                            + ":"
-                            + node.getClientRpcEndPoint().getPort(),
+                        UrlUtils.convertTEndPointIpv4AndIpv6Url(node.getClientRpcEndPoint()),
                         node.getDataNodeId()));
         for (int j = 0; j < nodes.size(); j++) {
           BaseNodeWrapper nodeWrapper = nodes.get(j);
@@ -1665,10 +1661,9 @@ public abstract class AbstractEnv implements BaseEnv {
             continue;
           }
           if (nodeWrapper instanceof DataNodeWrapper && targetStatus.equals(NodeStatus.Running)) {
-            final String[] ipPort = nodeWrapper.getIpAndPortString().split(":");
-            final String ip = ipPort[0];
-            final int port = Integer.parseInt(ipPort[1]);
-            try (TSocket socket = new TSocket(new TConfiguration(), ip, port, 1000)) {
+            try (TSocket socket =
+                new TSocket(
+                    new TConfiguration(), nodeWrapper.getIp(), nodeWrapper.getPort(), 1000)) {
               socket.open();
             } catch (final TTransportException e) {
               errorMessages.add(

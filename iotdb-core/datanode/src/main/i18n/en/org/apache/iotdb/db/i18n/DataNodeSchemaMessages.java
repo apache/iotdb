@@ -574,6 +574,8 @@ public final class DataNodeSchemaMessages {
       "commit delete table {}.{} successfully.";
   public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
       "Failed to refresh DataNodeTableCache from ConfigNode";
+  public static final String FAILED_TO_GET_FENCE_THRESHOLD_FROM_CN =
+      "Failed to get fence threshold from ConfigNode during lease recovery";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
@@ -604,6 +606,8 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_PULL_OR_INIT_METADATA = "Failed to pull or init metadata.";
   public static final String METADATA_LEASE_IS_FENCED =
       "Metadata lease is fenced. The local metadata cache is unavailable.";
+  public static final String UPDATED_METADATA_LEASE_FENCE_THRESHOLD =
+      "Updated metadata lease fence threshold to {} ms";
 
   // ======================== ClusterTemplateManager ========================
 
@@ -659,6 +663,9 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
       "%s. Failed to create timeseries for path %s";
   public static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
+  public static final String
+      EXCEPTION_TIMESERIES_ARG_DOES_NOT_EXIST_AND_ITS_DATA_TYPE_CANNOT_BE_INFERRED_FROM_THE_NULL_VALUE_36406D43 =
+          "Timeseries [%s] does not exist and its data type cannot be inferred from the null value";
   public static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
       "The source path [%s] of view [%s] does not exist.";
   public static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
@@ -723,6 +730,7 @@ public final class DataNodeSchemaMessages {
       "This view contains aggregation function(s) named [%s]";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext is null";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator is null";
+  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "Failed to create state machine for consensus group %s, because schema region does not exist";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";

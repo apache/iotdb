@@ -251,6 +251,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
+    // Pipe creation does not wait for the historical database snapshot to be applied.
+    TableModelUtils.hasDataBase(database, receiverEnv);
+
     TestUtils.executeNonQueries(
         database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null);
 

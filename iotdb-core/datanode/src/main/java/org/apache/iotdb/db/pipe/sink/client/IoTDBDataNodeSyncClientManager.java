@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -119,7 +120,10 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   }
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
-    if (!useLeaderCache || deviceId == null || endPoint == null) {
+    if (!useLeaderCache
+        || deviceId == null
+        || endPoint == null
+        || UrlUtils.isWildcardAddress(endPoint.getIp())) {
       return;
     }
 

@@ -205,6 +205,27 @@ public final class DataNodeQueryMessages {
       "扫描文件时发生错误";
   public static final String ERROR_HAPPENED_WHILE_SCANNING_THE_FILE =
       "扫描文件时发生错误";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "读取时间序列元数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "从 TsFile 读取时间序列元数据失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "读取 chunk 数据或加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "从 TsFile 读取 chunk 数据或加载 page reader 失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "解码 page 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "从 TsFile 解码 page 数据失败：%s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "从 TsFile 读取元数据索引节点失败：%s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "查询执行期间 TsFile 可能已损坏，文件：{}，阶段：{}";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "所有缓存的 chunk 应先被消费";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
@@ -3683,9 +3704,10 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
 
       "AlterLogicalViewNode 的 getOutputColumnNames 尚未实现";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
 
-      "数据库 '%s' 为只读。";
+          "Apache IoTDB 不支持对数据库 '%s' 执行此操作。";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
 
       "数据库 '%s' 仅允许 AUDIT admin 查询。";
@@ -3960,18 +3982,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ID_IS_EMPTY_28C94FC0 =
       "id 为空";
   public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor 不能为空";
-  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState 不能为空";
-  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates 不能为空";
-  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState 不能为空";
   public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState 不能为空";
-  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 = "stateChangeListener 不能为空";
-  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 = "%s 无法从 %s 转换到 %s";
-  public static final String EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
-      "持有锁时无法触发状态变更事件。";
-  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
-      "持有锁时无法通知。";
-  public static final String EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
-      "持有锁时无法等待状态变更。";
   public static final String EXCEPTION_DONESTATE_IS_NULL_D88F77E5 = "doneState 不能为空";
   public static final String EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618 =
       "doneState %s 不是完成状态";
@@ -4545,5 +4556,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "无权执行 %s，因为只有超级用户可以修改其自身。";
 
 }

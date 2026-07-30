@@ -383,7 +383,7 @@ public class IoTDBSeriesPermissionIT {
         assertNonQueryTestFail(
             statement,
             "set ttl to root.__audit.** 1",
-            "803: The database 'root.__audit' is read-only.");
+            "803: Apache IoTDB does not support this operation on database 'root.__audit'.");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
