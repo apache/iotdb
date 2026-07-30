@@ -970,9 +970,11 @@ public abstract class AlignedTVList extends TVList {
     return false;
   }
 
-  private static boolean containsMarkedBit(BitMap bitMap, int start, int length) {
-    if (length <= 0) {
-      return false;
+  static boolean containsMarkedBit(BitMap bitMap, int start, int length) {
+    // Avoid materializing a byte-array copy on the common aligned-tablet path, which starts at
+    // offset 0 and can be inspected directly by BitMap.
+    if (start == 0) {
+      return length > 0 && !bitMap.isAllUnmarked(length);
     }
 
     byte[] bytes = bitMap.getByteArray();
