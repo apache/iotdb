@@ -20,22 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.parser;
 
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Test;
 
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Parsing tests for the tree-model SQL that lets REMOVE DATANODE remove multiple DataNodes in a
- * single statement.
- */
-public class RemoveDataNodeMultiNodeParseTest {
+/** Parsing tests for tree-model REMOVE DATANODE and REMOVE CONFIGNODE statements. */
+public class RemoveNodeSingleNodeParseTest {
 
   private static Statement parse(String sql) {
     return StatementGenerator.createStatement(sql, ZoneId.systemDefault());
@@ -49,11 +48,15 @@ public class RemoveDataNodeMultiNodeParseTest {
   }
 
   @Test
-  public void testRemoveMultipleDataNodes() {
-    Statement statement = parse("remove datanode 3, 4, 5");
-    assertTrue(statement instanceof RemoveDataNodeStatement);
-    RemoveDataNodeStatement removeDataNodeStatement = (RemoveDataNodeStatement) statement;
-    assertEquals(3, removeDataNodeStatement.getNodeIds().size());
-    assertTrue(removeDataNodeStatement.getNodeIds().containsAll(Arrays.asList(3, 4, 5)));
+  public void testRemoveSingleConfigNode() {
+    Statement statement = parse("remove confignode 3");
+    assertTrue(statement instanceof RemoveConfigNodeStatement);
+    assertEquals(3, ((RemoveConfigNodeStatement) statement).getNodeId().intValue());
+  }
+
+  @Test
+  public void testRejectRemovingMultipleNodes() {
+    assertThrows(ParseCancellationException.class, () -> parse("remove datanode 3, 4"));
+    assertThrows(ParseCancellationException.class, () -> parse("remove confignode 3, 4"));
   }
 }
