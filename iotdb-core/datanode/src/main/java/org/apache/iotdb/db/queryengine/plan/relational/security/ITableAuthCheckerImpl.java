@@ -37,7 +37,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.ratis.util.MemoizedSupplier;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -412,6 +411,30 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   }
 
   @Override
+  public void checkGlobalPrivilege(
+      String userName,
+      TableModelPrivilege privilege,
+      AuditLogOperation auditLogOperation,
+      IAuditEntity auditEntity,
+      Supplier<String> auditObject) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          auditEntity
+              .setAuditLogOperation(auditLogOperation)
+              .setPrivilegeType(privilege.getPrivilegeType())
+              .setResult(true),
+          auditObject);
+      return;
+    }
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
+            privilege.getPrivilegeType());
+    recordAuditLogViaAuthenticationResult(
+        auditObject, privilege, auditLogOperation, auditEntity, result);
+  }
+
+  @Override
   public void checkGlobalPrivileges(
       String username, Collection<PrivilegeType> privileges, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
@@ -510,7 +533,30 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       final IAuditEntity auditEntity,
       final TSStatus result) {
     recordAuditLogViaAuthenticationResult(
-        auditObject, Collections.singletonList(privilege), auditEntity, result);
+        auditObject, privilege, privilege.getAuditLogOperation(), auditEntity, result);
+  }
+
+  private void recordAuditLogViaAuthenticationResult(
+      final Supplier<String> auditObject,
+      final TableModelPrivilege privilege,
+      final AuditLogOperation auditLogOperation,
+      final IAuditEntity auditEntity,
+      final TSStatus result) {
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          auditEntity
+              .setAuditLogOperation(auditLogOperation)
+              .setPrivilegeType(privilege.getPrivilegeType())
+              .setResult(false),
+          auditObject);
+      throw new AccessDeniedException(result.getMessage());
+    }
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        auditEntity
+            .setAuditLogOperation(auditLogOperation)
+            .setPrivilegeType(privilege.getPrivilegeType())
+            .setResult(true),
+        auditObject);
   }
 
   private void recordAuditLogViaAuthenticationResult(
@@ -518,14 +564,13 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       final List<TableModelPrivilege> privileges,
       final IAuditEntity auditEntity,
       final TSStatus result) {
+    final List<PrivilegeType> privilegeTypes =
+        privileges.stream().map(TableModelPrivilege::getPrivilegeType).collect(Collectors.toList());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privileges.get(0).getAuditLogOperation())
-              .setPrivilegeTypes(
-                  privileges.stream()
-                      .map(TableModelPrivilege::getPrivilegeType)
-                      .collect(Collectors.toList()))
+              .setPrivilegeTypes(privilegeTypes)
               .setResult(false),
           auditObject);
       throw new AccessDeniedException(result.getMessage());
@@ -533,10 +578,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(privileges.get(0).getAuditLogOperation())
-            .setPrivilegeTypes(
-                privileges.stream()
-                    .map(TableModelPrivilege::getPrivilegeType)
-                    .collect(Collectors.toList()))
+            .setPrivilegeTypes(privilegeTypes)
             .setResult(true),
         auditObject);
   }

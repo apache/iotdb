@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 public interface ITableAuthChecker {
 
@@ -114,6 +116,17 @@ public interface ITableAuthChecker {
    */
   void checkGlobalPrivilege(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity);
+
+  /**
+   * Check if user has the specified global privilege and record the authentication audit log with
+   * the operation and object of the statement being authorized.
+   */
+  void checkGlobalPrivilege(
+      String userName,
+      TableModelPrivilege privilege,
+      AuditLogOperation auditLogOperation,
+      IAuditEntity auditEntity,
+      Supplier<String> auditObject);
 
   void checkGlobalPrivileges(
       String username, Collection<PrivilegeType> privileges, IAuditEntity auditEntity);
