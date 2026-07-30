@@ -20,55 +20,46 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulatorStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class ExtremeAccumulator implements Accumulator {
+public class ExtremeAccumulator
+    implements Accumulator, TypeServices.Aggregation.ExtremeValueAccumulator {
+
+  private static final Set<TSDataType> SUPPORTED_TYPES =
+      EnumSet.of(TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
 
   private final TSDataType seriesDataType;
   private final TsPrimitiveType extremeResult;
+  private final ExtremeValueAccumulatorStrategy strategy;
   private boolean initResult;
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.extremeResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    final Type type = Type.fromTsDataType(seriesDataType);
+    this.extremeResult = type.getTsPrimitiveType();
+    this.strategy = TypeServices.Aggregation.EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.call(type);
   }
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addInput(this, columns, bitMap);
   }
 
   // partialResult should be like: | PartialExtremeValue |
@@ -78,30 +69,8 @@ public class ExtremeAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        updateIntResult(partialResult[0].getInt(0));
-        break;
-      case INT64:
-        updateLongResult(partialResult[0].getLong(0));
-        break;
-      case FLOAT:
-        updateFloatResult(partialResult[0].getFloat(0));
-        break;
-      case DOUBLE:
-        updateDoubleResult(partialResult[0].getDouble(0));
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addIntermediate(this, partialResult[0]);
   }
 
   @Override
@@ -109,34 +78,9 @@ public class ExtremeAccumulator implements Accumulator {
     if (statistics == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        updateIntResult(((Number) statistics.getMaxValue()).intValue());
-        updateIntResult(((Number) statistics.getMinValue()).intValue());
-        break;
-      case INT64:
-        updateLongResult(((Number) statistics.getMaxValue()).longValue());
-        updateLongResult(((Number) statistics.getMinValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatResult(((Number) statistics.getMaxValue()).floatValue());
-        updateFloatResult(((Number) statistics.getMinValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleResult(((Number) statistics.getMaxValue()).doubleValue());
-        updateDoubleResult(((Number) statistics.getMinValue()).doubleValue());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.addStatistics(this, statistics.getMaxValue());
+    strategy.addStatistics(this, statistics.getMinValue());
   }
 
   @Override
@@ -145,30 +89,8 @@ public class ExtremeAccumulator implements Accumulator {
       return;
     }
     initResult = true;
-    switch (seriesDataType) {
-      case INT32:
-        extremeResult.setInt(finalResult.getInt(0));
-        break;
-      case INT64:
-        extremeResult.setLong(finalResult.getLong(0));
-        break;
-      case FLOAT:
-        extremeResult.setFloat(finalResult.getFloat(0));
-        break;
-      case DOUBLE:
-        extremeResult.setDouble(finalResult.getDouble(0));
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.setFinal(this, finalResult);
   }
 
   // columnBuilder should be single in ExtremeAccumulator
@@ -179,30 +101,8 @@ public class ExtremeAccumulator implements Accumulator {
       columnBuilders[0].appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilders[0].writeInt(extremeResult.getInt());
-        break;
-      case INT64:
-        columnBuilders[0].writeLong(extremeResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilders[0].writeFloat(extremeResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilders[0].writeDouble(extremeResult.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilders[0], extremeResult);
   }
 
   @Override
@@ -211,30 +111,8 @@ public class ExtremeAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt(extremeResult.getInt());
-        break;
-      case INT64:
-        columnBuilder.writeLong(extremeResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(extremeResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(extremeResult.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    ensureSupported();
+    strategy.writeResult(columnBuilder, extremeResult);
   }
 
   @Override
@@ -258,19 +136,13 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateIntResult(column[1].getInt(i));
-      }
-    }
+  @Override
+  public TsPrimitiveType getResult() {
+    return extremeResult;
   }
 
-  private void updateIntResult(int extVal) {
+  @Override
+  public void updateIntResult(final int extVal) {
     int candidateResult = extremeResult.getInt();
 
     if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
@@ -279,19 +151,8 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateLongResult(column[1].getLong(i));
-      }
-    }
-  }
-
-  private void updateLongResult(long extVal) {
+  @Override
+  public void updateLongResult(final long extVal) {
     long candidateResult = extremeResult.getLong();
 
     if (!initResult || compareExtreme(extVal, candidateResult) > 0) {
@@ -300,19 +161,8 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateFloatResult(column[1].getFloat(i));
-      }
-    }
-  }
-
-  private void updateFloatResult(float extVal) {
+  @Override
+  public void updateFloatResult(final float extVal) {
     float absExtVal = Math.abs(extVal);
     float candidateResult = extremeResult.getFloat();
     float absCandidateResult = Math.abs(extremeResult.getFloat());
@@ -325,19 +175,8 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateDoubleResult(column[1].getDouble(i));
-      }
-    }
-  }
-
-  private void updateDoubleResult(double extVal) {
+  @Override
+  public void updateDoubleResult(final double extVal) {
     double absExtVal = Math.abs(extVal);
     double candidateResult = extremeResult.getDouble();
     double absCandidateResult = Math.abs(extremeResult.getDouble());
@@ -348,6 +187,22 @@ public class ExtremeAccumulator implements Accumulator {
       initResult = true;
       extremeResult.setDouble(extVal);
     }
+  }
+
+  @Override
+  public void updateBinaryResult(final Binary value) {
+    throw unsupportedDataTypeException();
+  }
+
+  private void ensureSupported() {
+    if (!SUPPORTED_TYPES.contains(seriesDataType) || !strategy.isSupported()) {
+      throw unsupportedDataTypeException();
+    }
+  }
+
+  private UnSupportedDataTypeException unsupportedDataTypeException() {
+    return new UnSupportedDataTypeException(
+        String.format("Unsupported data type in Extreme: %s", seriesDataType));
   }
 
   private int compareExtreme(int left, int right) {
