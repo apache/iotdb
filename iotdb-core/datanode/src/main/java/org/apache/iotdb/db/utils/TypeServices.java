@@ -981,6 +981,95 @@ public class TypeServices {
                   case ROW, UNKNOWN, VECTOR -> TimeValueAccumulatorStrategy.unsupported();
                 };
 
+    public static final TypeService<MaxMinByAccumulatorStrategy>
+        MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      maxMinByAccumulatorStrategy(
+                          type,
+                          (accumulator, time, yColumn, yIndex, xColumn, xIndex) ->
+                              accumulator.updateIntResult(
+                                  time, yColumn.getInt(yIndex), xColumn, xIndex),
+                          (accumulator, time, bytes, offset) ->
+                              accumulator.updateIntResult(
+                                  time,
+                                  BytesUtils.bytesToInt(bytes, offset),
+                                  accumulator.readXFromBytesIntermediateInput(
+                                      bytes, offset + Integer.BYTES),
+                                  0));
+                  case INT64, TIMESTAMP ->
+                      maxMinByAccumulatorStrategy(
+                          type,
+                          (accumulator, time, yColumn, yIndex, xColumn, xIndex) ->
+                              accumulator.updateLongResult(
+                                  time, yColumn.getLong(yIndex), xColumn, xIndex),
+                          (accumulator, time, bytes, offset) ->
+                              accumulator.updateLongResult(
+                                  time,
+                                  BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset),
+                                  accumulator.readXFromBytesIntermediateInput(
+                                      bytes, offset + Long.BYTES),
+                                  0));
+                  case FLOAT ->
+                      maxMinByAccumulatorStrategy(
+                          type,
+                          (accumulator, time, yColumn, yIndex, xColumn, xIndex) ->
+                              accumulator.updateFloatResult(
+                                  time, yColumn.getFloat(yIndex), xColumn, xIndex),
+                          (accumulator, time, bytes, offset) ->
+                              accumulator.updateFloatResult(
+                                  time,
+                                  BytesUtils.bytesToFloat(bytes, offset),
+                                  accumulator.readXFromBytesIntermediateInput(
+                                      bytes, offset + Float.BYTES),
+                                  0));
+                  case DOUBLE ->
+                      maxMinByAccumulatorStrategy(
+                          type,
+                          (accumulator, time, yColumn, yIndex, xColumn, xIndex) ->
+                              accumulator.updateDoubleResult(
+                                  time, yColumn.getDouble(yIndex), xColumn, xIndex),
+                          (accumulator, time, bytes, offset) ->
+                              accumulator.updateDoubleResult(
+                                  time,
+                                  BytesUtils.bytesToDouble(bytes, offset),
+                                  accumulator.readXFromBytesIntermediateInput(
+                                      bytes, offset + Double.BYTES),
+                                  0));
+                  case STRING ->
+                      maxMinByAccumulatorStrategy(
+                          type,
+                          (accumulator, time, yColumn, yIndex, xColumn, xIndex) ->
+                              accumulator.updateBinaryResult(
+                                  time, yColumn.getBinary(yIndex), xColumn, xIndex),
+                          TypeServices.Aggregation::updateBinaryIntermediate);
+                  case TEXT, BLOB, OBJECT -> maxMinByAccumulatorStrategy(type, null, null);
+                  case BOOLEAN -> maxMinByAccumulatorStrategy(type, null, null);
+                  case ROW, UNKNOWN, VECTOR -> MaxMinByAccumulatorStrategy.unsupported(type);
+                };
+
+    private static void updateBinaryIntermediate(
+        final MaxMinByAccumulator accumulator,
+        final long time,
+        final byte[] bytes,
+        final int offset) {
+      final int length = BytesUtils.bytesToInt(bytes, offset);
+      final int valueOffset = offset + Integer.BYTES;
+      accumulator.updateBinaryResult(
+          time,
+          new Binary(BytesUtils.subBytes(bytes, valueOffset, length)),
+          accumulator.readXFromBytesIntermediateInput(bytes, valueOffset + length),
+          0);
+    }
+
+    private static MaxMinByAccumulatorStrategy maxMinByAccumulatorStrategy(
+        final Type type,
+        final MaxMinByYColumnUpdater yColumnUpdater,
+        final MaxMinByYBytesUpdater yBytesUpdater) {
+      return new MaxMinByAccumulatorStrategy(type, true, yColumnUpdater, yBytesUpdater);
+    }
+
     private static TimeValueAccumulatorStrategy timeValueAccumulatorStrategy(
         final TimeValueColumnUpdater columnUpdater,
         final TimeValueStatisticsUpdater statisticsUpdater,
@@ -1074,6 +1163,70 @@ public class TypeServices {
 
       public void writeResult(final ColumnBuilder builder, final TsPrimitiveType result) {
         resultWriter.accept(builder, result);
+      }
+    }
+
+    public static final class MaxMinByAccumulatorStrategy {
+      private final Type type;
+      private final boolean xSupported;
+      private final MaxMinByYColumnUpdater yColumnUpdater;
+      private final MaxMinByYBytesUpdater yBytesUpdater;
+
+      private MaxMinByAccumulatorStrategy(
+          final Type type,
+          final boolean xSupported,
+          final MaxMinByYColumnUpdater yColumnUpdater,
+          final MaxMinByYBytesUpdater yBytesUpdater) {
+        this.type = type;
+        this.xSupported = xSupported;
+        this.yColumnUpdater = yColumnUpdater;
+        this.yBytesUpdater = yBytesUpdater;
+      }
+
+      private static MaxMinByAccumulatorStrategy unsupported(final Type type) {
+        return new MaxMinByAccumulatorStrategy(type, false, null, null);
+      }
+
+      public boolean isXSupported() {
+        return xSupported;
+      }
+
+      public boolean isYSupported() {
+        return yColumnUpdater != null;
+      }
+
+      public void addInput(
+          final MaxMinByAccumulator accumulator, final Column[] columns, final BitMap bitMap) {
+        final int count = columns[0].getPositionCount();
+        for (int i = 0; i < count; i++) {
+          if (bitMap != null && !bitMap.isMarked(i)) {
+            continue;
+          }
+          if (!columns[2].isNull(i)) {
+            yColumnUpdater.update(accumulator, columns[0].getLong(i), columns[2], i, columns[1], i);
+          }
+        }
+      }
+
+      public void setXResult(final TsPrimitiveType result, final Column column, final int index) {
+        type.setTo(result, column, index);
+      }
+
+      public void writeXResult(final ColumnBuilder builder, final TsPrimitiveType result) {
+        type.write(builder, result);
+      }
+
+      public void writeSerializedValue(
+          final byte[] bytes, final int offset, final ColumnBuilder builder) {
+        type.write(builder, bytes, offset);
+      }
+
+      public void updateIntermediate(
+          final MaxMinByAccumulator accumulator,
+          final long time,
+          final byte[] bytes,
+          final int offset) {
+        yBytesUpdater.update(accumulator, time, bytes, offset);
       }
     }
 
@@ -1175,6 +1328,7 @@ public class TypeServices {
     static {
       EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
       TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
+      MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.check();
       OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
       MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
     }
@@ -1213,6 +1367,20 @@ public class TypeServices {
       void updateBooleanResult(boolean value, long time);
     }
 
+    public interface MaxMinByAccumulator {
+      Column readXFromBytesIntermediateInput(byte[] bytes, int offset);
+
+      void updateIntResult(long time, int yValue, Column xColumn, int xIndex);
+
+      void updateLongResult(long time, long yValue, Column xColumn, int xIndex);
+
+      void updateFloatResult(long time, float yValue, Column xColumn, int xIndex);
+
+      void updateDoubleResult(long time, double yValue, Column xColumn, int xIndex);
+
+      void updateBinaryResult(long time, Binary yValue, Column xColumn, int xIndex);
+    }
+
     @FunctionalInterface
     private interface ExtremeValueColumnUpdater {
       void update(ExtremeValueAccumulator accumulator, Column column, int index);
@@ -1241,6 +1409,22 @@ public class TypeServices {
     @FunctionalInterface
     private interface TimeValueFinalSetter {
       void set(TimeValueAccumulator accumulator, Column column);
+    }
+
+    @FunctionalInterface
+    private interface MaxMinByYColumnUpdater {
+      void update(
+          MaxMinByAccumulator accumulator,
+          long time,
+          Column yColumn,
+          int yIndex,
+          Column xColumn,
+          int xIndex);
+    }
+
+    @FunctionalInterface
+    private interface MaxMinByYBytesUpdater {
+      void update(MaxMinByAccumulator accumulator, long time, byte[] bytes, int offset);
     }
   }
 

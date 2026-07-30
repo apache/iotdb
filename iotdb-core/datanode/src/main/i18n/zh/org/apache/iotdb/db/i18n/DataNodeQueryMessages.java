@@ -430,6 +430,8 @@ public final class DataNodeQueryMessages {
       "\"%s\" 无法转换为 [%s]";
   public static final String UNSUPPORTED_DATA_TYPE_FMT =
       "不支持的数据类型 %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_MIN_BY_FMT =
+      "MaxBy/MinBy 不支持的数据类型：%s";
   public static final String TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT =
       "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
