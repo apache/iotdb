@@ -26,8 +26,10 @@ import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -48,6 +50,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -57,12 +61,15 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useSSL,
         trustStorePath,
         trustStorePwd,
+        keyStorePath,
+        keyStorePwd,
         useLeaderCache,
         loadBalanceStrategy,
         userEntity,
@@ -70,7 +77,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -112,7 +120,10 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   }
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
-    if (!useLeaderCache || deviceId == null || endPoint == null) {
+    if (!useLeaderCache
+        || deviceId == null
+        || endPoint == null
+        || UrlUtils.isWildcardAddress(endPoint.getIp())) {
       return;
     }
 
@@ -126,7 +137,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to update leader cache for device {} with endpoint {}:{}.",
+          DataNodePipeMessages.FAILED_TO_UPDATE_LEADER_CACHE_FOR_DEVICE,
           deviceId,
           endPoint.getIp(),
           endPoint.getPort(),

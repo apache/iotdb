@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.binaryallocator.autoreleaser;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +74,7 @@ public abstract class Releaser implements Runnable {
       return;
     }
 
-    LOGGER.info("Stopping {}", name);
+    LOGGER.info(CommonMessages.STOPPING_COMPONENT, name);
 
     cancel();
     executor.shutdown();
@@ -81,7 +82,8 @@ public abstract class Releaser implements Runnable {
       boolean result =
           executor.awaitTermination(shutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
       if (!result) {
-        LOGGER.info("unable to stop auto releaser after {} ms", shutdownTimeoutDuration.toMillis());
+        LOGGER.info(
+            CommonMessages.UNABLE_TO_STOP_AUTO_RELEASER, shutdownTimeoutDuration.toMillis());
       }
     } catch (final InterruptedException ignored) {
       Thread.currentThread().interrupt();

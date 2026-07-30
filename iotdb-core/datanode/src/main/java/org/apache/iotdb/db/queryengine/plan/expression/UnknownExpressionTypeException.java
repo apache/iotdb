@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 public class UnknownExpressionTypeException extends IllegalArgumentException {
 
   public UnknownExpressionTypeException(ExpressionType expressionType) {
-    super("Unsupported expression type: " + expressionType);
+    super(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE + expressionType);
   }
 }

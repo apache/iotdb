@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,27 +32,38 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class CreatePipe extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreatePipe.class);
 
   private final String pipeName;
   private final boolean ifNotExistsCondition;
-  private final Map<String, String> extractorAttributes;
+  private final Map<String, String> sourceAttributes;
   private final Map<String, String> processorAttributes;
-  private final Map<String, String> connectorAttributes;
+  private final Map<String, String> sinkAttributes;
 
   public CreatePipe(
       final String pipeName,
       final boolean ifNotExistsCondition,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> connectorAttributes) {
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+      final Map<String, String> sinkAttributes) {
+    this.pipeName =
+        requireNonNull(
+            pipeName, DataNodeQueryMessages.EXCEPTION_PIPE_NAME_CAN_NOT_BE_NULL_14570979);
     this.ifNotExistsCondition = ifNotExistsCondition;
-    this.extractorAttributes =
-        requireNonNull(extractorAttributes, "extractor/source attributes can not be null");
+    this.sourceAttributes =
+        requireNonNull(
+            sourceAttributes,
+            DataNodeQueryMessages
+                .EXCEPTION_EXTRACTOR_SLASH_SOURCE_ATTRIBUTES_CAN_NOT_BE_NULL_2B3A656B);
     this.processorAttributes =
-        requireNonNull(processorAttributes, "processor attributes can not be null");
-    this.connectorAttributes =
-        requireNonNull(connectorAttributes, "connector attributes can not be null");
+        requireNonNull(
+            processorAttributes,
+            DataNodeQueryMessages.EXCEPTION_PROCESSOR_ATTRIBUTES_CAN_NOT_BE_NULL_FFF91008);
+    this.sinkAttributes =
+        requireNonNull(
+            sinkAttributes,
+            DataNodeQueryMessages.EXCEPTION_CONNECTOR_ATTRIBUTES_CAN_NOT_BE_NULL_7AF2F613);
   }
 
   public String getPipeName() {
@@ -57,31 +74,27 @@ public class CreatePipe extends PipeStatement {
     return ifNotExistsCondition;
   }
 
-  public Map<String, String> getExtractorAttributes() {
-    return extractorAttributes;
+  public Map<String, String> getSourceAttributes() {
+    return sourceAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
+  public Map<String, String> getSinkAttributes() {
+    return sinkAttributes;
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreatePipe(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreatePipe(this, context);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        pipeName,
-        ifNotExistsCondition,
-        extractorAttributes,
-        processorAttributes,
-        connectorAttributes);
+        pipeName, ifNotExistsCondition, sourceAttributes, processorAttributes, sinkAttributes);
   }
 
   @Override
@@ -95,9 +108,9 @@ public class CreatePipe extends PipeStatement {
     CreatePipe other = (CreatePipe) obj;
     return Objects.equals(pipeName, other.pipeName)
         && Objects.equals(ifNotExistsCondition, other.ifNotExistsCondition)
-        && Objects.equals(extractorAttributes, other.extractorAttributes)
+        && Objects.equals(sourceAttributes, other.sourceAttributes)
         && Objects.equals(processorAttributes, other.processorAttributes)
-        && Objects.equals(connectorAttributes, other.connectorAttributes);
+        && Objects.equals(sinkAttributes, other.sinkAttributes);
   }
 
   @Override
@@ -105,9 +118,20 @@ public class CreatePipe extends PipeStatement {
     return toStringHelper(this)
         .add("pipeName", pipeName)
         .add("ifNotExistsCondition", ifNotExistsCondition)
-        .add("extractorAttributes", extractorAttributes)
+        .add("extractorAttributes", sourceAttributes)
         .add("processorAttributes", processorAttributes)
-        .add("connectorAttributes", connectorAttributes)
+        .add("connectorAttributes", sinkAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pipeName);
+    size += RamUsageEstimator.sizeOfMap(sourceAttributes);
+    size += RamUsageEstimator.sizeOfMap(processorAttributes);
+    size += RamUsageEstimator.sizeOfMap(sinkAttributes);
+    return size;
   }
 }

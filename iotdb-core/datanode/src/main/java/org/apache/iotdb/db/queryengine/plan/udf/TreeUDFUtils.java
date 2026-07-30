@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.udf;
 
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.UDTF;
 

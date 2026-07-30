@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -78,10 +80,27 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
   }
 
   @Override
+  public synchronized void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
+    isSubmitted = false;
+    if (isConsensusDrivenTopic()) {
+      return;
+    }
+    super.onSuccess(hasAtLeastOneEventProcessed);
+  }
+
+  @Override
   public synchronized void onFailure(final Throwable throwable) {
     isSubmitted = false;
 
-    // just resubmit
+    if (isConsensusDrivenTopic()) {
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONSINKSUBTASK_FOR_CONSENSUS_TOPIC_FAILED_UNEXPECTEDLY_FC41B565,
+          topicName,
+          throwable);
+      return;
+    }
+
     submitSelf();
   }
 
@@ -91,6 +110,14 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
       return false;
     }
 
+    if (isConsensusDrivenTopic()) {
+      return false;
+    }
+
     return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
+  }
+
+  private boolean isConsensusDrivenTopic() {
+    return ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
   }
 }

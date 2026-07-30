@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -37,7 +37,7 @@ public class AddCQPlan extends ConfigPhysicalPlan {
 
   private TCreateCQReq req;
 
-  private String md5;
+  private String cqToken;
 
   private long firstExecutionTime;
 
@@ -45,12 +45,12 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     super(ADD_CQ);
   }
 
-  public AddCQPlan(TCreateCQReq req, String md5, long firstExecutionTime) {
+  public AddCQPlan(TCreateCQReq req, String cqToken, long firstExecutionTime) {
     super(ADD_CQ);
     Validate.notNull(req);
-    Validate.notNull(md5);
+    Validate.notNull(cqToken);
     this.req = req;
-    this.md5 = md5;
+    this.cqToken = cqToken;
     this.firstExecutionTime = firstExecutionTime;
   }
 
@@ -58,8 +58,8 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     return req;
   }
 
-  public String getMd5() {
-    return md5;
+  public String getCqToken() {
+    return cqToken;
   }
 
   public long getFirstExecutionTime() {
@@ -70,14 +70,14 @@ public class AddCQPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
-    ReadWriteIOUtils.write(md5, stream);
+    ReadWriteIOUtils.write(cqToken, stream);
     ReadWriteIOUtils.write(firstExecutionTime, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     req = ThriftCommonsSerDeUtils.deserializeTCreateCQReq(buffer);
-    md5 = ReadWriteIOUtils.readString(buffer);
+    cqToken = ReadWriteIOUtils.readString(buffer);
     firstExecutionTime = ReadWriteIOUtils.readLong(buffer);
   }
 
@@ -95,11 +95,11 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     AddCQPlan addCQPlan = (AddCQPlan) o;
     return firstExecutionTime == addCQPlan.firstExecutionTime
         && Objects.equals(req, addCQPlan.req)
-        && Objects.equals(md5, addCQPlan.md5);
+        && Objects.equals(cqToken, addCQPlan.cqToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), req, md5, firstExecutionTime);
+    return Objects.hash(super.hashCode(), req, cqToken, firstExecutionTime);
   }
 }

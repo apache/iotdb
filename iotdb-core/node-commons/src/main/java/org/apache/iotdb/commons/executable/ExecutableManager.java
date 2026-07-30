@@ -20,9 +20,11 @@
 package org.apache.iotdb.commons.executable;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
+import org.apache.iotdb.commons.utils.IOUtils;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +83,6 @@ public class ExecutableManager {
 
   private void downloadExecutables(List<String> uris, long requestId)
       throws IOException, URISyntaxException {
-    // TODO: para download
     try {
       for (String uriString : uris) {
         final URL url = new URI(uriString).toURL();
@@ -96,26 +97,11 @@ public class ExecutableManager {
     }
   }
 
-  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
-      throws IOException {
-    FileUtils.moveFileToDirectory(
-        getFileByFullPath(
-            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
-        getFileByFullPath(libRoot),
-        false);
-  }
-
   // endregion
 
   // ======================================================
   // region File under LibRoot
   // ======================================================
-
-  public void copyFileToExtLibDir(String filePath) throws IOException {
-    FileUtils.copyFileToDirectory(
-        FSFactoryProducer.getFSFactory().getFile(filePath),
-        FSFactoryProducer.getFSFactory().getFile(this.libRoot));
-  }
 
   public void removeFileUnderLibRoot(String fileName) throws IOException {
     Path path = Paths.get(this.libRoot + File.separator + fileName);
@@ -212,15 +198,19 @@ public class ExecutableManager {
       if (size > Integer.MAX_VALUE) {
         // Max length of Thrift Binary is Integer.MAX_VALUE bytes.
         throw new TriggerJarTooLargeException(
-            String.format("Size of file exceed %d bytes", Integer.MAX_VALUE));
+            String.format(
+                CommonMessages.EXCEPTION_SIZE_FILE_EXCEED_ARG_BYTES_C60F1149, Integer.MAX_VALUE));
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
-      fileChannel.read(byteBuffer);
+      IOUtils.readFully(fileChannel, byteBuffer);
       byteBuffer.flip();
       return byteBuffer;
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred during transferring file{} to ByteBuffer, the cause is {}", filePath, e);
+          CommonMessages
+              .LOG_ERROR_OCCURRED_DURING_TRANSFERRING_FILE_ARG_BYTEBUFFER_CAUSE_ARG_FEDC38A3,
+          filePath,
+          e);
       throw e;
     }
   }
@@ -238,7 +228,8 @@ public class ExecutableManager {
         }
         Files.createFile(path);
       }
-      // FileOutPutStream is not in append mode by default, so the file will be overridden if it
+      // FileOutPutStream is not in append mode by default, so the file will be
+      // overridden if it
       // already exists.
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);
@@ -246,7 +237,9 @@ public class ExecutableManager {
       }
     } catch (IOException e) {
       LOGGER.warn(
-          "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);
+          CommonMessages.LOG_ERROR_OCCURRED_DURING_WRITING_BYTEBUFFER_ARG_CAUSE_ARG_F3AD2DA0,
+          destination,
+          e);
       throw e;
     }
   }

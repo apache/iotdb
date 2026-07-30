@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
@@ -87,21 +89,23 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private void catchFailedInitialization(TTransportException e) throws RPCServiceException {
     close();
     if (threadStopLatch == null) {
-      logger.debug("Stop Count Down latch is null");
+      logger.debug(ServiceMessages.STOP_COUNT_DOWN_LATCH_IS_NULL);
     } else {
-      logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
+      logger.debug(ServiceMessages.STOP_COUNT_DOWN_LATCH_IS, threadStopLatch.getCount());
     }
     if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
       threadStopLatch.countDown();
     }
     logger.debug(
-        "{}: close TThreadPoolServer and TServerSocket for {}",
+        ServiceMessages.CLOSE_THREAD_POOL_SERVER_AND_SERVER_SOCKET,
         IoTDBConstant.GLOBAL_DB_NAME,
         serviceName);
-    logger.error("failed to start, because ", e.getCause());
+    logger.error(ServiceMessages.FAILED_TO_START_BECAUSE, e.getCause());
     throw new RPCServiceException(
         String.format(
-            "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
+            ServiceMessages.FAILED_TO_START_SERVICE_BECAUSE,
+            IoTDBConstant.GLOBAL_DB_NAME,
+            serviceName),
         e);
   }
 
@@ -146,7 +150,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
           poolServer = new THsHaServer(poolArgs1);
           break;
         default:
-          logger.error("Unexpected serverType {}", serverType);
+          logger.error(ServiceMessages.UNEXPECTED_SERVER_TYPE, serverType);
       }
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
@@ -177,13 +181,15 @@ public abstract class AbstractThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
+      RpcSslUtils.validateKeyStore(keyStorePath, keyStorePwd);
       TSSLTransportFactory.TSSLTransportParameters params =
-          new TSSLTransportFactory.TSSLTransportParameters();
-      params.setKeyStore(keyStorePath, keyStorePwd);
+          RpcSslUtils.createTSSLTransportParameters();
+      RpcSslUtils.setKeyStore(params, keyStorePath, keyStorePwd);
       if (trustStorePath != null && !trustStorePath.isEmpty()) {
-        params.setTrustStore(trustStorePath, trustStorePwd);
+        RpcSslUtils.validateTrustStore(trustStorePath, trustStorePwd);
+        RpcSslUtils.setTrustStore(params, trustStorePath, trustStorePwd);
+        params.requireClientAuth(true);
       }
-      params.requireClientAuth(false);
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
           TSSLTransportFactory.getServerSocket(
@@ -277,14 +283,21 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    // bind any address
-    return new TServerSocket(new InetSocketAddress(port));
+    if (bindAddress == null) {
+      // bind any address
+      return new TServerSocket(new InetSocketAddress(port));
+    }
+    return new TServerSocket(new InetSocketAddress(bindAddress, port));
   }
 
   private TServerTransport openNonblockingTransport(
       String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
-    // bind any address
-    return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    if (bindAddress == null) {
+      // bind any address
+      return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    }
+    return new TNonblockingServerSocket(
+        new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
@@ -294,25 +307,27 @@ public abstract class AbstractThriftServiceThread extends Thread {
   @SuppressWarnings("squid:S2093") // socket will be used later
   @Override
   public void run() {
-    logger.info("The {} service thread begin to run...", serviceName);
+    logger.info(ServiceMessages.SERVICE_THREAD_BEGIN_TO_RUN, serviceName);
     try {
       poolServer.serve();
     } catch (Exception e) {
       throw new RPCServiceException(
-          String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName), e);
+          String.format(
+              ServiceMessages.SERVICE_EXIT_BECAUSE, IoTDBConstant.GLOBAL_DB_NAME, serviceName),
+          e);
     } finally {
       close();
       if (threadStopLatch == null) {
-        logger.debug("Stop Count Down latch is null");
+        logger.debug(ServiceMessages.STOP_COUNT_DOWN_LATCH_IS_NULL);
       } else {
-        logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
+        logger.debug(ServiceMessages.STOP_COUNT_DOWN_LATCH_IS, threadStopLatch.getCount());
       }
 
       if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
         threadStopLatch.countDown();
       }
       logger.debug(
-          "{}: close TThreadPoolServer and TServerSocket for {}",
+          ServiceMessages.CLOSE_THREAD_POOL_SERVER_AND_SERVER_SOCKET,
           IoTDBConstant.GLOBAL_DB_NAME,
           serviceName);
     }

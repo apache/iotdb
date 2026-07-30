@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class StopPipe extends PipeStatement {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(StopPipe.class);
 
   private final String pipeName;
 
   public StopPipe(final String pipeName) {
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+    this.pipeName =
+        requireNonNull(
+            pipeName, DataNodeQueryMessages.EXCEPTION_PIPE_NAME_CAN_NOT_BE_NULL_14570979);
   }
 
   public String getPipeName() {
@@ -37,8 +46,8 @@ public class StopPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitStopPipe(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitStopPipe(this, context);
   }
 
   @Override
@@ -61,5 +70,13 @@ public class StopPipe extends PipeStatement {
   @Override
   public String toString() {
     return toStringHelper(this).add("pipeName", pipeName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pipeName);
+    return size;
   }
 }

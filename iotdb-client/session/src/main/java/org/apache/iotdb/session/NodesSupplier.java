@@ -22,6 +22,8 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.UrlUtils;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +42,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodesSupplier.class);
 
   private static final long UPDATE_PERIOD_IN_S = 60;
-  private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
-
-  private static final String STATUS_COLUMN_NAME = "Status";
+  private static final String SHOW_AVAILABLE_URLS_COMMAND = "SHOW AVAILABLE URLS";
 
   private static final String IP_COLUMN_NAME = "RpcAddress";
 
   private static final String PORT_COLUMN_NAME = "RpcPort";
-
-  private static final String REMOVING_STATUS = "Removing";
 
   // it's ok that TIMEOUT_IN_MS is larger than UPDATE_PERIOD_IN_S, because the next update request
   // won't be scheduled until last time is done.
@@ -64,6 +62,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final boolean useSSL;
   private final String trustStore;
   private final String trustStorePwd;
+  private final String keyStore;
+  private final String keyStorePwd;
+  private final String sslProtocol;
   private final boolean enableRPCCompression;
   private final String userName;
 
@@ -98,6 +99,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       boolean enableRPCCompression,
       String version) {
 
@@ -113,6 +117,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             useSSL,
             trustStore,
             trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
             enableRPCCompression,
             version);
 
@@ -135,6 +142,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       boolean enableRPCCompression,
       String version) {
     this.availableNodes.addAll(new HashSet<>(endPointList));
@@ -143,6 +153,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.keyStore = keyStore;
+    this.keyStorePwd = keyStorePwd;
+    this.sslProtocol = sslProtocol;
     this.enableRPCCompression = enableRPCCompression;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -191,6 +204,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           useSSL,
           trustStore,
           trustStorePwd,
+          keyStore,
+          keyStorePwd,
+          sslProtocol,
           userName,
           password,
           enableRPCCompression,
@@ -198,7 +214,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           version);
       return true;
     } catch (Exception e) {
-      LOGGER.warn("Failed to create connection with {}.", endPoint);
+      LOGGER.warn(SessionMessages.FAILED_TO_CREATE_CONNECTION, endPoint);
       destroyCurrentClient();
       return false;
     }
@@ -228,28 +244,31 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private boolean updateDataNodeList() {
     try (SessionDataSet sessionDataSet =
-        client.executeQueryStatement(SHOW_DATA_NODES_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
-      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-      List<TEndPoint> res = new ArrayList<>();
-      while (iterator.next()) {
-        String ip = iterator.getString(IP_COLUMN_NAME);
-        // ignore 0.0.0.0 and removing DN
-        if (!REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
-            && !"0.0.0.0".equals(ip)) {
-          String port = iterator.getString(PORT_COLUMN_NAME);
-          if (ip != null && port != null) {
-            res.add(new TEndPoint(ip, Integer.parseInt(port)));
-          }
+        client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
+      updateAvailableNodes(sessionDataSet);
+    } catch (Exception e1) {
+      LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, client.endPoint);
+      return false;
+    }
+    return true;
+  }
+
+  private void updateAvailableNodes(SessionDataSet sessionDataSet) throws Exception {
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    List<TEndPoint> res = new ArrayList<>();
+    while (iterator.next()) {
+      String ip = iterator.getString(IP_COLUMN_NAME);
+      // ignore wildcard addresses
+      if (!UrlUtils.isWildcardAddress(ip)) {
+        String port = iterator.getString(PORT_COLUMN_NAME);
+        if (ip != null && port != null) {
+          res.add(new TEndPoint(ip, Integer.parseInt(port)));
         }
       }
-      // replace the older ones.
-      if (!res.isEmpty()) {
-        availableNodes = res;
-      }
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
-      return false;
+    }
+    // replace the older ones.
+    if (!res.isEmpty()) {
+      availableNodes = res;
     }
   }
 }

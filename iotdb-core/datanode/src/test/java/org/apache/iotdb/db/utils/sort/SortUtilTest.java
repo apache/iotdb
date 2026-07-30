@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.utils.sort;
 
+import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.calc.utils.sort.FileSpillerReader;
+import org.apache.iotdb.calc.utils.sort.MemoryReader;
+import org.apache.iotdb.calc.utils.sort.SortBufferManager;
+import org.apache.iotdb.calc.utils.sort.SortReader;
+import org.apache.iotdb.calc.utils.sort.TreeDiskSpiller;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -98,7 +103,7 @@ public class SortUtilTest {
     SortBufferManager sortBufferManager =
         new SortBufferManager(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-            IoTDBDescriptor.getInstance().getConfig().getSortBufferSize());
+            CommonDescriptor.getInstance().getConfig().getSortBufferSize());
     try {
       sortBufferManager.allocateOneSortBranch();
       diskSpiller.spillSortedData(sortKeyList);

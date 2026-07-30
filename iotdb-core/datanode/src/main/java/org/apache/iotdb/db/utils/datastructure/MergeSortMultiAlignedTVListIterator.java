@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -62,7 +64,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -75,7 +78,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         floatPrecision,
         encodingList,
         ignoreAllNullRows,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.probeIterators =
         IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toSet());
     this.bitMap = new BitMap(tsDataTypeList.size());
@@ -89,6 +93,20 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
                     a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
                 : (a, b) ->
                     a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < alignedTvListIterators.size(); i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -258,6 +276,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             valueChunkWriter.write(
                 currentTime,
@@ -266,7 +285,9 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
+                String.format(
+                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    tsDataTypeList.get(columnIndex)));
         }
       }
       next();
@@ -291,5 +312,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.alignedTvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

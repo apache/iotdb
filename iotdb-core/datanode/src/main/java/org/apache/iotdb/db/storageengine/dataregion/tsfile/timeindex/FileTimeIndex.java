@@ -21,10 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -72,7 +75,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
+  public FileTimeIndex deserialize(InputStream inputStream, IDeviceID.Deserializer deserializer)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -105,15 +109,76 @@ public class FileTimeIndex implements ITimeIndex {
         return Collections.emptySet();
       } else {
         logger.error(
-            "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+            StorageEngineMessages.STORAGE_LOG_CAN_T_READ_FILE_FROM_DISK_F5625609,
+            tsFilePath + TsFileResource.RESOURCE_SUFFIX,
+            e);
         throw new RuntimeException(
-            "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_CAN_T_READ_FILE_S_S_FROM_DISK_9D5066C0,
+                tsFilePath,
+                TsFileResource.RESOURCE_SUFFIX));
       }
     } catch (Exception e) {
       logger.error(
-          "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+          StorageEngineMessages.STORAGE_LOG_FAILED_TO_GET_DEVICES_FROM_TSFILE_F94CF47B,
+          tsFilePath + TsFileResource.RESOURCE_SUFFIX,
+          e);
       throw new RuntimeException(
-          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FAILED_TO_GET_DEVICES_FROM_TSFILE_S_S_412EEA1A,
+              tsFilePath,
+              TsFileResource.RESOURCE_SUFFIX));
+    } finally {
+      tsFileResource.readUnlock();
+    }
+  }
+
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
+    tsFileResource.readLock();
+    try {
+      try (IOUtils.RatelimitedInputStream inputStream =
+          new IOUtils.RatelimitedInputStream(
+              FSFactoryProducer.getFSFactory()
+                  .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX),
+              limiter)) {
+        // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+        byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
+
+        if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
+          return ArrayDeviceTimeIndex.getDevices(inputStream);
+        } else {
+          return PlainDeviceTimeIndex.getDevices(inputStream);
+        }
+      }
+    } catch (NoSuchFileException e) {
+      // deleted by ttl
+      if (tsFileResource.isDeleted()) {
+        return Collections.emptySet();
+      } else {
+        logger.error(
+            StorageEngineMessages.STORAGE_LOG_CAN_T_READ_FILE_FROM_DISK_F5625609,
+            tsFilePath + TsFileResource.RESOURCE_SUFFIX,
+            e);
+        throw new RuntimeException(
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_CAN_T_READ_FILE_S_S_FROM_DISK_9D5066C0,
+                tsFilePath,
+                TsFileResource.RESOURCE_SUFFIX));
+      }
+    } catch (Exception e) {
+      logger.error(
+          StorageEngineMessages.STORAGE_LOG_FAILED_TO_GET_DEVICES_FROM_TSFILE_F94CF47B,
+          tsFilePath + TsFileResource.RESOURCE_SUFFIX,
+          e);
+      throw new RuntimeException(
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FAILED_TO_GET_DEVICES_FROM_TSFILE_S_S_412EEA1A,
+              tsFilePath,
+              TsFileResource.RESOURCE_SUFFIX));
     } finally {
       tsFileResource.readUnlock();
     }
@@ -222,8 +287,9 @@ public class FileTimeIndex implements ITimeIndex {
     } else if (timeIndex instanceof FileTimeIndex) {
       return Long.compare(startTime, timeIndex.getMinStartTime());
     } else {
-      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
+      throw new RuntimeException(
+          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
     }
   }
 

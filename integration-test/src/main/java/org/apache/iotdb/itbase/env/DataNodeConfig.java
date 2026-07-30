@@ -36,6 +36,14 @@ public interface DataNodeConfig {
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 
+  DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad);
+
+  DataNodeConfig setLoadTsFileTabletConversionBatchMemorySizeInBytes(
+      long loadTsFileTabletConversionBatchMemorySizeInBytes);
+
+  DataNodeConfig setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds);
+
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
@@ -51,4 +59,10 @@ public interface DataNodeConfig {
   DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
 
   DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
+
+  DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
+
+  DataNodeConfig setDnDataDirs(String dnDataDirs);
+
+  DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
 }

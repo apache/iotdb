@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +72,7 @@ public abstract class AbstractResultListener {
         try {
           this.wait();
         } catch (InterruptedException e) {
-          logger.warn("Interrupted when waiting for result.", e);
+          logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_FOR_RESULT, e);
           Thread.currentThread().interrupt();
           status = Status.FAILURE;
           break;

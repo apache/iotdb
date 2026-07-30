@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 public interface AccessControl {
 
@@ -205,6 +206,18 @@ public interface AccessControl {
   void checkUserGlobalSysPrivilege(IAuditEntity auditEntity);
 
   /**
+   * Check if user has global SYSTEM privilege and record the authentication audit log with the
+   * specified operation and object.
+   *
+   * @param auditEntity records necessary info for audit log
+   * @param auditLogOperation operation type of the statement being authorized
+   * @param auditObject object affected by the statement
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject);
+
+  /**
    * Check if user has sepecified global privilege
    *
    * @param privilegeType needed privilege
@@ -217,16 +230,29 @@ public interface AccessControl {
 
   // ====================================== TREE =============================================
 
-  TSStatus checkPermissionBeforeProcess(Statement statement, UserEntity userEntity);
+  TSStatus checkPermissionBeforeProcess(Statement statement, TreeAccessCheckContext context);
 
   /** called by load */
   TSStatus checkFullPathWriteDataPermission(
-      IAuditEntity entity, IDeviceID device, String measurementId);
+      IAuditEntity auditEntity, IDeviceID device, String measurementId);
 
   TSStatus checkCanCreateDatabaseForTree(IAuditEntity entity, PartialPath databaseName);
 
-  TSStatus checkCanAlterTemplate(IAuditEntity entity);
+  TSStatus checkCanAlterTemplate(IAuditEntity entity, Supplier<String> auditObject);
 
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);
+
+  TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
+
+  List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
+
+  // ====================================== COMMON =============================================
+  TSStatus allowUserToLogin(String userName);
 }

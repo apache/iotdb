@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.utils;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -30,6 +31,7 @@ import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 
@@ -82,8 +84,10 @@ public class UDFDataTypeTransformer {
         return Type.BLOB;
       case STRING:
         return Type.STRING;
+      case OBJECT:
+        return Type.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 
@@ -112,8 +116,10 @@ public class UDFDataTypeTransformer {
         return BlobType.BLOB;
       case STRING:
         return StringType.STRING;
+      case OBJECT:
+        return ObjectType.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 
@@ -139,8 +145,10 @@ public class UDFDataTypeTransformer {
         return Type.BLOB;
       case 11:
         return Type.STRING;
+      case 12:
+        return Type.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 }

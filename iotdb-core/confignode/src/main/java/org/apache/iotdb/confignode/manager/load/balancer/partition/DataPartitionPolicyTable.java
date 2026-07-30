@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.structure.BalanceTreeMap;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,8 +76,8 @@ public class DataPartitionPolicyTable {
     seriesPartitionSlotCounter.put(
         regionGroupId, seriesPartitionSlotCounter.get(regionGroupId) + 1);
     LOGGER.info(
-        "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} "
-            + "to RegionGroup {}, SeriesPartitionSlot Count: {}",
+        ManagerMessages.ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT
+            + ManagerMessages.LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14,
         seriesPartitionSlot,
         regionGroupId,
         seriesPartitionSlotCounter.get(regionGroupId));
@@ -163,8 +164,9 @@ public class DataPartitionPolicyTable {
         .forEach(
             regionGroupId ->
                 LOGGER.info(
-                    "[ReBalanceDataAllotTable] Database: {}, "
-                        + "RegionGroupId: {}, SeriesPartitionSlot Count: {}",
+                    ManagerMessages.REBALANCEDATAALLOTTABLE_DATABASE
+                        + ManagerMessages
+                            .LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A,
                     database,
                     regionGroupId,
                     seriesPartitionSlotCounter.get(regionGroupId)));

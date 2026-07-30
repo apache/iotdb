@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 

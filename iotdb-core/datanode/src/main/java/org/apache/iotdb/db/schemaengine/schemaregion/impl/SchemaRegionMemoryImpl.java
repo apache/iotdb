@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -26,35 +29,41 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
-import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -65,10 +74,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -122,7 +127,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -154,7 +158,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
+import static org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -254,9 +258,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
-            "Total allocated memory for direct buffer will be "
+            DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_EXCEEDED
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
-                + ", which is greater than limit mem cost: "
+                + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
     }
@@ -291,10 +295,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = false;
     } catch (final IOException e) {
-      logger.error(
-          "Cannot recover all schema info from {}, we try to recover as possible as we can",
-          schemaRegionDirPath,
-          e);
+      logger.error(DataNodeSchemaMessages.CANNOT_RECOVER_ALL_SCHEMA_INFO, schemaRegionDirPath, e);
     }
     initialized = true;
   }
@@ -303,10 +304,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", databaseDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER, databaseDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", databaseDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_DATABASE_SCHEMA_FOLDER_FAILED, databaseDirPath);
           throw new SchemaDirCreationFailureException(databaseDirPath);
         }
       }
@@ -315,10 +317,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
-        logger.info("create schema region folder {}", schemaRegionDirPath);
+        logger.info(DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER, schemaRegionDirPath);
       } else {
         if (!schemaRegionFolder.exists()) {
-          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
+          logger.error(
+              DataNodeSchemaMessages.CREATE_SCHEMA_REGION_FOLDER_FAILED, schemaRegionDirPath);
           throw new SchemaDirCreationFailureException(schemaRegionDirPath);
         }
       }
@@ -358,7 +361,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           logWriter.force();
         }
       } catch (final IOException e) {
-        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+        logger.error(DataNodeSchemaMessages.CANNOT_FORCE_MLOG, schemaRegionId, e);
       }
     }
   }
@@ -395,12 +398,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
         idx = applyMLog(mLogReader);
         logger.debug(
-            "spend {} ms to deserialize {} mtree from mlog.bin",
+            DataNodeSchemaMessages.SPEND_TIME_DESERIALIZE_MTREE,
             System.currentTimeMillis() - time,
             databaseFullPath);
         return idx;
       } catch (final Exception e) {
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin", e);
+        throw new IOException(
+            DataNodeSchemaMessages.FAILED_TO_PARSE_MLOG
+                + databaseFullPath
+                + DataNodeSchemaMessages.MLOG_BIN_SUFFIX,
+            e);
       }
     } else {
       return 0;
@@ -417,7 +424,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         plan = mLogReader.next();
         idx++;
       } catch (Exception e) {
-        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        logger.error(DataNodeSchemaMessages.PARSE_MLOG_ERROR, idx, e);
         break;
       }
       if (plan == null) {
@@ -426,15 +433,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       operationResult = plan.accept(recoverPlanOperator, this);
       if (operationResult.isFailed()) {
         logger.error(
-            "Can not operate cmd {} for err:",
+            DataNodeSchemaMessages.CANNOT_OPERATE_CMD,
             plan.getPlanType().name(),
             operationResult.getException());
       }
     }
 
     if (mLogReader.isFileCorrupted()) {
-      throw new IllegalStateException(
-          "The mlog.bin has been corrupted. Please remove it or fix it, and then restart IoTDB");
+      throw new IllegalStateException(DataNodeSchemaMessages.MLOG_BIN_CORRUPTED);
     }
 
     return idx;
@@ -452,12 +458,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logWriter.close();
         logWriter = null;
       }
-      tagManager.clear();
+      if (tagManager != null) {
+        tagManager.clear();
+      }
 
       isRecovering = true;
       initialized = false;
     } catch (final IOException e) {
-      logger.error("Cannot close metadata log writer, because:", e);
+      logger.error(DataNodeSchemaMessages.CANNOT_CLOSE_METADATA_LOG_WRITER, e);
     }
   }
 
@@ -481,7 +489,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     clear();
 
     // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    SchemaRegionUtils.deleteSchemaRegionFolder(
+        schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
@@ -492,12 +501,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized boolean createSnapshot(final File snapshotDir) {
     if (!initialized) {
-      logger.warn(
-          "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
-          schemaRegionId);
+      logger.warn(DataNodeSchemaMessages.FAILED_TO_CREATE_SNAPSHOT_NOT_INITIALIZED, schemaRegionId);
       return false;
     }
-    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_CREATE_SNAPSHOT, schemaRegionId);
     boolean isSuccess;
     boolean currentResult;
     final long startTime = System.currentTimeMillis();
@@ -505,7 +512,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     long snapshotStartTime = System.currentTimeMillis();
     isSuccess = mTree.createSnapshot(snapshotDir);
     logger.info(
-        "MTree snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.MTREE_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         isSuccess);
@@ -514,7 +521,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = tagManager.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Tag snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.TAG_SNAPSHOT_CREATION_COST_WITH_STATUS,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
@@ -523,7 +530,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = deviceAttributeStore.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.DEVICE_ATTR_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
@@ -532,18 +539,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     currentResult = deviceAttributeCacheUpdater.createSnapshot(snapshotDir);
     isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute remote updater snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        DataNodeSchemaMessages.DEVICE_ATTR_UPDATER_SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - snapshotStartTime,
         currentResult);
 
     logger.info(
-        "Snapshot creation of schemaRegion {} costs {}ms.",
+        DataNodeSchemaMessages.SNAPSHOT_CREATION_COST,
         schemaRegionId,
         System.currentTimeMillis() - startTime);
 
     if (isSuccess) {
-      logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_CREATE_SNAPSHOT, schemaRegionId);
     }
 
     return isSuccess;
@@ -551,10 +558,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     clear();
 
-    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    logger.info(DataNodeSchemaMessages.START_LOADING_SNAPSHOT, schemaRegionId);
     final long startTime = System.currentTimeMillis();
 
     try {
@@ -566,7 +573,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
-          "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.DEVICE_ATTR_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -575,7 +582,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           new DeviceAttributeCacheUpdater(regionStatistics, databaseFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
-          "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.DEVICE_ATTR_UPDATER_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -583,7 +590,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
-          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.TAG_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -607,7 +614,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (final IOException e) {
                   logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
                       databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
                       schemaRegionId);
                 }
@@ -634,7 +641,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               tagManager::readTags,
               tagManager::readAttributes);
       logger.info(
-          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.MTREE_SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - snapshotStartTime);
 
@@ -642,24 +649,25 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       initialized = true;
 
       logger.info(
-          "Snapshot loading of schemaRegion {} costs {}ms.",
+          DataNodeSchemaMessages.SNAPSHOT_LOADING_COST,
           schemaRegionId,
           System.currentTimeMillis() - startTime);
-      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
+      logger.info(DataNodeSchemaMessages.SUCCESSFULLY_LOAD_SNAPSHOT, schemaRegionId);
+      return true;
     } catch (final Exception e) {
       logger.error(
-          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
-          schemaRegionId,
-          e.getMessage(),
-          e);
+          DataNodeSchemaMessages.FAILED_TO_LOAD_SNAPSHOT, schemaRegionId, e.getMessage(), e);
       try {
         initialized = false;
         isRecovering = true;
         init();
       } catch (final Exception exception) {
         logger.error(
-            "Error occurred during initializing schemaRegion {}", schemaRegionId, exception);
+            DataNodeSchemaMessages.ERROR_DURING_INIT_SCHEMA_REGION, schemaRegionId, exception);
       }
+      // The snapshot was not loaded (the region fell back to an empty re-initialized state). Report
+      // the failure so callers honoring the loadSnapshot success/failure contract can react.
+      return false;
     }
   }
 
@@ -700,7 +708,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan instanceof CreateTimeSeriesPlanImpl
                       && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
                   || plan instanceof CreateTimeSeriesNode
-                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe(),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -784,7 +795,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
@@ -872,7 +886,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -941,19 +959,34 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+  public void deleteTimeseriesInBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
               SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
                   Collections.singletonList(path)));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
     }
+  }
+
+  @Override
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
+      throws MetadataException {
+    boolean exist = false;
+    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
+      exist |=
+          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
+    }
+    if (!exist) {
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
+    }
+    writeToMLog(node);
   }
 
   @Override
@@ -975,7 +1008,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       writeToMLog(plan);
     }
     // update statistics
-    regionStatistics.addView(1L);
+    regionStatistics.addView(pathList.size());
   }
 
   @Override
@@ -1026,7 +1059,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mTree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
     if (!leafMNode.isLogicalView()) {
       throw new MetadataException(
-          String.format("[%s] is no view.", alterLogicalViewPlan.getViewPath()));
+          String.format(DataNodeSchemaMessages.IS_NO_VIEW, alterLogicalViewPlan.getViewPath()));
     }
     leafMNode.setSchema(
         new LogicalViewSchema(leafMNode.getName(), alterLogicalViewPlan.getSourceExpression()));
@@ -1304,7 +1337,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+          String.format(DataNodeSchemaMessages.TIMESERIES_NO_TAG_ATTRIBUTE, fullPath));
     }
 
     // tags, attributes
@@ -1332,11 +1365,28 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
+          String.format(
+              DataNodeSchemaMessages.TIMESERIES_NO_SPECIFIC_TAG_ATTRIBUTE, fullPath, oldKey),
           true);
     }
     // tags, attributes
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
+  }
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
+    mTree.alterTimeSeriesDataType(
+        leafMNode.getMeasurementPath(), leafMNode.getPartialPath().getMeasurement(), newDataType);
   }
 
   /** remove the node from the tag inverted index */
@@ -1407,12 +1457,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return result;
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta)
+      throws MetadataException {
+    if (delta == 0 || mTree == null) {
+      return;
+    }
+    mTree.updateSubtreeMeasurementCountForTemplate(templateId, delta);
+  }
+
   @Override
   public int fillLastQueryMap(
       final PartialPath pattern,
-      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill,
+      final PathPatternTree scope)
       throws MetadataException {
-    return mTree.fillLastQueryMap(pattern, mapToFill);
+    return mTree.fillLastQueryMap(pattern, mapToFill, scope);
   }
 
   @Override
@@ -1522,7 +1581,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata))
+                    metadata,
+                    null))
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
@@ -1549,7 +1609,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             filterOutputDataTypes,
             inputLocations.size(),
             mockTypeProvider,
-            metadata);
+            metadata,
+            null);
 
     final List<String> attributeNames =
         updateNode.getAssignments().stream()
@@ -1688,7 +1749,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             try {
               return tagManager.readTagFile(offset);
             } catch (final IOException e) {
-              logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+              logger.error(DataNodeSchemaMessages.FAILED_TO_READ_TAG_ATTRIBUTE, e.getMessage(), e);
               return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
             }
           });
@@ -1766,7 +1827,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final ISchemaRegionPlan plan, final SchemaRegionMemoryImpl context) {
       throw new UnsupportedOperationException(
           String.format(
-              "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionMemoryImpl.",
+              DataNodeSchemaMessages.SCHEMA_REGION_PLAN_NOT_SUPPORT_RECOVER_MEMORY,
               plan.getPlanType().name()));
     }
 
@@ -2053,6 +2114,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         dropTableAttribute(dropTableAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        alterEncodingCompressor(alterEncodingCompressorNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

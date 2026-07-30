@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import java.nio.ByteBuffer;
 
 /** This entry class provides a signal to help wal buffer dealing with some special cases. */
@@ -35,7 +37,7 @@ public class WALSignalEntry extends WALEntry {
       case WAL_FILE_INFO_END_MARKER:
         break;
       default:
-        throw new RuntimeException("Cannot use wal info type as wal signal type");
+        throw new RuntimeException(StorageEngineMessages.CANNOT_USE_WAL_INFO_AS_SIGNAL_TYPE);
     }
   }
 

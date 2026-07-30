@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -65,13 +67,14 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn("Executor {} failed to poll driver task from queue", this.getName());
+          logger.warn(
+              DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE, this.getName());
           Thread.currentThread().interrupt();
           break;
         }
 
         if (next == null) {
-          logger.error("DriverTask should never be null");
+          logger.error(DataNodeQueryMessages.DRIVERTASK_SHOULD_NEVER_BE_NULL);
           continue;
         }
 
@@ -82,8 +85,33 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
-            if (rootCause instanceof IoTDBRuntimeException) {
+            Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
+            if (rootCause instanceof CorruptedTsFileException) {
+              // CorruptedTsFileException no longer chains the original IOException as its
+              // cause (it uses addSuppressed instead), so getRootCause returns the exception
+              // itself and we can match it here.
+              CorruptedTsFileException corruptedTsFileException =
+                  (CorruptedTsFileException) rootCause;
+              if (next.getDriver()
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .isExternalTsFileScan()) {
+                logger.info(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              } else {
+                logger.warn(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              }
+              next.setAbortCause(rootCause);
+            } else if (rootCause instanceof IoTDBRuntimeException) {
               next.setAbortCause(rootCause);
             } else if (rootCause instanceof IoTDBException) {
               next.setAbortCause(rootCause);
@@ -92,7 +120,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
                   new IoTDBRuntimeException(
                       rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true));
             } else {
-              logger.warn("[ExecuteFailed]", rootCause);
+              logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
               next.setAbortCause(
                   new DriverTaskAbortedException(
                       next.getDriverTaskId().getFullId(),
@@ -113,11 +141,12 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // Unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor {} exits because it's interrupted. We will produce another thread to replace.",
+            DataNodeQueryMessages
+                .EXECUTOR_ARG_EXITS_BECAUSE_IT_S_INTERRUPTED_WE_WILL_PRODUCE_ANOTHER_THREAD_TO_REPLACE,
             this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {
-        logger.info("Executor {} exits because it is closed.", this.getName());
+        logger.info(DataNodeQueryMessages.EXECUTOR_EXITS_BECAUSE_IT_IS_CLOSED, this.getName());
       }
     }
   }

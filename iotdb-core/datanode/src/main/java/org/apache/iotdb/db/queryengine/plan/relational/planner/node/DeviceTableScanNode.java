@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -48,7 +50,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected List<DeviceEntry> deviceEntries;
 
-  // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
+  // Indicates the respective index order of tag and attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
   // `tagAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
@@ -76,6 +78,9 @@ public class DeviceTableScanNode extends TableScanNode {
   protected boolean pushLimitToEachDevice = false;
 
   protected transient boolean containsNonAlignedDevice;
+
+  // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
+  @Nullable protected String topKRuntimeFilterSourceId;
 
   protected DeviceTableScanNode() {}
 
@@ -121,26 +126,29 @@ public class DeviceTableScanNode extends TableScanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceTableScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitDeviceTableScan(this, context);
   }
 
   @Override
   public DeviceTableScanNode clone() {
-    return new DeviceTableScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice);
+    DeviceTableScanNode cloned =
+        new DeviceTableScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice);
+    cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return cloned;
   }
 
   protected static void serializeMemberVariables(
@@ -168,6 +176,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, byteBuffer);
   }
 
   protected static void serializeMemberVariables(
@@ -196,6 +206,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, stream);
   }
 
   protected static void deserializeMemberVariables(
@@ -225,6 +237,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
+    node.topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
@@ -303,6 +317,15 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setContainsNonAlignedDevice() {
     this.containsNonAlignedDevice = true;
+  }
+
+  @Nullable
+  public String getTopKRuntimeFilterSourceId() {
+    return topKRuntimeFilterSourceId;
+  }
+
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
+    this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 
   public String toString() {

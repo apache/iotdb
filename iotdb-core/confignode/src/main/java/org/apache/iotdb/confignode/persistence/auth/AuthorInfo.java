@@ -24,18 +24,24 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -51,24 +57,81 @@ public class AuthorInfo implements SnapshotProcessor {
   public static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String NO_USER_MSG = "No such user : ";
 
-  private IAuthorizer authorizer;
-  private volatile AuthorPlanExecutor authorPlanExecutor;
+  protected IAuthorizer authorizer;
+  protected volatile IAuthorPlanExecutor authorPlanExecutor;
 
   public AuthorInfo() {
     try {
       authorizer = BasicAuthorizer.getInstance();
       authorPlanExecutor = new AuthorPlanExecutor(authorizer);
     } catch (AuthException e) {
-      LOGGER.error("get user or role permissionInfo failed because ", e);
+      LOGGER.error(ConfigNodeMessages.GET_USER_OR_ROLE_PERMISSIONINFO_FAILED_BECAUSE, e);
     }
   }
 
-  public void setAuthorQueryPlanExecutor(AuthorPlanExecutor authorPlanExecutor) {
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
+    if (authorType < 0) {
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
+    }
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorType == AuthorType.ACCOUNT_UNLOCK.ordinal()) {
+      return ConfigPhysicalPlanType.AccountUnlock;
+    } else if (authorType >= AuthorType.RENAME_USER.ordinal()) {
+      AuthorType type = AuthorType.values()[authorType];
+      switch (type) {
+        case RENAME_USER:
+          return ConfigPhysicalPlanType.RenameUser;
+        case UPDATE_USER_MAX_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMaxSession;
+        case UPDATE_USER_MIN_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMinSession;
+        default:
+          throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
+      }
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[authorType + ConfigPhysicalPlanType.CreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case UpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+          break;
+        case DropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
+  }
+
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorRType(int authorRType) {
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorRType == AuthorRType.RENAME_USER.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
+    } else if (authorRType == AuthorRType.ACCOUNT_UNLOCK.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RAccountUnlock;
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[
+              authorRType + ConfigPhysicalPlanType.RCreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case RUpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;
+          break;
+        case RDropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RDropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
+  }
+
+  public void setAuthorQueryPlanExecutor(IAuthorPlanExecutor authorPlanExecutor) {
     this.authorPlanExecutor = authorPlanExecutor;
   }
 
-  public TPermissionInfoResp login(String username, String password) {
-    return authorPlanExecutor.login(username, password);
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorPlanExecutor.login(username, password, useEncryptedPassword);
   }
 
   public String login4Pipe(final String username, final String password) {
@@ -95,34 +158,79 @@ public class AuthorInfo implements SnapshotProcessor {
     return authorPlanExecutor.executeRelationalAuthorNonQuery(authorPlan);
   }
 
-  public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUsers(plan);
+  public PermissionInfoResp executeListUsers(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUsers(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRoles(plan);
+  public PermissionInfoResp executeListRoles(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRoles(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRolePrivileges(plan);
+  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRolePrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUserPrivileges(plan);
+  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUserPrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission) {
+    try {
+      return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+    } catch (AuthException e) {
+      TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
+  }
+
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
       throws AuthException {
-    return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+    return authorPlanExecutor.generateRawAuthorizedPTree(username, type);
   }
 
-  public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
-      throws AuthException {
-    return authorPlanExecutor.checkRoleOfUser(username, roleName);
+  public TPermissionInfoResp checkRoleOfUser(String username, String roleName) {
+    try {
+      return authorPlanExecutor.checkRoleOfUser(username, roleName);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TPermissionInfoResp getUser(String username) throws AuthException {
-    return authorPlanExecutor.getUser(username);
+  public TPermissionInfoResp getUser(String username) {
+    try {
+      return authorPlanExecutor.getUser(username);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public String getUserName(long userId) throws AuthException {
@@ -144,9 +252,20 @@ public class AuthorInfo implements SnapshotProcessor {
    *
    * @param username The username of the user that needs to be cached
    */
-  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
-      throws AuthException {
-    return authorPlanExecutor.getUserPermissionInfo(username, type);
+  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type) {
+    try {
+      return authorPlanExecutor.getUserPermissionInfo(username, type);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
+  }
+
+  public TSStatus enableSeparationOfAdminPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException(
+        ConfigNodeMessages.ENABLESEPARATIONOFADMINPOWERS_IS_NOT_SUPPORTED);
   }
 
   @TestOnly

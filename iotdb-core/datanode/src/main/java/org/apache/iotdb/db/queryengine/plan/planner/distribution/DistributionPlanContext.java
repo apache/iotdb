@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
@@ -44,7 +45,8 @@ public class DistributionPlanContext {
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
-    Validate.notNull(queryContext, "Query context cannot be null");
+    Validate.notNull(
+        queryContext, DataNodeQueryMessages.EXCEPTION_QUERY_CONTEXT_CANNOT_BE_NULL_C4809234);
     this.queryContext = queryContext;
   }
 

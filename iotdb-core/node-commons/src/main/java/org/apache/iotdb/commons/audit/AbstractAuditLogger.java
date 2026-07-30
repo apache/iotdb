@@ -19,96 +19,46 @@
 
 package org.apache.iotdb.commons.audit;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-import java.util.List;
+import java.util.function.Supplier;
 
-public class AbstractAuditLogger {
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
-  protected static final boolean IS_AUDIT_LOG_ENABLED = config.isEnableAuditLog();
+public abstract class AbstractAuditLogger {
+  public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
+      "User %s (ID=%d) requests authority on object %s with result %s";
+  public static final String AUDIT_LOG_NODE_ID = "node_id";
+  public static final String AUDIT_LOG_USER_ID = "user_id";
+  public static final String AUDIT_LOG_USERNAME = "username";
+  public static final String AUDIT_LOG_CLI_HOSTNAME = "cli_hostname";
+  public static final String AUDIT_LOG_AUDIT_EVENT_TYPE = "audit_event_type";
+  public static final String AUDIT_LOG_OPERATION_TYPE = "operation_type";
+  public static final String AUDIT_LOG_PRIVILEGE_TYPE = "privilege_type";
+  public static final String AUDIT_LOG_PRIVILEGE_LEVEL = "privilege_level";
+  public static final String AUDIT_LOG_RESULT = "result";
+  public static final String AUDIT_LOG_DATABASE = "database";
+  public static final String AUDIT_LOG_SQL_STRING = "sql_string";
+  public static final String AUDIT_LOG_LOG = "log";
 
-  private static final List<AuditLogOperation> auditLogOperationList =
-      config.getAuditableOperationType();
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
+  protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
 
-  private static final PrivilegeLevel auditablePrivilegeLevel = config.getAuditableOperationLevel();
+  public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
-  private static final String auditableOperationResult = config.getAuditableOperationResult();
-
-  void log(AuditLogFields auditLogFields, String log) {
-    // do nothing
-  }
-
-  public boolean checkBeforeLog(AuditLogFields auditLogFields) {
-    String username = auditLogFields.getUsername();
-    String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditType();
-    AuditLogOperation operation = auditLogFields.getOperationType();
-    PrivilegeType privilegeType = auditLogFields.getPrivilegeType();
-    PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-    boolean result = auditLogFields.isResult();
-
-    // to do: check whether this event should be logged.
-    // if whitelist or blacklist is used, only ip on the whitelist or blacklist can be logged
-
-    if (auditLogOperationList == null || !auditLogOperationList.contains(operation)) {
-      return false;
-    }
-    if (auditablePrivilegeLevel == PrivilegeLevel.OBJECT
-        && privilegeLevel == PrivilegeLevel.GLOBAL) {
-      return false;
-    }
-    if (result && !auditableOperationResult.contains("SUCCESS")) {
-      return false;
-    }
-    if (!result && !auditableOperationResult.contains("FAIL")) {
-      return false;
-    }
+  public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
     return true;
   }
 
-  public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
-    switch (type) {
-      case READ_DATA:
-      case DROP:
-      case ALTER:
-      case CREATE:
-      case DELETE:
-      case INSERT:
-      case SELECT:
-      case WRITE_DATA:
-      case READ_SCHEMA:
-      case WRITE_SCHEMA:
-        return PrivilegeLevel.OBJECT;
-      case USE_CQ:
-      case USE_UDF:
-      case USE_PIPE:
-      case USE_MODEL:
-      case MAINTAIN:
-      case MANAGE_ROLE:
-      case MANAGE_USER:
-      case USE_TRIGGER:
-      case MANAGE_DATABASE:
-      case EXTEND_TEMPLATE:
-      default:
-        return PrivilegeLevel.GLOBAL;
-    }
-  }
-
-  public static Boolean isLoginEvent(AuditEventType type) {
-    switch (type) {
-      case LOGIN:
-      case LOGIN_FINAL:
-      case MODIFY_PASSWD:
-      case LOGIN_EXCEED_LIMIT:
-      case LOGIN_FAILED_TRIES:
-      case LOGIN_REJECT_IP:
-      case LOGIN_FAIL_MAX_TIMES:
-      case LOGIN_RESOURCE_RESTRICT:
-        return true;
-      default:
-        return false;
-    }
+  public void recordObjectAuthenticationAuditLog(
+      final IAuditEntity auditEntity, final Supplier<String> auditObject) {
+    log(
+        auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
+        () ->
+            String.format(
+                OBJECT_AUTHENTICATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditObject.get(),
+                auditEntity.getResult()));
   }
 }

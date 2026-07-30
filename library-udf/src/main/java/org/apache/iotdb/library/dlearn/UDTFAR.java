@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dlearn;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -61,7 +62,7 @@ public class UDTFAR implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     int length = timeWindow.size();
     if (length <= this.p) {
-      throw new UDFException("Illegal input.");
+      throw new UDFException(LibraryUdfMessages.ILLEGAL_INPUT);
     }
 
     int count = 0;

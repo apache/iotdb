@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
@@ -42,8 +43,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
+  private final Set<IoTDBDataRegionSource> dataRegionSources =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
+
   // Calculate from schema region extractors directly for it requires less computation
-  private final Set<IoTDBSchemaRegionSource> schemaRegionExtractors =
+  private final Set<IoTDBSchemaRegionSource> schemaRegionSources =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
@@ -105,7 +109,11 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
-            + schemaRegionExtractors.stream()
+            + dataRegionSources.stream()
+                .map(IoTDBDataRegionSource::getHistoricalTsFileInsertionEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
+            + schemaRegionSources.stream()
                 .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
@@ -138,14 +146,11 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
             + rawTabletEventCount.get()
             + insertNodeEventCount.get();
 
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastDataRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter dataRegionMeter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(dataRegionMeter)) {
+      lastDataRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(dataRegionMeter);
+    }
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount <= 0) {
       dataRegionRemainingTime = 0;
@@ -157,19 +162,16 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     }
 
     final long totalSchemaRegionWriteEventCount =
-        schemaRegionExtractors.stream()
+        schemaRegionSources.stream()
             .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastSchemaRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter schemaRegionMeter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(schemaRegionMeter)) {
+      lastSchemaRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(schemaRegionMeter);
+    }
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
@@ -192,30 +194,28 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionSource extractor) {
-    schemaRegionExtractors.add(extractor);
+  void register(final IoTDBDataRegionSource source) {
+    dataRegionSources.add(source);
+  }
+
+  void register(final IoTDBSchemaRegionSource source) {
+    schemaRegionSources.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////
 
   void markDataRegionCommit() {
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markSchemaRegionCommit() {
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {

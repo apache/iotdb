@@ -27,12 +27,16 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -41,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesCountNode;
@@ -60,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Seri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -70,7 +74,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -85,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -101,12 +105,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -123,14 +126,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_VALUE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.MAX_TIME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy.LINEAR;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
-import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
 
 public class LogicalPlanBuilder {
 
@@ -141,7 +144,8 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
     this.analysis = analysis;
-    Validate.notNull(context, "Query context cannot be null");
+    Validate.notNull(
+        context, DataNodeQueryMessages.EXCEPTION_QUERY_CONTEXT_CANNOT_BE_NULL_C4809234);
     this.context = context;
   }
 
@@ -220,7 +224,7 @@ public class LogicalPlanBuilder {
                     null,
                     lastLevelUseWildcard)));
       } else {
-        throw new IllegalArgumentException("Unexpected path type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PATH_TYPE_2);
       }
     }
 
@@ -253,12 +257,23 @@ public class LogicalPlanBuilder {
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-          String outputViewPath =
-              sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath().getFullPath()
-                  : null;
-          TSDataType outputViewPathType =
-              outputViewPath == null ? null : selectedPath.getSeriesType();
+          String outputPath;
+          TSDataType outputViewPathType = null;
+          // the path is view, use the view path as the output path
+          if (sourceExpression.isViewExpression()) {
+            outputPath = sourceExpression.getViewPath().getFullPath();
+            outputViewPathType = selectedPath.getSeriesType();
+          } else {
+            outputPath = selectedPath.getFullPath();
+          }
+          // the path has alias, use alias as the output path
+          if (selectedPath.isMeasurementAliasExists()) {
+            outputPath =
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString();
+          }
 
           PartialPath devicePath = selectedPath.getDevicePath();
           // For expression with view path, we do not use the deviceId in Map.Entry because it is a
@@ -270,7 +285,8 @@ public class LogicalPlanBuilder {
                   devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
-                  outputViewPath,
+                  Collections.singletonList(outputPath),
+                  outputViewPathType != null,
                   outputViewPathType);
           this.context.reserveMemoryForFrontEnd(memCost);
         }
@@ -279,12 +295,31 @@ public class LogicalPlanBuilder {
         List<IMeasurementSchema> measurementSchemas =
             new ArrayList<>(measurementToExpressionsOfDevice.size());
         PartialPath devicePath = null;
+        List<String> outputPaths = null;
+        int i = 0;
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
           aligned = selectedPath.isUnderAlignedEntity();
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
+
+          // series has alias and use alias to SELECT
+          if (selectedPath.isMeasurementAliasExists()) {
+            if (outputPaths == null) {
+              // fill null as default value
+              outputPaths =
+                  new ArrayList<>(
+                      Collections.nCopies(measurementToExpressionsOfDevice.size(), null));
+            }
+            outputPaths.set(
+                i,
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString());
+          }
+          i++;
         }
         // DeviceId is needed in the distribution plan stage
         devicePath.setIDeviceID(deviceId);
@@ -294,7 +329,8 @@ public class LogicalPlanBuilder {
                 devicePath,
                 aligned,
                 measurementSchemas,
-                null,
+                outputPaths,
+                false,
                 null);
         this.context.reserveMemoryForFrontEnd(memCost);
       }
@@ -461,11 +497,11 @@ public class LogicalPlanBuilder {
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    List<SortItem> sortItemList = queryStatement.getSortItemList();
-
-    if (sortItemList.isEmpty()) {
-      sortItemList = new ArrayList<>();
-    }
+    // DEVICE and TIME are implicit merge keys for DeviceView. Append them to a planning-owned copy
+    // so rebuilding the plan after a dispatch failure does not mutate the parsed statement or
+    // accumulate duplicate keys. Keep the complete parameter in Analysis because a downstream
+    // SortNode must use the same implicit keys without reading a mutated QueryStatement.
+    List<SortItem> sortItemList = new ArrayList<>(queryStatement.getSortItemList());
     if (!queryStatement.isOrderByDevice()) {
       sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
@@ -474,6 +510,7 @@ public class LogicalPlanBuilder {
     }
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
+    analysis.setMergeOrderParameter(orderByParameter);
 
     long limitValue =
         queryStatement.hasOffset()
@@ -905,7 +942,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
-    if (rowLimit == 0) {
+    if (rowLimit <= 0) {
       return this;
     }
 
@@ -995,7 +1032,8 @@ public class LogicalPlanBuilder {
       boolean orderByHeat,
       boolean prefixPath,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1006,7 +1044,8 @@ public class LogicalPlanBuilder {
             orderByHeat,
             prefixPath,
             templateMap,
-            scope);
+            scope,
+            timeseriesOrdering);
     return this;
   }
 
@@ -1062,21 +1101,21 @@ public class LogicalPlanBuilder {
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    PartialPath storageGroupPath;
+    PartialPath databasePath;
     for (String storageGroup : storageGroupList) {
       try {
-        storageGroupPath = new PartialPath(storageGroup);
+        databasePath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SeriesSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                storageGroupPath,
+                databasePath,
                 overlappedPatternTree,
                 templateMap,
                 withTags,
@@ -1139,7 +1178,9 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1147,7 +1188,9 @@ public class LogicalPlanBuilder {
             prefixPath,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 
@@ -1157,7 +1200,9 @@ public class LogicalPlanBuilder {
       int level,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1166,7 +1211,9 @@ public class LogicalPlanBuilder {
             level,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 
@@ -1283,6 +1330,72 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  public LogicalPlanBuilder planShowDiskUsage(Analysis analysis, PartialPath pathPattern) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowDiskUsage(dataNodeLocations.get(0), pathPattern)
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  Ordering.ASC,
+                  true)
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else if (analysis.getMergeOrderParameter().isEmpty()) {
+      CollectNode collectNode =
+          new CollectNode(
+              context.getQueryId().genPlanNodeId(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              collectNode.addChild(
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .getRoot()));
+      this.root = collectNode;
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showDiskUsageColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowDiskUsage(
+      TDataNodeLocation dataNodeLocation, PartialPath pathPattern) {
+    this.root =
+        new ShowDiskUsageNode(context.getQueryId().genPlanNodeId(), dataNodeLocation, pathPattern);
+    return this;
+  }
+
   public LogicalPlanBuilder planOrderBy(List<SortItem> sortItemList) {
     if (sortItemList.isEmpty()) {
       return this;
@@ -1319,7 +1432,10 @@ public class LogicalPlanBuilder {
 
     Set<Expression> orderByExpressions = analysis.getOrderByExpressions();
     updateTypeProvider(orderByExpressions);
-    OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
+    OrderByParameter orderByParameter =
+        queryStatement.isAlignByDevice()
+            ? analysis.getMergeOrderParameter()
+            : new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }

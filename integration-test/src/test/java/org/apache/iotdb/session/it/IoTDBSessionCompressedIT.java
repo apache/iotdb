@@ -63,7 +63,7 @@ public class IoTDBSessionCompressedIT {
     ITableSession session1 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
-            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .username(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
             .enableCompression(true)
             .enableRedirection(true)
@@ -83,7 +83,7 @@ public class IoTDBSessionCompressedIT {
     ITableSession session2 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
-            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .username(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
             .enableCompression(true)
             .enableRedirection(true)
@@ -103,7 +103,7 @@ public class IoTDBSessionCompressedIT {
     ITableSession session3 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
-            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .username(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
             .enableCompression(true)
             .enableRedirection(true)
@@ -123,7 +123,7 @@ public class IoTDBSessionCompressedIT {
     ITableSession session4 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
-            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .username(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
             .enableCompression(true)
             .enableRedirection(true)
@@ -143,7 +143,7 @@ public class IoTDBSessionCompressedIT {
     ITableSession session5 =
         new TableSessionBuilder()
             .nodeUrls(nodeUrls)
-            .username(CommonDescriptor.getInstance().getConfig().getAdminName())
+            .username(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .password(CommonDescriptor.getInstance().getConfig().getAdminPassword())
             .enableCompression(false)
             .enableRedirection(true)

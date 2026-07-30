@@ -20,23 +20,20 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -81,7 +78,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final Void v) {
 
-    LOGGER.info("Start data type conversion for LoadTsFileStatement: {}", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION, loadTsFileStatement);
 
     final LoadTsFileMemoryBlock block =
         LoadTsFileMemoryManager.getInstance()
@@ -91,10 +88,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
     try {
       for (final File file : loadTsFileStatement.getTsFiles()) {
-        try (final TsFileInsertionEventScanParser parser =
-            new TsFileInsertionEventScanParser(
-                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-          for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+        try (final LoadTreeTsFileTabletIterator tabletIterator =
+            new LoadTreeTsFileTabletIterator(file, true)) {
+          for (final Pair<Tablet, Boolean> tabletWithIsAligned : tabletIterator) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
                     tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
@@ -117,7 +113,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqSizes.clear();
 
             if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.empty();
+              return Optional.of(result);
             }
 
             tabletRawReqs.add(tabletRawReq);
@@ -126,8 +122,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           }
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+              StorageEngineMessages
+                  .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+              loadTsFileStatement,
+              e);
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
 
@@ -144,12 +145,17 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqSizes.clear();
 
           if (!handleTSStatus(result, loadTsFileStatement)) {
-            return Optional.empty();
+            return Optional.of(result);
           }
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+              StorageEngineMessages
+                  .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+              loadTsFileStatement,
+              e);
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
     } finally {
@@ -168,27 +174,29 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               tsfile -> {
                 FileUtils.deleteQuietly(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 
     LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        StorageEngineMessages
+            .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs, boolean isConvertOnTypeMismatch) {
+      final List<PipeTransferTabletRawReq> tabletRawReqs, final boolean isConvertedOnTypeMismatch) {
     final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
     batchStatement.setInsertTabletStatementList(
         tabletRawReqs.stream()
             .map(
                 req ->
                     new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertOnTypeMismatch))
+                        req.constructStatement(), isConvertedOnTypeMismatch))
             .collect(Collectors.toList()));
 
     TSStatus result;
@@ -214,7 +222,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = batchStatement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+      result =
+          batchStatement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }
@@ -224,7 +233,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
       LOGGER.warn(
-          "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_STATUS_F0311707,
           loadTsFileStatement,
           result.getCode());
       return false;

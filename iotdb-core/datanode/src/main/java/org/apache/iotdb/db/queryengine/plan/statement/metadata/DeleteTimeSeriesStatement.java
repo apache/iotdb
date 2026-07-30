@@ -30,6 +30,7 @@ import java.util.List;
 
 public class DeleteTimeSeriesStatement extends Statement implements IConfigStatement {
 
+  private boolean mayDeleteAudit = false;
   List<PartialPath> pathPatternList;
 
   public DeleteTimeSeriesStatement() {
@@ -62,6 +63,14 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
+  }
+
+  public void setMayDeleteAudit(boolean mayDeleteAudit) {
+    this.mayDeleteAudit = mayDeleteAudit;
+  }
+
+  public boolean isMayDeleteAudit() {
+    return mayDeleteAudit;
   }
 }

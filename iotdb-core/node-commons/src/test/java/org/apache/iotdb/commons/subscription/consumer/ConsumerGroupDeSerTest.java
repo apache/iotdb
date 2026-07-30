@@ -69,4 +69,24 @@ public class ConsumerGroupDeSerTest {
         consumerGroupMeta.getConsumerGroupId(), consumerGroupMeta2.getConsumerGroupId());
     Assert.assertEquals(consumerGroupMeta.getCreationTime(), consumerGroupMeta2.getCreationTime());
   }
+
+  @Test
+  public void testDeepCopyShouldNotShareSubscribedConsumerSets() {
+    Map<String, String> consumerAttributes = new HashMap<>();
+    consumerAttributes.put("username", "user");
+    consumerAttributes.put("password", "password");
+
+    ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group", 1, new ConsumerMeta("test_consumer1", 1, consumerAttributes));
+    consumerGroupMeta.addSubscription("test_consumer1", Collections.singleton("test_topic"));
+
+    ConsumerGroupMeta copiedConsumerGroupMeta = consumerGroupMeta.deepCopy();
+    copiedConsumerGroupMeta.removeSubscription(
+        "test_consumer1", Collections.singleton("test_topic"));
+
+    Assert.assertTrue(
+        consumerGroupMeta.getConsumersSubscribingTopic("test_topic").contains("test_consumer1"));
+    Assert.assertTrue(copiedConsumerGroupMeta.getConsumersSubscribingTopic("test_topic").isEmpty());
+  }
 }

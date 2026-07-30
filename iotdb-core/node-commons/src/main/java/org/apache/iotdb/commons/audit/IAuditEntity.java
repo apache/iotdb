@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.audit;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
+import java.util.List;
+
 public interface IAuditEntity {
 
   long getUserId();
@@ -37,9 +39,13 @@ public interface IAuditEntity {
 
   IAuditEntity setAuditLogOperation(AuditLogOperation auditLogOperation);
 
-  PrivilegeType getPrivilegeType();
+  List<PrivilegeType> getPrivilegeTypes();
+
+  String getPrivilegeTypeString();
 
   IAuditEntity setPrivilegeType(PrivilegeType privilegeType);
+
+  IAuditEntity setPrivilegeTypes(List<PrivilegeType> privilegeTypes);
 
   boolean getResult();
 

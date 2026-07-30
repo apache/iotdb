@@ -34,6 +34,7 @@ class BasicBatcher(AbstractBatcher):
         Args:
 
         """
+        super().__init__()
 
     def batch_request(self, reqs: List[InferenceRequest]) -> torch.Tensor:
         """
@@ -46,17 +47,29 @@ class BasicBatcher(AbstractBatcher):
 
         Returns:
             torch.Tensor: Concatenated input tensor of shape
-                          [sum(req.batch_size), length].
+                          [sum(req.batch_size), target_count, input_length].
         """
         if not reqs:
             raise ValueError("No requests provided to batch_request.")
 
-        # Ensure length consistency
-        length_set = {req.inputs.shape[1] for req in reqs}
-        if len(length_set) != 1:
-            raise ValueError(
-                f"All requests must have the same length, " f"but got {length_set}"
-            )
+        # Ensure shape consistency
+        first_target_count = reqs[0].target_count
+        first_input_length = reqs[0].input_length
+
+        for i, req in enumerate(reqs):
+            if req.target_count != first_target_count:
+                raise ValueError(
+                    f"All requests must have the same target_count, "
+                    f"but request 0 has {first_target_count} "
+                    f"and request {i} has {req.target_count}"
+                )
+
+            if req.input_length != first_input_length:
+                raise ValueError(
+                    f"All requests must have the same input_length, "
+                    f"but request 0 has {first_input_length} "
+                    f"and request {i} has {req.input_length}"
+                )
 
         batch_inputs = torch.cat([req.inputs for req in reqs], dim=0)
 

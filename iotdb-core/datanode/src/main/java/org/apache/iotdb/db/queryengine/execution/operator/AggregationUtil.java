@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -262,10 +263,12 @@ public class AggregationUtil {
         return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
-        throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNKNOWN_DATA_TYPE_2 + tsDataType);
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -49,7 +50,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -62,7 +64,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         floatPrecision,
         encodingList,
         ignoreAllNullRows,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
@@ -104,6 +107,22 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   }
 
   @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    iteratorIndex = 0;
+    while (iteratorIndex < alignedTvListIterators.size() && !hasNext) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (!iterator.hasNextTimeValuePair()) {
+        iteratorIndex++;
+        continue;
+      }
+      hasNext = iterator.hasNextTimeValuePair();
+    }
+    probeNext = false;
+  }
+
+  @Override
   protected void next() {
     TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
     iterator.next();
@@ -133,5 +152,13 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (AlignedTVList.AlignedTVListIterator iterator : alignedTvListIterators) {
+      iterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

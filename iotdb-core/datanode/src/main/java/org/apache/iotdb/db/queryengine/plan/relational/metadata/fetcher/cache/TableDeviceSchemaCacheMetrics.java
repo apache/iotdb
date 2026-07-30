@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -47,7 +48,7 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         tableDeviceSchemaCache,
         TableDeviceSchemaCache::getHitCount,
         Tag.NAME.toString(),
-        "SchemaCache",
+        DataNodeMemoryConfig.SCHEMA_CACHE,
         Tag.TYPE.toString(),
         "hit");
     metricService.createAutoGauge(
@@ -56,7 +57,7 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         tableDeviceSchemaCache,
         TableDeviceSchemaCache::getRequestCount,
         Tag.NAME.toString(),
-        "SchemaCache",
+        DataNodeMemoryConfig.SCHEMA_CACHE,
         Tag.TYPE.toString(),
         "all");
     metricService.createAutoGauge(
@@ -86,14 +87,14 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.CACHE.toString(),
         Tag.NAME.toString(),
-        "SchemaCache",
+        DataNodeMemoryConfig.SCHEMA_CACHE,
         Tag.TYPE.toString(),
         "hit");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.CACHE.toString(),
         Tag.NAME.toString(),
-        "SchemaCache",
+        DataNodeMemoryConfig.SCHEMA_CACHE,
         Tag.TYPE.toString(),
         "all");
     metricService.remove(

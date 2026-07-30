@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PipeSourceConstant {
@@ -52,14 +57,23 @@ public class PipeSourceConstant {
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
+  public static final String EXTRACTOR_PATTERN_INCLUSION_KEY = "extractor.pattern.inclusion";
+  public static final String SOURCE_PATTERN_INCLUSION_KEY = "source.pattern.inclusion";
   public static final String EXTRACTOR_PATH_KEY = "extractor.path";
   public static final String SOURCE_PATH_KEY = "source.path";
+  public static final String EXTRACTOR_PATH_INCLUSION_KEY = "extractor.path.inclusion";
+  public static final String SOURCE_PATH_INCLUSION_KEY = "source.path.inclusion";
   public static final String EXTRACTOR_PATTERN_FORMAT_KEY = "extractor.pattern.format";
   public static final String SOURCE_PATTERN_FORMAT_KEY = "source.pattern.format";
   public static final String EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE = "prefix";
   public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
   public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
   public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
+  public static final String EXTRACTOR_PATTERN_EXCLUSION_KEY = "extractor.pattern.exclusion";
+  public static final String SOURCE_PATTERN_EXCLUSION_KEY = "source.pattern.exclusion";
+  public static final String EXTRACTOR_PATH_EXCLUSION_KEY = "extractor.path.exclusion";
+  public static final String SOURCE_PATH_EXCLUSION_KEY = "source.path.exclusion";
+
   public static final String EXTRACTOR_DATABASE_NAME_KEY = "extractor.database-name";
   public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
   public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
@@ -76,6 +90,10 @@ public class PipeSourceConstant {
   public static final String SOURCE_FORWARDING_PIPE_REQUESTS_KEY =
       "source.forwarding-pipe-requests";
   public static final boolean EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE = true;
+  public static final List<String> FORWARDING_PIPE_REQUESTS_KEYS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
 
   public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
   public static final String SOURCE_HISTORY_ENABLE_KEY = "source.history.enable";
@@ -90,6 +108,11 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE = "path";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE = "";
+  public static final String EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY =
+      "extractor.history.tsfile.order-by-query-priority";
+  public static final String SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY =
+      "source.history.tsfile.order-by-query-priority";
+  public static final boolean EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE = true;
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
@@ -126,7 +149,16 @@ public class PipeSourceConstant {
   public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
   public static final String EXTRACTOR_MODE_DOUBLE_LIVING_KEY = "extractor.mode.double-living";
   public static final String SOURCE_MODE_DOUBLE_LIVING_KEY = "source.mode.double-living";
+  public static final String EXTRACTOR_DOUBLE_LIVING_KEY = "extractor.double-living";
+  public static final String SOURCE_DOUBLE_LIVING_KEY = "source.double-living";
   public static final boolean EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE = false;
+  public static final List<String> DOUBLE_LIVING_KEYS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+              SOURCE_MODE_DOUBLE_LIVING_KEY,
+              EXTRACTOR_DOUBLE_LIVING_KEY,
+              SOURCE_DOUBLE_LIVING_KEY));
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
@@ -184,7 +216,32 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
       "extractor.consensus.receiver-dn-id";
 
+  public static boolean isDoubleLiving(final PipeParameters sourceParameters) {
+    return sourceParameters.getBooleanOrDefault(
+        DOUBLE_LIVING_KEYS, EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+  }
+
+  public static void removeDoubleLivingAttributes(final Map<String, String> sourceAttributes) {
+    removeEquivalentAttributes(sourceAttributes, DOUBLE_LIVING_KEYS);
+  }
+
+  public static void disableForwardingPipeRequests(final Map<String, String> sourceAttributes) {
+    removeEquivalentAttributes(sourceAttributes, FORWARDING_PIPE_REQUESTS_KEYS);
+    sourceAttributes.put(SOURCE_FORWARDING_PIPE_REQUESTS_KEY, Boolean.FALSE.toString());
+  }
+
+  private static void removeEquivalentAttributes(
+      final Map<String, String> sourceAttributes, final List<String> equivalentKeys) {
+    final Set<String> reducedKeys =
+        equivalentKeys.stream()
+            .map(PipeParameters.KeyReducer::reduce)
+            .collect(java.util.stream.Collectors.toSet());
+    sourceAttributes
+        .keySet()
+        .removeIf(key -> reducedKeys.contains(PipeParameters.KeyReducer.reduce(key)));
+  }
+
   private PipeSourceConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

@@ -61,11 +61,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -78,6 +78,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -185,11 +186,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Grant some privilege
     TestUtils.executeNonQuery(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null);
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab");
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
 
-    // Shall not be transferred
+    // Shall be transferred
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "show tables from test1",
@@ -291,6 +292,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.capture.tree", "false");
       sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
@@ -139,7 +141,7 @@ public abstract class AbstractCompactionTask {
     if (e instanceof CompactionLastTimeCheckFailedException
         || e instanceof CompactionValidationFailedException) {
       logger.error(
-          "{}-{} [Compaction] {} task meets error: {}.",
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_TASK_MEETS_ERROR_1002C659,
           storageGroupName,
           dataRegionId,
           getCompactionTaskType(),
@@ -164,16 +166,27 @@ public abstract class AbstractCompactionTask {
     } else if (e instanceof InterruptedException
         || Thread.interrupted()
         || e instanceof StopReadTsFileByInterruptException
-        || !tsFileManager.isAllowCompaction()) {
+        || !tsFileManager.isAllowCompaction()
+        || CompactionTaskManager.getInstance().isStopAllCompactionWorker()) {
       logger.warn(
-          "{}-{} [Compaction] {} task interrupted",
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_TASK_INTERRUPTED_E31121C0,
           storageGroupName,
           dataRegionId,
           getCompactionTaskType());
       Thread.currentThread().interrupt();
+    } else if (e instanceof ChunkTypeInconsistentException) {
+      ChunkTypeInconsistentException chunkTypeInconsistentException =
+          (ChunkTypeInconsistentException) e;
+      logger.error(
+          StorageEngineMessages
+              .STORAGE_LOG_UNEXPECTED_CHUNK_TYPE_DETECTED_WHEN_READING_NON_ALIGNED_1C0E4674,
+          chunkTypeInconsistentException.filePath,
+          chunkTypeInconsistentException.deviceId,
+          chunkTypeInconsistentException.measurement,
+          chunkTypeInconsistentException.offsetOfChunkHeader);
     } else {
       logger.error(
-          "{}-{} [Compaction] {} task meets error: {}.",
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_TASK_MEETS_ERROR_1002C659,
           storageGroupName,
           dataRegionId,
           getCompactionTaskType(),
@@ -299,7 +312,10 @@ public abstract class AbstractCompactionTask {
   protected void checkInterrupted() throws InterruptedException {
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(
-          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_S_COMPACTION_ABORT_7D0CB1E5,
+              storageGroupName,
+              dataRegionId));
     }
   }
 
@@ -330,7 +346,8 @@ public abstract class AbstractCompactionTask {
       return;
     }
     LOGGER.error(
-        "{} [Compaction][Recover] Failed to recover compaction. TaskInfo: {}, Exception: {}",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_RECOVER_FAILED_TO_RECOVER_COMPACTION_TASKINFO_24424402,
         dataRegionId,
         this,
         e);
@@ -467,12 +484,14 @@ public abstract class AbstractCompactionTask {
     }
     if (needToValidateTsFileCorrectness && !validator.validateTsFiles(validTargetFiles)) {
       LOGGER.error(
-          "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_PASS_COMPACTION_VALIDATION_SOURCE_SEQ_FILES_SOURCE_BF5A4525,
           sourceSeqFiles,
           sourceUnseqFiles,
           targetFiles);
       throw new CompactionValidationFailedException(
-          "Failed to pass compaction validation, .resources file or tsfile data is wrong");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_FAILED_TO_PASS_COMPACTION_VALIDATION_RESOURCES_FILE_OR_TSFILE_4B78731F);
     }
   }
 
@@ -507,7 +526,8 @@ public abstract class AbstractCompactionTask {
         RepairDataFileScanUtil.checkTimePartitionHasOverlap(timePartitionSeqFiles, true);
     if (!overlapFilesInTimePartition.isEmpty()) {
       LOGGER.error(
-          "Failed to pass compaction overlap validation, source seq files: {}, source unseq files: {}, target files: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_PASS_COMPACTION_OVERLAP_VALIDATION_SOURCE_SEQ_9CFDC149,
           sourceSeqFiles,
           sourceUnseqFiles,
           targetFiles);

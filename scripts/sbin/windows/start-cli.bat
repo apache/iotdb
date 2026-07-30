@@ -18,17 +18,35 @@ REM specific language governing permissions and limitations
 REM under the License.
 REM
 
+REM ==========================================================
+REM Apache IoTDB CLI Launcher
+REM ==========================================================
+
+setlocal enabledelayedexpansion
+
 REM -------------------------------
 REM Default SQL dialect
-if "%DEFAULT_SQL_DIALECT%"=="" set DEFAULT_SQL_DIALECT=tree
+if "%DEFAULT_SQL_DIALECT%"=="" set "DEFAULT_SQL_DIALECT=tree"
 
 REM Default connection parameters
-set user_param=-u root
-set passwd_param=-pw root
-set host_param=-h 127.0.0.1
-set port_param=-p 6667
-set sql_dialect_param=-sql_dialect %DEFAULT_SQL_DIALECT%
-set PARAMETERS=
+set "user_param=-u root"
+set "passwd_param=-pw root"
+set "host_param=-h 127.0.0.1"
+set "port_param=-p 6667"
+set "sql_dialect_param=-sql_dialect %DEFAULT_SQL_DIALECT%"
+set "PARAMETERS="
+
+REM -------------------------------
+REM Normalize script path
+pushd "%~dp0" >nul 2>&1
+set "SCRIPT_DIR=%CD%"
+popd >nul 2>&1
+
+REM -------------------------------
+REM Set IOTDB_HOME
+if not defined IOTDB_HOME (
+    for %%I in ("%~dp0..\..") do set "IOTDB_HOME=%%~fI"
+)
 
 REM -------------------------------
 REM Parse command-line arguments
@@ -36,91 +54,110 @@ REM Parse command-line arguments
 if "%~1"=="" goto after_parse
 
 if /I "%~1"=="-u" (
-    set user_param=-u %~2
+    set "user_param=-u %~2"
     shift
     shift
     goto parse_args
 )
 if /I "%~1"=="-pw" (
+    call :is_known_option "%~2"
     if "%~2"=="" (
-        set passwd_param=-pw
+        set "passwd_param=-pw"
+        shift
+    ) else if "!IS_KNOWN_OPTION!"=="true" (
+        set "passwd_param=-pw"
         shift
     ) else (
-        set passwd_param=-pw %~2
+        set "passwd_param=-pw %~2"
         shift
         shift
     )
     goto parse_args
 )
 if /I "%~1"=="-h" (
-    set host_param=-h %~2
+    set "host_param=-h %~2"
     shift
     shift
     goto parse_args
 )
 if /I "%~1"=="-p" (
-    set port_param=-p %~2
+    set "port_param=-p %~2"
     shift
     shift
     goto parse_args
 )
 if /I "%~1"=="-sql_dialect" (
-    set sql_dialect_param=-sql_dialect %~2
+    set "sql_dialect_param=-sql_dialect %~2"
     shift
     shift
     goto parse_args
 )
 
-REM Any other arguments
-set PARAMETERS=%PARAMETERS% %~1
+set "PARAMETERS=%PARAMETERS% %~1"
 shift
 goto parse_args
 
+:is_known_option
+set "IS_KNOWN_OPTION=false"
+if /I "%~1"=="-h" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-p" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-u" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-pw" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-e" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-help" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-sql_dialect" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-disableISO8601" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-c" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-timeout" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-usessl" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-ts" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-tpw" set "IS_KNOWN_OPTION=true"
+exit /b 0
+
 :after_parse
-
 REM Combine all parameters
-set PARAMETERS=%host_param% %port_param% %user_param% %passwd_param% %sql_dialect_param% %PARAMETERS%
-
-REM -------------------------------
-REM Set IOTDB_HOME
-if not defined IOTDB_HOME (
-    pushd %~dp0..\..
-    set IOTDB_HOME=%CD%
-    popd
-)
+set "PARAMETERS=%host_param% %port_param% %user_param% %passwd_param% %sql_dialect_param% %PARAMETERS%"
 
 REM CLI configuration
-set IOTDB_CLI_CONF=%IOTDB_HOME%\conf
-set MAIN_CLASS=org.apache.iotdb.cli.Cli
+set "IOTDB_CLI_CONF=%IOTDB_HOME%\conf"
+set "MAIN_CLASS=org.apache.iotdb.cli.Cli"
 
-REM -------------------------------
 REM CLASSPATH setup
-if exist "%IOTDB_HOME%\lib" (
-    set CLASSPATH=%IOTDB_HOME%\lib\*
-) else (
-    set CLASSPATH=%IOTDB_HOME%\..\lib\*
-)
+set "CLASSPATH=%IOTDB_HOME%\lib\*"
 
-REM -------------------------------
 REM JAVA executable
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\java.exe" (
-        set JAVA=%JAVA_HOME%\bin\java.exe
+        set "JAVA=%JAVA_HOME%\bin\java.exe"
     ) else (
-        set JAVA=java
+        set "JAVA=java"
     )
 ) else (
-    set JAVA=java
+    set "JAVA=java"
 )
 
-REM -------------------------------
-REM JVM options
-set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
-set IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml
-set JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang=ALL-UNNAMED
+REM Detect Java major version (--add-opens only for Java 9+, see JEP 396)
+set "JAVA_MAJOR="
+set "TEMP_VER=%TEMP%\iotdb_cli_java_ver.txt"
+"%JAVA%" -version 2>&1 | findstr /i "version" > "%TEMP_VER%"
+for /f "tokens=3" %%a in ('type "%TEMP_VER%"') do for /f "tokens=1,2 delims=." %%x in ("%%~a") do (
+    if "%%x"=="1" (set "JAVA_MAJOR=%%y") else (set "JAVA_MAJOR=%%x")
+    goto :jvm_opts
+)
+
+:jvm_opts
+del "%TEMP_VER%" 2>nul
+REM JVM options: base options always; --add-opens only for Java 9 and above
+set "IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml"
+set "JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+if not "%JAVA_MAJOR%"=="8" if not "%JAVA_MAJOR%"=="" (
+    set "JVM_OPTS=!JVM_OPTS! --add-opens=java.base/java.lang=ALL-UNNAMED"
+)
+
+REM Run CLI
+"%JAVA%" %JVM_OPTS% %IOTDB_CLI_PARAMS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
 
 REM -------------------------------
-REM Run CLI
-echo %PARAMETERS%
-"%JAVA%" %JVM_OPTS% %IOTDB_CLI_PARAMS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
+endlocal
+
 exit /b %ERRORLEVEL%

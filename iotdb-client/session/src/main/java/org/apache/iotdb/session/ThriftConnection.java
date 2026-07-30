@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -77,6 +78,9 @@ public class ThriftConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       String username,
       String password,
       boolean enableRPCCompression,
@@ -93,7 +97,10 @@ public class ThriftConnection {
                 endPoint.getPort(),
                 connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                keyStore,
+                keyStorePwd,
+                sslProtocol);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -130,14 +137,15 @@ public class ThriftConnection {
 
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         LOGGER.warn(
-            "Protocol differ, Client version is {}}, but Server version is {}",
+            SessionMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583,
             Session.protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         // less than 0.10
         if (openResp.getServerProtocolVersion().getValue() == 0) {
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
+                  SessionMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
                   Session.protocolVersion.getValue(),
                   openResp.getServerProtocolVersion().getValue()));
         }
@@ -192,7 +200,7 @@ public class ThriftConnection {
           client.closeSession(new TSCloseSessionReq(sessionId));
         }
       } catch (TException e) {
-        LOGGER.warn("Closing Session-{} with {} failed.", sessionId, endPoint);
+        LOGGER.warn(SessionMessages.CLOSING_SESSION_FAILED, sessionId, endPoint);
       } finally {
         if (transport.isOpen()) {
           transport.close();

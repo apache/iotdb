@@ -56,6 +56,30 @@ public class Constants {
   public static final String USERNAME_DESC = "Username (optional)";
   public static final String USERNAME_DEFAULT_VALUE = "root";
 
+  public static final String USE_SSL_ARGS = "usessl";
+  public static final String USE_SSL_NAME = "use_ssl";
+  public static final String USE_SSL_DESC = "Use SSL statement. (optional)";
+
+  public static final String TRUST_STORE_ARGS = "ts";
+  public static final String TRUST_STORE_NAME = "trust_store";
+  public static final String TRUST_STORE_DESC = "Trust store. (optional)";
+
+  public static final String TRUST_STORE_PWD_ARGS = "tpw";
+  public static final String TRUST_STORE_PWD_NAME = "trust_store_password";
+  public static final String TRUST_STORE_PWD_DESC = "Trust store password. (optional)";
+
+  public static final String KEY_STORE_ARGS = "ks";
+  public static final String KEY_STORE_NAME = "key_store";
+  public static final String KEY_STORE_DESC = "Key store for mutual SSL. (optional)";
+
+  public static final String KEY_STORE_PWD_ARGS = "kpw";
+  public static final String KEY_STORE_PWD_NAME = "key_store_password";
+  public static final String KEY_STORE_PWD_DESC = "Key store password for mutual SSL. (optional)";
+
+  public static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
+  public static final String SSL_PROTOCOL_NAME = "ssl_protocol";
+  public static final String SSL_PROTOCOL_DESC = "SSL protocol. (optional)";
+
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
   public static final String FILE_TYPE_ARGS_NAME = "format";

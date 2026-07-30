@@ -24,12 +24,11 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
-import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +41,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
+
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {
@@ -67,12 +68,23 @@ public class MemoryPool {
         String planNodeId,
         long bytesToReserve,
         long maxBytesCanReserve) {
-      this.queryId = Validate.notNull(queryId, "queryId cannot be null");
+      this.queryId =
+          Validate.notNull(
+              queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_CANNOT_BE_NULL_861D7663);
       this.fragmentInstanceId =
-          Validate.notNull(fragmentInstanceId, "fragmentInstanceId cannot be null");
-      this.planNodeId = Validate.notNull(planNodeId, "planNodeId cannot be null");
-      Validate.isTrue(bytesToReserve > 0L, "bytesToReserve should be greater than zero.");
-      Validate.isTrue(maxBytesCanReserve > 0L, "maxBytesCanReserve should be greater than zero.");
+          Validate.notNull(
+              fragmentInstanceId,
+              DataNodeQueryMessages.EXCEPTION_FRAGMENTINSTANCEID_CANNOT_BE_NULL_C722F460);
+      this.planNodeId =
+          Validate.notNull(
+              planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODEID_CANNOT_BE_NULL_4533C72B);
+      Validate.isTrue(
+          bytesToReserve > 0L,
+          DataNodeQueryMessages.EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0);
+      Validate.isTrue(
+          maxBytesCanReserve > 0L,
+          DataNodeQueryMessages
+              .EXCEPTION_MAXBYTESCANRESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_E9F7D365);
       this.bytesToReserve = bytesToReserve;
       this.maxBytesCanReserve = maxBytesCanReserve;
     }
@@ -113,6 +125,31 @@ public class MemoryPool {
     }
   }
 
+  public static class MemoryReservationResult {
+    private final ListenableFuture<Void> future;
+    private final boolean reserveSuccess;
+    private final long reservedBytes;
+
+    public MemoryReservationResult(
+        ListenableFuture<Void> future, boolean reserveSuccess, long reservedBytes) {
+      this.future = future;
+      this.reserveSuccess = reserveSuccess;
+      this.reservedBytes = reservedBytes;
+    }
+
+    public ListenableFuture<Void> getFuture() {
+      return future;
+    }
+
+    public boolean isReserveSuccess() {
+      return reserveSuccess;
+    }
+
+    public long getReservedBytes() {
+      return reservedBytes;
+    }
+  }
+
   private final String id;
   private final IMemoryBlock memoryBlock;
   private final long maxBytesPerFragmentInstance;
@@ -125,17 +162,18 @@ public class MemoryPool {
       new ConcurrentLinkedQueue<>();
 
   public MemoryPool(String id, MemoryManager memoryManager, long maxBytesPerFragmentInstance) {
-    this.id = Validate.notNull(id, "id can not be null.");
+    this.id = Validate.notNull(id, DataNodeQueryMessages.EXCEPTION_ID_CAN_NOT_BE_NULL_DOT_BDD2AD7D);
     this.memoryBlock =
         memoryManager.exactAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
     Validate.isTrue(
         this.memoryBlock.getTotalMemorySizeInBytes() > 0L,
-        "max bytes should be greater than zero: %d",
+        DataNodeQueryMessages.EXCEPTION_MAX_BYTES_SHOULD_BE_GREATER_THAN_ZERO_COLON_ARG_EA1FB495,
         this.memoryBlock.getTotalMemorySizeInBytes());
     Validate.isTrue(
         maxBytesPerFragmentInstance > 0L
             && maxBytesPerFragmentInstance <= this.memoryBlock.getTotalMemorySizeInBytes(),
-        "max bytes per FI should be in (0,maxBytes]. maxBytesPerFI: %d, maxBytes: %d",
+        DataNodeQueryMessages
+            .EXCEPTION_MAX_BYTES_PER_FI_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTES_RIGHT_BRACKET_DOT_MAXB_4D37C457,
         maxBytesPerFragmentInstance,
         this.memoryBlock.getTotalMemorySizeInBytes());
     this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
@@ -217,58 +255,74 @@ public class MemoryPool {
                 .collect(Collectors.toList());
         throw new MemoryLeakException(
             String.format(
-                "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : %s, FragmentInstanceId is : %s, Non-zero PlanNode related memory is : %s.",
-                queryId, fragmentInstanceId, invalidEntryList));
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_PLANNODE_RELATED_MEMORY_IS_NOT_ZERO_WHEN_TRYING_TO_DEREGISTER_E01109C5,
+                queryId,
+                fragmentInstanceId,
+                invalidEntryList));
       }
     }
   }
 
   /**
-   * Reserve memory with bytesToReserve.
+   * Reserve memory with bytesToReserve respect priority.
    *
-   * @return if reserve succeed, pair.right will be true, otherwise false
+   * @return if reserve succeed, reservedBytes may be zero or equals with bytesToReserve; if reserve
+   *     failed, reservedBytes must be equals with bytesToReserve
    * @throws IllegalArgumentException throw exception if current query requests more memory than can
    *     be allocated.
    */
-  public Pair<ListenableFuture<Void>, Boolean> reserve(
+  public MemoryReservationResult reserveWithPriority(
       String queryId,
       String fragmentInstanceId,
       String planNodeId,
       long bytesToReserve,
-      long maxBytesCanReserve) {
-    Validate.notNull(queryId, "queryId can not be null.");
-    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
-    Validate.notNull(planNodeId, "planNodeId can not be null.");
+      long maxBytesCanReserve,
+      boolean isHighestPriority) {
+    Validate.notNull(queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_CAN_NOT_BE_NULL_DOT_16639DBE);
+    Validate.notNull(
+        fragmentInstanceId,
+        DataNodeQueryMessages.EXCEPTION_FRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_E88CF18B);
+    Validate.notNull(
+        planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODEID_CAN_NOT_BE_NULL_DOT_44027620);
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        DataNodeQueryMessages
+            .EXCEPTION_BYTESTORESERVE_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTESPERFI_RIGHT_BRACKET_DOT_M_0753BB69,
         maxBytesPerFragmentInstance,
         bytesToReserve);
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
-          "Cannot reserve {}(Max: {}) bytes memory from MemoryPool for planNodeId{}",
+          DataNodeQueryMessages
+              .CANNOT_RESERVE_ARG_MAX_ARG_BYTES_MEMORY_FROM_MEMORYPOOL_FOR_PLANNODEIDARG,
           bytesToReserve,
           maxBytesCanReserve,
           planNodeId);
       throw new IllegalArgumentException(
           String.format(
-              "Query is aborted since it requests more memory than can be allocated, bytesToReserve: %sB, maxBytesCanReserve: %sB",
-              bytesToReserve, maxBytesCanReserve));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_QUERY_IS_ABORTED_SINCE_IT_REQUESTS_MORE_MEMORY_THAN_CAN_D77C2921,
+              bytesToReserve,
+              maxBytesCanReserve));
     }
 
-    ListenableFuture<Void> result;
     if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
-      result = Futures.immediateFuture(null);
-      return new Pair<>(result, Boolean.TRUE);
+      return new MemoryReservationResult(immediateVoidFuture(), true, bytesToReserve);
     } else {
-      LOGGER.debug(
-          "Blocked reserve request: {} bytes memory for planNodeId{}", bytesToReserve, planNodeId);
       rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
-      result =
+      if (isHighestPriority) {
+        // SHOW QUERIES: treat as success with zero bytes reserved from pool when insufficient.
+        return new MemoryReservationResult(immediateVoidFuture(), true, 0L);
+      }
+      LOGGER.debug(
+          DataNodeQueryMessages.BLOCKED_RESERVE_REQUEST_ARG_BYTES_MEMORY_FOR_PLANNODEIDARG,
+          bytesToReserve,
+          planNodeId);
+      ListenableFuture<Void> result =
           MemoryReservationFuture.create(
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
       memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
-      return new Pair<>(result, Boolean.FALSE);
+      return new MemoryReservationResult(result, false, bytesToReserve);
     }
   }
 
@@ -279,12 +333,16 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    Validate.notNull(queryId, "queryId can not be null.");
-    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
-    Validate.notNull(planNodeId, "planNodeId can not be null.");
+    Validate.notNull(queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_CAN_NOT_BE_NULL_DOT_16639DBE);
+    Validate.notNull(
+        fragmentInstanceId,
+        DataNodeQueryMessages.EXCEPTION_FRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_E88CF18B);
+    Validate.notNull(
+        planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODEID_CAN_NOT_BE_NULL_DOT_44027620);
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        DataNodeQueryMessages
+            .EXCEPTION_BYTESTORESERVE_SHOULD_BE_IN_LEFT_PAREN_0_COMMA_MAXBYTESPERFI_RIGHT_BRACKET_DOT_M_0753BB69,
         maxBytesPerFragmentInstance,
         bytesToReserve);
 
@@ -299,13 +357,16 @@ public class MemoryPool {
   /**
    * Cancel the specified memory reservation. If the reservation has finished, do nothing.
    *
-   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
+   * @param future The future returned from {@link #reserveWithPriority(String, String, String,
+   *     long, long, boolean)}
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
   @SuppressWarnings("squid:S2445")
   public synchronized long tryCancel(ListenableFuture<Void> future) {
-    Validate.notNull(future, "The future to be cancelled can not be null.");
+    Validate.notNull(
+        future,
+        DataNodeQueryMessages.EXCEPTION_THE_FUTURE_TO_BE_CANCELLED_CAN_NOT_BE_NULL_DOT_73CE402A);
     // add synchronized on the future to avoid that the future is concurrently completed by
     // MemoryPool.free() which may lead to memory leak.
     synchronized (future) {
@@ -315,14 +376,15 @@ public class MemoryPool {
       }
       Validate.isTrue(
           future instanceof MemoryReservationFuture,
-          "invalid future type " + future.getClass().getSimpleName());
+          DataNodeQueryMessages.EXCEPTION_INVALID_FUTURE_TYPE_14507EF5
+              + future.getClass().getSimpleName());
       future.cancel(true);
     }
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
   public void free(String queryId, String fragmentInstanceId, String planNodeId, long bytes) {
-    Validate.notNull(queryId, "queryId can not be null.");
+    Validate.notNull(queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_CAN_NOT_BE_NULL_DOT_16639DBE);
     Validate.isTrue(bytes > 0L);
 
     try {
@@ -333,12 +395,16 @@ public class MemoryPool {
               planNodeId,
               (k, reservedMemory) -> {
                 if (reservedMemory < bytes) {
-                  throw new IllegalArgumentException("Free more memory than has been reserved.");
+                  throw new IllegalArgumentException(
+                      DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
                 }
                 return reservedMemory - bytes;
               });
     } catch (NullPointerException e) {
-      throw new IllegalArgumentException("RelatedMemoryReserved can't be null when freeing memory");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2,
+          e);
     }
 
     memoryBlock.release(bytes);

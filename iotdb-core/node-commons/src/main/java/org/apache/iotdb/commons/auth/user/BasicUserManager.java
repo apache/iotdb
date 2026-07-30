@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SUPER_USER_ID;
 
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
@@ -54,7 +55,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
   @Override
   protected String getNoSuchEntityError() {
-    return "No such user %s";
+    return AuthMessages.NO_SUCH_USER_FMT;
   }
 
   protected long nextUserId = INTERNAL_USER_END_ID;
@@ -77,16 +78,16 @@ public abstract class BasicUserManager extends BasicRoleManager {
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
   private void initAdmin() throws AuthException {
-    User admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
+    User admin = this.getEntity(SUPER_USER_ID);
 
     if (admin == null) {
       createUser(
-          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
           CommonDescriptor.getInstance().getConfig().getAdminPassword(),
           true,
           true);
+      admin = this.getEntity(SUPER_USER_ID);
     }
-    admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
       PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
@@ -106,48 +107,13 @@ public abstract class BasicUserManager extends BasicRoleManager {
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
       LOGGER.warn(
-          "Got a wrong path for {} to init",
-          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          AuthMessages.WRONG_PATH_INIT,
+          CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
           e);
     }
     LOGGER.info(
-        "Internal user {} initialized", CommonDescriptor.getInstance().getConfig().getAdminName());
-  }
-
-  private void initInternalAuditorWhenNecessary() throws AuthException {
-    if (!CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
-      return;
-    }
-    User internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
-    if (internalAuditor == null) {
-      createUser(
-          IoTDBConstant.INTERNAL_AUDIT_USER,
-          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
-          true,
-          true);
-    }
-    internalAuditor = this.getEntity(IoTDBConstant.INTERNAL_AUDIT_USER);
-    try {
-      PartialPath auditPath = new PartialPath(SystemConstant.AUDIT_DATABASE + ".**");
-      PathPrivilege pathPri = new PathPrivilege(auditPath);
-      for (PrivilegeType item : PrivilegeType.values()) {
-        if (item.isDeprecated()) {
-          continue;
-        }
-        if (item.isSystemPrivilege()) {
-          internalAuditor.grantSysPrivilege(item, false);
-        } else if (item.isRelationalPrivilege()) {
-          internalAuditor.grantAnyScopePrivilege(item, false);
-        } else if (item.isPathPrivilege()) {
-          pathPri.grantPrivilege(item, false);
-        }
-      }
-      internalAuditor.getPathPrivilegeList().clear();
-      internalAuditor.getPathPrivilegeList().add(pathPri);
-    } catch (IllegalPathException e) {
-      LOGGER.warn("Got a wrong path for {} to init", IoTDBConstant.INTERNAL_AUDIT_USER, e);
-    }
-    LOGGER.info("Internal user {} initialized", IoTDBConstant.INTERNAL_AUDIT_USER);
+        AuthMessages.INTERNAL_USER_INITIALIZED,
+        CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
   }
 
   private void initUserId() {
@@ -155,7 +121,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       long maxUserId = this.accessor.loadUserId();
       nextUserId = Math.max(maxUserId, INTERNAL_USER_END_ID);
     } catch (IOException e) {
-      LOGGER.warn("meet error in load max userId.", e);
+      LOGGER.warn(AuthMessages.LOAD_MAX_USER_ID_ERROR, e);
       throw new RuntimeException(e);
     }
   }
@@ -175,19 +141,20 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return null;
   }
 
+  public long getUserId(String username) throws AuthException {
+    User user = this.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_DOES_NOT_EXIST, username));
+    }
+    return user.getUserId();
+  }
+
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
-    if (validCheck && !CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)) {
-      if (username.equals(password)
-          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
-        throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
-      }
-      AuthUtils.validateUsername(username);
-      if (enableEncrypt) {
-        AuthUtils.validatePassword(password);
-      }
+    if (validCheck) {
+      validCheckForNewUser(username, password, enableEncrypt);
     }
 
     User user = this.getEntity(username);
@@ -197,10 +164,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
     lock.writeLock(username);
     try {
       long userid;
-      if (username.equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
-        userid = 0;
-      } else if (username.equals(IoTDBConstant.INTERNAL_AUDIT_USER)) {
-        userid = 4;
+      if (username.equals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
+          && this.getEntity(SUPER_USER_ID) == null) {
+        userid = SUPER_USER_ID;
       } else {
         userid = ++nextUserId;
       }
@@ -214,13 +180,67 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
   }
 
+  public void tryToCreateBuiltinUser(
+      String username, String password, long userId, boolean validCheck, boolean enableEncrypt)
+      throws AuthException {
+    if (validCheck) {
+      validCheckForBuiltinUser(username, password, enableEncrypt, userId);
+    }
+    User user = this.getEntity(username);
+    if (user != null) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, AuthMessages.BUILTIN_USERNAME_IN_USE);
+    }
+    lock.writeLock(username);
+    try {
+      user =
+          new User(
+              username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userId);
+      entityMap.put(username, user);
+    } finally {
+      lock.writeUnlock(username);
+    }
+  }
+
+  private void validCheckForNewUser(String username, String password, boolean enableEncrypt)
+      throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
+      if (enableEncrypt
+          && username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
+      }
+      AuthUtils.validateNewUserUsername(username);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
+    }
+  }
+
+  private void validCheckForBuiltinUser(
+      String username, String password, boolean enableEncrypt, long userId) throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
+      if (enableEncrypt
+          && username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
+      }
+      AuthUtils.validateInternalBuiltinUsername(username, userId);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
+    }
+  }
+
   public boolean updateUserPassword(String username, String newPassword, boolean bypassValidate)
       throws AuthException {
     if (!bypassValidate) {
       if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()
           && username.equals(newPassword)) {
         throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
       }
       AuthUtils.validatePassword(newPassword);
     }
@@ -234,6 +254,29 @@ public abstract class BasicUserManager extends BasicRoleManager {
       }
       user.setPassword(AuthUtils.encryptPassword(newPassword));
       return true;
+    } finally {
+      lock.writeUnlock(username);
+    }
+  }
+
+  public void renameUser(String username, String newUsername) throws AuthException {
+    AuthUtils.validateNewUserUsername(newUsername);
+    User user = this.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
+    }
+    User tmpUser = this.getEntity(newUsername);
+    if (tmpUser != null) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST,
+          String.format(AuthMessages.RENAME_USER_TARGET_EXISTS, username, newUsername));
+    }
+    lock.writeLock(username);
+    try {
+      User newUser = (User) entityMap.remove(username);
+      newUser.setName(newUsername);
+      entityMap.put(newUsername, newUser);
     } finally {
       lock.writeUnlock(username);
     }
@@ -270,7 +313,6 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private void init() throws AuthException {
     this.accessor.reset();
     initAdmin();
-    initInternalAuditorWhenNecessary();
   }
 
   @Override
@@ -282,20 +324,20 @@ public abstract class BasicUserManager extends BasicRoleManager {
       try {
         User user = (User) accessor.loadEntity(userId);
         if (user.getUserId() == -1) {
-          if (user.getName().equals(CommonDescriptor.getInstance().getConfig().getAdminName())) {
-            user.setUserId(0);
+          if (user.getName()
+              .equals(CommonDescriptor.getInstance().getConfig().getDefaultAdminName())) {
+            user.setUserId(SUPER_USER_ID);
           } else {
             user.setUserId(++nextUserId);
           }
         }
         entityMap.put(user.getName(), user);
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load user {}", userId);
+        LOGGER.warn(AuthMessages.LOAD_USER_EXCEPTION, userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
     initAdmin();
-    initInternalAuditorWhenNecessary();
   }
 
   @TestOnly

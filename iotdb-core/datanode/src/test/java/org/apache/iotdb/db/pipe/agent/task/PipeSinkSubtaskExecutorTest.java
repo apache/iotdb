@@ -41,6 +41,7 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 "PipeConnectorSubtaskExecutorTest",
                 System.currentTimeMillis(),
                 "TestAttributeSortedString",
+                "TestAttributeSortedString",
                 0,
                 mock(UnboundedBlockingPendingQueue.class),
                 mock(PipeConnector.class)));

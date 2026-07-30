@@ -62,6 +62,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    cnConfig.setMetadataLeaseFenceMs(metadataLeaseFenceMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     cnConfig.setPartitionInterval(partitionInterval);
     dnConfig.setPartitionInterval(partitionInterval);
@@ -196,9 +202,16 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
-    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    cnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
+    dnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
     return this;
   }
 
@@ -347,14 +360,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    cnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    dnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     cnConfig.setQueryThreadCount(queryThreadCount);
     dnConfig.setQueryThreadCount(queryThreadCount);
@@ -379,6 +384,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     cnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
     dnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
     return this;
   }
 
@@ -459,14 +485,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     dnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     cnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     return this;
   }
 
   @Override
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     return this;
@@ -483,6 +509,21 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
     cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
+    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
+    dnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
+    cnConfig.setSubscriptionOwnerLeaseDurationMsMin(subscriptionOwnerLeaseDurationMsMin);
     return this;
   }
 
@@ -511,6 +552,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     dnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
     cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    dnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    cnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
     return this;
   }
 
@@ -595,16 +643,10 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    return this;
-  }
-
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
-    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+    cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
     return this;
   }
 
@@ -612,6 +654,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
     dnConfig.setEnforceStrongPassword(enforceStrongPassword);
     cnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    cnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    dnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    cnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
+    dnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
     return this;
   }
 
@@ -651,9 +707,72 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
+    cnConfig.setSslProtocol(sslProtocol);
+    dnConfig.setSslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    dnConfig.setEnableAuditLog(enableAuditLog);
+    cnConfig.setEnableAuditLog(enableAuditLog);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    dnConfig.setAuditableOperationType(auditableOperationType);
+    cnConfig.setAuditableOperationType(auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    dnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    cnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    dnConfig.setAuditableOperationResult(auditableOperationResult);
+    cnConfig.setAuditableOperationResult(auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    cnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    dnConfig.setCteBufferSize(cteBufferSize);
+    cnConfig.setCteBufferSize(cteBufferSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    dnConfig.setMaxRowsInCteBuffer(maxRows);
+    cnConfig.setMaxRowsInCteBuffer(maxRows);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    dnConfig.setEnableTopologyProbing(enableTopologyProbing);
+    cnConfig.setEnableTopologyProbing(enableTopologyProbing);
     return this;
   }
 }

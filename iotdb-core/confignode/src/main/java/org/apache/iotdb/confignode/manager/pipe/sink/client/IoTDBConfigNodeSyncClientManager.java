@@ -39,6 +39,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
+      String keyStorePath,
+      String keyStorePwd,
       /* The following parameters are used locally. */
       String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
@@ -47,12 +49,15 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
       boolean validateTsFile,
-      boolean shouldMarkAsPipeRequest) {
+      boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useSSL,
         trustStorePath,
         trustStorePwd,
+        keyStorePath,
+        keyStorePwd,
         false,
         loadBalanceStrategy,
         userEntity,
@@ -60,7 +65,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
   }
 
   @Override

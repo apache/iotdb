@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -32,6 +41,8 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
 public class Property extends Node {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Property.class);
+
   private final Identifier name;
 
   @Nullable private final Expression value; // null iff the value is set to DEFAULT
@@ -39,28 +50,28 @@ public class Property extends Node {
   /** Constructs an instance representing a property whose value is set to DEFAULT */
   public Property(@Nonnull Identifier name) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.value = null;
   }
 
   /** Constructs an instance representing a property whose value is set to DEFAULT */
   public Property(@Nonnull NodeLocation location, @Nonnull Identifier name) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.value = null;
   }
 
   public Property(@Nonnull Identifier name, @Nonnull Expression value) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public Property(
       @Nonnull NodeLocation location, @Nonnull Identifier name, @Nullable Expression value) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public Identifier getName() {
@@ -78,14 +89,15 @@ public class Property extends Node {
   public Expression getNonDefaultValue() {
     checkState(
         !isSetToDefault(),
-        "Cannot get non-default value of property %s since its value is set to DEFAULT",
+        DataNodeQueryMessages
+            .EXCEPTION_CANNOT_GET_NON_MINUS_DEFAULT_VALUE_OF_PROPERTY_ARG_SINCE_ITS_VALUE_IS_SET_TO_DEF_E7D3185F,
         name);
     return value;
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitProperty(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitProperty(this, context);
   }
 
   @Override
@@ -116,5 +128,14 @@ public class Property extends Node {
         .add("name", name)
         .add("value", isSetToDefault() ? "DEFAULT" : getNonDefaultValue())
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
+    return size;
   }
 }

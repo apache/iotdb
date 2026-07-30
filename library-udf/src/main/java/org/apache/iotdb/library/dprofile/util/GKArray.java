@@ -124,6 +124,19 @@ public class GKArray {
 
         i++;
 
+      } else if (i >= additionalEntries.size()) {
+        // Only sketch entries left (must check before comparing additionalEntries.get(i)).
+        if (j + 1 < entries.size()
+            && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
+                <= removalThreshold) {
+          // Removable from sketch.
+          entries.get(j + 1).g += entries.get(j).g;
+        } else {
+          mergedEntries.add(entries.get(j));
+        }
+
+        j++;
+
       } else if (additionalEntries.get(i).v < entries.get(j).v) {
         if (additionalEntries.get(i).g + entries.get(j).g + entries.get(j).delta
             <= removalThreshold) {
@@ -136,7 +149,7 @@ public class GKArray {
 
         i++;
 
-      } else { // the same as i == additionalEntries.size()
+      } else {
         if (j + 1 < entries.size()
             && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
                 <= removalThreshold) {

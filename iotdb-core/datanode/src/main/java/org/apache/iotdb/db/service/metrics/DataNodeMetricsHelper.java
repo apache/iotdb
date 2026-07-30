@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetric
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -108,6 +108,9 @@ public class DataNodeMetricsHelper {
 
     // bind memory related metrics
     metricService.addMetricSet(GlobalMemoryMetrics.getInstance());
+
+    // bind metadata lease (ConfigNode heartbeat freshness) metrics
+    metricService.addMetricSet(new MetadataLeaseMetrics());
   }
 
   private static void initSystemMetrics(MetricService metricService) {

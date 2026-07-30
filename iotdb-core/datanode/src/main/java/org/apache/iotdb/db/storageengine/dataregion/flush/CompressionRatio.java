@@ -22,8 +22,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -83,7 +84,7 @@ public class CompressionRatio {
     try {
       restore();
     } catch (IOException e) {
-      LOGGER.error("restore file error caused by ", e);
+      LOGGER.error(StorageEngineMessages.RESTORE_FILE_ERROR, e);
     }
   }
 
@@ -99,7 +100,8 @@ public class CompressionRatio {
     totalDiskSize += diskSize;
     if (memorySize < 0 || totalMemorySize.get() < 0) {
       LOGGER.warn(
-          "The compression ratio is negative, current memTableSize: {}, totalMemTableSize: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_THE_COMPRESSION_RATIO_IS_NEGATIVE_CURRENT_MEMTABLESIZE_TOTALMEMTABLESIZE_8C3DD017,
           memorySize,
           totalMemorySize);
     }
@@ -154,7 +156,7 @@ public class CompressionRatio {
                 + "."
                 + dataRegionId);
     if (!oldDataRegionFile.delete() && oldDataRegionFile.exists()) {
-      LOGGER.warn("Can't delete old data region compression file {}", oldDataRegionFile);
+      LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_OLD_COMPRESSION_FILE, oldDataRegionFile);
     }
   }
 
@@ -182,13 +184,15 @@ public class CompressionRatio {
     if (!oldFile.exists()) {
       Files.createFile(newFile.toPath());
       LOGGER.debug(
-          "Old ratio file {} doesn't exist, force create ratio file {}",
+          StorageEngineMessages
+              .STORAGE_LOG_OLD_RATIO_FILE_DOESN_T_EXIST_FORCE_CREATE_RATIO_FILE_74EDD7DB,
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
     } else {
       FileUtils.moveFile(oldFile, newFile);
       LOGGER.debug(
-          "Compression ratio file updated, previous: {}, current: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPRESSION_RATIO_FILE_UPDATED_PREVIOUS_CURRENT_7A9EEDF8,
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
     }
@@ -234,7 +238,7 @@ public class CompressionRatio {
     for (File ratioFile : ratioFiles) {
       if (ratioFile != null) {
         if (!ratioFile.delete()) {
-          LOGGER.warn("Cannot delete ratio file {}", ratioFile.getAbsolutePath());
+          LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_RATIO_FILE, ratioFile.getAbsolutePath());
         }
       }
     }
@@ -262,7 +266,8 @@ public class CompressionRatio {
         }
       }
       LOGGER.debug(
-          "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
+          StorageEngineMessages
+              .STORAGE_LOG_AFTER_RESTORING_FROM_COMPRESSION_RATIO_FILE_TOTAL_MEMORY_D5ACB1C4,
           totalMemorySize,
           totalDiskSize);
       oldFileName = ratioFiles[maxRatioIndex].getName();

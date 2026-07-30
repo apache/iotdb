@@ -22,11 +22,13 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.factory.BaseClientFactory;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
+import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
@@ -71,7 +73,7 @@ class RatisClient implements AutoCloseable {
     try {
       raftClient.close();
     } catch (IOException e) {
-      logger.warn("cannot close raft client ", e);
+      logger.warn(RatisMessages.CANNOT_CLOSE_RAFT_CLIENT, e);
     }
   }
 
@@ -89,16 +91,19 @@ class RatisClient implements AutoCloseable {
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
     private final RatisConfig.Client config;
+    private final Parameters parameters;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        RatisConfig.Client config) {
+        RatisConfig.Client config,
+        Parameters parameters) {
       super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
       this.config = config;
+      this.parameters = parameters;
     }
 
     @Override
@@ -116,6 +121,7 @@ class RatisClient implements AutoCloseable {
                   .setRaftGroup(group)
                   .setRetryPolicy(new RatisRetryPolicy(config))
                   .setClientRpc(clientRpc)
+                  .setParameters(parameters)
                   .build(),
               clientManager));
     }
@@ -126,21 +132,24 @@ class RatisClient implements AutoCloseable {
     }
   }
 
-  static class EndlessRetryFactory extends BaseClientFactory<RaftGroup, RatisClient> {
+  static class ReconfigurationRetryFactory extends BaseClientFactory<RaftGroup, RatisClient> {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
     private final RatisConfig.Client config;
+    private final Parameters parameters;
 
-    public EndlessRetryFactory(
+    public ReconfigurationRetryFactory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        RatisConfig.Client config) {
+        RatisConfig.Client config,
+        Parameters parameters) {
       super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
       this.config = config;
+      this.parameters = parameters;
     }
 
     @Override
@@ -156,7 +165,8 @@ class RatisClient implements AutoCloseable {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisEndlessRetryPolicy(config))
+                  .setRetryPolicy(new RatisReconfigurationRetryPolicy(config))
+                  .setParameters(parameters)
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -207,8 +217,7 @@ class RatisClient implements AutoCloseable {
               .filter(StatusRuntimeException.class::isInstance);
 
       if (unexpectedCause.isPresent()) {
-        logger.info(
-            "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
+        logger.info(RatisMessages.RAFT_CLIENT_REQUEST_FAILED, this, unexpectedCause.get());
         return NO_RETRY_ACTION;
       }
 
@@ -217,16 +226,23 @@ class RatisClient implements AutoCloseable {
   }
 
   /** This policy is used to raft configuration change */
-  private static class RatisEndlessRetryPolicy implements RetryPolicy {
+  private static class RatisReconfigurationRetryPolicy implements RetryPolicy {
 
-    private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
-    // for reconfiguration request, we use different retry policy
-    private final RetryPolicy endlessPolicy;
+    private static final Logger logger =
+        LoggerFactory.getLogger(RatisReconfigurationRetryPolicy.class);
+    // For a reconfiguration request we retry the "in progress / not ready" failures with a fixed
+    // 2s interval, but only up to a bounded number of attempts. An unbounded retry (the previous
+    // behavior) would block the setConfiguration call forever when a newly ADDING peer is killed
+    // and can never catch up, leaving the region migration permanently stuck. After the bound is
+    // exhausted the last failure is propagated, so the upper layer can fail and roll back.
+    private final RetryPolicy reconfigurationPolicy;
     private final RetryPolicy defaultPolicy;
 
-    RatisEndlessRetryPolicy(RatisConfig.Client config) {
-      endlessPolicy =
-          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
+    RatisReconfigurationRetryPolicy(RatisConfig.Client config) {
+      reconfigurationPolicy =
+          RetryPolicies.retryUpToMaximumCountWithFixedSleep(
+              config.getReconfigurationMaxRetryAttempts(),
+              TimeDuration.valueOf(2, TimeUnit.SECONDS));
       defaultPolicy = new RatisRetryPolicy(config);
     }
 
@@ -239,7 +255,7 @@ class RatisClient implements AutoCloseable {
           || cause instanceof LeaderSteppingDownException
           || cause instanceof ServerNotReadyException
           || cause instanceof NotLeaderException) {
-        return endlessPolicy.handleAttemptFailure(event);
+        return reconfigurationPolicy.handleAttemptFailure(event);
       }
 
       return defaultPolicy.handleAttemptFailure(event);

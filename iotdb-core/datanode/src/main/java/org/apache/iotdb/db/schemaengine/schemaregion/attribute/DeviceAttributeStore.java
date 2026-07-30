@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.MemUsageUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -88,13 +90,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
-            "Failed to delete old snapshot {} while creating device attribute snapshot.",
-            snapshot.getName());
+            DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_SNAPSHOT_DEVICE_ATTR, snapshot.getName());
         return false;
       }
       if (!snapshotTmp.renameTo(snapshot)) {
         logger.error(
-            "Failed to rename {} to {} while creating device attribute snapshot.",
+            DataNodeSchemaMessages.FAILED_TO_RENAME_SNAPSHOT_DEVICE_ATTR,
             snapshotTmp.getName(),
             snapshot.getName());
         FileUtils.deleteFileIfExist(snapshot);
@@ -103,7 +104,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create device attribute snapshot due to {}", e.getMessage(), e);
+      logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_DEVICE_ATTR_SNAPSHOT, e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
@@ -116,16 +117,14 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
     if (!snapshot.exists()) {
-      logger.info(
-          "Device attribute snapshot {} not found, consider it as upgraded from the older version, use empty attributes",
-          snapshot);
+      logger.info(DataNodeSchemaMessages.DEVICE_ATTR_SNAPSHOT_NOT_FOUND, snapshot);
       return;
     }
     try (final BufferedInputStream inputStream =
         new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
       deserialize(inputStream);
     } catch (final IOException e) {
-      logger.warn("Load device attribute snapshot from {} failed", snapshotDir);
+      logger.warn(DataNodeSchemaMessages.LOAD_DEVICE_ATTR_SNAPSHOT_FAILED, snapshotDir);
       throw e;
     }
   }
@@ -137,12 +136,16 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
     for (int i = 0; i < nameList.size(); i++) {
-      final Binary value = (Binary) valueList[i];
-      if (valueList[i] != null) {
-        attributeMap.put(nameList.get(i), value);
-        memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
-        addTableAttributeMemory(tableName, value.ramBytesUsed());
+      if (valueList.length <= i) {
+        break;
       }
+      if (valueList[i] == null || valueList[i] == Constants.NONE) {
+        continue;
+      }
+      final Binary value = (Binary) valueList[i];
+      attributeMap.put(nameList.get(i), value);
+      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+      addTableAttributeMemory(tableName, value.ramBytesUsed());
     }
     deviceAttributeList.add(attributeMap);
     requestMemory(memUsage);
@@ -163,6 +166,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
     for (int i = 0; i < nameList.size(); i++) {
       final String key = nameList.get(i);
+      if (valueList.length <= i) {
+        break;
+      }
+      if (valueList[i] == Constants.NONE) {
+        continue;
+      }
       final Binary value = (Binary) valueList[i];
 
       originMemUsage =

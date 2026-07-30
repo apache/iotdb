@@ -19,33 +19,37 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.PlanAndMappings;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -67,10 +71,10 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Streams.stream;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression.Quantifier.ALL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression.Quantifier.ALL;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 class SubqueryPlanner {
@@ -80,6 +84,8 @@ class SubqueryPlanner {
   private final MPPQueryContext plannerContext;
   private final SessionInfo session;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
+  private final PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
 
   SubqueryPlanner(
       Analysis analysis,
@@ -87,13 +93,21 @@ class SubqueryPlanner {
       MPPQueryContext plannerContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
-      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
-    requireNonNull(analysis, "analysis is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(plannerContext, "plannerContext is null");
-    requireNonNull(outerContext, "outerContext is null");
-    requireNonNull(session, "session is null");
-    requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    requireNonNull(plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(
+        recursiveSubqueries, DataNodeQueryMessages.EXCEPTION_RECURSIVESUBQUERIES_IS_NULL_6AD8A180);
+    requireNonNull(
+        predicateWithUncorrelatedScalarSubqueryReconstructor,
+        DataNodeQueryMessages
+            .EXCEPTION_PREDICATEWITHUNCORRELATEDSCALARSUBQUERYRECONSTRUCTOR_IS_NULL_B264FEBC);
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -101,6 +115,8 @@ class SubqueryPlanner {
     this.plannerContext = plannerContext;
     this.session = session;
     this.recursiveSubqueries = recursiveSubqueries;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public PlanBuilder handleSubqueries(
@@ -125,6 +141,9 @@ class SubqueryPlanner {
 
     List<SubqueryExpression> scalarSubqueries = subqueries.getSubqueries();
     if (!scalarSubqueries.isEmpty()) {
+      // try to execute un-correlated scalar subqueries in the predicate in advance to utilize
+      // predicate pushdown if possible
+      tryFoldUncorrelatedScalarSubqueryInPredicate(expression, plannerContext);
       for (Cluster<SubqueryExpression> cluster :
           cluster(builder.getScope(), selectSubqueries(builder, expression, scalarSubqueries))) {
         builder = planScalarSubquery(builder, cluster);
@@ -149,6 +168,12 @@ class SubqueryPlanner {
       }
     }
     return builder;
+  }
+
+  private void tryFoldUncorrelatedScalarSubqueryInPredicate(
+      Expression expression, MPPQueryContext context) {
+    predicateWithUncorrelatedScalarSubqueryReconstructor
+        .reconstructPredicateWithUncorrelatedScalarSubquery(context, analysis, expression);
   }
 
   /**
@@ -209,6 +234,7 @@ class SubqueryPlanner {
     subPlan =
         planInPredicate(
             subPlan, value, subquery, output, predicate, analysis.getPredicateCoercions(predicate));
+    predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
 
     return new PlanBuilder(
         subPlan
@@ -267,7 +293,8 @@ class SubqueryPlanner {
     // Attention: remove this check after supporting RowType
     checkArgument(
         descriptor.getVisibleFieldCount() <= 1,
-        "For now, only single column subqueries are supported");
+        DataNodeQueryMessages
+            .EXCEPTION_FOR_NOW_COMMA_ONLY_SINGLE_COLUMN_SUBQUERIES_ARE_SUPPORTED_AD9593BE);
     /*
     if (descriptor.getVisibleFieldCount() > 1) {
       column = symbolAllocator.newSymbol("row", type);
@@ -345,7 +372,8 @@ class SubqueryPlanner {
             plannerContext,
             Optional.of(outerContext),
             session,
-            recursiveSubqueries)
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor)
         .process(subquery, null);
   }
 
@@ -375,6 +403,7 @@ class SubqueryPlanner {
             subPlan =
                 planQuantifiedComparison(
                     subPlan, operator, quantifier, value, subquery, output, predicateCoercions);
+            predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
             return new PlanBuilder(
                 subPlan
                     .getTranslations()
@@ -389,6 +418,7 @@ class SubqueryPlanner {
             subPlan =
                 planInPredicate(
                     subPlan, value, subquery, output, quantifiedComparison, predicateCoercions);
+            predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
             return new PlanBuilder(
                 subPlan
                     .getTranslations()
@@ -438,11 +468,14 @@ class SubqueryPlanner {
                 .getTranslations()
                 .withAdditionalMappings(mapAll(cluster, subPlan.getScope(), output)),
             subPlan.getRoot());
-        // Cannot be used with quantified comparison
+      // Cannot be used with quantified comparison
       case IS_DISTINCT_FROM:
       default:
         throw new IllegalArgumentException(
-            format("Unexpected quantified comparison: '%s %s'", operator.getValue(), quantifier));
+            format(
+                DataNodeQueryMessages.UNEXPECTED_QUANTIFIED_COMPARISON_FMT,
+                operator.getValue(),
+                quantifier));
     }
   }
 
@@ -587,7 +620,10 @@ class SubqueryPlanner {
 
     List<Expression> fieldsList = fields.build();
     // Attention: remove this check after supporting RowType
-    checkArgument(fieldsList.size() == 1, "For now, only single column subqueries are supported.");
+    checkArgument(
+        fieldsList.size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_FOR_NOW_COMMA_ONLY_SINGLE_COLUMN_SUBQUERIES_ARE_SUPPORTED_DOT_068B1A66);
     /*subqueryPlan =
     subqueryPlan.withNewRoot(
         new ProjectNode(
@@ -647,7 +683,8 @@ class SubqueryPlanner {
     private final List<T> expressions;
 
     private Cluster(List<T> expressions) {
-      checkArgument(!expressions.isEmpty(), "Cluster is empty");
+      checkArgument(
+          !expressions.isEmpty(), DataNodeQueryMessages.EXCEPTION_CLUSTER_IS_EMPTY_22299EED);
       this.expressions = ImmutableList.copyOf(expressions);
     }
 
@@ -660,7 +697,9 @@ class SubqueryPlanner {
               .count();
 
       checkArgument(
-          count == 1, "Cluster contains expressions that are not equivalent to each other");
+          count == 1,
+          DataNodeQueryMessages
+              .EXCEPTION_CLUSTER_CONTAINS_EXPRESSIONS_THAT_ARE_NOT_EQUIVALENT_TO_EACH_OTHER_7AD9A0E3);
 
       return new Cluster<>(expressions);
     }

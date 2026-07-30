@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
@@ -52,7 +53,8 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     super(COMMON_CONFIG.getTTLCheckInterval());
     this.configManager = configManager;
     LOGGER.info(
-        "[PartitionTableCleaner] The PartitionTableAutoCleaner is started with cycle={}ms",
+        ProcedureMessages
+            .PARTITIONTABLECLEANER_THE_PARTITIONTABLEAUTOCLEANER_IS_STARTED_WITH_CYCLE_MS,
         COMMON_CONFIG.getTTLCheckInterval());
   }
 
@@ -61,15 +63,23 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames(null);
     Map<String, Long> databaseTTLMap = new TreeMap<>();
     for (String database : databases) {
-      long databaseTTL =
-          PathUtils.isTableModelDatabase(database)
-              ? configManager.getClusterSchemaManager().getDatabaseMaxTTL(database)
-              : configManager.getTTLManager().getDatabaseMaxTTL(database);
+      long databaseTTL;
+      if (PathUtils.isTableModelDatabase(database)) {
+        // For table mode, the auto cleaner takes effect
+        // when the maximum TTL among tables is less than Long.MAX_VALUE.
+        // Because the database-level TTL do not affect data in table mode.
+        databaseTTL = configManager.getClusterSchemaManager().getDatabaseMaxTTL(database);
+      } else {
+        databaseTTL = configManager.getTTLManager().getDatabaseLevelTTL(database);
+        if (0 < databaseTTL && databaseTTL < Long.MAX_VALUE) {
+          // For tree mode, the auto cleaner takes effect only when the database-level TTL is set.
+          // Subsequently, we employ the maximum TTL among all time series in this database.
+          databaseTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
+        }
+      }
       databaseTTLMap.put(database, databaseTTL);
     }
-    LOGGER.info(
-        "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner, databaseTTL: {}",
-        databaseTTLMap);
+    LOGGER.info(ProcedureMessages.PARTITION_TABLE_CLEANER_ACTIVATE_TTL_LOG, databaseTTLMap);
     for (String database : databases) {
       long databaseTTL = databaseTTLMap.get(database);
       if (!configManager.getPartitionManager().isDatabaseExist(database)
@@ -81,7 +91,8 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     }
     if (!databaseTTLMap.isEmpty()) {
       LOGGER.info(
-          "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}",
+          ProcedureMessages
+              .PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_FOR,
           databaseTTLMap);
       // Only clean the partition table when necessary
       TTimePartitionSlot currentTimePartitionSlot = getCurrentTimePartitionSlot();

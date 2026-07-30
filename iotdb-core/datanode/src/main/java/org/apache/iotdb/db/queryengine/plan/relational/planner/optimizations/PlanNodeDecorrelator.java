@@ -19,28 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -60,14 +61,14 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper.symbolMapper;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class PlanNodeDecorrelator {
   private final PlannerContext plannerContext;
@@ -77,9 +78,13 @@ public class PlanNodeDecorrelator {
 
   public PlanNodeDecorrelator(
       PlannerContext plannerContext, SymbolAllocator symbolAllocator, Lookup lookup) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.lookup = requireNonNull(lookup, "lookup is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
     this.typeCoercion = new TypeCoercion(plannerContext.getTypeManager()::getType);
   }
 
@@ -96,13 +101,15 @@ public class PlanNodeDecorrelator {
                 decorrelationResult.correlatedPredicates, decorrelationResult.node, correlation));
   }
 
-  private class DecorrelatingVisitor extends PlanVisitor<Optional<DecorrelationResult>, Void> {
+  private class DecorrelatingVisitor implements PlanVisitor<Optional<DecorrelationResult>, Void> {
     private final TypeManager typeManager;
     private final List<Symbol> correlation;
 
     DecorrelatingVisitor(TypeManager typeManager, List<Symbol> correlation) {
-      this.typeManager = requireNonNull(typeManager, "typeManager is null");
-      this.correlation = requireNonNull(correlation, "correlation is null");
+      this.typeManager =
+          requireNonNull(typeManager, DataNodeQueryMessages.EXCEPTION_TYPEMANAGER_IS_NULL_12A72016);
+      this.correlation =
+          requireNonNull(correlation, DataNodeQueryMessages.EXCEPTION_CORRELATION_IS_NULL_F8327EAD);
     }
 
     @Override
@@ -204,7 +211,8 @@ public class PlanNodeDecorrelator {
         return rewriteLimitWithRowCountOne(childDecorrelationResult, node.getPlanNodeId());
       }
       throw new SemanticException(
-          "Decorrelation for LIMIT with row count greater than 1 is not supported yet");
+          DataNodeQueryMessages
+              .DECORRELATION_FOR_LIMIT_WITH_ROW_COUNT_GREATER_THAN_1_IS_NOT_SUPPORTED_YET);
       // return rewriteLimitWithRowCountGreaterThanOne(childDecorrelationResult, node);
     }
 
@@ -298,7 +306,8 @@ public class PlanNodeDecorrelator {
 
     @Override
     public Optional<DecorrelationResult> visitTopK(TopKNode node, Void context) {
-      throw new SemanticException("TopK is not supported in correlated subquery for now");
+      throw new SemanticException(
+          DataNodeQueryMessages.TOPK_IS_NOT_SUPPORTED_IN_CORRELATED_SUBQUERY_FOR);
     }
 
     /*@Override
@@ -446,7 +455,7 @@ public class PlanNodeDecorrelator {
       Set<Symbol> groupingKeys = ImmutableSet.copyOf(node.getGroupingKeys());
       checkState(
           ImmutableSet.copyOf(decorrelatedAggregation.getGroupingKeys()).equals(groupingKeys),
-          "grouping keys were correlated");
+          DataNodeQueryMessages.EXCEPTION_GROUPING_KEYS_WERE_CORRELATED_EE1C8406);
       List<Symbol> symbolsToAdd =
           childDecorrelationResult.symbolsToPropagate.stream()
               .filter(symbol -> !groupingKeys.contains(symbol))
@@ -636,10 +645,12 @@ public class PlanNodeDecorrelator {
       this.constantSymbols = constantSymbols;
       checkState(
           constantSymbols.containsAll(correlatedSymbolsMapping.values()),
-          "Expected constant symbols to contain all correlated symbols local equivalents");
+          DataNodeQueryMessages
+              .EXCEPTION_EXPECTED_CONSTANT_SYMBOLS_TO_CONTAIN_ALL_CORRELATED_SYMBOLS_LOCAL_EQUIVALENTS_E20CB055);
       checkState(
           symbolsToPropagate.containsAll(constantSymbols),
-          "Expected symbols to propagate to contain all constant symbols");
+          DataNodeQueryMessages
+              .EXCEPTION_EXPECTED_SYMBOLS_TO_PROPAGATE_TO_CONTAIN_ALL_CONSTANT_SYMBOLS_C9D876E4);
     }
 
     SymbolMapper getCorrelatedSymbolMapper() {
@@ -680,9 +691,11 @@ public class PlanNodeDecorrelator {
     private final PlanNode node;
 
     public DecorrelatedNode(List<Expression> correlatedPredicates, PlanNode node) {
-      requireNonNull(correlatedPredicates, "correlatedPredicates is null");
+      requireNonNull(
+          correlatedPredicates,
+          DataNodeQueryMessages.EXCEPTION_CORRELATEDPREDICATES_IS_NULL_5FCB8011);
       this.correlatedPredicates = ImmutableList.copyOf(correlatedPredicates);
-      this.node = requireNonNull(node, "node is null");
+      this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
     }
 
     public Optional<Expression> getCorrelatedPredicates() {

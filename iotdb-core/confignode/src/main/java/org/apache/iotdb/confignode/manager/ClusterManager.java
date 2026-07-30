@@ -40,6 +40,8 @@ import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestC
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,7 +65,7 @@ public class ClusterManager {
   private final ClusterInfo clusterInfo;
 
   public static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public ClusterManager(IManager configManager, ClusterInfo clusterInfo) {
     this.configManager = configManager;
@@ -72,7 +74,7 @@ public class ClusterManager {
 
   public void checkClusterId() {
     if (clusterInfo.getClusterId() != null) {
-      LOGGER.info("clusterID: {}", clusterInfo.getClusterId());
+      LOGGER.info(ManagerMessages.CLUSTERID, clusterInfo.getClusterId());
       return;
     }
     generateClusterId();
@@ -90,7 +92,7 @@ public class ClusterManager {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for get cluster id.");
+        LOGGER.warn(ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID);
         break;
       }
     }

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -32,8 +33,12 @@ import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.record.Tablet;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -47,13 +52,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -63,11 +73,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -87,6 +101,17 @@ public class IoTDBDeletionTableIT {
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
+  private final String insertDeletionTemplate =
+      "INSERT INTO deletion.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
+          + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
+
+  private static String sequenceDataDir = "data" + File.separator + "sequence";
+  private static String unsequenceDataDir = "data" + File.separator + "unsequence";
+
+  private static final String RESOURCE = ".resource";
+  private static final String MODS = ".mods";
+  private static final String TSFILE = ".tsfile";
+
   @BeforeClass
   public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
@@ -98,6 +123,8 @@ public class IoTDBDeletionTableIT {
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(5000);
+    // avoid inconsistency caused by leader migration
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -223,14 +250,6 @@ public class IoTDBDeletionTableIT {
       }
 
       try {
-        statement.execute("DELETE FROM vehicle1  WHERE attr1 = 'text'");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(
-            "701: The column 'attr1' does not exist or is not a tag column", e.getMessage());
-      }
-
-      try {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
@@ -251,14 +270,7 @@ public class IoTDBDeletionTableIT {
         assertEquals("701: The operator of tag predicate must be '=' for 'd0'", e.getMessage());
       }
 
-      try {
-        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(
-            "701: Unsupported expression: (deviceId IS NOT NULL) in ((time < 10) AND (deviceId IS NOT NULL))",
-            e.getMessage());
-      }
+      statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId = null");
@@ -305,6 +317,572 @@ public class IoTDBDeletionTableIT {
           cnt++;
         }
         assertEquals(1, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilter() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr(deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'red', 'small', 1),"
+              + "(2, 'd1', 'red', 'small', 2),"
+              + "(1, 'd2', 'red', 'large', 3),"
+              + "(2, 'd2', 'red', 'large', 4),"
+              + "(1, 'd3', 'blue', 'small', 5),"
+              + "(2, 'd3', 'blue', 'small', 6)");
+
+      statement.execute("DELETE FROM delete_by_attr WHERE attr1 = 'red' AND attr2 = 'small'");
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT deviceId, s1 FROM delete_by_attr ORDER BY deviceId, s1")) {
+        assertTrue(resultSet.next());
+        assertEquals("d2", resultSet.getString(1));
+        assertEquals(3, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d2", resultSet.getString(1));
+        assertEquals(4, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d3", resultSet.getString(1));
+        assertEquals(5, resultSet.getInt(2));
+        assertTrue(resultSet.next());
+        assertEquals("d3", resultSet.getString(1));
+        assertEquals(6, resultSet.getInt(2));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithTagAndTimeRange() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_tag_time("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, "
+              + "s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_tag_time(time, deviceId, site, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 'small', 11),"
+              + "(2, 'd1', 'north', 'red', 'small', 12),"
+              + "(3, 'd1', 'north', 'red', 'small', 13),"
+              + "(4, 'd1', 'north', 'red', 'small', 14),"
+              + "(1, 'd2', 'south', 'red', 'small', 21),"
+              + "(2, 'd2', 'south', 'red', 'small', 22),"
+              + "(2, 'd3', 'north', 'blue', 'small', 32),"
+              + "(3, 'd4', 'north', 'red', 'large', 43)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_tag_time "
+              + "WHERE time >= 2 AND time <= 3 "
+              + "AND site = 'north' AND attr1 = 'red' AND attr2 = 'small'");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_tag_time ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(
+          List.of("d1,1,11", "d1,4,14", "d2,1,21", "d2,2,22", "d3,2,32", "d4,3,43"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithOrAndNull() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_or_null("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, "
+              + "s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_or_null(time, deviceId, site, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 'small', 11),"
+              + "(2, 'd1', 'north', 'red', 'small', 12),"
+              + "(1, 'd2', 'north', 'blue', 'small', 21),"
+              + "(2, 'd2', 'north', 'blue', 'small', 22),"
+              + "(1, 'd3', 'south', 'red', 'large', 31),"
+              + "(2, 'd3', 'south', 'red', 'large', 32)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_or_null(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd4', 'north', 'red', 41),"
+              + "(2, 'd4', 'north', 'red', 42)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_or_null "
+              + "WHERE (attr1 = 'red' AND site = 'north' AND time = 1) "
+              + "OR (attr2 IS NULL AND time = 2)");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_or_null ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,1,21", "d2,2,22", "d3,1,31", "d3,2,32"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithOtherOperators() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_other_ops("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_other_ops(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'a', 'x', 11),"
+              + "(2, 'd1', 'a', 'x', 12),"
+              + "(1, 'd2', 'b', 'y', 21),"
+              + "(2, 'd2', 'b', 'y', 22),"
+              + "(1, 'd3', 'c', 'z', 31),"
+              + "(2, 'd3', 'c', 'z', 32)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_other_ops(time, deviceId, attr2, s1) VALUES "
+              + "(1, 'd4', 'null_attr1', 41),"
+              + "(2, 'd4', 'null_attr1', 42)");
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 > 'b' AND time = 1");
+
+      List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(
+          List.of("d1,1,11", "d1,2,12", "d2,1,21", "d2,2,22", "d3,2,32", "d4,1,41", "d4,2,42"),
+          actual);
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 != 'a' AND time = 2");
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,1,11", "d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 <= 'a' AND time = 1");
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,1,21", "d4,1,41", "d4,2,42"), actual);
+
+      statement.execute("DELETE FROM delete_by_attr_other_ops WHERE attr1 IS NOT NULL");
+
+      actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_other_ops ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d4,1,41", "d4,2,42"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithLike() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_like("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_like(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'red-small', 'a', 11),"
+              + "(2, 'd1', 'red-small', 'a', 12),"
+              + "(1, 'd2', 'red-large', 'b', 21),"
+              + "(2, 'd2', 'red-large', 'b', 22),"
+              + "(1, 'd3', 'blue-small', 'c', 31),"
+              + "(2, 'd3', 'blue-small', 'c', 32)");
+
+      statement.execute("DELETE FROM delete_by_attr_like WHERE attr1 LIKE 'red%' AND time = 1");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_like ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,2,22", "d3,1,31", "d3,2,32"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithIn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_in("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_in(time, deviceId, attr1, attr2, s1) VALUES "
+              + "(1, 'd1', 'red', 'small', 11),"
+              + "(2, 'd1', 'red', 'small', 12),"
+              + "(1, 'd2', 'blue', 'large', 21),"
+              + "(2, 'd2', 'blue', 'large', 22),"
+              + "(1, 'd3', 'green', 'small', 31),"
+              + "(2, 'd3', 'green', 'small', 32)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_in WHERE attr1 IN ('red', 'blue') AND time = 1");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, time, s1 FROM delete_by_attr_in ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1) + "," + resultSet.getLong(2) + "," + resultSet.getInt(3));
+        }
+      }
+      assertEquals(List.of("d1,2,12", "d2,2,22", "d3,1,31", "d3,2,32"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithMixedOperators() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_mixed_ops("
+              + "deviceId STRING TAG, site STRING TAG, "
+              + "attr1 ATTRIBUTE, attr2 ATTRIBUTE, attr3 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_mixed_ops(time, deviceId, site, attr1, attr2, attr3, s1) "
+              + "VALUES "
+              + "(1, 'd1', 'north', 'red-a', 'small', 'enabled', 11),"
+              + "(2, 'd1', 'north', 'red-a', 'small', 'enabled', 12),"
+              + "(3, 'd1', 'north', 'red-a', 'small', 'enabled', 13),"
+              + "(4, 'd1', 'north', 'red-a', 'small', 'enabled', 14),"
+              + "(5, 'd1', 'north', 'red-a', 'small', 'enabled', 15),"
+              + "(2, 'd2', 'north', 'blue-a', 'small', 'enabled', 22),"
+              + "(3, 'd3', 'south', 'red-b', 'medium', 'enabled', 33),"
+              + "(3, 'd4', 'north', 'red-c', 'large', 'enabled', 43)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_mixed_ops(time, deviceId, site, attr1, attr2, s1) "
+              + "VALUES (3, 'd5', 'north', 'red-d', 'medium', 53)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_mixed_ops "
+              + "WHERE time >= 2 AND time <= 4 "
+              + "AND site = 'north' "
+              + "AND attr1 != 'blue-a' "
+              + "AND attr1 LIKE 'red%' "
+              + "AND attr2 IN ('small', 'medium') "
+              + "AND attr3 IS NOT NULL");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_attr_mixed_ops "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of(
+              "d1,north,1,11",
+              "d1,north,5,15",
+              "d2,north,2,22",
+              "d3,south,3,33",
+              "d4,north,3,43",
+              "d5,north,3,53"),
+          actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithoutTagColumns() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_no_tag(attr1 ATTRIBUTE, attr2 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_no_tag(time, attr1, attr2, s1) VALUES "
+              + "(1, 'red', 'small', 11),"
+              + "(2, 'blue', 'large', 12),"
+              + "(3, 'blue', 'large', 13),"
+              + "(4, 'red', 'small', 14)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from delete_by_attr_no_tag"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from delete_by_attr_no_tag "
+                  + "where attr1 = 'red' AND attr2 = 'small'"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
+      statement.execute(
+          "INSERT INTO delete_by_attr_no_tag(time, attr1, attr2, s1) VALUES "
+              + "(2, 'blue', 'large', 12),"
+              + "(4, 'red', 'small', 14)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from delete_by_attr_no_tag"),
+          "attr1,attr2,",
+          Collections.singleton("red,small,"));
+      statement.execute(
+          "DELETE FROM delete_by_attr_no_tag "
+              + "WHERE time >= 2 AND time <= 4 AND attr1 = 'red' AND attr2 = 'small'");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT time, s1 FROM delete_by_attr_no_tag ORDER BY time")) {
+        while (resultSet.next()) {
+          actual.add(resultSet.getLong(1) + "," + resultSet.getInt(2));
+        }
+      }
+      assertEquals(List.of("1,11"), actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithNullTagDevice() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_null_tag("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_null_tag(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 11),"
+              + "(2, 'd1', 'north', 'red', 12),"
+              + "(1, 'd2', 'south', 'blue', 21),"
+              + "(2, 'd2', 'south', 'blue', 22)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_null_tag(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd3', 'red', 31),"
+              + "(2, 'd3', 'red', 32),"
+              + "(1, 'd4', 'blue', 41),"
+              + "(2, 'd4', 'blue', 42)");
+
+      statement.execute(
+          "DELETE FROM delete_by_attr_null_tag "
+              + "WHERE attr1 = 'red' AND site IS NULL AND time = 2");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_attr_null_tag "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of(
+              "d1,north,1,11",
+              "d1,north,2,12",
+              "d2,south,1,21",
+              "d2,south,2,22",
+              "d3,null,1,31",
+              "d4,null,1,41",
+              "d4,null,2,42"),
+          actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterWithInvalidComparison() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_invalid_ops("
+              + "deviceId STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_invalid_ops(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd1', 'a', 11),"
+              + "(1, 'd2', 'b', 21)");
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_invalid_ops WHERE attr1 = 1");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of attribute predicate must be a string: 1", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_invalid_ops WHERE attr1 = null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of attribute predicate cannot be null with comparison operator, "
+                + "please use IS NULL or IS NOT NULL instead",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "DELETE FROM delete_by_attr_invalid_ops WHERE attr1 IS DISTINCT FROM 'a'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The operator of attribute predicate must be =, !=, <, <=, >, >=, LIKE, or IN for 'a'",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataByTagIsNotNullFilter() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_tag_not_null("
+              + "deviceId STRING TAG, site STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_tag_not_null(time, deviceId, site, attr1, s1) VALUES "
+              + "(1, 'd1', 'north', 'red', 11),"
+              + "(2, 'd1', 'north', 'red', 12),"
+              + "(1, 'd2', 'south', 'blue', 21),"
+              + "(2, 'd2', 'south', 'blue', 22)");
+      statement.execute(
+          "INSERT INTO delete_by_tag_not_null(time, deviceId, attr1, s1) VALUES "
+              + "(1, 'd3', 'green', 31),"
+              + "(2, 'd3', 'green', 32),"
+              + "(1, 'd4', 'red', 41),"
+              + "(2, 'd4', 'red', 42)");
+
+      statement.execute("DELETE FROM delete_by_tag_not_null WHERE site IS NOT NULL AND time = 1");
+
+      final List<String> actual = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_tag_not_null "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of(
+              "d1,north,2,12",
+              "d2,south,2,22",
+              "d3,null,1,31",
+              "d3,null,2,32",
+              "d4,null,1,41",
+              "d4,null,2,42"),
+          actual);
+
+      statement.execute(
+          "DELETE FROM delete_by_tag_not_null WHERE site IS NOT NULL AND attr1='red'");
+
+      actual.clear();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT deviceId, site, time, s1 FROM delete_by_tag_not_null "
+                  + "ORDER BY deviceId, time")) {
+        while (resultSet.next()) {
+          actual.add(
+              resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2)
+                  + ","
+                  + resultSet.getLong(3)
+                  + ","
+                  + resultSet.getInt(4));
+        }
+      }
+      assertEquals(
+          List.of("d2,south,2,22", "d3,null,1,31", "d3,null,2,32", "d4,null,1,41", "d4,null,2,42"),
+          actual);
+    }
+  }
+
+  @Test
+  public void testDeleteDataByAttributeFilterRejectsTooManyDevices() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_limit(deviceId STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      final StringBuilder builder =
+          new StringBuilder("INSERT INTO delete_by_attr_limit(time, deviceId, attr1, s1) VALUES ");
+      for (int i = 0; i <= 1000; i++) {
+        if (i > 0) {
+          builder.append(',');
+        }
+        builder.append("(1, 'd").append(i).append("', 'same', ").append(i).append(')');
+      }
+      statement.execute(builder.toString());
+
+      try {
+        statement.execute("DELETE FROM delete_by_attr_limit WHERE attr1 = 'same'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many devices (1001)"));
+        assertTrue(e.getMessage().contains("limit is 1000"));
+        assertTrue(e.getMessage().contains("attr1"));
+        assertTrue(e.getMessage().contains("Please remove all attribute filters"));
       }
     }
   }
@@ -389,6 +967,27 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteWithRenamedTimeColumn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE time_column_rename");
+      statement.execute("use time_column_rename");
+      statement.execute("CREATE TABLE vehicle(ts time, deviceId STRING TAG, s0 INT32 FIELD)");
+      statement.execute("INSERT INTO vehicle(ts, deviceId, s0) VALUES(1, 'd0', 1)");
+      statement.execute("INSERT INTO vehicle(ts, deviceId, s0) VALUES(2, 'd0', 2)");
+
+      statement.execute("DELETE FROM vehicle WHERE ts <= 1");
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT ts, s0 FROM vehicle")) {
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong("ts"));
+        assertEquals(2, resultSet.getInt("s0"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testRangeDelete() throws SQLException {
     prepareData(4, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -456,6 +1055,26 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
+      statement.execute("DELETE FROM vehicle5");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+      cleanData(5);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFullDeleteWithoutWhereClauseByDifferentTime() throws SQLException {
+    prepareMultiDeviceDifferentTimeData(5, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
       statement.execute("DELETE FROM vehicle5");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
         int cnt = 0;
@@ -1610,6 +2229,27 @@ public class IoTDBDeletionTableIT {
           }
 
           // check the point count
+          int finalI = i;
+          Awaitility.await()
+              .atMost(5, TimeUnit.MINUTES)
+              .pollDelay(2, TimeUnit.SECONDS)
+              .pollInterval(2, TimeUnit.SECONDS)
+              .until(
+                  () -> {
+                    ResultSet set =
+                        statement.executeQuery(
+                            "select count(*) from table"
+                                + testNum
+                                + " where time <= "
+                                + currentWrittenTime
+                                + " AND deviceId = 'd"
+                                + finalI
+                                + "'");
+                    assertTrue(set.next());
+                    long expectedCnt =
+                        currentWrittenTime + 1 - deviceDeletedPointCounters.get(finalI).get();
+                    return expectedCnt == set.getLong(1);
+                  });
           try (ResultSet set =
               statement.executeQuery(
                   "select count(*) from table"
@@ -1625,8 +2265,8 @@ public class IoTDBDeletionTableIT {
               allDeviceUndeletedRanges.set(i, mergeRanges(deviceUndeletedRanges));
               List<TimeRange> remainingRanges =
                   collectDataRanges(statement, currentWrittenTime, testNum);
-              LOGGER.debug("Expected ranges: {}", deviceUndeletedRanges);
-              LOGGER.debug("Remaining ranges: {}", remainingRanges);
+              LOGGER.info("Expected ranges: {}", deviceUndeletedRanges);
+              LOGGER.info("Remaining ranges: {}", remainingRanges);
               fail(
                   String.format(
                       "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));
@@ -1700,7 +2340,11 @@ public class IoTDBDeletionTableIT {
     List<TimeRange> ranges = new ArrayList<>();
     try (ResultSet set =
         statement.executeQuery(
-            "select time from table" + testNum + " where time <= " + timeUpperBound)) {
+            "select time from table"
+                + testNum
+                + " where time <= "
+                + timeUpperBound
+                + " order by time")) {
       while (set.next()) {
         long time = set.getLong(1);
         if (ranges.isEmpty()) {
@@ -2003,12 +2647,419 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testCompletelyDeleteTable() throws SQLException {
+    int testNum = 1;
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 1);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(500, TimeUnit.MILLISECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted seq file : {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
+                }
+                return allPass;
+              });
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testMultiDeviceCompletelyDeleteTable() throws SQLException {
+    int testNum = 1;
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 2);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(2, TimeUnit.SECONDS)
+          .pollInterval(2, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
+                }
+                return allPass;
+              });
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testDeleteDataByTag() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS delete_by_tag (deviceId STRING TAG, s1 INT32 FIELD)");
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+      session.executeNonQueryStatement("FLUSH");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      dataSet = session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS delete_by_tag");
+      }
+    }
+  }
+
+  @Test
+  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
+
+      // time=1 and time=2 are INT32 and deleted by drop column
+      Tablet tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 1));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+
+      // time=3 and time=4 are STRING
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 4);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 4));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter ADD COLUMN s1 TEXT");
+
+      // time=5 and time=6 are TEXT
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 5);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 5));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 6);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 6));
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from drop_and_alter order by time");
+      // s1 is dropped but the time should remain
+      RowRecord rec;
+      int cnt = 0;
+      for (int i = 1; i < 7; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        LOGGER.error(
+            "time is {}, value is {}, value type is {}",
+            rec.getFields().get(0).getLongV(),
+            rec.getFields().get(1),
+            rec.getFields().get(1).getDataType());
+        //        assertNull(rec.getFields().get(1).getDataType());
+        //        Assert.assertEquals(TSDataType.TEXT, rec.getFields().get(1).getDataType());
+        cnt++;
+      }
+      Assert.assertEquals(6, cnt);
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS drop_and_alter");
+      }
+    }
+  }
+
   private static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
         statement.execute(sql);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE IF NOT EXISTS deletion");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void cleanDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS deletion");
+      for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        String dataNodeDir = wrapper.getDataNodeDir();
+        File targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
+
+        targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
       }
     } catch (Exception e) {
       fail(e.getMessage());
@@ -2062,6 +3113,85 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  private void prepareMultiDeviceDifferentTimeData(int testNum, int deviceNum) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+      statement.execute(
+          String.format(
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare seq file
+        for (int i = 201 * (d + 1); i <= 300 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare unseq File
+        for (int i = 1 * (d + 1); i <= 100 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare BufferWrite cache
+        for (int i = 301 * (d + 1); i <= 400 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+        // prepare Overflow cache
+        for (int i = 101 * (d + 1); i <= 200 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+    }
+  }
+
   private void cleanData(int testNum) throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -2069,5 +3199,118 @@ public class IoTDBDeletionTableIT {
       String deleteAllTemplate = "DROP TABLE IF EXISTS vehicle%d";
       statement.execute(String.format(deleteAllTemplate, testNum));
     }
+  }
+
+  // A global aggregation without GROUP BY over zero matching rows must return exactly one row
+  // whose value is NULL (SQL standard, matching e.g. Trino), not zero rows. These cover the two
+  // empty-input shapes: a device that was never written, and a device whose data was deleted.
+
+  @Test
+  public void testLastByOverNeverWrittenDeviceReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty0(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty0(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      // 'nope' was never written, so its device set resolves to zero devices.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty0 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testThreeArgLastByOverNeverWrittenDeviceReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table last_empty4(deviceId string tag, s0 int32 field, s1 int32 field)");
+      statement.execute("insert into last_empty4(time, deviceId, s0, s1) values (1, 'd0', 1, 2)");
+      statement.execute("flush");
+
+      // 3-arg last_by(target, ordering, time) over a never-written device -> one NULL row.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, s1, time) from last_empty4 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testMultipleLastAggregatesOverNeverWrittenDeviceReturnSingleAllNullRow()
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table last_empty1(deviceId string tag, s0 int32 field, s1 int64 field)");
+      statement.execute("insert into last_empty1(time, deviceId, s0, s1) values (1, 'd0', 1, 2)");
+      statement.execute("flush");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time), last_by(s1, time) from last_empty1 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testLastByOverNeverWrittenDeviceWithGroupByReturnsNoRows() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty2(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty2(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      // The one-NULL-row rule is for no-GROUP-BY only; an empty group produces no rows.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select deviceId, last_by(s0, time) from last_empty2 where deviceId = 'nope' group by deviceId")) {
+        assertFalse("GROUP BY over an empty group must return no rows", resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testLastByOverDeletedDeviceStillReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty3(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty3(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+      statement.execute("delete from last_empty3 where deviceId = 'd0'");
+
+      // The deleted device still exists in the schema; last_by must return one NULL row. Query
+      // twice to cover both the last-value-cache path and the recomputed path.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty3 where deviceId = 'd0'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty3 where deviceId = 'd0'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  private void assertSingleAllNullRow(ResultSet resultSet) throws SQLException {
+    assertTrue("Expected exactly one result row, but got none", resultSet.next());
+    int columnCount = resultSet.getMetaData().getColumnCount();
+    for (int i = 1; i <= columnCount; i++) {
+      Object value = resultSet.getObject(i);
+      assertNull("Expected column " + i + " to be NULL, but got: " + value, value);
+    }
+    assertFalse("Expected exactly one result row, but got more than one", resultSet.next());
   }
 }

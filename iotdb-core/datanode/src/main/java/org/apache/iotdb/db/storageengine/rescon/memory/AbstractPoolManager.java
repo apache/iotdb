@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 
 import java.util.concurrent.Callable;
@@ -39,15 +41,16 @@ public abstract class AbstractPoolManager {
     Logger logger = getLogger();
     pool.shutdownNow();
     long totalWaitTime = WAIT_TIMEOUT;
-    logger.info("Waiting for {} thread pool to shut down.", getName());
+    logger.info(StorageEngineMessages.WAITING_FOR_THREAD_POOL_SHUTDOWN, getName());
     while (!pool.isTerminated()) {
       try {
         if (!pool.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS)) {
-          logger.info("{} thread pool doesn't exit after {}ms.", getName(), +totalWaitTime);
+          logger.info(
+              StorageEngineMessages.THREAD_POOL_NOT_EXIT_AFTER_MS, getName(), +totalWaitTime);
         }
         totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
-        logger.error("Interrupted while waiting {} thread pool to exit. ", getName(), e);
+        logger.error(StorageEngineMessages.INTERRUPTED_WAITING_THREAD_POOL_EXIT, getName(), e);
         Thread.currentThread().interrupt();
       }
     }

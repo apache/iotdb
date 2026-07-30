@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.util.Collections;
 import java.util.Set;
 
 public class MqttClientSession extends IClientSession {
+
+  public String getClientID() {
+    return clientID;
+  }
 
   private final String clientID;
 
@@ -34,7 +39,7 @@ public class MqttClientSession extends IClientSession {
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return "";
   }
 
   @Override
@@ -75,5 +80,31 @@ public class MqttClientSession extends IClientSession {
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65);
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return Collections.emptySet();
   }
 }

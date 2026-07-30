@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -42,12 +43,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
@@ -71,6 +72,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private volatile SubscriptionCommitContext rootCommitContext;
 
   private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+
+  private static final long POISON_MESSAGE_NACK_THRESHOLD = 10;
+
   private final AtomicLong nackCount = new AtomicLong();
 
   /**
@@ -81,14 +85,38 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
+    this(responseType, payload, commitContext, true);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this(responseType, payload, commitContext, timeSelected, null);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.pipeEvents = new SubscriptionPipeEmptyEvent();
-    this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
+    this.response =
+        new SubscriptionEventSingleResponse(
+            responseType, payload, commitContext, timeSelected, timeSelectedByTable);
     this.commitContext = commitContext;
   }
 
   @TestOnly
   public SubscriptionEvent(final SubscriptionPollResponse response) {
-    this(response.getResponseType(), response.getPayload(), response.getCommitContext());
+    this(
+        response.getResponseType(),
+        response.getPayload(),
+        response.getCommitContext(),
+        response.isTimeSelected(),
+        response.getTimeSelectedByTable());
   }
 
   /**
@@ -159,16 +187,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommitted() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is committed
+    if (!commitContext.isCommittable()) {
+      // fire-and-forget events are treated as already committed
       return true;
     }
     return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is uncommittable
+    if (!commitContext.isCommittable()) {
       return false;
     }
     return response.isCommittable();
@@ -244,8 +271,17 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
     // record nack count
     if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
-      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+      LOGGER.warn(DataNodeMiscMessages.EVENT_NACKED_TIMES, this, nackCount);
     }
+  }
+
+  /** Returns the current nack count for this event. */
+  public long getNackCount() {
+    return nackCount.get();
+  }
+
+  public boolean isPoisoned() {
+    return nackCount.get() >= POISON_MESSAGE_NACK_THRESHOLD;
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {

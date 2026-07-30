@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +39,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class Update extends AbstractTraverseDevice {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Update.class);
+
   private List<UpdateAssignment> assignments;
 
   public Update(
@@ -38,7 +49,8 @@ public class Update extends AbstractTraverseDevice {
       final List<UpdateAssignment> assignments,
       final Expression where) {
     super(location, table, where);
-    this.assignments = requireNonNull(assignments, "assignments is null");
+    this.assignments =
+        requireNonNull(assignments, DataNodeQueryMessages.EXCEPTION_ASSIGNMENTS_IS_NULL_1FD6142D);
   }
 
   public List<UpdateAssignment> getAssignments() {
@@ -60,8 +72,8 @@ public class Update extends AbstractTraverseDevice {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitUpdate(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitUpdate(this, context);
   }
 
   @Override
@@ -79,5 +91,13 @@ public class Update extends AbstractTraverseDevice {
     return toStringHelper(this).add("assignments", assignments).omitNullValues()
         + " - "
         + super.toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedForCommonFields();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(assignments);
+    return size;
   }
 }

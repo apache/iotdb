@@ -51,6 +51,7 @@ public class CrossSpaceCompactionCandidate {
     init(seqFiles, unseqFiles, new CompactionScheduleContext());
   }
 
+  @TestOnly
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this(seqFiles, unseqFiles, ttlLowerBound, new CompactionScheduleContext());

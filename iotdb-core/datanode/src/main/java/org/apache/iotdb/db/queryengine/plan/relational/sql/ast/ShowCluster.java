@@ -19,7 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +38,9 @@ import static java.util.Objects.requireNonNull;
 
 public class ShowCluster extends Statement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowCluster.class);
+
   private final boolean details;
 
   public ShowCluster() {
@@ -38,18 +49,20 @@ public class ShowCluster extends Statement {
   }
 
   public ShowCluster(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.details = false;
   }
 
   public ShowCluster(Boolean withDetails) {
     super(null);
-    this.details = requireNonNull(withDetails, "details is null");
+    this.details =
+        requireNonNull(withDetails, DataNodeQueryMessages.EXCEPTION_DETAILS_IS_NULL_8EDEEA03);
   }
 
   public ShowCluster(NodeLocation location, Boolean withDetails) {
-    super(requireNonNull(location, "location is null"));
-    this.details = requireNonNull(withDetails, "details is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.details =
+        requireNonNull(withDetails, DataNodeQueryMessages.EXCEPTION_DETAILS_IS_NULL_8EDEEA03);
   }
 
   public Optional<Boolean> getDetails() {
@@ -57,8 +70,8 @@ public class ShowCluster extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowCluster(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowCluster(this, context);
   }
 
   @Override
@@ -86,5 +99,12 @@ public class ShowCluster extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("details", details).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

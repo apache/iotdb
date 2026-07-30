@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -27,13 +28,13 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.data.ImportDataScanTool;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
@@ -61,7 +62,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    sessionPool =
+    SessionPool.Builder sessionPoolBuilder =
         new SessionPool.Builder()
             .host(host)
             .port(Integer.parseInt(port))
@@ -70,8 +71,11 @@ public class ImportSchemaTree extends AbstractImportSchema {
             .maxSize(threadNum + 1)
             .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
-            .enableAutoFetch(false)
-            .build();
+            .enableAutoFetch(false);
+    if (useSsl) {
+      sessionPoolBuilder = configureSsl(sessionPoolBuilder);
+    }
+    sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
@@ -89,7 +93,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromSqlFile(File file) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 
   @Override

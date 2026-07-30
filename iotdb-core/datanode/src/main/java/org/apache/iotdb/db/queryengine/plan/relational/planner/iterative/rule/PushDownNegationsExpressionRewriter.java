@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.DoubleType;
@@ -39,13 +40,13 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.IS_DISTINCT_FROM;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combinePredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.IS_DISTINCT_FROM;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public final class PushDownNegationsExpressionRewriter {
   public static Expression pushDownNegations(
@@ -60,9 +61,13 @@ public final class PushDownNegationsExpressionRewriter {
     private final Map<NodeRef<Expression>, Type> expressionTypes;
 
     public Visitor(Metadata metadata, Map<NodeRef<Expression>, Type> expressionTypes) {
-      this.metadata = requireNonNull(metadata, "metadata is null");
+      this.metadata =
+          requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
       this.expressionTypes =
-          ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
+          ImmutableMap.copyOf(
+              requireNonNull(
+                  expressionTypes,
+                  DataNodeQueryMessages.EXCEPTION_EXPRESSIONTYPES_IS_NULL_4107A4A2));
     }
 
     @Override
@@ -87,7 +92,9 @@ public final class PushDownNegationsExpressionRewriter {
         Expression right = child.getRight();
         Type leftType = expressionTypes.get(NodeRef.of(left));
         Type rightType = expressionTypes.get(NodeRef.of(right));
-        checkState(leftType != null && rightType != null, "missing type for expression");
+        checkState(
+            leftType != null && rightType != null,
+            DataNodeQueryMessages.EXCEPTION_MISSING_TYPE_FOR_EXPRESSION_3D66D302);
         if ((typeHasNaN(leftType) || typeHasNaN(rightType))
             && (operator == GREATER_THAN_OR_EQUAL
                 || operator == GREATER_THAN

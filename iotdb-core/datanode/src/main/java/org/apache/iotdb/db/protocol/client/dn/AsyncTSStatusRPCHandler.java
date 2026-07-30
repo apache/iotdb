@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -57,12 +58,13 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
       // Remove only if success
       nodeLocationMap.remove(requestId);
       if (!keepSilent) {
-        LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+        LOGGER.info(
+            DataNodeMiscMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
       }
     } else {
       if (!keepSilent) {
         LOGGER.error(
-            "Failed to {} on DataNode: {}, response: {}",
+            DataNodeMiscMessages.FAILED_ON_DATANODE,
             requestType,
             formattedTargetLocation,
             response);

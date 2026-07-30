@@ -31,9 +31,16 @@ public enum CreateRegionGroupsState {
   // 3. Delete redundant RegionReplicas in contrast to case 2.
   SHUNT_REGION_REPLICAS,
 
+  // Re-balance the DataPartitionPolicyTable for the affected databases so that the newly
+  // created DataRegionGroups are taken into account before they start serving partitions.
+  REBALANCE_DATA_PARTITION_POLICY,
+
   // Mark RegionGroupCache as available for those RegionGroups that created successfully.
   // For DataRegionGroups that use iot consensus protocol, select leader by the way
   ACTIVATE_REGION_GROUPS,
 
-  CREATE_REGION_GROUPS_FINISH
+  CREATE_REGION_GROUPS_FINISH,
+
+  // Create initial consensus pipes for IoTConsensusV2 DataRegionGroups.
+  CREATE_INITIAL_CONSENSUS_PIPES
 }

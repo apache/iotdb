@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
@@ -32,13 +33,13 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordina
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.io.IOException;
@@ -107,18 +108,31 @@ public class PipeTableResp implements DataSet {
       final String pipeName,
       final boolean isTableModel,
       final String userName) {
-    final PipeTableResp resp = filter(whereClause, pipeName);
-    resp.allPipeMeta.removeIf(
-        meta ->
-            !meta.getStaticMeta().visibleUnder(isTableModel)
-                || !isVisible4User(userName, meta.getStaticMeta()));
-    return resp;
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(
+                    meta ->
+                        meta.getStaticMeta().visibleUnder(isTableModel)
+                            && isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
+  }
+
+  public PipeTableResp filter(
+      final Boolean whereClause, final String pipeName, final String userName) {
+    return new PipeTableResp(
+            status,
+            allPipeMeta.stream()
+                .filter(meta -> isVisible4User(userName, meta.getStaticMeta()))
+                .collect(Collectors.toList()))
+        .filter(whereClause, pipeName);
   }
 
   public boolean isVisible4User(final String userName, final PipeStaticMeta meta) {
     try {
       return Objects.isNull(userName)
-          || BasicAuthorizer.getInstance().isAdmin(userName)
+          || BasicAuthorizer.getInstance().getUser(userName).checkSysPrivilege(PrivilegeType.SYSTEM)
           || isVisible4SourceUser(userName, meta.getSourceParameters())
           || isVisible4SinkUser(userName, meta.getSinkParameters());
     } catch (final Exception e) {
@@ -193,6 +207,9 @@ public class PipeTableResp implements DataSet {
           runtimeMeta.getNodeId2PipeRuntimeExceptionMap().entrySet()) {
         final Integer nodeId = entry.getKey();
         final PipeRuntimeException e = entry.getValue();
+        if (e.getTimeStamp() <= runtimeMeta.getExceptionsClearTime()) {
+          continue;
+        }
         final String exceptionMessage =
             DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
 
@@ -205,6 +222,9 @@ public class PipeTableResp implements DataSet {
           runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
         final Integer regionId = entry.getKey();
         for (final PipeRuntimeException e : entry.getValue().getExceptionMessages()) {
+          if (e.getTimeStamp() <= runtimeMeta.getExceptionsClearTime()) {
+            continue;
+          }
           final String exceptionMessage =
               DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms") + ", " + e.getMessage();
           pipeExceptionMessage2RegionIdsMap
@@ -269,6 +289,10 @@ public class PipeTableResp implements DataSet {
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingEvents());
       showPipeInfo.setEstimatedRemainingTime(
           canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingTime());
+      final Boolean isDegraded = temporaryMeta.getGlobalDegraded();
+      if (Objects.nonNull(isDegraded)) {
+        showPipeInfo.setIsDegraded(isDegraded);
+      }
       showPipeInfoList.add(showPipeInfo);
     }
 

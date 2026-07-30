@@ -26,12 +26,12 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -77,20 +79,21 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 public class AuthorityChecker {
 
   public static int SUPER_USER_ID = 0;
-  public static String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+  public static String SUPER_USER =
+      CommonDescriptor.getInstance().getConfig().getDefaultAdminName();
   public static String SUPER_USER_ID_IN_STR = "0";
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static final int INTERNAL_AUDIT_USER_ID = IoTDBConstant.INTERNAL_AUDIT_USER_ID;
-  public static final String INTERNAL_AUDIT_USER = IoTDBConstant.INTERNAL_AUDIT_USER;
+  public static final int INTERNAL_AUDIT_USER_ID = 4;
+  public static final String INTERNAL_AUDIT_USER = User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME;
 
   public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
 
-  private static final String NO_PERMISSION_PROMOTION =
+  public static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
   private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
@@ -102,7 +105,7 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static AccessControl accessControl =
+  private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
 
   private AuthorityChecker() {
@@ -113,6 +116,7 @@ public class AuthorityChecker {
     return accessControl;
   }
 
+  @TestOnly
   public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
   }
@@ -130,13 +134,31 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static void invalidateAllCache() {
+    authorityFetcher.get().getAuthorCache().invalidAllCache();
+  }
+
+  public static User getUser(String username) {
+    return authorityFetcher.get().getUser(username, false);
+  }
+
   public static Optional<Long> getUserId(String username) {
-    User user = authorityFetcher.get().getUser(username);
+    User user = authorityFetcher.get().getUser(username, false);
     return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
-  public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.get().checkUser(userName, password);
+  public static TSStatus checkUser(final String userName, final String password) {
+    return checkUser(userName, password, false);
+  }
+
+  public static TSStatus checkUser(
+      final String userName, final String password, final boolean useEncryptedPassword) {
+    final TSStatus status =
+        authorityFetcher.get().checkUser(userName, password, useEncryptedPassword);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    return accessControl.allowUserToLogin(userName);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
@@ -169,22 +191,21 @@ public class AuthorityChecker {
     }
   }
 
-  /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+  public static TSStatus checkAuthority(Statement statement, IAuditEntity auditEntity) {
     long startTime = System.nanoTime();
     try {
+      if (auditEntity instanceof TreeAccessCheckContext) {
+        return accessControl.checkPermissionBeforeProcess(
+            statement, (TreeAccessCheckContext) auditEntity);
+      }
       return accessControl.checkPermissionBeforeProcess(
           statement,
-          new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()));
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    }
-  }
-
-  public static TSStatus checkAuthority(Statement statement, UserEntity userEntity) {
-    long startTime = System.nanoTime();
-    try {
-      return accessControl.checkPermissionBeforeProcess(statement, userEntity);
+          (TreeAccessCheckContext)
+              new TreeAccessCheckContext(
+                      auditEntity.getUserId(),
+                      auditEntity.getUsername(),
+                      auditEntity.getCliHostname())
+                  .setSqlString(auditEntity.getSqlString()));
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
@@ -242,7 +263,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
-            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
+            .setMessage(
+                NO_GRANT_OPT_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_DB_34B9E556
+                    + database);
   }
 
   public static TSStatus getGrantOptTSStatus(
@@ -253,9 +278,9 @@ public class AuthorityChecker {
             .setMessage(
                 NO_GRANT_OPT_PERMISSION_PROMOTION
                     + neededPrivilege
-                    + " ON "
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_CECB319D
                     + database
-                    + "."
+                    + DataNodeMiscMessages.MESSAGE_DOT_9D9B854A
                     + table);
   }
 
@@ -264,7 +289,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_DB_34B9E556
+                    + database);
   }
 
   public static TSStatus getTSStatus(
@@ -273,7 +302,12 @@ public class AuthorityChecker {
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(
-                NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_CECB319D
+                    + database
+                    + DataNodeMiscMessages.MESSAGE_DOT_9D9B854A
+                    + table);
   }
 
   public static TSStatus getTSStatus(
@@ -281,7 +315,11 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " on " + path);
+            .setMessage(
+                NO_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + DataNodeMiscMessages.MESSAGE_MESSAGE_57992626
+                    + path);
   }
 
   public static TSStatus getTSStatus(
@@ -296,9 +334,16 @@ public class AuthorityChecker {
     prompt.append(neededPrivilege);
     prompt.append(" on [");
     prompt.append(pathList.get(noPermissionIndexList.get(0)));
-    for (int i = 1; i < noPermissionIndexList.size(); i++) {
+    final int size =
+        Math.min(
+            noPermissionIndexList.size(),
+            CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
+    for (int i = 1; i < size; i++) {
       prompt.append(", ");
       prompt.append(pathList.get(noPermissionIndexList.get(i)));
+    }
+    if (size < noPermissionIndexList.size()) {
+      prompt.append(", ...");
     }
     prompt.append("]");
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());

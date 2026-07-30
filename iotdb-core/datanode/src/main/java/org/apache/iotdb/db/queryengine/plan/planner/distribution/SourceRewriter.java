@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -26,19 +27,24 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.expression.multi.FunctionType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionType;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ConcatDeviceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchScanNode;
@@ -53,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -74,7 +79,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -83,7 +87,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -104,17 +107,16 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_IF;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.DIFF;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_VALUE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.TIME_DURATION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_IF;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.DIFF;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> {
 
@@ -155,7 +157,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     if (analysis.isDeviceViewSpecialProcess()) {
       List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
       if (rewroteChildren.size() != 1) {
-        throw new IllegalStateException("SingleDeviceViewNode have only one child");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.SINGLEDEVICEVIEWNODE_HAVE_ONLY_ONE_CHILD);
       }
       node.setChild(rewroteChildren.get(0));
       return Collections.singletonList(node);
@@ -197,7 +200,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   public List<PlanNode> visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
     if (node.getDevices().size() != node.getChildren().size()) {
       throw new IllegalArgumentException(
-          "size of devices and its children in DeviceViewNode should be same");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SIZE_OF_DEVICES_AND_ITS_CHILDREN_IN_DEVICEVIEWNODE_SHOULD_10709A84);
     }
 
     // Step 1: constructs DeviceViewSplits
@@ -292,12 +296,28 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 : Collections.singletonList(newIdxSum++));
       }
 
+      boolean useTemplate = node.getDeviceToMeasurementIndexesMap() == null;
+      TemplatedInfo templatedInfo = context.queryContext.getTypeProvider().getTemplatedInfo();
       for (IDeviceID device : node.getDevices()) {
-        List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
+        List<Integer> oldMeasurementIdxList =
+            useTemplate
+                ? context
+                    .queryContext
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getDeviceToMeasurementIndexes()
+                : node.getDeviceToMeasurementIndexesMap().get(device);
         List<Integer> newMeasurementIdxList = new ArrayList<>();
         oldMeasurementIdxList.forEach(
             idx -> newMeasurementIdxList.addAll(newMeasurementIdxMap.get(idx)));
-        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
+
+        if (useTemplate) {
+          templatedInfo.setDeviceToMeasurementIndexes(newMeasurementIdxList);
+          templatedInfo.setDeviceViewOutputNames(newPartialOutputColumns);
+          break;
+        } else {
+          node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
+        }
       }
 
       for (PlanNode planNode : deviceViewNodeList) {
@@ -307,12 +327,19 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
         List<IDeviceID> devices = deviceViewNode.getDevices();
         for (int j = 0; j < devices.size(); j++) {
-          if (deviceViewNode.getChildren().get(j) instanceof ProjectNode) {
-            IDeviceID device = devices.get(j);
-
+          boolean childIsProject = deviceViewNode.getChildren().get(j) instanceof ProjectNode;
+          IDeviceID device = devices.get(j);
+          List<Integer> newMeasurementIdxList =
+              useTemplate
+                  ? templatedInfo.getDeviceToMeasurementIndexes()
+                  : deviceViewNode.getDeviceToMeasurementIndexesMap().get(device);
+          // If child is ProjectNode, we need to set new outputs;
+          // If child is not ProjectNode and input columns size of deviceViewNode is larger than
+          // child output columns size, we need to construct a ProjectNode.
+          if (childIsProject
+              || newMeasurementIdxList.size()
+                  > deviceViewNode.getChildren().get(j).getOutputColumnNames().size()) {
             // construct output column names for each child ProjectNode
-            List<Integer> newMeasurementIdxList =
-                deviceViewNode.getDeviceToMeasurementIndexesMap().get(device);
             List<String> newProjectOutputs =
                 newMeasurementIdxList.stream()
                     .map(
@@ -321,19 +348,33 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                           FunctionExpression aggExpression =
                               actualPartialAggregations.get(measurementIdx);
 
-                          // construct new FunctionExpression with device for ProjectNode
-                          List<Expression> withDeviceExpressions =
-                              getWithDeviceExpressions(aggExpression, device.toString());
+                          List<Expression> inputs;
+                          if (!useTemplate) {
+                            // construct new FunctionExpression with device for ProjectNode
+                            inputs = getWithDeviceExpressions(aggExpression, device.toString());
+                          } else {
+                            // when use Template, the outputs of SeriesAggregationScanNode are
+                            // without device, so the ProjectNode needn't concat device
+                            inputs = aggExpression.getExpressions();
+                          }
                           aggExpression =
                               new FunctionExpression(
                                   aggExpression.getFunctionName(),
                                   aggExpression.getFunctionAttributes(),
-                                  withDeviceExpressions);
+                                  inputs);
                           return aggExpression.getExpressionString();
                         })
                     .collect(Collectors.toList());
-            ((ProjectNode) deviceViewNode.getChildren().get(j))
-                .setOutputColumnNames(newProjectOutputs);
+            if (childIsProject) {
+              ((ProjectNode) deviceViewNode.getChildren().get(j))
+                  .setOutputColumnNames(newProjectOutputs);
+            } else {
+              ProjectNode projectNode =
+                  new ProjectNode(
+                      context.queryContext.getQueryId().genPlanNodeId(), newProjectOutputs);
+              projectNode.setChild(deviceViewNode.getChildren().get(j));
+              deviceViewNode.getChildren().set(j, projectNode);
+            }
           }
         }
       }
@@ -372,17 +413,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private static List<Expression> getWithDeviceExpressions(
-      FunctionExpression aggExpression, String device) {
+      Expression aggExpression, String device) {
     return aggExpression.getExpressions().stream()
         .map(
             // process each argument of FunctionExpression
             argument -> {
-              checkArgument(
-                  argument instanceof TimeSeriesOperand,
-                  "Argument of AggregationFunction should be TimeSeriesOperand here");
-              return new TimeSeriesOperand(
-                  new PartialPath(device, argument.getExpressionString(), false),
-                  ((TimeSeriesOperand) argument).getType());
+              return new ConcatDeviceVisitor().process(argument, device);
             })
         .collect(Collectors.toList());
   }
@@ -446,8 +482,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (DeviceViewSplit split : deviceViewSplits) {
       if (split.dataPartitions.size() != 1) {
         throw new IllegalStateException(
-            "In non-cross data region device-view situation, "
-                + "each device should only have on data partition.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_IN_NON_CROSS_DATA_REGION_DEVICE_VIEW_SITUATION_EACH_DEVICE_3A76445B);
       }
       TRegionReplicaSet region = split.dataPartitions.iterator().next();
       DeviceViewNode regionDeviceViewNode =
@@ -463,8 +499,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         List<PlanNode> rewriteResult = rewrite(childNode, context);
         if (rewriteResult.size() != 1) {
           throw new IllegalStateException(
-              "In non-cross data region aggregation device-view situation, "
-                  + "each rewrite child node of DeviceView should only be one.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_IN_NON_CROSS_DATA_REGION_AGGREGATION_DEVICE_VIEW_SITUATION_557AE5D2);
         }
         childNode = rewriteResult.get(0);
       }
@@ -623,12 +659,13 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
           .forEach(
-              (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              (database, deviceGroup) -> {
+                if (database.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
-                } else if (storageGroup.equals(SchemaConstant.AUDIT_DATABASE)) {
+                } else if (database.equals(SchemaConstant.AUDIT_DATABASE)
+                    || database.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfAuditDatabase.add(schemaRegionReplicaSet));
@@ -822,7 +859,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return planNodeList;
     }
 
-    boolean outputCountInScanNode = node.isOutputCount() && !context.isOneSeriesInMultiRegion();
+    boolean outputCountInScanNode =
+        node.isOutputCount()
+            && !context.isOneSeriesInMultiRegion()
+            && !hasActiveLogicalViewContext(node);
     ActiveRegionScanMergeNode regionMergeNode =
         new ActiveRegionScanMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
@@ -834,6 +874,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       regionMergeNode.addChild(planNode);
     }
     return Collections.singletonList(regionMergeNode);
+  }
+
+  private boolean hasActiveLogicalViewContext(RegionScanNode node) {
+    return node instanceof TimeseriesRegionScanNode
+        && ((TimeseriesRegionScanNode) node).hasActiveLogicalViewContext();
   }
 
   @Override
@@ -1054,13 +1099,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 if (child instanceof LastQueryScanNode) {
                   // sort the measurements for LastQueryMergeOperator
                   LastQueryScanNode node = (LastQueryScanNode) child;
-                  ((LastQueryScanNode) child)
-                      .getIdxOfMeasurementSchemas()
+                  node.getIdxOfMeasurementSchemas()
                       .sort(
                           Comparator.comparing(
                               idx ->
                                   new Binary(
-                                      node.getMeasurementSchema(idx).getMeasurementName(),
+                                      node.getGlobalMeasurementSchemaList()
+                                          .get(idx)
+                                          .getMeasurementName(),
                                       TSFileConfig.STRING_CHARSET),
                               Comparator.naturalOrder()));
                 }
@@ -1092,7 +1138,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (PlanNode child : node.getChildren()) {
       if (!(child instanceof SeriesSourceNode)) {
         throw new IllegalStateException(
-            "All child nodes of InnerTimeJoinNode should be SeriesSourceNode");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_ALL_CHILD_NODES_OF_INNERTIMEJOINNODE_SHOULD_BE_SERIESSOURCENODE_B92B181D);
       }
       SeriesSourceNode sourceNode = (SeriesSourceNode) child;
       seriesScanNodes.add(sourceNode);
@@ -1341,7 +1388,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new HashMap<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
-        // If the child is SeriesScanNode, we need to check whether this node should be seperated
+        // If the child is SeriesScanNode, we need to check whether this node should be separated
         // into several splits.
         SeriesSourceNode sourceNode = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
@@ -1354,7 +1401,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
         }
-        // If the size of dataDistribution is N, this SeriesScanNode should be seperated into N
+        // If the size of dataDistribution is N, this SeriesScanNode should be separated into N
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
           SeriesSourceNode split =

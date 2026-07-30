@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -53,7 +55,7 @@ public class TsFileInsertionEventParserProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
-  private final String userName;
+  private final IAuditEntity entity;
 
   public TsFileInsertionEventParserProvider(
       final String pipeName,
@@ -64,7 +66,7 @@ public class TsFileInsertionEventParserProvider {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String userName,
+      final IAuditEntity entity,
       final PipeTsFileInsertionEvent sourceEvent) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
@@ -74,11 +76,12 @@ public class TsFileInsertionEventParserProvider {
     this.startTime = startTime;
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.userName = userName;
+    this.entity = entity;
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod)
+      throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -93,8 +96,9 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          userName,
-          sourceEvent);
+          entity,
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory
@@ -109,11 +113,14 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
-    if (treePattern instanceof IoTDBTreePattern
-        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof IoTDBTreePatternOperations
+        && !((IoTDBTreePatternOperations) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
@@ -128,7 +135,11 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          null,
+          false);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -144,7 +155,10 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          entity,
+          sourceEvent.isSkipIfNoPrivileges(),
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -161,7 +175,10 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            sourceEvent)
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -171,7 +188,10 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            entity,
+            sourceEvent.isSkipIfNoPrivileges(),
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(

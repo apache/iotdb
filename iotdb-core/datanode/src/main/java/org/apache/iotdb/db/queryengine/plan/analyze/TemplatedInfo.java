@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -59,7 +59,7 @@ public class TemplatedInfo {
   private final boolean queryAllSensors;
 
   // variables used in DeviceViewOperator
-  private final List<String> deviceViewOutputNames;
+  private List<String> deviceViewOutputNames;
   private List<Integer> deviceToMeasurementIndexes;
 
   // variables related to LIMIT/OFFSET push down
@@ -147,6 +147,10 @@ public class TemplatedInfo {
 
   public List<String> getDeviceViewOutputNames() {
     return this.deviceViewOutputNames;
+  }
+
+  public void setDeviceViewOutputNames(List<String> deviceViewOutputNames) {
+    this.deviceViewOutputNames = deviceViewOutputNames;
   }
 
   public long getOffsetValue() {

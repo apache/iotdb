@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -49,7 +51,9 @@ public class CompactionTestFileWriter implements Closeable {
 
   public CompactionTestFileWriter(TsFileResource emptyFile) throws IOException {
     this.resource = emptyFile;
-    fileWriter = new TsFileIOWriter(emptyFile.getTsFile());
+    fileWriter =
+        new CompactionTsFileWriter(
+            emptyFile.getTsFile(), 1024 * 1024 * 1024, CompactionType.INNER_SEQ_COMPACTION);
   }
 
   public IDeviceID startChunkGroup(String deviceNameWithoutParentPath) throws IOException {

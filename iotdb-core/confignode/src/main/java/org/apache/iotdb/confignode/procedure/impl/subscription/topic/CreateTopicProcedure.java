@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
@@ -67,7 +69,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
-    LOGGER.info("CreateTopicProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_EXECUTEFROMVALIDATE);
 
     // 1. check if the topic exists
     if (!subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq)) {
@@ -86,27 +88,29 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   @Override
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta);
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES, topicMeta);
 
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(new CreateTopicPlan(topicMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to create topic %s on config nodes, because %s", topicMeta, response));
+              ProcedureMessages.FAILED_TO_CREATE_TOPIC_ON_CONFIG_NODES_BECAUSE,
+              topicMeta,
+              response));
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta);
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_EXECUTEFROMOPERATEONDATANODES, topicMeta);
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
@@ -114,19 +118,19 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
+              ProcedureMessages.FAILED_TO_CREATE_TOPIC_ON_DATA_NODES_BECAUSE, topicMeta, statuses));
     }
   }
 
   @Override
   protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateTopicProcedure: rollbackFromValidate({})", topicMeta);
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_ROLLBACKFROMVALIDATE, topicMeta);
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta);
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_ROLLBACKFROMCREATEONCONFIGNODES, topicMeta);
 
     TSStatus response;
     try {
@@ -135,22 +139,23 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
               .getConsensusManager()
               .write(new DropTopicPlan(topicMeta.getTopicName()));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback creating topic %s on config nodes, because %s",
-              topicMeta, response));
+              ProcedureMessages.FAILED_TO_ROLLBACK_CREATING_TOPIC_ON_CONFIG_NODES_BECAUSE,
+              topicMeta,
+              response));
     }
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta);
+    LOGGER.info(ProcedureMessages.CREATETOPICPROCEDURE_ROLLBACKFROMCREATEONDATANODES, topicMeta);
 
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
@@ -158,8 +163,9 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback creating topic %s on data nodes, because %s",
-              topicMeta, statuses));
+              ProcedureMessages.FAILED_TO_ROLLBACK_CREATING_TOPIC_ON_DATA_NODES_BECAUSE,
+              topicMeta,
+              statuses));
     }
   }
 

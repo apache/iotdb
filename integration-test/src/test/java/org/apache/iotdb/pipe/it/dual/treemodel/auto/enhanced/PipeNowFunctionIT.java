@@ -67,53 +67,56 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> sourceAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.start-time", "now");
-      extractorAttributes.put("source.end-time", "now");
-      extractorAttributes.put("source.history.start-time", "now");
-      extractorAttributes.put("source.history.end-time", "now");
-      extractorAttributes.put("source.history.enable", "true");
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("source.history.enable", "true");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      extractorAttributes.clear();
-      extractorAttributes.put("start-time", "now");
-      extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history.start-time", "now");
-      extractorAttributes.put("history.end-time", "now");
-      extractorAttributes.put("history.enable", "true");
+      sourceAttributes.clear();
+      sourceAttributes.put("start-time", "now");
+      sourceAttributes.put("end-time", "now");
+      sourceAttributes.put("history.start-time", "now");
+      sourceAttributes.put("history.end-time", "now");
+      sourceAttributes.put("history.enable", "true");
+      sourceAttributes.put("user", "root");
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      extractorAttributes.clear();
-      extractorAttributes.put("extractor.start-time", "now");
-      extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history.start-time", "now");
-      extractorAttributes.put("extractor.history.end-time", "now");
-      extractorAttributes.put("history.enable", "true");
+      sourceAttributes.clear();
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("history.enable", "true");
+      sourceAttributes.put("user", "root");
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p3", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p3", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -132,15 +135,16 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      extractorAttributes.clear();
-      extractorAttributes.put("extractor.start-time", "now");
-      extractorAttributes.put("extractor.end-time", "now");
-      extractorAttributes.put("extractor.history.start-time", "now");
-      extractorAttributes.put("extractor.history.end-time", "now");
+      sourceAttributes.clear();
+      sourceAttributes.put("source.start-time", "now");
+      sourceAttributes.put("source.end-time", "now");
+      sourceAttributes.put("source.history.start-time", "now");
+      sourceAttributes.put("source.history.end-time", "now");
+      sourceAttributes.put("user", "root");
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setIsReplaceAllExtractorAttributes(false)
               .setProcessorAttributes(new HashMap<>())
               .setIsReplaceAllProcessorAttributes(false)
@@ -153,15 +157,16 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      extractorAttributes.clear();
-      extractorAttributes.put("start-time", "now");
-      extractorAttributes.put("end-time", "now");
-      extractorAttributes.put("history.start-time", "now");
-      extractorAttributes.put("history.end-time", "now");
+      sourceAttributes.clear();
+      sourceAttributes.put("start-time", "now");
+      sourceAttributes.put("end-time", "now");
+      sourceAttributes.put("history.start-time", "now");
+      sourceAttributes.put("history.end-time", "now");
+      sourceAttributes.put("user", "root");
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setIsReplaceAllExtractorAttributes(false)
               .setProcessorAttributes(new HashMap<>())
               .setIsReplaceAllProcessorAttributes(false)
@@ -192,17 +197,17 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     final String p1 =
         String.format(
             "create pipe p1"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
+                + " with source ("
+                + "'source.history.enable'='true',"
                 + "'source.start-time'='now',"
                 + "'source.end-time'='now',"
                 + "'source.history.start-time'='now',"
                 + "'source.history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
@@ -214,17 +219,17 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     final String p2 =
         String.format(
             "create pipe p2"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
+                + " with source ("
+                + "'source.history.enable'='true',"
                 + "'start-time'='now',"
                 + "'end-time'='now',"
                 + "'history.start-time'='now',"
                 + "'history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
@@ -236,17 +241,17 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     final String p3 =
         String.format(
             "create pipe p3"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.start-time'='now',"
-                + "'extractor.end-time'='now',"
-                + "'extractor.history.start-time'='now',"
-                + "'extractor.history.end-time'='now')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.start-time'='now',"
+                + "'source.end-time'='now',"
+                + "'source.history.start-time'='now',"
+                + "'source.history.end-time'='now')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
@@ -257,7 +262,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
 
     String alterP3 =
         "alter pipe p3"
-            + " modify extractor ("
+            + " modify source ("
             + "'history.enable'='true',"
             + "'start-time'='now',"
             + "'end-time'='now',"
@@ -272,12 +277,12 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
 
     alterP3 =
         "alter pipe p3"
-            + " modify extractor ("
-            + "'extractor.history.enable'='true',"
-            + "'extractor.start-time'='now',"
-            + "'extractor.end-time'='now',"
-            + "'extractor.history.start-time'='now',"
-            + "'extractor.history.end-time'='now')";
+            + " modify source ("
+            + "'source.history.enable'='true',"
+            + "'source.start-time'='now',"
+            + "'source.end-time'='now',"
+            + "'source.history.start-time'='now',"
+            + "'source.history.end-time'='now')";
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
       statement.execute(alterP3);
@@ -288,7 +293,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     alterP3 =
         "alter pipe p3"
             + " modify source ("
-            + "'extractor.history.enable'='true',"
+            + "'source.history.enable'='true',"
             + "'source.start-time'='now',"
             + "'source.end-time'='now',"
             + "'source.history.start-time'='now',"

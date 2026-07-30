@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -108,17 +112,20 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            eliminateProgressIndex();
-          }
-        });
+    if (needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
   }
 
   public PipeRawTabletInsertionEvent(
@@ -300,10 +307,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   protected void eliminateProgressIndex() {
-    if (needToReport) {
-      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
-      }
+    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
     }
   }
 
@@ -365,17 +370,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean isGeneratedByPipe() {
-    throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+    throw new UnsupportedOperationException(
+        DataNodePipeMessages.ISGENERATEDBYPIPE_IS_NOT_SUPPORTED);
   }
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.getTimestamps();
-    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+    final int rowSize = tablet.getRowSize();
+    if (Objects.isNull(timestamps) || rowSize <= 0) {
       return false;
     }
     // We assume that `timestamps` is ordered.
-    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+    return startTime <= timestamps[rowSize - 1] && timestamps[0] <= endTime;
   }
 
   @Override
@@ -384,7 +391,27 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public void markAsNeedToReport() {
+    if (!needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
     this.needToReport = true;
+    inheritSourceEventReportSkippingIfNecessary();
+  }
+
+  private void inheritSourceEventReportSkippingIfNecessary() {
+    if (needToReport && shouldSkipReportOnCommitBecauseOfSourceEvent()) {
+      skipReportOnCommit();
+    }
+  }
+
+  private boolean shouldSkipReportOnCommitBecauseOfSourceEvent() {
+    return sourceEvent instanceof PipeTsFileInsertionEvent
+        && !((PipeTsFileInsertionEvent) sourceEvent).shouldReportGeneratedEventsOnCommit();
   }
 
   // This getter is reserved for user-defined plugins
@@ -401,18 +428,37 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     return sourceEvent;
   }
 
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit && needToReport;
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    return initEventParser().processRowByRow(consumer);
+    try {
+      return initEventParser().processRowByRow(consumer);
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    return initEventParser().processTablet(consumer);
+    try {
+      return initEventParser().processTablet(consumer);
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initEventParser().processTabletWithCollect(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -423,6 +469,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
     return initEventParser().convertToTablet();
@@ -435,21 +482,28 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       eventParser =
           tablet.getDeviceId().startsWith("root.")
               ? new TabletInsertionEventTreePatternParser(
-                  pipeTaskMeta, this, tablet, isAligned, treePattern)
+                  pipeTaskMeta,
+                  this,
+                  tablet,
+                  isAligned,
+                  treePattern,
+                  shouldParse4Privilege
+                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                      : null)
               : new TabletInsertionEventTablePatternParser(
                   pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
     return eventParser;
   }
 
-  public long count() {
+  public long count() throws IllegalPathException {
     final Tablet convertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
     return (long) convertedTablet.getRowSize() * convertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
+  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() throws IllegalPathException {
     return new PipeRawTabletInsertionEvent(
         getRawIsTableModelEvent(),
         getSourceDatabaseNameFromDataRegion(),

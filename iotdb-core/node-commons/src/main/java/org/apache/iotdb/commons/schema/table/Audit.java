@@ -28,6 +28,8 @@ public class Audit {
   public static final String TABLE_MODEL_AUDIT_DATABASE = "__audit";
   public static final String TREE_MODEL_AUDIT_DATABASE =
       String.format("%s.%s", ROOT, TABLE_MODEL_AUDIT_DATABASE);
+  public static final String RESERVED_DATABASE_NAME_ERROR_MSG =
+      "The database name \"%s\" is reserved, please use another valid database name.";
   public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH =
       new PartialPath(new String[] {"root", TABLE_MODEL_AUDIT_DATABASE});
   public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN =
@@ -41,5 +43,16 @@ public class Audit {
   public static boolean includeByAuditTreeDB(PartialPath prefixPath) {
     String[] nodes = prefixPath.getNodes();
     return nodes.length >= 2 && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
+  }
+
+  public static boolean isAuditTreeDatabase(PartialPath databasePath) {
+    String[] nodes = databasePath.getNodes();
+    return nodes.length == 2
+        && ROOT.equalsIgnoreCase(nodes[0])
+        && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
+  }
+
+  public static String getReservedDatabaseNameErrorMsg(String databaseName) {
+    return String.format(RESERVED_DATABASE_NAME_ERROR_MSG, databaseName);
   }
 }

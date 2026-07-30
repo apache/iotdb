@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,6 +32,9 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class TagFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TagFilter.class);
 
   private final String key;
   private final String value;
@@ -101,5 +105,10 @@ public class TagFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(key, value, isContains);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(key) + RamUsageEstimator.sizeOf(value);
   }
 }

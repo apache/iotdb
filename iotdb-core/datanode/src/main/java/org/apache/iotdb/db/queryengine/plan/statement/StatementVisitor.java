@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -77,6 +80,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -99,6 +107,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -130,13 +139,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -196,11 +208,21 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
+  public R visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, C context) {
+    return visitStatement(alterTimeSeriesDataTypeStatement, context);
+  }
+
+  public R visitAlterEncodingCompressor(
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement, C context) {
+    return visitStatement(alterEncodingCompressorStatement, context);
+  }
+
   public R visitDeleteTimeSeries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
     return visitStatement(deleteTimeSeriesStatement, context);
   }
 
-  public R visitDeleteStorageGroup(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
+  public R visitDeleteDatabase(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
     return visitStatement(deleteDatabaseStatement, context);
   }
 
@@ -265,6 +287,32 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTriggers(ShowTriggersStatement showTriggersStatement, C context) {
     return visitStatement(showTriggersStatement, context);
+  }
+
+  // ExternalService
+  public R visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, C context) {
+    return visitStatement(createExternalServiceStatement, context);
+  }
+
+  public R visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, C context) {
+    return visitStatement(startExternalServiceStatement, context);
+  }
+
+  public R visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, C context) {
+    return visitStatement(stopExternalServiceStatement, context);
+  }
+
+  public R visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, C context) {
+    return visitStatement(dropExternalServiceStatement, context);
+  }
+
+  public R visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, C context) {
+    return visitStatement(showExternalServiceStatement, context);
   }
 
   // Pipe Plugin
@@ -384,7 +432,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(authorStatement, context);
   }
 
-  public R visitShowStorageGroup(ShowDatabaseStatement showDatabaseStatement, C context) {
+  public R visitShowDatabase(ShowDatabaseStatement showDatabaseStatement, C context) {
     return visitStatement(showDatabaseStatement, context);
   }
 
@@ -396,7 +444,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDevicesStatement, context);
   }
 
-  public R visitCountStorageGroup(CountDatabaseStatement countDatabaseStatement, C context) {
+  public R visitCountDatabase(CountDatabaseStatement countDatabaseStatement, C context) {
     return visitStatement(countDatabaseStatement, context);
   }
 
@@ -475,6 +523,17 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(stopRepairDataStatement, context);
   }
 
+  public R visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, C context) {
+    return visitStatement(repairDataPartitionTable, context);
+  }
+
+  public R visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      C context) {
+    return visitStatement(showRepairDataPartitionTableProgressStatement, context);
+  }
+
   public R visitLoadConfiguration(
       LoadConfigurationStatement loadConfigurationStatement, C context) {
     return visitStatement(loadConfigurationStatement, context);
@@ -492,12 +551,21 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showQueriesStatement, context);
   }
 
+  public R visitShowDiskUsage(ShowDiskUsageStatement showDiskUsageStatement, C context) {
+    return visitStatement(showDiskUsageStatement, context);
+  }
+
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
     return visitStatement(showRegionStatement, context);
   }
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowAvailableUrls(
+      ShowAvailableUrlsStatement showAvailableUrlsStatement, C context) {
+    return visitStatement(showAvailableUrlsStatement, context);
   }
 
   public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
@@ -582,6 +650,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCreateTopic(CreateTopicStatement createTopicStatement, C context) {
     return visitStatement(createTopicStatement, context);
+  }
+
+  public R visitAlterTopic(AlterTopicStatement alterTopicStatement, C context) {
+    return visitStatement(alterTopicStatement, context);
   }
 
   public R visitDropTopic(DropTopicStatement dropTopicStatement, C context) {

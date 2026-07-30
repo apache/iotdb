@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.cq;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -35,39 +35,39 @@ public class ActiveCQPlan extends ConfigPhysicalPlan {
 
   private String cqId;
 
-  private String md5;
+  private String cqToken;
 
   public ActiveCQPlan() {
     super(ACTIVE_CQ);
   }
 
-  public ActiveCQPlan(String cqId, String md5) {
+  public ActiveCQPlan(String cqId, String cqToken) {
     super(ACTIVE_CQ);
     Validate.notNull(cqId);
-    Validate.notNull(md5);
+    Validate.notNull(cqToken);
     this.cqId = cqId;
-    this.md5 = md5;
+    this.cqToken = cqToken;
   }
 
   public String getCqId() {
     return cqId;
   }
 
-  public String getMd5() {
-    return md5;
+  public String getCqToken() {
+    return cqToken;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(cqId, stream);
-    ReadWriteIOUtils.write(md5, stream);
+    ReadWriteIOUtils.write(cqToken, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
-    md5 = ReadWriteIOUtils.readString(buffer);
+    cqToken = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -82,11 +82,11 @@ public class ActiveCQPlan extends ConfigPhysicalPlan {
       return false;
     }
     ActiveCQPlan that = (ActiveCQPlan) o;
-    return cqId.equals(that.cqId) && md5.equals(that.md5);
+    return cqId.equals(that.cqId) && cqToken.equals(that.cqToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), cqId, md5);
+    return Objects.hash(super.hashCode(), cqId, cqToken);
   }
 }

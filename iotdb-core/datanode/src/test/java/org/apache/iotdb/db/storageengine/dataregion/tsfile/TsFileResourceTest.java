@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.junit.After;
@@ -93,7 +93,7 @@ public class TsFileResourceTest {
     if (file.exists()) {
       FileUtils.delete(file);
     }
-    File resourceFile = new File(file.getName() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFile = new File(file.getPath() + TsFileResource.RESOURCE_SUFFIX);
     if (resourceFile.exists()) {
       FileUtils.delete(resourceFile);
     }
@@ -108,7 +108,22 @@ public class TsFileResourceTest {
   }
 
   @Test
-  public void testDegradeAndFileTimeIndex() {
+  public void testSerializeDegradedTimeIndex() throws IOException {
+    tsFileResource.serialize();
+    tsFileResource.degradeTimeIndex();
+
+    tsFileResource.serialize();
+
+    TsFileResource derTsFileResource = new TsFileResource(file);
+    derTsFileResource.deserialize();
+    Assert.assertEquals(
+        ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, derTsFileResource.getTimeIndexType());
+    Assert.assertEquals(deviceToIndex.keySet(), derTsFileResource.getDevices());
+  }
+
+  @Test
+  public void testDegradeAndFileTimeIndex() throws IOException {
+    tsFileResource.serialize();
     Assert.assertEquals(ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     tsFileResource.degradeTimeIndex();
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());

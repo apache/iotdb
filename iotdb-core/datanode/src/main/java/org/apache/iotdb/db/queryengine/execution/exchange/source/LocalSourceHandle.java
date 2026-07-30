@@ -20,15 +20,17 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -71,10 +73,13 @@ public class LocalSourceHandle implements ISourceHandle {
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = threadName;
   }
 
@@ -85,12 +90,20 @@ public class LocalSourceHandle implements ISourceHandle {
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
@@ -116,7 +129,7 @@ public class LocalSourceHandle implements ISourceHandle {
       checkState();
 
       if (!queue.isBlocked().isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
       TsBlock tsBlock;
       synchronized (queue) {
@@ -125,7 +138,9 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
+              DataNodeQueryMessages.GETTSBLOCKFROMQUEUE_TSBLOCK_ARG_SIZE_ARG,
+              currSequenceId,
+              tsBlock.getSizeInBytes());
         }
         currSequenceId++;
       }
@@ -140,6 +155,10 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(DataNodeQueryMessages.GET_SERIALIZED_TSBLOCK, CommonUtils.toString(tsBlock));
+    }
+
     if (tsBlock != null) {
       long startTime = System.nanoTime();
       try {
@@ -191,7 +210,7 @@ public class LocalSourceHandle implements ISourceHandle {
   public void abort() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartAbortLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SOURCE_HANDLE);
       }
       synchronized (queue) {
         synchronized (this) {
@@ -204,7 +223,7 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_LOCAL_SOURCE_HANDLE);
       }
     }
   }
@@ -213,7 +232,7 @@ public class LocalSourceHandle implements ISourceHandle {
   public void abort(Throwable t) {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartAbortLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SOURCE_HANDLE);
       }
       synchronized (queue) {
         synchronized (this) {
@@ -226,7 +245,7 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_LOCAL_SOURCE_HANDLE);
       }
     }
   }
@@ -235,7 +254,7 @@ public class LocalSourceHandle implements ISourceHandle {
   public void close() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartCloseLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.START_CLOSE_LOCAL_SOURCE_HANDLE);
       }
       synchronized (queue) {
         synchronized (this) {
@@ -248,7 +267,7 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndCloseLocalSourceHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_LOCAL_SOURCE_HANDLE);
       }
     }
   }
@@ -268,7 +287,9 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       throw new IllegalStateException(
-          "LocalSinkChannel state is ." + (aborted ? "ABORTED" : "CLOSED"));
+          String.format(
+              DataNodeQueryMessages.LOCAL_SINK_CHANNEL_STATE_IS_WITH_STATE_FMT,
+              aborted ? DataNodeQueryMessages.STATE_ABORTED : DataNodeQueryMessages.STATE_CLOSED));
     }
   }
 

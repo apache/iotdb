@@ -112,12 +112,8 @@ public class IoTDBMaintainAuthIT {
     tableQueryNoVerifyResultTest("SHOW CURRENT_USER", expectedHeader, USER_2, PASSWORD);
 
     // case 5: show version
-    tableAssertTestFail(
-        "SHOW VERSION",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
-        USER_2,
-        PASSWORD);
+    expectedHeader = new String[] {"Version", "BuildInfo"};
+    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_2, PASSWORD);
 
     // case 6: show current_timestamp
     expectedHeader = new String[] {"CurrentTimestamp"};
@@ -171,7 +167,17 @@ public class IoTDBMaintainAuthIT {
     // case 12: show queries
     // non-root users can access its own queries
     expectedHeader =
-        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
+        new String[] {
+          "query_id",
+          "start_time",
+          "datanode_id",
+          "elapsed_time",
+          "statement",
+          "user",
+          "wait_time_in_server",
+          "client_ip",
+          "timeout"
+        };
     tableQueryNoVerifyResultTest("show queries", expectedHeader, USER_2, PASSWORD);
 
     // case 13: kill query

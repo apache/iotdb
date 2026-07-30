@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -329,9 +329,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (!config.isAutoCreateSchemaEnabled()) {
         // disable auto-create for non-system series
         indexOfDevicesWithMissingMeasurements.removeIf(
-            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
-        indexOfDevicesWithMissingMeasurements.removeIf(
-            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
+            i ->
+                !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+                    && !devicePathList
+                        .get(i)
+                        .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
         if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
           return schemaTree;
         }

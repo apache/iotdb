@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -38,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -73,44 +73,38 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     this.authorizer = authorizer;
   }
 
-  public TPermissionInfoResp login(String username, String password) {
+  @Override
+  public TPermissionInfoResp login(
+      String username, final String password, final boolean useEncryptedPassword) {
     boolean status;
     String loginMessage = null;
     TSStatus tsStatus = new TSStatus();
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      status = authorizer.login(username, password);
+      status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
-        // Bring this user's permission information back to the datanode for caching
-        if (authorizer instanceof OpenIdAuthorizer) {
-          username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username, ModelType.ALL);
-          result.getUserInfo().setIsOpenIdUser(true);
-        } else {
-          result = getUserPermissionInfo(username, ModelType.ALL);
-        }
+        result = getUserPermissionInfo(username, ModelType.ALL);
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
-      status = false;
       loginMessage = e.getMessage();
-    }
-    if (!status) {
-      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      tsStatus.setCode(e.getCode().getStatusCode());
+      tsStatus.setMessage(
+          loginMessage != null ? loginMessage : ConfigNodeMessages.AUTHENTICATION_FAILED);
       result.setStatus(tsStatus);
     }
     return result;
   }
 
+  @Override
   public String login4Pipe(final String username, final String password) {
     return authorizer.login4Pipe(username, password);
   }
 
+  @Override
   public TSStatus executeAuthorNonQuery(AuthorTreePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -120,10 +114,18 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
+    String newUsername = authorPlan.getNewUsername();
     try {
       switch (authorType) {
         case UpdateUser:
+        case UpdateUserV2:
           authorizer.updateUserPassword(userName, newPassword);
+          break;
+        case RenameUser:
+          authorizer.renameUser(userName, newUsername);
+          break;
+        case AccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
@@ -135,6 +137,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.createRole(roleName);
           break;
         case DropUser:
+        case DropUserV2:
           authorizer.deleteUser(userName);
           break;
         case DropRole:
@@ -199,7 +202,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         default:
           throw new AuthException(
               TSStatusCode.UNSUPPORTED_AUTH_OPERATION,
-              "unknown type: " + authorPlan.getAuthorType());
+              ConfigNodeMessages.EXCEPTION_UNKNOWN_TYPE_7618F8F4 + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
@@ -207,6 +210,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  @Override
   public TSStatus executeRelationalAuthorNonQuery(AuthorRelationalPlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -222,6 +226,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         privileges.add(PrivilegeType.values()[permission]);
       }
     }
+    String newUsername = authorPlan.getNewUsername();
 
     try {
       switch (authorType) {
@@ -232,12 +237,20 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.createRole(roleName);
           break;
         case RUpdateUser:
+        case RUpdateUserV2:
           authorizer.updateUserPassword(userName, authorPlan.getPassword());
+          break;
+        case RRenameUser:
+          authorizer.renameUser(userName, newUsername);
+          break;
+        case RAccountUnlock:
+          checkUserExistsForAccountUnlock(userName);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;
         case RDropUser:
+        case RDropUserV2:
           authorizer.deleteUser(userName);
           break;
         case RGrantUserRole:
@@ -431,7 +444,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           }
           break;
         default:
-          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, ConfigNodeMessages.NOT_SUPPORT);
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
@@ -439,6 +452,15 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  private void checkUserExistsForAccountUnlock(final String userName) throws AuthException {
+    // Account unlock has no persistent ConfigNode auth state change, but the write path needs this
+    // validation before broadcasting DataNode unlocks and propagating through pipe.
+    if (authorizer.getUser(userName) == null) {
+      throw new AuthException(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + userName);
+    }
+  }
+
+  @Override
   public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> userList;
@@ -482,6 +504,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
@@ -504,6 +527,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
     boolean isTreePlan = plan instanceof AuthorTreePlan;
     final PermissionInfoResp result = new PermissionInfoResp();
@@ -528,6 +552,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     boolean isTreePlan = plan instanceof AuthorTreePlan;
@@ -552,6 +577,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
    *
    * @param username The username of the user that needs to be cached
    */
+  @Override
   public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
       throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
@@ -575,6 +601,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     boolean status;
     TPermissionInfoResp result = new TPermissionInfoResp();
@@ -618,6 +645,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException {
     TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
@@ -658,13 +686,35 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return resp;
   }
 
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
+      throws AuthException {
+    final User user = authorizer.getUser(username);
+    if (user == null) {
+      return null;
+    }
+    final PathPatternTree pPtree = new PathPatternTree();
+
+    constructAuthorityScope(pPtree, user, type);
+
+    for (final String roleName : user.getRoleSet()) {
+      Role role = authorizer.getRole(roleName);
+      if (role != null) {
+        constructAuthorityScope(pPtree, role, type);
+      }
+    }
+    pPtree.constructTree();
+    return pPtree;
+  }
+
+  @Override
   public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
       throws AuthException {
     TPermissionInfoResp result;
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     if (user.getRoleSet().contains(roleName)) {
@@ -675,19 +725,28 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     return result;
   }
 
+  @Override
   public TPermissionInfoResp getUser(String username) throws AuthException {
     TPermissionInfoResp result;
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
   }
 
+  @Override
   public String getUserName(long userId) throws AuthException {
-    return authorizer.getUser(userId).getName();
+    User user = authorizer.getUser(userId);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ID_99CA691B + userId));
+    }
+    return user.getName();
   }
 }

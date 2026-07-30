@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -28,12 +29,14 @@ import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.PullCommitProgressRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
@@ -83,6 +86,8 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case ROLLBACK_SCHEMA_BLACK_LIST:
       case DELETE_DATA_FOR_DELETE_SCHEMA:
       case DELETE_TIMESERIES:
+      case ALTER_ENCODING_COMPRESSOR:
+      case ALTER_TIMESERIES_DATATYPE:
       case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case DEACTIVATE_TEMPLATE:
@@ -166,6 +171,14 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             dataNodeLocationMap,
             (Map<Integer, TPushConsumerGroupMetaResp>) responseMap,
             countDownLatch);
+      case PULL_COMMIT_PROGRESS:
+        return new PullCommitProgressRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPullCommitProgressResp>) responseMap,
+            countDownLatch);
       case CHANGE_REGION_LEADER:
         return new TransferLeaderRPCHandler(
             requestType,
@@ -191,6 +204,15 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             dataNodeLocationMap,
             (Map<Integer, TDeviceViewResp>) responseMap,
             countDownLatch);
+      case GET_BUILTIN_SERVICE:
+        return new GetBuiltInExternalServiceRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TExternalServiceListResp>) responseMap,
+            countDownLatch);
+      case PUSH_TOPOLOGY:
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -214,6 +236,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case SET_SYSTEM_STATUS:
       case NOTIFY_REGION_MIGRATION:
       case UPDATE_REGION_ROUTE_MAP:
+      case INVALIDATE_PARTITION_CACHE:
       case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
@@ -221,7 +244,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:
-      case INVALIDATE_TABLE_CACHE:
+      case PRE_DELETE_TABLE:
       case DELETE_DATA_FOR_DROP_TABLE:
       case DELETE_DEVICES_FOR_DROP_TABLE:
       case INVALIDATE_COLUMN_CACHE:

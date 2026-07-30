@@ -34,6 +34,8 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
@@ -94,11 +96,11 @@ public class DataNodeShutdownHook extends Thread {
 
   @Override
   public void run() {
-    logger.info("DataNode exiting...");
+    logger.info(DataNodeMiscMessages.DATANODE_EXITING);
     AuditLogFields fields =
         new AuditLogFields(
-            null,
             -1,
+            null,
             null,
             AuditEventType.DN_SHUTDOWN,
             AuditLogOperation.CONTROL,
@@ -107,7 +109,7 @@ public class DataNodeShutdownHook extends Thread {
             null,
             null);
     String logMessage = String.format("DataNode %s exiting...", nodeLocation);
-    DNAuditLogger.getInstance().log(fields, logMessage);
+    DNAuditLogger.getInstance().log(fields, () -> logMessage);
 
     startWatcher();
     // Stop external rpc service firstly.
@@ -150,7 +152,8 @@ public class DataNodeShutdownHook extends Thread {
         while (true) {
           if (entry.getValue().getRemainingNonHeartbeatEvents() == 0) {
             logger.info(
-                "Successfully waited for pipe {} to finish.", entry.getValue().getPipeName());
+                DataNodeMiscMessages.MISC_LOG_SUCCESSFULLY_WAITED_FOR_PIPE_TO_FINISH_FBDF5157,
+                entry.getValue().getPipeName());
             break;
           }
           if (System.currentTimeMillis() - startTime
@@ -162,19 +165,26 @@ public class DataNodeShutdownHook extends Thread {
             Thread.sleep(100);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.info("Interrupted when waiting for pipe to finish");
+            logger.info(DataNodeMiscMessages.INTERRUPTED_WAITING_PIPE_FINISH);
           }
         }
         if (timeout) {
-          logger.info("Timed out when waiting for pipes to finish, will break");
+          logger.info(DataNodeMiscMessages.TIMED_OUT_WAITING_PIPES);
           break;
         }
       }
     }
     // Persist progress index before shutdown to accurate recovery after restart
-    PipeDataNodeAgent.task().persistAllProgressIndex();
+    final long shutdownProgressPersistTimeoutInMs =
+        PipeDataNodeAgent.task().getShutdownProgressPersistTimeoutInMs();
+    logger.info(
+        DataNodePipeMessages.PERSISTING_PIPE_PROGRESS_INDEXES_BEFORE_SHUTDOWN,
+        shutdownProgressPersistTimeoutInMs);
+    if (!PipeDataNodeAgent.task().persistAllProgressIndex(shutdownProgressPersistTimeoutInMs)) {
+      logger.warn(DataNodePipeMessages.PIPE_PROGRESS_INDEXES_WERE_NOT_CONFIRMED_DURING_SHUTDOWN);
+    }
     // Shutdown all consensus pipe's receiver
-    PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
+    PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
 
     // set encryption key to 16-byte zero.
     TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
@@ -187,14 +197,15 @@ public class DataNodeShutdownHook extends Thread {
     // Set and report shutdown to cluster ConfigNode-leader
     if (!reportShutdownToConfigNodeLeader()) {
       logger.warn(
-          "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current DataNode as Running for a few seconds.");
+          DataNodeMiscMessages
+              .MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497);
     }
 
     // Clear lock file. All services should be shutdown before this line.
     DirectoryChecker.getInstance().deregisterAll();
 
     logger.info(
-        "DataNode exits. Jvm memory usage: {}",
+        DataNodeMiscMessages.MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5,
         MemUtils.bytesCntToStr(
             Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 
@@ -209,8 +220,8 @@ public class DataNodeShutdownHook extends Thread {
                 DataRegionConsensusImpl.getInstance().triggerSnapshot(id, true);
               } catch (ConsensusException e) {
                 logger.warn(
-                    "Something wrong happened while calling consensus layer's "
-                        + "triggerSnapshot API.",
+                    DataNodeMiscMessages
+                        .MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16,
                     e);
               }
             });
@@ -222,9 +233,9 @@ public class DataNodeShutdownHook extends Thread {
       return client.reportDataNodeShutdown(nodeLocation).getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode();
     } catch (ClientManagerException e) {
-      logger.error("Failed to borrow ConfigNodeClient", e);
+      logger.error(DataNodeMiscMessages.FAILED_BORROW_CONFIG_NODE_CLIENT, e);
     } catch (TException e) {
-      logger.error("Failed to report shutdown", e);
+      logger.error(DataNodeMiscMessages.FAILED_REPORT_SHUTDOWN, e);
     }
     return false;
   }

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import socket
 import threading
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
@@ -40,20 +41,27 @@ class AINodeThreadPoolServer(TServer.TThreadPoolServer):
         """Start a fixed number of worker threads and put client into a queue"""
         for i in range(self.threads):
             try:
-                t = threading.Thread(target=self.serveThread)
-                t.daemon = self.daemon
+                t = threading.Thread(target=self.serveThread, daemon=self.daemon)
                 t.start()
             except Exception as x:
                 logger.error(x)
         # Pump the socket for clients
         self.serverTransport.listen()
+        handle = getattr(self.serverTransport, "handle", None)
+        if handle is not None and hasattr(handle, "settimeout"):
+            # set handle timeout to 100ms
+            handle.settimeout(0.1)
         while not self._stop_event.is_set():
             try:
-                client = self.serverTransport.accept()  # TODO: Fix the block problem
+                client = self.serverTransport.accept()
                 if not client:
                     continue
                 self.clients.put(client)
+            except socket.timeout:
+                continue
             except Exception as x:
+                if self._stop_event.is_set():
+                    break
                 logger.error(x)
         logger.info(
             "The RPC service thread pool of IoTDB-AINode has successfully stopped."
@@ -125,3 +133,4 @@ class AINodeRPCService(threading.Thread):
             logger.info("Stopping the RPC service of IoTDB-AINode...")
             self._stop_event.set()
             self.__pool_server.stop()
+            self._handler.stop()

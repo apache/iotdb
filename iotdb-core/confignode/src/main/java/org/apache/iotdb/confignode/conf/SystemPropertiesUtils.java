@@ -22,10 +22,13 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +63,7 @@ public class SystemPropertiesUtils {
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   private SystemPropertiesUtils() {
-    throw new IllegalStateException("Utility class: SystemPropertiesUtils.");
+    throw new IllegalStateException(ConfigNodeMessages.UTILITY_CLASS_SYSTEMPROPERTIESUTILS);
   }
 
   public static void reinitializeStatics() {
@@ -87,6 +90,7 @@ public class SystemPropertiesUtils {
    */
   public static void checkSystemProperties() throws IOException {
     Properties systemProperties = systemPropertiesHandler.read();
+    ConfigurationFileUtils.updateAppliedProperties(systemProperties, false);
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
             + " Your configuration: {} will be forced update to: {}";
@@ -122,10 +126,15 @@ public class SystemPropertiesUtils {
       }
     }
 
+    // Only the data region protocol could have been persisted as the old PipeConsensus name
+    // during a jar-only upgrade, so only that field needs compatibility normalization.
     // Consensus protocol configuration
+    boolean needRewriteConsensusProtocol = false;
+
     String configNodeConsensusProtocolClass =
         systemProperties.getProperty(CN_CONSENSUS_PROTOCOL, null);
-    if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
+    if (!Objects.equals(
+        configNodeConsensusProtocolClass, conf.getConfigNodeConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           CN_CONSENSUS_PROTOCOL,
@@ -134,9 +143,22 @@ public class SystemPropertiesUtils {
       conf.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
     }
 
-    String dataRegionConsensusProtocolClass =
+    String persistedDataRegionConsensusProtocolClass =
         systemProperties.getProperty(DATA_CONSENSUS_PROTOCOL, null);
-    if (!dataRegionConsensusProtocolClass.equals(conf.getDataRegionConsensusProtocolClass())) {
+    String dataRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(persistedDataRegionConsensusProtocolClass);
+    if (!Objects.equals(
+        persistedDataRegionConsensusProtocolClass, dataRegionConsensusProtocolClass)) {
+      systemProperties.setProperty(DATA_CONSENSUS_PROTOCOL, dataRegionConsensusProtocolClass);
+      needRewriteConsensusProtocol = true;
+      LOGGER.warn(
+          ConfigNodeMessages.SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY,
+          DATA_CONSENSUS_PROTOCOL,
+          persistedDataRegionConsensusProtocolClass,
+          dataRegionConsensusProtocolClass);
+    }
+    if (!Objects.equals(
+        dataRegionConsensusProtocolClass, conf.getDataRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           DATA_CONSENSUS_PROTOCOL,
@@ -147,13 +169,17 @@ public class SystemPropertiesUtils {
 
     String schemaRegionConsensusProtocolClass =
         systemProperties.getProperty(SCHEMA_CONSENSUS_PROTOCOL, null);
-    if (!schemaRegionConsensusProtocolClass.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+    if (!Objects.equals(
+        schemaRegionConsensusProtocolClass, conf.getSchemaRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           SCHEMA_CONSENSUS_PROTOCOL,
           conf.getSchemaRegionConsensusProtocolClass(),
           schemaRegionConsensusProtocolClass);
       conf.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+    if (needRewriteConsensusProtocol) {
+      systemPropertiesHandler.overwrite(systemProperties);
     }
 
     // PartitionSlot configuration
@@ -247,12 +273,12 @@ public class SystemPropertiesUtils {
 
     // Cluster configuration
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
-    LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
+    LOGGER.info(ConfigNodeMessages.SYSTEMPROPERTIES_STORE_CONFIG_NODE_ID, conf.getConfigNodeId());
     systemProperties.setProperty(
         "is_seed_config_node",
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
     LOGGER.info(
-        "[SystemProperties] store is_seed_config_node: {}",
+        ConfigNodeMessages.SYSTEMPROPERTIES_STORE_IS_SEED_CONFIG_NODE,
         ConfigNodeDescriptor.getInstance().isSeedConfigNode());
 
     // Startup configuration
@@ -263,7 +289,9 @@ public class SystemPropertiesUtils {
     // Consensus protocol configuration
     systemProperties.setProperty(CN_CONSENSUS_PROTOCOL, conf.getConfigNodeConsensusProtocolClass());
     systemProperties.setProperty(
-        DATA_CONSENSUS_PROTOCOL, conf.getDataRegionConsensusProtocolClass());
+        DATA_CONSENSUS_PROTOCOL,
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            conf.getDataRegionConsensusProtocolClass()));
     systemProperties.setProperty(
         SCHEMA_CONSENSUS_PROTOCOL, conf.getSchemaRegionConsensusProtocolClass());
 
@@ -320,9 +348,11 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in "
-              + "data/confignode/system/confignode-system.properties. "
-              + "Please delete data dir data/confignode and restart again.",
+          ConfigNodeMessages.THE_PARAMETER_CONFIG_NODE_ID_DOESN_T_EXIST_IN
+              + ConfigNodeMessages
+                  .EXCEPTION_DATA_CONFIGNODE_SYSTEM_CONFIGNODE_SYSTEM_PROPERTIES_786349AB
+              + ConfigNodeMessages
+                  .EXCEPTION_PLEASE_DELETE_DATA_DIR_DATA_CONFIGNODE_RESTART_AGAIN_8527BE66,
           e);
     }
   }

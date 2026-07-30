@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.memory;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +65,7 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
       try {
         releaseAllMemory();
       } catch (Exception e) {
-        LOGGER.error("Release memory block {} failed", this, e);
+        LOGGER.error(StorageEngineMessages.RELEASE_MEMORY_BLOCK_FAILED, this, e);
       }
     }
   }

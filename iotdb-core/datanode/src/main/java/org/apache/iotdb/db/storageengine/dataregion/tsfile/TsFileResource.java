@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -50,8 +52,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -72,7 +76,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -89,6 +92,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -96,12 +100,12 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource implements PersistentResource {
+public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileRepairStatus.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class);
+          + TsFileID.SHALLOW_SIZE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
@@ -156,6 +160,8 @@ public class TsFileResource implements PersistentResource {
 
   private boolean isSeq;
 
+  private AtomicBoolean isRecordedByMetric = new AtomicBoolean(false);
+
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
@@ -198,8 +204,8 @@ public class TsFileResource implements PersistentResource {
 
   private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
-  /** used to prevent circular replication in PipeConsensus */
-  private volatile boolean isGeneratedByPipeConsensus = false;
+  /** used to prevent circular replication in IoTConsensusV2 */
+  private volatile boolean isGeneratedByIoTConsensusV2 = false;
 
   /** used to prevent circular replication in Pipe */
   private volatile boolean isGeneratedByPipe = false;
@@ -256,6 +262,7 @@ public class TsFileResource implements PersistentResource {
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
+    this.isRecordedByMetric = originTsFileResource.isRecordedByMetric;
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
@@ -281,7 +288,7 @@ public class TsFileResource implements PersistentResource {
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-    timeIndex.serialize(outputStream);
+    getTimeIndexForSerialization().serialize(outputStream);
 
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
@@ -311,8 +318,16 @@ public class TsFileResource implements PersistentResource {
     }
 
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
-    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByIoTConsensusV2, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
+  }
+
+  private ITimeIndex getTimeIndexForSerialization() throws IOException {
+    if (!(timeIndex instanceof FileTimeIndex) || !resourceFileExists()) {
+      return timeIndex;
+    }
+
+    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /** deserialize from disk */
@@ -320,7 +335,8 @@ public class TsFileResource implements PersistentResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
-      timeIndex = ITimeIndex.createTimeIndex(inputStream);
+      timeIndex =
+          ITimeIndex.createTimeIndex(inputStream, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -345,7 +361,7 @@ public class TsFileResource implements PersistentResource {
             maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
             break;
           case PIPE_MARK:
-            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByIoTConsensusV2 = ReadWriteIOUtils.readBoolean(inputStream);
             isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
             break;
           default:
@@ -404,10 +420,11 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void link(TsFileResource target) throws IOException {
-    Files.createLink(target.getTsFile().toPath(), this.getTsFile().toPath());
-    Files.createLink(
+    FileUtils.createLink(target.getTsFile().toPath(), this.getTsFile().toPath(), true);
+    FileUtils.createLink(
         new File(target.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        new File(this.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        true);
     linkModFile(target);
   }
 
@@ -419,8 +436,8 @@ public class TsFileResource implements PersistentResource {
     try {
       if (sourceModFile.exists()) {
         // inherit modifications from the source file
-        Files.createLink(
-            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        FileUtils.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath(), true);
       }
       // ensure that new modifications will be written into the target file
       targetModsFileObject = new ModificationFile(targetModsFile, true);
@@ -468,7 +485,7 @@ public class TsFileResource implements PersistentResource {
         serializedSharedModFile();
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize shared mod file", e);
+      LOGGER.warn(StorageEngineMessages.FAILED_TO_SERIALIZE_SHARED_MOD_FILE, e);
     }
   }
 
@@ -512,7 +529,7 @@ public class TsFileResource implements PersistentResource {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (ExecutionException | IOException e) {
-        LOGGER.error("Failed to get shared mod file", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_GET_SHARED_MOD_FILE, e);
       }
     }
     return sharedModFile;
@@ -531,10 +548,10 @@ public class TsFileResource implements PersistentResource {
             exclusiveModFile = exclusiveModFileFuture.get();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Upgrading mod file interrupted", e);
+            LOGGER.warn(StorageEngineMessages.UPGRADING_MOD_FILE_INTERRUPTED, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           } catch (ExecutionException e) {
-            LOGGER.warn("Cannot upgrade mod file", e);
+            LOGGER.warn(StorageEngineMessages.CANNOT_UPGRADE_MOD_FILE, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           }
         } else {
@@ -614,9 +631,12 @@ public class TsFileResource implements PersistentResource {
       return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
-          "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_GETSTARTTIME_OF_IN_FILE_D7F27B92,
+          deviceId,
+          file.getAbsolutePath(),
+          e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -628,9 +648,12 @@ public class TsFileResource implements PersistentResource {
       return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
-          "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_GETENDTIME_OF_IN_FILE_350DA42F,
+          deviceId,
+          file.getAbsolutePath(),
+          e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -676,28 +699,48 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public Set<IDeviceID> getDevices(RateLimiter limiter) {
+    return timeIndex.getDevices(file.getPath(), this, limiter);
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)
+      throws IOException {
     readLock();
     try {
-      if (!resourceFileExists()) {
-        throw new IOException("resource file not found");
-      }
-      try (InputStream inputStream =
-          FSFactoryProducer.getFSFactory()
-              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-        ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-        if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
-          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+      try {
+        ITimeIndex timeIndexFromResourceFile = deserializeTimeIndexFromResourceFile(deserializer);
+        if (timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex) {
+          return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
         }
-        return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
+        throw new IOException(
+            StorageEngineMessages.CANNOT_BUILD_DEVICE_TIME_INDEX + file.getPath());
       } catch (Exception e) {
         throw new IOException(
-            "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_CAN_T_READ_FILE_S_S_FROM_DISK_9D5066C0,
+                file.getPath(),
+                RESOURCE_SUFFIX),
+            e);
       }
     } finally {
       readUnlock();
     }
+  }
+
+  private ITimeIndex deserializeTimeIndexFromResourceFile(IDeviceID.Deserializer deserializer)
+      throws IOException {
+    if (!resourceFileExists()) {
+      throw new IOException(StorageEngineMessages.RESOURCE_FILE_NOT_FOUND);
+    }
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      return ITimeIndex.createTimeIndex(inputStream, deserializer);
+    }
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    return buildDeviceTimeIndex(IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /**
@@ -754,12 +797,12 @@ public class TsFileResource implements PersistentResource {
     return processor;
   }
 
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
-  public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
-    isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  public void setGeneratedByIoTConsensusV2(boolean generatedByIoTConsensusV2) {
+    isGeneratedByIoTConsensusV2 = generatedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByPipe() {
@@ -835,17 +878,19 @@ public class TsFileResource implements PersistentResource {
    * file physically.
    */
   public boolean remove() {
-    forceMarkDeleted();
     // To release the memory occupied by pipe if held by it
     // Note that pipe can safely handle the case that the time index does not exist
     isEmpty();
-    degradeTimeIndex();
+    if (getStatus() != TsFileResourceStatus.UNCLOSED) {
+      degradeTimeIndex();
+    }
+    forceMarkDeleted();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
           new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     if (!removeResourceFile()) {
@@ -854,7 +899,7 @@ public class TsFileResource implements PersistentResource {
     try {
       removeModFile();
     } catch (IOException e) {
-      LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.MODIFICATION_FILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -865,7 +910,7 @@ public class TsFileResource implements PersistentResource {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_RESOURCE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -1005,7 +1050,10 @@ public class TsFileResource implements PersistentResource {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+            StorageEngineMessages
+                .STORAGE_LOG_PATH_FILE_IS_NOT_SATISFIED_BECAUSE_OF_NO_DEVICE_8BB15136,
+            deviceId,
+            file);
       }
       return false;
     }
@@ -1019,17 +1067,20 @@ public class TsFileResource implements PersistentResource {
         // false
         // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
         LOGGER.warn(
-            "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+            StorageEngineMessages
+                .STORAGE_LOG_STARTTIME_OF_TSFILERESOURCE_IS_GREATER_THAN_ITS_ENDTIME_BC6CC591,
             startTime,
             this,
             endTime);
         return false;
       }
-
+      // we cannot count the filtered rows in tsfile due to the lack of related info about the
+      // tsfile
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!",
+            StorageEngineMessages
+                .STORAGE_LOG_PATH_FILE_IS_NOT_SATISFIED_BECAUSE_OF_TIME_FILTER_71121709,
             deviceId != null ? deviceId : "",
             fsFactory);
       }
@@ -1169,7 +1220,8 @@ public class TsFileResource implements PersistentResource {
           serialize();
         } catch (IOException e) {
           LOGGER.error(
-              "Cannot serialize TsFileResource {} when updating plan index {}-{}",
+              StorageEngineMessages
+                  .STORAGE_LOG_CANNOT_SERIALIZE_TSFILERESOURCE_WHEN_UPDATING_PLAN_INDEX_69665DD5,
               this,
               maxPlanIndex,
               planIndex);
@@ -1311,7 +1363,7 @@ public class TsFileResource implements PersistentResource {
       }
       return 0;
     } catch (IOException e) {
-      LOGGER.error("File name may not meet the standard naming specifications.", e);
+      LOGGER.error(StorageEngineMessages.FILE_NAME_NOT_STANDARD, e);
       throw new RuntimeException(e.getMessage());
     }
   }
@@ -1322,6 +1374,18 @@ public class TsFileResource implements PersistentResource {
 
   public boolean isSeq() {
     return isSeq;
+  }
+
+  public boolean isRecordedByMetric() {
+    return isRecordedByMetric.get();
+  }
+
+  public boolean markAsRecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(false, true);
+  }
+
+  public boolean markAsUnrecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(true, false);
   }
 
   public int compareIndexDegradePriority(TsFileResource tsFileResource) {
@@ -1421,7 +1485,8 @@ public class TsFileResource implements PersistentResource {
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
     if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
-          "Should not get progress index from a unclosing TsFileResource.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_SHOULD_NOT_GET_PROGRESS_INDEX_FROM_A_UNCLOSING_TSFILERESOURCE_129FD925);
     }
     return getMaxProgressIndex();
   }
@@ -1477,7 +1542,7 @@ public class TsFileResource implements PersistentResource {
     return entries;
   }
 
-  public class ModIterator implements Iterator<ModEntry> {
+  public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
 
     private final Iterator<ModEntry> sharedModIterator;
     private final Iterator<ModEntry> exclusiveModIterator;
@@ -1488,7 +1553,7 @@ public class TsFileResource implements PersistentResource {
         ModificationFile newMFile = getExclusiveModFile();
         exclusiveIterator = newMFile != null ? newMFile.getModIterator(0) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.exclusiveModIterator = exclusiveIterator;
@@ -1498,7 +1563,7 @@ public class TsFileResource implements PersistentResource {
         sharedIterator =
             getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.sharedModIterator = sharedIterator;
@@ -1519,6 +1584,22 @@ public class TsFileResource implements PersistentResource {
         return sharedModIterator.next();
       }
       throw new NoSuchElementException();
+    }
+
+    @Override
+    public void close() {
+      closeModIterator(exclusiveModIterator);
+      closeModIterator(sharedModIterator);
+    }
+
+    private void closeModIterator(Iterator<ModEntry> modIterator) {
+      if (modIterator instanceof AutoCloseable) {
+        try {
+          ((AutoCloseable) modIterator).close();
+        } catch (Exception e) {
+          LOGGER.info(StorageEngineMessages.CANNOT_CLOSE_MOD_FILE_INPUT_STREAM, getTsFile(), e);
+        }
+      }
     }
   }
 
@@ -1584,5 +1665,47 @@ public class TsFileResource implements PersistentResource {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
+  }
+
+  public TsFileResource shallowClone() {
+    TsFileResource cloned = new TsFileResource();
+    cloned.file = this.file;
+    cloned.timeIndex = this.timeIndex;
+    cloned.maxPlanIndex = this.maxPlanIndex;
+    cloned.minPlanIndex = this.minPlanIndex;
+    cloned.exclusiveModFileFuture = this.exclusiveModFileFuture;
+    cloned.sharedModFilePathFuture = this.sharedModFilePathFuture;
+    cloned.modFileManagement = this.modFileManagement;
+    cloned.exclusiveModFile = this.exclusiveModFile;
+    cloned.sharedModFile = this.sharedModFile;
+    cloned.sharedModFileOffset = this.sharedModFileOffset;
+    cloned.compactionModFile = this.compactionModFile;
+    cloned.isSeq = this.isSeq;
+    cloned.isRecordedByMetric = this.isRecordedByMetric;
+    cloned.tsFileRepairStatus = this.tsFileRepairStatus;
+    cloned.settleTsFileCallBack = this.settleTsFileCallBack;
+    cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;
+    cloned.tsFileSize = this.tsFileSize;
+    cloned.processor = this.processor;
+    cloned.originTsFileResource = this.originTsFileResource;
+    cloned.isGeneratedByIoTConsensusV2 = this.isGeneratedByIoTConsensusV2;
+    cloned.isGeneratedByPipe = this.isGeneratedByPipe;
+    cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
+    cloned.tierLevel = this.tierLevel;
+    cloned.pathToChunkMetadataListMap = this.pathToChunkMetadataListMap;
+    cloned.pathToReadOnlyMemChunkMap = this.pathToReadOnlyMemChunkMap;
+    cloned.pathToTimeSeriesMetadataMap = this.pathToTimeSeriesMetadataMap;
+    cloned.lastValues = this.lastValues;
+    cloned.maxProgressIndex.set(this.maxProgressIndex.get());
+    cloned.atomicStatus.set(this.atomicStatus.get());
+    cloned.isEmpty.set(this.isEmpty.get());
+    cloned.tsFileID = this.tsFileID;
+    cloned.prev = null;
+    cloned.next = null;
+    return cloned;
+  }
+
+  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+    return (TsFileResource) clone();
   }
 }

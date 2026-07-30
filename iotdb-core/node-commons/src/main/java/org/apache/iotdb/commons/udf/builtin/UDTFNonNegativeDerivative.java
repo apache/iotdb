@@ -57,6 +57,7 @@ public class UDTFNonNegativeDerivative extends UDTFDerivative {
         break;
       case DATE:
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case BOOLEAN:

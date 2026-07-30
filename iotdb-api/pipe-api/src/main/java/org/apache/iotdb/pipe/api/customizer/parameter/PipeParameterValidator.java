@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.api.customizer.parameter;
 
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.i18n.PipeApiMessages;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,7 +63,9 @@ public class PipeParameterValidator {
     if (lhsExistence && rhsExistence) {
       throw new PipeParameterNotValidException(
           String.format(
-              "Cannot specify both %s and %s at the same time", lhsAttributes, rhsAttributes));
+              PipeApiMessages.EXCEPTION_CANNOT_SPECIFY_BOTH_ARG_AND_ARG_AT_THE_SAME_TIME_7DA8858B,
+              lhsAttributes,
+              rhsAttributes));
     }
     if (isRequired && !lhsExistence && !rhsExistence) {
       throw new PipeAttributeNotProvidedException(
@@ -94,7 +97,8 @@ public class PipeParameterValidator {
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       if (!canBeOptional) {
-        throw new PipeParameterNotValidException(String.format("Parameter %s should be set.", key));
+        throw new PipeParameterNotValidException(
+            String.format(PipeApiMessages.PARAMETER_SHOULD_BE_SET, key));
       }
       return this;
     }
@@ -108,8 +112,11 @@ public class PipeParameterValidator {
 
     throw new PipeParameterNotValidException(
         String.format(
-            "Invalid value %s of %s. The value should be one of %s",
-            actualValue, key, Arrays.toString(optionalValues)));
+            PipeApiMessages
+                .EXCEPTION_INVALID_VALUE_ARG_OF_ARG_THE_VALUE_SHOULD_BE_ONE_OF_ARG_7D1B4AF8,
+            actualValue,
+            key,
+            Arrays.toString(optionalValues)));
   }
 
   /**

@@ -703,6 +703,7 @@ public class CompactionMetrics implements IMetricSet {
 
   private Histogram settleCompactionTaskSelectionTimeCost =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram ttlCheckForObjectFileTimeCost = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   private Histogram seqInnerSpaceCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -764,6 +765,10 @@ public class CompactionMetrics implements IMetricSet {
       default:
         break;
     }
+  }
+
+  public void updateTTLCheckForObjectFileCost(long time) {
+    ttlCheckForObjectFileTimeCost.update(time);
   }
 
   public void updateCompactionTaskSelectedFileNum(
@@ -869,6 +874,12 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "settle");
+    ttlCheckForObjectFileTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "settle-object");
     seqInnerSpaceCompactionTaskSelectedFileNum =
         metricService.getOrCreateHistogram(
             Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
@@ -935,7 +946,8 @@ public class CompactionMetrics implements IMetricSet {
   }
 
   private void unbindCompactionTaskSelection(AbstractMetricService metricService) {
-    for (String taskType : Arrays.asList("seq", "unseq", "cross", "insertion", "settle")) {
+    for (String taskType :
+        Arrays.asList("seq", "unseq", "cross", "insertion", "settle", "settle-object")) {
       metricService.remove(
           MetricType.GAUGE,
           Metric.COMPACTION_TASK_SELECTION.toString(),

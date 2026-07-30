@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.NodeType;
@@ -90,7 +91,7 @@ public class MetricConfig {
     try {
       pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
     } catch (Exception e) {
-      LOGGER.warn("Failed to get pid, because ", e);
+      LOGGER.warn(MetricsMessages.GET_PID_FAILED, e);
     }
   }
 

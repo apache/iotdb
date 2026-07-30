@@ -77,9 +77,17 @@ public class BaseRpcTransportFactory extends TTransportFactory {
   public TTransport getTransport(
       String ip, int port, int timeout, String trustStore, String trustStorePwd)
       throws TTransportException {
+    return getTransportWithSSLConfig(ip, port, timeout, trustStore, trustStorePwd, null);
+  }
+
+  public TTransport getTransportWithSSLConfig(
+      String ip, int port, int timeout, String trustStore, String trustStorePwd, String sslProtocol)
+      throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
-    params.setTrustStore(trustStore, trustStorePwd);
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol);
+    if (hasText(trustStore)) {
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol);
+    }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }
@@ -93,10 +101,27 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String keyStore,
       String keyStorePwd)
       throws TTransportException {
+    return getTransport(ip, port, timeout, trustStore, trustStorePwd, keyStore, keyStorePwd, null);
+  }
+
+  public TTransport getTransport(
+      String ip,
+      int port,
+      int timeout,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol)
+      throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
-    params.setTrustStore(trustStore, trustStorePwd);
-    params.setKeyStore(keyStore, keyStorePwd);
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol);
+    if (hasText(trustStore)) {
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol);
+    }
+    if (hasText(keyStore)) {
+      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd, sslProtocol);
+    }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }
@@ -120,5 +145,9 @@ public class BaseRpcTransportFactory extends TTransportFactory {
 
   public static void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     BaseRpcTransportFactory.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  private static boolean hasText(String value) {
+    return value != null && !value.trim().isEmpty();
   }
 }

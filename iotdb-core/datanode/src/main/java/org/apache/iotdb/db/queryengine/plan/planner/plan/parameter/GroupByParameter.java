@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -80,6 +81,6 @@ public abstract class GroupByParameter {
       return GroupBySessionParameter.deserialize(byteBuffer);
     } else if (type == WindowType.COUNT_WINDOW.getType()) {
       return GroupByCountParameter.deserialize(byteBuffer);
-    } else throw new SemanticException("Unsupported window type");
+    } else throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_WINDOW_TYPE);
   }
 }

@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.ModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
@@ -31,7 +33,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 
 public interface IAuthorPlanExecutor {
-  TPermissionInfoResp login(String username, String password);
+  TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   String login4Pipe(final String username, final String password);
 
@@ -52,6 +55,9 @@ public interface IAuthorPlanExecutor {
   TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union);
 
   TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
+      throws AuthException;
+
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
       throws AuthException;
 
   TPermissionInfoResp checkRoleOfUser(String username, String roleName) throws AuthException;

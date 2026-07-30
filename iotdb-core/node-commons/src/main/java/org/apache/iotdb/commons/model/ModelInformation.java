@@ -32,9 +32,10 @@ import java.util.Arrays;
 
 public class ModelInformation {
 
-  ModelType modelType;
+  private static final int[] DEFAULT_MODEL_INPUT_SHAPE = new int[] {2880, 1};
+  private static final int[] DEFAULT_MODEL_OUTPUT_SHAPE = new int[] {720, 1};
 
-  private final String modelName;
+  private final String modelId;
 
   private final int[] inputShape;
 
@@ -48,17 +49,23 @@ public class ModelInformation {
 
   String attribute = "";
 
+  public ModelInformation(String modelId) {
+    this.modelId = modelId;
+    this.inputShape = DEFAULT_MODEL_INPUT_SHAPE;
+    this.inputDataType = new TSDataType[] {TSDataType.DOUBLE};
+    this.outputShape = DEFAULT_MODEL_OUTPUT_SHAPE;
+    this.outputDataType = new TSDataType[] {TSDataType.DOUBLE};
+  }
+
   public ModelInformation(
-      ModelType modelType,
-      String modelName,
+      String modelId,
       int[] inputShape,
       int[] outputShape,
       TSDataType[] inputDataType,
       TSDataType[] outputDataType,
       String attribute,
       ModelStatus status) {
-    this.modelType = modelType;
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.inputShape = inputShape;
     this.outputShape = outputShape;
     this.inputDataType = inputDataType;
@@ -68,14 +75,13 @@ public class ModelInformation {
   }
 
   public ModelInformation(
-      String modelName,
+      String modelId,
       int[] inputShape,
       int[] outputShape,
       TSDataType[] inputDataType,
       TSDataType[] outputDataType,
       String attribute) {
-    this.modelType = ModelType.USER_DEFINED;
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.inputShape = inputShape;
     this.outputShape = outputShape;
     this.inputDataType = inputDataType;
@@ -83,29 +89,13 @@ public class ModelInformation {
     this.attribute = attribute;
   }
 
-  public ModelInformation(String modelName, ModelStatus status) {
-    this.modelType = ModelType.BUILT_IN_FORECAST;
-    this.modelName = modelName;
+  public ModelInformation(String modelId, ModelStatus status) {
+    this.modelId = modelId;
     this.inputShape = new int[0];
     this.outputShape = new int[0];
     this.outputDataType = new TSDataType[0];
     this.inputDataType = new TSDataType[0];
     this.status = status;
-  }
-
-  // init built-in modelInformation
-  public ModelInformation(ModelType modelType, String modelName) {
-    this.modelType = modelType;
-    this.modelName = modelName;
-    this.inputShape = new int[2];
-    this.outputShape = new int[2];
-    this.inputDataType = new TSDataType[0];
-    this.outputDataType = new TSDataType[0];
-    this.status = ModelStatus.ACTIVE;
-  }
-
-  public boolean isBuiltIn() {
-    return modelType != ModelType.USER_DEFINED;
   }
 
   public boolean available() {
@@ -116,8 +106,8 @@ public class ModelInformation {
     this.status = status;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   public void setInputLength(int length) {
@@ -126,26 +116,6 @@ public class ModelInformation {
 
   public void setOutputLength(int length) {
     outputShape[0] = length;
-  }
-
-  // calculation modelType and outputColumn metadata for different built-in models
-  public void setInputColumnSize(int size) {
-    inputShape[1] = size;
-    if (modelType == ModelType.BUILT_IN_FORECAST) {
-      outputShape[1] = size;
-    } else if (modelType == ModelType.BUILT_IN_ANOMALY_DETECTION) {
-      outputShape[1] = 1;
-    } else {
-      outputShape[1] = size;
-    }
-    if (modelType == ModelType.BUILT_IN_FORECAST) {
-      buildOutputDataTypeForBuiltInModel(TSDataType.DOUBLE, outputShape[1]);
-    } else if (modelType == ModelType.BUILT_IN_ANOMALY_DETECTION) {
-      buildOutputDataTypeForBuiltInModel(TSDataType.INT32, outputShape[1]);
-    } else {
-      buildOutputDataTypeForBuiltInModel(TSDataType.FLOAT, outputShape[1]);
-      buildInputDataTypeForBuiltInModel(TSDataType.FLOAT, inputShape[1]);
-    }
   }
 
   public void setInputDataType(TSDataType[] inputDataType) {
@@ -195,9 +165,8 @@ public class ModelInformation {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelType.ordinal(), stream);
     ReadWriteIOUtils.write(status.ordinal(), stream);
-    ReadWriteIOUtils.write(modelName, stream);
+    ReadWriteIOUtils.write(modelId, stream);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -220,9 +189,8 @@ public class ModelInformation {
   }
 
   public void serialize(FileOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelType.ordinal(), stream);
     ReadWriteIOUtils.write(status.ordinal(), stream);
-    ReadWriteIOUtils.write(modelName, stream);
+    ReadWriteIOUtils.write(modelId, stream);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -245,9 +213,8 @@ public class ModelInformation {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(modelType.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(status.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(modelName, byteBuffer);
+    ReadWriteIOUtils.write(modelId, byteBuffer);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -270,7 +237,6 @@ public class ModelInformation {
   }
 
   public static ModelInformation deserialize(ByteBuffer buffer) {
-    ModelType modelType = ModelType.values()[ReadWriteIOUtils.readInt(buffer)];
     ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(buffer)];
     String modelName = ReadWriteIOUtils.readString(buffer);
     if (status == ModelStatus.UNAVAILABLE) {
@@ -300,18 +266,10 @@ public class ModelInformation {
     String attribute = ReadWriteIOUtils.readString(buffer);
 
     return new ModelInformation(
-        modelType,
-        modelName,
-        inputShape,
-        outputShape,
-        inputDataType,
-        outputDataType,
-        attribute,
-        status);
+        modelName, inputShape, outputShape, inputDataType, outputDataType, attribute, status);
   }
 
   public static ModelInformation deserialize(InputStream stream) throws IOException {
-    ModelType modelType = ModelType.values()[ReadWriteIOUtils.readInt(stream)];
     ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(stream)];
     String modelName = ReadWriteIOUtils.readString(stream);
     if (status == ModelStatus.UNAVAILABLE) {
@@ -340,21 +298,13 @@ public class ModelInformation {
 
     String attribute = ReadWriteIOUtils.readString(stream);
     return new ModelInformation(
-        modelType,
-        modelName,
-        inputShape,
-        outputShape,
-        inputDataType,
-        outputDataType,
-        attribute,
-        status);
+        modelName, inputShape, outputShape, inputDataType, outputDataType, attribute, status);
   }
 
   public ByteBuffer serializeShowModelResult() throws IOException {
     PublicBAOS buffer = new PublicBAOS();
     DataOutputStream stream = new DataOutputStream(buffer);
-    ReadWriteIOUtils.write(modelName, stream);
-    ReadWriteIOUtils.write(modelType.toString(), stream);
+    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(status.toString(), stream);
     ReadWriteIOUtils.write(Arrays.toString(inputShape), stream);
     ReadWriteIOUtils.write(Arrays.toString(outputShape), stream);
@@ -370,8 +320,7 @@ public class ModelInformation {
   public boolean equals(Object obj) {
     if (obj instanceof ModelInformation) {
       ModelInformation other = (ModelInformation) obj;
-      return modelName.equals(other.modelName)
-          && modelType.equals(other.modelType)
+      return modelId.equals(other.modelId)
           && Arrays.equals(inputShape, other.inputShape)
           && Arrays.equals(outputShape, other.outputShape)
           && Arrays.equals(inputDataType, other.inputDataType)

@@ -19,6 +19,7 @@
 package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.it.utils.TSDataTypeTestUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -64,7 +65,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -1452,12 +1452,34 @@ public class IoTDBSessionRelationalIT {
         rec = dataSet.next();
         assertEquals(1, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
-        if (to == TSDataType.BLOB) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
-        } else if (to == TSDataType.DATE) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
-        } else {
-          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+
+        switch (to) {
+          case BLOB:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+            break;
+          case DATE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+            break;
+          case FLOAT:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
+            break;
+          case DOUBLE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
+            break;
+          case STRING:
+          case TEXT:
+            if (from == TSDataType.DATE) {
+              assertEquals(
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
+            } else {
+              assertEquals(
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
+            }
+            break;
+          default:
+            assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
         }
         assertFalse(dataSet.hasNext());
       } else {
@@ -1586,7 +1608,7 @@ public class IoTDBSessionRelationalIT {
   }
 
   @SuppressWarnings("SameParameterValue")
-  private Object genValue(TSDataType dataType, int i) {
+  public static Object genValue(TSDataType dataType, int i) {
     switch (dataType) {
       case INT32:
         return i;
@@ -1616,22 +1638,20 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalTabletWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 14;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
-
-    for (TSDataType from : dataTypes) {
-      for (TSDataType to : dataTypes) {
-        System.out.println("from: " + from + ", to: " + to);
-        testOneCastWithTablet(from, to, testNum, false);
-        System.out.println("partial insert");
-        testOneCastWithTablet(from, to, testNum, true);
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
+    try {
+      for (TSDataType from : dataTypes) {
+        for (TSDataType to : dataTypes) {
+          System.out.println("from: " + from + ", to: " + to);
+          testOneCastWithTablet(from, to, testNum, false);
+          System.out.println("partial insert");
+          testOneCastWithTablet(from, to, testNum, true);
+        }
       }
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+      }
     }
   }
 
@@ -1704,10 +1724,7 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalRowWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 17;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {

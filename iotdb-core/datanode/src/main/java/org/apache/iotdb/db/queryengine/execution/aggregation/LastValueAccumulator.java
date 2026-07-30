@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -63,6 +69,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -70,14 +77,18 @@ public class LastValueAccumulator implements Accumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_LASTVALUE_S_02ECF8E4,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | LastValue | MaxTime |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of LastValue should be 2");
+    checkArgument(
+        partialResult.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_LASTVALUE_SHOULD_BE_2_68963ECE);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -99,6 +110,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         updateBinaryLastValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
@@ -106,7 +118,9 @@ public class LastValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_LASTVALUE_S_02ECF8E4,
+                seriesDataType));
     }
   }
 
@@ -118,29 +132,50 @@ public class LastValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
+        updateIntLastValue(
+            ((Number) statistics.getLastValue()).intValue(), statistics.getEndTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
+        updateLongLastValue(
+            ((Number) statistics.getLastValue()).longValue(), statistics.getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics.getLastValue()).floatValue(), statistics.getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics.getLastValue()).doubleValue(), statistics.getEndTime());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+      case OBJECT:
+        if (statistics instanceof DateStatistics) {
+          updateBinaryLastValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getLastValue()),
+                  StandardCharsets.UTF_8),
+              statistics.getEndTime());
+        } else {
+          if (statistics.getLastValue() instanceof Binary) {
+            updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics.getLastValue()), StandardCharsets.UTF_8),
+                statistics.getEndTime());
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_LASTVALUE_S_02ECF8E4,
+                seriesDataType));
     }
   }
 
@@ -168,6 +203,7 @@ public class LastValueAccumulator implements Accumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           lastValue.setBinary(finalResult.getBinary(0));
           break;
         case BOOLEAN:
@@ -175,7 +211,10 @@ public class LastValueAccumulator implements Accumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LastValue: %s", seriesDataType));
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_LASTVALUE_S_02ECF8E4,
+                  seriesDataType));
       }
     }
   }
@@ -183,7 +222,9 @@ public class LastValueAccumulator implements Accumulator {
   // columnBuilder should be double in LastValueAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of LastValue should be 2");
+    checkArgument(
+        columnBuilders.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_LASTVALUE_SHOULD_BE_2_68963ECE);
     if (!initResult) {
       columnBuilders[0].appendNull();
       columnBuilders[1].appendNull();
@@ -207,6 +248,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilders[0].writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:
@@ -214,7 +256,9 @@ public class LastValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
     columnBuilders[1].writeLong(maxTime);
   }
@@ -243,6 +287,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilder.writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:
@@ -250,7 +295,9 @@ public class LastValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -43,13 +44,22 @@ public class ExportSchemaTree extends AbstractExportSchema {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    session = new Session(host, Integer.parseInt(port), username, password);
+    Session.Builder sessionBuilder =
+        new Session.Builder()
+            .host(host)
+            .port(Integer.parseInt(port))
+            .username(username)
+            .password(password);
+    if (useSsl) {
+      sessionBuilder = configureSsl(sessionBuilder);
+    }
+    session = sessionBuilder.build();
     session.open(false);
   }
 
   @Override
   protected void exportSchemaToSqlFile() {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 
   @Override
