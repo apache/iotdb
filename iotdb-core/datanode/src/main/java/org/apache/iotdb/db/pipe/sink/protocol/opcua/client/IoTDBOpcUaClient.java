@@ -51,7 +51,6 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
-import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 import org.slf4j.Logger;
@@ -64,7 +63,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.convertToOpcDataType;
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
@@ -306,10 +304,6 @@ public class IoTDBOpcUaClient {
     return nodeUrl;
   }
 
-  Predicate<EndpointDescription> endpointFilter() {
-    return e -> getSecurityPolicy().getUri().equals(e.getSecurityPolicyUri());
-  }
-
   SecurityPolicy getSecurityPolicy() {
     return securityPolicy;
   }
@@ -364,7 +358,9 @@ public class IoTDBOpcUaClient {
       final String user,
       final String password,
       final String securityDir,
-      final SecurityPolicy securityPolicy) {
-    runner.checkEquals(user, password, Paths.get(securityDir), securityPolicy);
+      final SecurityPolicy securityPolicy,
+      final boolean allowEndpointRedirect) {
+    runner.checkEquals(
+        user, password, Paths.get(securityDir), securityPolicy, allowEndpointRedirect);
   }
 }

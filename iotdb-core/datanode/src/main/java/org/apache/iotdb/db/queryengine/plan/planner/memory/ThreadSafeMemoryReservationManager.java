@@ -42,6 +42,11 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
   }
 
   @Override
+  public synchronized void reserveMemoryImmediately(final long size) {
+    super.reserveMemoryImmediately(size);
+  }
+
+  @Override
   public synchronized void releaseMemoryCumulatively(long size) {
     super.releaseMemoryCumulatively(size);
   }
@@ -60,5 +65,10 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
   public synchronized void reserveMemoryVirtually(
       final long bytesToBeReserved, final long bytesAlreadyReserved) {
     super.reserveMemoryVirtually(bytesToBeReserved, bytesAlreadyReserved);
+  }
+
+  @Override
+  public synchronized void setHighestPriority(boolean isHighestPriority) {
+    super.setHighestPriority(isHighestPriority);
   }
 }

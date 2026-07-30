@@ -237,6 +237,13 @@ public class CommonConfig {
   // Note: Pipes that do not decompose pattern/time do not need this part of memory
   private long pipeTsFileParserMemory = 17 * MB;
 
+  // Limit concurrently active TsFile parsers globally and for each region task of a pipe. The
+  // per-pipe-region limit also serves as an approximate parser memory quota because every admitted
+  // parser reserves pipeTsFileParserMemory bytes.
+  private int pipeTsFileParserInFlightMaxNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 1;
+
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
   private long pipeSinkBatchMemoryInsertNode = 15 * MB;
@@ -331,6 +338,8 @@ public class CommonConfig {
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
+  // Besides limiting allocation retries, this value also caps the TsFile parser memory admission
+  // backoff at pipeCheckMemoryEnoughIntervalMs * max(1, pipeMemoryAllocateMaxRetries).
   private volatile int pipeMemoryAllocateMaxRetries = 10;
   private volatile long pipeMemoryAllocateMinSizeInBytes = 32;
   private volatile long pipeMemoryAllocateForTsFileSequenceReaderInBytes =
@@ -891,6 +900,36 @@ public class CommonConfig {
     }
     this.pipeTsFileParserMemory = pipeTsFileParserMemory;
     logger.info("pipeTsFileParserMemory is set to {}.", pipeTsFileParserMemory);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return pipeTsFileParserInFlightMaxNum;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNum(final int pipeTsFileParserInFlightMaxNum) {
+    final int validatedValue =
+        pipeTsFileParserInFlightMaxNum > 0
+            ? pipeTsFileParserInFlightMaxNum
+            : Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    if (this.pipeTsFileParserInFlightMaxNum == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNum = validatedValue;
+    logger.info("pipeTsFileParserInFlightMaxNum is set to {}.", validatedValue);
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return pipeTsFileParserInFlightMaxNumPerPipeRegion;
+  }
+
+  public void setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+      final int pipeTsFileParserInFlightMaxNumPerPipeRegion) {
+    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipeRegion);
+    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion == validatedValue) {
+      return;
+    }
+    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = validatedValue;
+    logger.info("pipeTsFileParserInFlightMaxNumPerPipeRegion is set to {}.", validatedValue);
   }
 
   public long getPipeSinkBatchMemoryInsertNode() {
