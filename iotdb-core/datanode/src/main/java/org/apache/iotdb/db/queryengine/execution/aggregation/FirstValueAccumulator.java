@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -63,6 +69,7 @@ public class FirstValueAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -70,14 +77,19 @@ public class FirstValueAccumulator implements Accumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_FIRSTVALUE_S_97025F25,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | FirstValue | MinTime |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of FirstValue should be 2");
+    checkArgument(
+        partialResult.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_FIRSTVALUE_SHOULD_BE_2_3FB20C54);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -98,6 +110,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         updateBinaryFirstValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
@@ -106,7 +119,10 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_FIRSTVALUE_S_97025F25,
+                seriesDataType));
     }
   }
 
@@ -118,29 +134,51 @@ public class FirstValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntFirstValue((int) statistics.getFirstValue(), statistics.getStartTime());
+        updateIntFirstValue(
+            ((Number) statistics.getFirstValue()).intValue(), statistics.getStartTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongFirstValue((long) statistics.getFirstValue(), statistics.getStartTime());
+        updateLongFirstValue(
+            ((Number) statistics.getFirstValue()).longValue(), statistics.getStartTime());
         break;
       case FLOAT:
-        updateFloatFirstValue((float) statistics.getFirstValue(), statistics.getStartTime());
+        updateFloatFirstValue(
+            ((Number) statistics.getFirstValue()).floatValue(), statistics.getStartTime());
         break;
       case DOUBLE:
-        updateDoubleFirstValue((double) statistics.getFirstValue(), statistics.getStartTime());
+        updateDoubleFirstValue(
+            ((Number) statistics.getFirstValue()).doubleValue(), statistics.getStartTime());
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
-        updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+        if (statistics instanceof DateStatistics) {
+          updateBinaryFirstValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getFirstValue()),
+                  StandardCharsets.UTF_8),
+              statistics.getStartTime());
+        } else {
+          if (statistics.getFirstValue() instanceof Binary) {
+            updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+          } else {
+            updateBinaryFirstValue(
+                new Binary(String.valueOf(statistics.getFirstValue()), StandardCharsets.UTF_8),
+                statistics.getStartTime());
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanFirstValue((boolean) statistics.getFirstValue(), statistics.getStartTime());
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_FIRSTVALUE_S_97025F25,
+                seriesDataType));
     }
   }
 
@@ -167,6 +205,7 @@ public class FirstValueAccumulator implements Accumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           firstValue.setBinary(finalResult.getBinary(0));
           break;
@@ -175,7 +214,10 @@ public class FirstValueAccumulator implements Accumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_FIRSTVALUE_S_97025F25,
+                  seriesDataType));
       }
     }
   }
@@ -183,7 +225,9 @@ public class FirstValueAccumulator implements Accumulator {
   // columnBuilder should be double in FirstValueAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of FirstValue should be 2");
+    checkArgument(
+        columnBuilders.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_FIRSTVALUE_SHOULD_BE_2_3FB20C54);
     if (!hasCandidateResult) {
       columnBuilders[0].appendNull();
       columnBuilders[1].appendNull();
@@ -206,6 +250,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilders[0].writeBinary(firstValue.getBinary());
         break;
@@ -214,7 +259,9 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
     columnBuilders[1].writeLong(minTime);
   }
@@ -242,6 +289,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilder.writeBinary(firstValue.getBinary());
         break;
@@ -250,7 +298,9 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 

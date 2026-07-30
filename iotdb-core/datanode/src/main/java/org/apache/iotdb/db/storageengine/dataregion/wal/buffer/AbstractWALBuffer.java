@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
@@ -62,7 +63,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
-      logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
+      logger.info(
+          StorageEngineMessages.CREATE_FOLDER_FOR_WAL_NODE_BUFFER, logDirectory, identifier);
     }
     // update info
     File[] walFiles = WALFileUtils.listAllWALFiles(logDirFile);
@@ -75,6 +77,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
                 logDirectory,
                 WALFileUtils.getLogFileName(
                     startFileVersion, currentSearchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX)));
+    // count the newly created WAL file into file number statistics
+    addFileNum(1);
     currentWALFileVersion = startFileVersion;
   }
 
@@ -124,7 +128,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
                 nextFileVersion, searchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX));
     currentWALFileWriter = new WALWriter(nextLogFile);
     currentWALFileVersion = nextFileVersion;
-    logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
+    logger.debug(StorageEngineMessages.OPEN_NEW_WAL_FILE_FOR_BUFFER, nextLogFile, identifier);
     return lastFile;
   }
 

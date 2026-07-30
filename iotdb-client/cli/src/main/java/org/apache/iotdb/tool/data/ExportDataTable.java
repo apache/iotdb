@@ -24,14 +24,15 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.ColumnSchemaBuilder;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -63,14 +64,17 @@ public class ExportDataTable extends AbstractExportData {
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException {
-    tableSession =
+    TableSessionBuilder tableSessionBuilder =
         new TableSessionBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .username(username)
             .password(password)
             .database(database)
-            .thriftMaxFrameSize(rpcMaxFrameSize)
-            .build();
+            .thriftMaxFrameSize(rpcMaxFrameSize);
+    if (useSsl) {
+      tableSessionBuilder = configureSsl(tableSessionBuilder);
+    }
+    tableSession = tableSessionBuilder.build();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("show databases", timeout);
     List<String> databases = new ArrayList<>();
     while (sessionDataSet.hasNext()) {

@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.schema.column;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -27,7 +29,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ColumnHeader {
+public class ColumnHeader implements Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ColumnHeader.class);
 
   private final String columnName;
   private final TSDataType dataType;
@@ -118,5 +122,13 @@ public class ColumnHeader {
   @Override
   public int hashCode() {
     return Objects.hash(columnName, dataType, alias);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += RamUsageEstimator.sizeOf(columnName);
+    size += RamUsageEstimator.sizeOf(alias);
+    return size;
   }
 }

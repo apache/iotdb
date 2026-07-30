@@ -478,7 +478,11 @@ public abstract class SeriesCompactionExecutor {
       throws IllegalPathException {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
-    return CompactionUtils.getMatchedModifications(allModifications, deviceId, measurement);
+    return CompactionUtils.getMatchedModifications(
+        allModifications,
+        deviceId,
+        measurement,
+        compactionWriter.getTTLLowerBoundForCurrentDevice());
   }
 
   @SuppressWarnings("squid:S3776")

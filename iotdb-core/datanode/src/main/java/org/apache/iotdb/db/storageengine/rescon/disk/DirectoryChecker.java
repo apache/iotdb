@@ -20,8 +20,9 @@ package org.apache.iotdb.db.storageengine.rescon.disk;
 
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.ProcessIdUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,13 +56,15 @@ public class DirectoryChecker {
     if (dir.exists() && !dir.isDirectory()) {
       throw new ConfigurationException(
           String.format(
-              "Unable to create directory %s because there is file under the path, please check configuration and restart.",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC,
               dir.getAbsolutePath()));
     } else if (!dir.exists()) {
       if (!dir.mkdirs()) {
         throw new ConfigurationException(
             String.format(
-                "Unable to create directory %s, please check configuration and restart.",
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67,
                 dir.getAbsolutePath()));
       }
     }
@@ -81,8 +84,10 @@ public class DirectoryChecker {
       randomAccessFile.close();
       throw new ConfigurationException(
           String.format(
-              "Conflict is detected in directory %s, which may be being used by another IoTDB (ProcessId=%s). Please check configuration and restart.",
-              dir.getAbsolutePath(), randomAccessFile.readLine()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC,
+              dir.getAbsolutePath(),
+              randomAccessFile.readLine()));
     }
     randomAccessFile.writeBytes(ProcessIdUtils.getProcessId());
     // add to list
@@ -128,7 +133,7 @@ public class DirectoryChecker {
         FileUtils.delete(file);
       }
     } catch (IOException e) {
-      logger.warn("Failed to deregister file lock because {}", e.getMessage(), e);
+      logger.warn(StorageEngineMessages.FAILED_TO_DEREGISTER_FILE_LOCK, e.getMessage(), e);
     }
   }
 

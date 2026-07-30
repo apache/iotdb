@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.udf;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -73,7 +74,7 @@ public enum UDFType {
         case TABLE:
           return available ? TABLE_AVAILABLE_TABLE : TABLE_UNAVAILABLE_TABLE;
         default:
-          throw new IllegalArgumentException("Unknown FunctionType: " + type);
+          throw new IllegalArgumentException(CommonMessages.UNKNOWN_FUNCTION_TYPE + type);
       }
     }
   }
@@ -107,8 +108,10 @@ public enum UDFType {
       }
     }
     throw new IllegalArgumentException(
-        "Unknown UDFType:"
-            + String.format("%8s", Integer.toBinaryString(readByte & 0xFF)).replace(' ', '0'));
+        CommonMessages.EXCEPTION_UNKNOWN_UDFTYPE_9A8D1B23
+            + String.format(
+                    CommonMessages.EXCEPTION_8S_5F5F831F, Integer.toBinaryString(readByte & 0xFF))
+                .replace(' ', '0'));
   }
 
   public boolean isTreeModel() {
@@ -139,7 +142,7 @@ public enum UDFType {
         case TABLE:
           return available ? TABLE_AVAILABLE_TABLE : TABLE_UNAVAILABLE_TABLE;
         default:
-          throw new IllegalArgumentException("Unknown FunctionType: " + type);
+          throw new IllegalArgumentException(CommonMessages.UNKNOWN_FUNCTION_TYPE + type);
       }
     }
   }

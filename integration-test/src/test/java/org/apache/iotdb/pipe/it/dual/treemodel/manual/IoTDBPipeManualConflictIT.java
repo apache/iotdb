@@ -51,24 +51,25 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "data, schema");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.inclusion", "data, schema");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -79,25 +80,25 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "data, schema");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.inclusion", "data, schema");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
-      connectorAttributes.put(
-          "connector.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", senderEnv.getDataNodeWrapper(0).getIp());
+      sinkAttributes.put("sink.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -106,25 +107,21 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
             "flush"),
-        null)) {
-      return;
-    }
+        null);
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
             "insert into root.ln.wf01.wt01(time, status1) values(now(), true);",
             "flush"),
-        null)) {
-      return;
-    }
+        null);
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
@@ -163,24 +160,25 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "data, schema");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.inclusion", "data, schema");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -191,25 +189,25 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "data, schema");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.inclusion", "data, schema");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
-      connectorAttributes.put(
-          "connector.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", senderEnv.getDataNodeWrapper(0).getIp());
+      sinkAttributes.put("sink.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -218,7 +216,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create device template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
@@ -227,19 +225,15 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
             "create timeseries using device template on root.sg1.d1",
             "insert into root.sg1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
             "flush"),
-        null)) {
-      return;
-    }
+        null);
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create timeseries using device template on root.sg1.d2",
             "insert into root.sg1.d2(time, s1, s2, s3) values(0, 1, 2, 3);",
             "flush"),
-        null)) {
-      return;
-    }
+        null);
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,

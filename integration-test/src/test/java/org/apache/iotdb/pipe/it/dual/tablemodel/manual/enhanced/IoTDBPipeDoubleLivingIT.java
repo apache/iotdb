@@ -20,10 +20,12 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
@@ -59,7 +61,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
   }
 
   @Test
-  public void testDoubleLivingInvalidParameter() throws Exception {
+  public void testDoubleLivingInvalidForwardingParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -69,12 +71,10 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               "create pipe %s"
                   + " with source ("
                   + "'capture.tree'='false',"
-                  + "'mode.double-living'='true')"
+                  + "'double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p1", receiverDataNode.getIpAndPortString()));
-      fail();
-    } catch (final SQLException ignored) {
     }
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -84,12 +84,10 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               "create pipe %s"
                   + " with source ("
                   + "'capture.table'='false',"
-                  + "'mode.double-living'='true')"
+                  + "'source.mode.double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               "p2", receiverDataNode.getIpAndPortString()));
-      fail();
-    } catch (final SQLException ignored) {
     }
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -110,9 +108,11 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(0, showPipeResult.size());
+      Assert.assertEquals(2, showPipeResult.size());
     }
   }
 
@@ -121,7 +121,6 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
   // org.apache.iotdb.pipe.it.autocreate.IoTDBPipeLifeCycleIT.testDoubleLiving
   @Test
   public void testBasicDoubleLiving() {
-    boolean insertResult;
 
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -134,23 +133,17 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     // insertion on sender
     try (Connection conn = senderEnv.getConnection()) {
       for (int i = 0; i < 100; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -174,34 +167,30 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = senderEnv.getConnection()) {
       // insertion on sender
       for (int i = 100; i < 200; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn)) {
-          return;
-        }
-      }
-      for (int i = 200; i < 300; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    if (!insertResult) {
-      return;
+    try (Connection conn = receiverEnv.getConnection()) {
+      // insertion on receiver
+      for (int i = 200; i < 300; ++i) {
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
     }
-    insertResult = TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush", null)) {
-      return;
-    }
+
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+
+    TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
+
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -225,24 +214,16 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 300; i < 400; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 300, 400, receiverEnv);
+
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     // check result
     final Set<String> expectedResSet = new HashSet<>();
@@ -268,24 +249,16 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
     try (Connection conn = receiverEnv.getConnection()) {
       // insertion on receiver
       for (int i = 400; i < 500; ++i) {
-        if (!TestUtils.tryExecuteNonQueryWithRetry(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            conn)) {
-          return;
-        }
+        TestUtils.executeNonQuery(
+            receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), conn);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
-    if (!insertResult) {
-      return;
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush", null)) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 400, 500, receiverEnv);
+
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     // check result
     for (int i = 400; i < 500; ++i) {
@@ -313,7 +286,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
           String.format(
               "create pipe %s"
                   + " with source ("
-                  + "'mode.double-living'='true')"
+                  + "'double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               treePipeName, receiverDataNode.getIpAndPortString()));
@@ -335,7 +308,7 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
           String.format(
               "create pipe %s"
                   + " with source ("
-                  + "'mode.double-living'='true')"
+                  + "'source.mode.double-living'='true')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               tablePipeName, receiverDataNode.getIpAndPortString()));
@@ -362,5 +335,60 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT 
               .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
     }
+
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+  }
+
+  @Test
+  public void testDoubleLivingCreatesSameNamePipesWithSeparateDialects() throws Exception {
+    final String pipeName = "double_living_same_name_pipe";
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ('extractor.double-living'='true')"
+                  + " with sink ('node-urls'='%s')",
+              pipeName, receiverDataNode.getIpAndPortString()));
+    }
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> treePipes = showPipes(client, false);
+      final List<TShowPipeInfo> tablePipes = showPipes(client, true);
+
+      Assert.assertEquals(1, treePipes.size());
+      Assert.assertEquals(1, tablePipes.size());
+      Assert.assertEquals(pipeName, treePipes.get(0).id);
+      Assert.assertEquals(pipeName, tablePipes.get(0).id);
+      Assert.assertNotEquals(treePipes.get(0).creationTime, tablePipes.get(0).creationTime);
+      Assert.assertTrue(
+          treePipes
+              .get(0)
+              .pipeExtractor
+              .contains(
+                  SystemConstant.SQL_DIALECT_KEY + "=" + SystemConstant.SQL_DIALECT_TREE_VALUE));
+      Assert.assertTrue(
+          tablePipes
+              .get(0)
+              .pipeExtractor
+              .contains(
+                  SystemConstant.SQL_DIALECT_KEY + "=" + SystemConstant.SQL_DIALECT_TABLE_VALUE));
+    }
+  }
+
+  private List<TShowPipeInfo> showPipes(
+      final SyncConfigNodeIServiceClient client, final boolean isTableModel) throws Exception {
+    final List<TShowPipeInfo> showPipeResult =
+        client.showPipe(
+                new TShowPipeReq()
+                    .setIsTableModel(isTableModel)
+                    .setUserName(SessionConfig.DEFAULT_USER))
+            .pipeInfoList;
+    showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+    return showPipeResult;
   }
 }

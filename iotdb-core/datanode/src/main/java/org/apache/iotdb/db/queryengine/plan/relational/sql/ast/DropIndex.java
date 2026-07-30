@@ -19,7 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +38,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DropIndex extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DropIndex.class);
 
   private final QualifiedName tableName;
 
@@ -35,14 +47,18 @@ public class DropIndex extends Statement {
 
   public DropIndex(QualifiedName tableName, Identifier indexName) {
     super(null);
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.indexName = requireNonNull(indexName, "indexName is null");
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+    this.indexName =
+        requireNonNull(indexName, DataNodeQueryMessages.EXCEPTION_INDEXNAME_IS_NULL_2525299C);
   }
 
   public DropIndex(NodeLocation location, QualifiedName tableName, Identifier indexName) {
-    super(requireNonNull(location, "location is null"));
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.indexName = requireNonNull(indexName, "indexName is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.tableName =
+        requireNonNull(tableName, DataNodeQueryMessages.EXCEPTION_TABLENAME_IS_NULL_20708596);
+    this.indexName =
+        requireNonNull(indexName, DataNodeQueryMessages.EXCEPTION_INDEXNAME_IS_NULL_2525299C);
   }
 
   public QualifiedName getTableName() {
@@ -54,8 +70,8 @@ public class DropIndex extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDropIndex(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitDropIndex(this, context);
   }
 
   @Override
@@ -84,5 +100,14 @@ public class DropIndex extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("tableName", tableName).add("indexName", indexName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(indexName);
+    return size;
   }
 }

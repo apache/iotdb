@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
@@ -67,6 +68,7 @@ public class SchemaConstant {
       "device_attribute_remote_updater.snapshot.tmp";
 
   public static final String SYSTEM_DATABASE = "root.__system";
+  public static final String AUDIT_DATABASE = "root.__audit";
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
   public static final PatternDFA ALL_MATCH_DFA = new PatternDFA(ALL_MATCH_PATTERN, false);
@@ -90,7 +92,7 @@ public class SchemaConstant {
   public static final int ALL_TEMPLATE = -2;
 
   public static final byte INTERNAL_MNODE_TYPE = 0;
-  public static final byte STORAGE_GROUP_MNODE_TYPE = 1;
+  public static final byte DATABASE_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;
   public static final byte ENTITY_MNODE_TYPE = 3;
   public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
@@ -119,7 +121,7 @@ public class SchemaConstant {
     switch (type) {
       case INTERNAL_MNODE_TYPE:
         return INTERNAL_MNODE_TYPE_NAME;
-      case STORAGE_GROUP_MNODE_TYPE:
+      case DATABASE_MNODE_TYPE:
         return STORAGE_GROUP_MNODE_TYPE_NAME;
       case MEASUREMENT_MNODE_TYPE:
         return MEASUREMENT_MNODE_TYPE_NAME;
@@ -132,11 +134,11 @@ public class SchemaConstant {
       case TABLE_MNODE_TYPE:
         return TABLE_MNODE_TYPE_NAME;
       default:
-        throw new RuntimeException("Undefined MNode type " + type);
+        throw new RuntimeException(SchemaMessages.UNDEFINED_MNODE_TYPE + type);
     }
   }
 
   public static boolean isStorageGroupType(byte type) {
-    return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
+    return type == DATABASE_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
 }

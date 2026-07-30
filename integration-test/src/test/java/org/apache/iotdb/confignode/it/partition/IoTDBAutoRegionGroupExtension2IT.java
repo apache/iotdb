@@ -150,6 +150,8 @@ public class IoTDBAutoRegionGroupExtension2IT {
       TShowRegionResp resp = client.showRegion(new TShowRegionReq());
       resp.getRegionInfoList()
           .removeIf(r -> r.getDatabase().startsWith(SystemConstant.SYSTEM_DATABASE));
+      resp.getRegionInfoList()
+          .removeIf(r -> r.getDatabase().startsWith(SystemConstant.AUDIT_DATABASE));
       Map<Integer, AtomicInteger> counter = new HashMap<>();
       resp.getRegionInfoList()
           .forEach(

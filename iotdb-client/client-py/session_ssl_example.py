@@ -28,11 +28,21 @@ password_ = "root"
 use_ssl = True
 # Configure certificate path
 ca_certs = "/path/server.crt"
+# Configure client certificate and private key when the server enables mTLS.
+client_cert = "/path/client.crt"
+client_key = "/path/client.key"
 
 
 def get_data():
     session = Session(
-        ip, port_, username_, password_, use_ssl=use_ssl, ca_certs=ca_certs
+        ip,
+        port_,
+        username_,
+        password_,
+        use_ssl=use_ssl,
+        ca_certs=ca_certs,
+        client_cert=client_cert,
+        client_key=client_key,
     )
     session.open(False)
     result = session.execute_query_statement("select * from root.eg.etth")
@@ -53,6 +63,8 @@ def get_data2():
         max_retry=3,
         use_ssl=use_ssl,
         ca_certs=ca_certs,
+        client_cert=client_cert,
+        client_key=client_key,
     )
     max_pool_size = 5
     wait_timeout_in_ms = 3000
@@ -74,6 +86,8 @@ def get_table_data():
         time_zone="Asia/Shanghai",
         use_ssl=use_ssl,
         ca_certs=ca_certs,
+        client_cert=client_cert,
+        client_key=client_key,
     )
     session = TableSession(pool_config)
     result = session.execute_query_statement("select * from test")

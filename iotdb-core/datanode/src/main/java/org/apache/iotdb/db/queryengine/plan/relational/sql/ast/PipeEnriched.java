@@ -19,12 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import javax.validation.constraints.NotNull;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Objects;
 
 public class PipeEnriched extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PipeEnriched.class);
 
   private final Statement innerStatement;
 
@@ -34,8 +44,8 @@ public class PipeEnriched extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitPipeEnriched(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitPipeEnriched(this, context);
   }
 
   @Override
@@ -67,5 +77,13 @@ public class PipeEnriched extends Statement {
 
   public Statement getInnerStatement() {
     return innerStatement;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(innerStatement);
+    return size;
   }
 }

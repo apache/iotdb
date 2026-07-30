@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 
 public class TimePartitionProcessTask {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimePartitionProcessTask.class);
   private final String timePartition;
   private final Pair<List<String>, List<String>> timePartitionFiles;
   private long sequenceSpaceCost = 0;
@@ -107,10 +112,10 @@ public class TimePartitionProcessTask {
         }
       } catch (IOException e) {
         if (e instanceof NoSuchFileException) {
-          System.out.println(((NoSuchFileException) e).getFile() + " is not exist");
+          LOGGER.warn(StorageEngineMessages.DOES_NOT_EXIST, ((NoSuchFileException) e).getFile());
           continue;
         }
-        e.printStackTrace();
+        LOGGER.error(StorageEngineMessages.FAILED_TO_DEAL_WITH, unseqFile, e);
       }
     }
     unsequenceSpaceCost += (System.currentTimeMillis() - startTime);
@@ -136,7 +141,7 @@ public class TimePartitionProcessTask {
       } catch (InterruptedException e) {
         throw e;
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.error(StorageEngineMessages.ERROR_OCCURRED, e);
       }
     }
     overlapStatistic.mergeUnSeqSpaceStatistics(unseqSpaceStatistics);

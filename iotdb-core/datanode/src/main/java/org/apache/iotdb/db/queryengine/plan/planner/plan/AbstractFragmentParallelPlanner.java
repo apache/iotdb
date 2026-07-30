@@ -26,18 +26,19 @@ import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,13 +54,11 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractFragmentParallelPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final ReadConsistencyLevel readConsistencyLevel;
 
   protected final MPPQueryContext queryContext;
 
   protected AbstractFragmentParallelPlanner(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
-    this.readConsistencyLevel = CONFIG.getReadConsistencyLevel();
   }
 
   protected void selectExecutorAndHost(
@@ -85,7 +84,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
       TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
       if (dataNodeLocation != null) {
-        // now only the case ShowQueries will enter here
+        // now only the case ShowQueries and ShowDiskUsage will enter here
         fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
       } else {
         // no data region && no dataNodeLocation, we need to execute this FI on local
@@ -114,9 +113,11 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
         || regionReplicaSet.getDataNodeLocations() == null
         || regionReplicaSet.getDataNodeLocations().isEmpty()) {
       throw new IllegalArgumentException(
-          String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_REGIONREPLICASET_IS_INVALID_S_1C2671AD,
+              regionReplicaSet));
     }
-    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
+    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == CONFIG.getReadConsistencyLevel();
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -131,13 +132,14 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
           errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      LOGGER.info("available replicas: {}", availableDataNodes);
+      LOGGER.info(DataNodeQueryMessages.AVAILABLE_REPLICAS, availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex =
+          (int) Math.floorMod(queryContext.getSession().getSessionId(), availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
   }

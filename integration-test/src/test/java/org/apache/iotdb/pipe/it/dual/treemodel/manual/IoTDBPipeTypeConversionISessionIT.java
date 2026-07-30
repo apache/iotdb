@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -61,6 +60,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -324,15 +324,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         generateMeasurementSchemas();
 
     // Generate createTimeSeries in sender and receiver
-    String uuid = RandomStringUtils.random(8, true, false);
+    String uuid = "bcdedit" + Long.toHexString(System.nanoTime());
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
+      createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
-          uuid.toString(), pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
-      createTimeSeries(
-          uuid.toString(),
-          pair.right.getMeasurementName(),
-          pair.right.getType().name(),
-          receiverEnv);
+          uuid, pair.right.getMeasurementName(), pair.right.getType().name(), receiverEnv);
     }
 
     try (ISession senderSession = senderEnv.getSessionConnection();
@@ -372,7 +368,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
                       expectedValues,
                       tablet.getTimestamps());
                 } catch (Exception e) {
-                  fail();
+                  e.printStackTrace();
+                  fail(e.getMessage());
                 }
               });
       senderSession.close();
@@ -389,8 +386,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         String.format(
             "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
             diff, measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(timeSeriesCreation), null);
+    TestUtils.executeNonQueries(env, Collections.singletonList(timeSeriesCreation), null);
   }
 
   private void createDataPipe(String diff, boolean isTSFile) {
@@ -407,7 +403,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql), null);
+    TestUtils.executeNonQueries(senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(
@@ -416,12 +412,18 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     int index = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
+      System.out.println("QueryResult: " + record.toString());
+      System.out.println("Expected: " + timestamps[index] + "-" + values.get(index));
       List<Field> fields = record.getFields();
 
       assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
       for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
+        if (field.getDataType() == null) {
+          assertNull(rowValues.get(i));
+          continue;
+        }
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
@@ -435,7 +437,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
             break;
           case TEXT:
           case STRING:
-            assertEquals(field.getStringValue(), rowValues.get(i));
+            if (rowValues.get(i) instanceof Binary) {
+              assertEquals(field.getStringValue(), rowValues.get(i).toString());
+            } else {
+              assertEquals(field.getStringValue(), rowValues.get(i));
+            }
             break;
           case INT32:
             assertEquals(field.getIntV(), (int) rowValues.get(i));
@@ -541,6 +547,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
       "enable =  true",
       "true",
       "false",
+      "2024-06-28 08:00:00",
       "12345678910",
       "123231232132131233213123123123123123131312",
       "123231232132131233213123123123123123131312.212312321312312",
@@ -603,44 +610,87 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         switch (sourceType) {
           case INT64:
           case TIMESTAMP:
-            value = ValueConverter.convert(sourceType, targetType, ((long[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case INT32:
-            value = ValueConverter.convert(sourceType, targetType, ((int[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DOUBLE:
-            value = ValueConverter.convert(sourceType, targetType, ((double[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case FLOAT:
-            value = ValueConverter.convert(sourceType, targetType, ((float[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DATE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((LocalDate[]) values[j])[i];
+            if (targetType == TSDataType.DATE) {
+              insertRecord.add(value);
+              break;
+            }
+            if (value != null) {
+              value = DateUtils.parseDateExpressionToInt((LocalDate) value);
+            }
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case TEXT:
           case STRING:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
-            break;
           case BLOB:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case BOOLEAN:
-            value = ValueConverter.convert(sourceType, targetType, ((boolean[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
         }
       }
+      insertRecord.add(tablet.getTimestamp(i));
       insertRecords.add(insertRecord);
     }
 

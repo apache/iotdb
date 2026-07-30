@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
@@ -125,7 +126,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
     super.customize(parameters, configuration);
 
     LOGGER.info(
-        "SwingingDoorTrendingSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}.",
+        DataNodePipeMessages.SWINGINGDOORTRENDINGSAMPLINGPROCESSOR_IN_IS_INITIALIZED_WITH,
         dataBaseNameWithPathSeparator,
         PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
         compressionDeviation,

@@ -27,6 +27,16 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern.applyReversedIndexesOnList;
+
 public class IoTDBTreePatternTest {
 
   @Test
@@ -87,11 +97,16 @@ public class IoTDBTreePatternTest {
     final String[] patternsNotOverlapWithDevice = {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
     };
+    final String[] patternsFalsePositiveOverLap = {"root.**.d2.**"};
     for (final String s : patternsOverlapWithDevice) {
       Assert.assertTrue(new IoTDBTreePattern(s).mayOverlapWithDevice(device));
     }
     for (final String t : patternsNotOverlapWithDevice) {
       Assert.assertFalse(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
+    }
+    for (final String t : patternsFalsePositiveOverLap) {
+      Assert.assertTrue(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new IoTDBTreePattern(t).overlapWithDevice(device));
     }
 
     // Test pattern match measurement
@@ -108,5 +123,31 @@ public class IoTDBTreePatternTest {
     for (final String t : patternsNotMatchMeasurement) {
       Assert.assertFalse(new IoTDBTreePattern(t).matchesMeasurement(device, measurement));
     }
+  }
+
+  @Test
+  public void testApplyReversedIndexes() {
+    final int elementNum = 10_000_000;
+    final int filteredNum = elementNum / 10;
+    final Random random = new Random();
+    final List<Integer> originalList =
+        IntStream.range(0, elementNum).boxed().collect(Collectors.toList());
+    List<Integer> filteredIndexes = new ArrayList<>(filteredNum);
+    for (int i = 0; i < filteredNum; i++) {
+      filteredIndexes.add(random.nextInt(elementNum));
+    }
+    filteredIndexes = filteredIndexes.stream().sorted().distinct().collect(Collectors.toList());
+
+    final long start = System.currentTimeMillis();
+    final List<Integer> appliedList = applyReversedIndexesOnList(filteredIndexes, originalList);
+    System.out.println(System.currentTimeMillis() - start);
+    final Set<Integer> appliedSet = new HashSet<>(appliedList);
+    for (Integer filteredIndex : filteredIndexes) {
+      if (appliedSet.contains(filteredIndex)) {
+        System.out.println("Incorrect implementation");
+        System.exit(-1);
+      }
+    }
+    Assert.assertEquals(null, applyReversedIndexesOnList(filteredIndexes, null));
   }
 }

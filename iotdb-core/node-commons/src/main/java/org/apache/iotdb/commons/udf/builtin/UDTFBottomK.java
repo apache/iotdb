@@ -73,6 +73,7 @@ public class UDTFBottomK extends UDTFSelectK {
                 });
         break;
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         // This will not happen.

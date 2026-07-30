@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.cq;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 public enum TimeoutPolicy {
   BLOCKED((byte) 0),
   DISCARD((byte) 1);
@@ -39,7 +41,7 @@ public enum TimeoutPolicy {
       case 1:
         return DISCARD;
       default:
-        throw new IllegalArgumentException("Unknown TimeoutPolicy: " + t);
+        throw new IllegalArgumentException(CommonMessages.UNKNOWN_TIMEOUT_POLICY + t);
     }
   }
 }

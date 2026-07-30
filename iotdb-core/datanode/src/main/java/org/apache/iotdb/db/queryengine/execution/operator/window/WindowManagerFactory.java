@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -49,8 +50,10 @@ public class WindowManagerFactory {
         return new CountWindowManager((CountWindowParameter) windowParameter);
       default:
         throw new IllegalArgumentException(
-            "Not support this type of aggregation window :"
-                + windowParameter.getWindowType().name());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_NOT_SUPPORT_THIS_TYPE_OF_AGGREGATION_WINDOW_S_604F93D0,
+                windowParameter.getWindowType().name()));
     }
   }
 
@@ -70,13 +73,15 @@ public class WindowManagerFactory {
       case BOOLEAN:
         return new EqualBooleanWindowManager(eventWindowParameter, ascending);
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case DATE:
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in equal event aggregation : %s",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_S_5076ACFE,
                 eventWindowParameter.getDataType()));
     }
   }
@@ -97,11 +102,13 @@ public class WindowManagerFactory {
       case STRING:
       case BOOLEAN:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in variation event aggregation : %s",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_S_47341532,
                 eventWindowParameter.getDataType()));
     }
   }

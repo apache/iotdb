@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.calc.execution.StateMachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -33,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.ABORTED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.CANCELED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.DISPATCHING;
@@ -42,7 +45,6 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.PENDING_RETRY
 import static org.apache.iotdb.db.queryengine.execution.QueryState.PLANNED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.QUEUED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * State machine for a {@link QueryExecution}. It stores the states for the {@link QueryExecution}.
@@ -107,10 +109,10 @@ public class QueryStateMachine {
     transitionToDoneState(CANCELED);
   }
 
-  public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
+  public boolean transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
     this.failureStatus.compareAndSet(null, failureStatus);
     this.failureException.compareAndSet(null, throwable);
-    transitionToDoneState(CANCELED);
+    return transitionToDoneState(CANCELED);
   }
 
   public void transitionToAborted() {
@@ -132,8 +134,11 @@ public class QueryStateMachine {
   }
 
   private boolean transitionToDoneState(QueryState doneState) {
-    requireNonNull(doneState, "doneState is null");
-    checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
+    requireNonNull(doneState, DataNodeQueryMessages.EXCEPTION_DONESTATE_IS_NULL_D88F77E5);
+    checkArgument(
+        doneState.isDone(),
+        DataNodeQueryMessages.EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618,
+        doneState);
 
     return queryState.setIf(doneState, currentState -> !currentState.isDone());
   }

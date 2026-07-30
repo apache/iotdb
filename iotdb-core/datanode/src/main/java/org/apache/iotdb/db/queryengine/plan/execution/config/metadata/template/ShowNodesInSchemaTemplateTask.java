@@ -21,13 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -63,33 +63,28 @@ public class ShowNodesInSchemaTemplateTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    try {
-      if (template != null) {
-        // template.get
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-          String keyName = entry.getKey();
-          IMeasurementSchema measurementSchema = entry.getValue();
-          builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(new Binary(keyName, TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(1)
-              .writeBinary(
-                  new Binary(measurementSchema.getType().name(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(2)
-              .writeBinary(
-                  new Binary(
-                      measurementSchema.getEncodingType().name(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(3)
-              .writeBinary(
-                  new Binary(
-                      measurementSchema.getCompressor().name(), TSFileConfig.STRING_CHARSET));
-          builder.declarePosition();
-        }
+    if (template != null) {
+      // template.get
+      for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+        String keyName = entry.getKey();
+        IMeasurementSchema measurementSchema = entry.getValue();
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getColumnBuilder(0).writeBinary(new Binary(keyName, TSFileConfig.STRING_CHARSET));
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                new Binary(measurementSchema.getType().name(), TSFileConfig.STRING_CHARSET));
+        builder
+            .getColumnBuilder(2)
+            .writeBinary(
+                new Binary(
+                    measurementSchema.getEncodingType().name(), TSFileConfig.STRING_CHARSET));
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(
+                new Binary(measurementSchema.getCompressor().name(), TSFileConfig.STRING_CHARSET));
+        builder.declarePosition();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowNodesInSchemaTemplateHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

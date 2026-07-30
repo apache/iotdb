@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
+import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -65,7 +66,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   @Override
   public Row getRow(int rowIndex) throws IOException {
     if (this.size == 0) {
-      throw new IndexOutOfBoundsException("Size is 0");
+      throw new IndexOutOfBoundsException(DataNodeQueryMessages.SIZE_IS_0);
     }
     return row.setRowRecord(rowRecordList.getRowRecord(beginIndex + rowIndex));
   }

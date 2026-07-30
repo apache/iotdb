@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
@@ -37,7 +38,8 @@ public enum InnerSequenceCompactionSelector {
     if (SIZE_TIERED_MULTI_TARGET.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED_MULTI_TARGET;
     }
-    throw new IllegalCompactionSelectorNameException("Illegal Compaction Selector " + name);
+    throw new IllegalCompactionSelectorNameException(
+        StorageEngineMessages.ILLEGAL_COMPACTION_SELECTOR + name);
   }
 
   @SuppressWarnings("squid:S1301")

@@ -19,7 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +39,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public final class RenameColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RenameColumn.class);
+
   private final QualifiedName table;
   private final Identifier source;
   private final Identifier target;
@@ -44,16 +58,16 @@ public final class RenameColumn extends Statement {
       final boolean tableIfExists,
       final boolean columnIfNotExists,
       final boolean view) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
-    this.source = requireNonNull(source, "source is null");
-    this.target = requireNonNull(target, "target is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+    this.source = requireNonNull(source, DataNodeQueryMessages.EXCEPTION_SOURCE_IS_NULL_45946547);
+    this.target = requireNonNull(target, DataNodeQueryMessages.EXCEPTION_TARGET_IS_NULL_240F0372);
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
     if (!view) {
-      throw new UnsupportedOperationException(
-          "The renaming for base table column is currently unsupported");
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_RENAMING_FOR_BASE_TABLE_COLUMN_IS_CURRENTLY);
     }
   }
 
@@ -82,8 +96,8 @@ public final class RenameColumn extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitRenameColumn(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitRenameColumn(this, context);
   }
 
   @Override
@@ -123,5 +137,15 @@ public final class RenameColumn extends Statement {
         .add("columnIfExists", columnIfNotExists)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += table == null ? 0L : table.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(source);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(target);
+    return size;
   }
 }

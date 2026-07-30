@@ -30,16 +30,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
-
 public class DeviceSchemaInfo {
 
-  private PartialPath devicePath;
-  private boolean isAligned;
-  private List<IMeasurementSchemaInfo> measurementSchemaInfoList;
-  private int templateId = NON_TEMPLATE;
-
-  private DeviceSchemaInfo() {}
+  private final PartialPath devicePath;
+  private final boolean isAligned;
+  private final List<IMeasurementSchemaInfo> measurementSchemaInfoList;
+  private final int templateId;
 
   public DeviceSchemaInfo(
       PartialPath devicePath,

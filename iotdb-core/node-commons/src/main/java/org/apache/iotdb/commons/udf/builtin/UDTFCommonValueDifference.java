@@ -56,6 +56,7 @@ public class UDTFCommonValueDifference extends UDTFValueDifference {
         break;
       case STRING:
       case BLOB:
+      case OBJECT:
       case TIMESTAMP:
       case TEXT:
       case BOOLEAN:

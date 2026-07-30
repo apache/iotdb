@@ -20,13 +20,19 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -34,11 +40,11 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -107,6 +113,13 @@ public class ClusterSchemaInfoTest {
     clusterSchemaInfo.clear();
     clusterSchemaInfo.processLoadSnapshot(snapshotDir);
 
+    Assert.assertEquals(4, clusterSchemaInfo.getConfigSchemaStatistics().getTreeDatabaseNum());
+    Assert.assertEquals(1, clusterSchemaInfo.getConfigSchemaStatistics().getTableDatabaseNum());
+
+    clusterSchemaInfo.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(4, clusterSchemaInfo.getConfigSchemaStatistics().getTreeDatabaseNum());
+    Assert.assertEquals(1, clusterSchemaInfo.getConfigSchemaStatistics().getTableDatabaseNum());
+
     Assert.assertEquals(
         storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames(null).size());
 
@@ -115,10 +128,55 @@ public class ClusterSchemaInfoTest {
             Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
             ALL_MATCH_SCOPE,
             false,
+            false,
             false);
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+  }
+
+  @Test
+  public void testTableStatisticsRollbackAndDatabaseRecreation() {
+    final String database = "database";
+    final String table = "table";
+    final TDatabaseSchema databaseSchema = new TDatabaseSchema(database).setIsTableModel(true);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+
+    final ConfigSchemaStatistics statistics = clusterSchemaInfo.getConfigSchemaStatistics();
+    Assert.assertEquals(2, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    Assert.assertEquals(1, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.rollbackCreateTable(new RollbackCreateTablePlan(database, table));
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(table)));
+    clusterSchemaInfo.deleteDatabase(new DeleteDatabasePlan(database));
+    Assert.assertEquals(1, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    Assert.assertEquals(2, statistics.getTableDatabaseNum());
+    Assert.assertEquals(0, statistics.getBaseTableNum(database));
+  }
+
+  @Test
+  public void testDatabasePathWithEmptyNodeIsInvalid() throws MetadataException {
+    clusterSchemaInfo.isDatabaseNameValid("root.database", false);
+    clusterSchemaInfo.isDatabaseNameValid("database", true);
+
+    for (final String database : Arrays.asList("", "root.", "root..database", "root.database.")) {
+      try {
+        clusterSchemaInfo.isDatabaseNameValid(database, database.isEmpty());
+        Assert.fail("Expected IllegalPathException for database: " + database);
+      } catch (final IllegalPathException e) {
+        Assert.assertEquals(TSStatusCode.ILLEGAL_PATH.getStatusCode(), e.getErrorCode());
+      }
+    }
   }
 
   @Test

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -27,10 +28,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 
 public class JVMCommonUtils {
 
@@ -41,7 +44,7 @@ public class JVMCommonUtils {
 
   private static final int CPUS = Runtime.getRuntime().availableProcessors();
 
-  private static final double diskSpaceWarningThreshold =
+  private static double diskSpaceWarningThreshold =
       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
 
   /**
@@ -71,7 +74,7 @@ public class JVMCommonUtils {
       return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0)
           .orElse(0L);
     } catch (Exception e) {
-      LOGGER.error("Unexpected error checking disk space for directory: {}", dir, e);
+      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE_FOR_DIR, dir, e);
       return 0L;
     }
   }
@@ -86,21 +89,16 @@ public class JVMCommonUtils {
       long freeSpace =
           IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
       if (freeSpace == 0) {
-        LOGGER.warn(
-            "Cannot get free space for {} after retries, please check the disk status", dir);
+        LOGGER.warn(UtilMessages.CANNOT_GET_FREE_SPACE, dir);
       }
       long totalSpace = dirFile.getTotalSpace();
       double ratio = 1.0 * freeSpace / totalSpace;
       if (ratio <= diskSpaceWarningThreshold) {
-        LOGGER.warn(
-            "{} is above the warning threshold, free space {}, total space {}",
-            dir,
-            freeSpace,
-            totalSpace);
+        LOGGER.warn(UtilMessages.DISK_ABOVE_WARNING_THRESHOLD, dir, freeSpace, totalSpace);
       }
       return ratio;
     } catch (Exception e) {
-      LOGGER.error("Unexpected error checking disk space for {}", dir, e);
+      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE, dir, e);
       return 0;
     }
   }
@@ -111,9 +109,26 @@ public class JVMCommonUtils {
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
-    try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
+    if (!Files.exists(folder)) {
+      return 0;
     }
+    final long[] occupiedSpace = {0L};
+    Files.walkFileTree(
+        folder,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            occupiedSpace[0] += attrs.size();
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) {
+            // A file or directory may be deleted concurrently during traversal; ignore it.
+            return FileVisitResult.CONTINUE;
+          }
+        });
+    return occupiedSpace[0];
   }
 
   public static int getCpuCores() {
@@ -122,5 +137,10 @@ public class JVMCommonUtils {
 
   public static int getMaxExecutorPoolSize() {
     return MAX_EXECUTOR_POOL_SIZE;
+  }
+
+  @TestOnly
+  public static void setDiskSpaceWarningThreshold(double threshold) {
+    diskSpaceWarningThreshold = threshold;
   }
 }

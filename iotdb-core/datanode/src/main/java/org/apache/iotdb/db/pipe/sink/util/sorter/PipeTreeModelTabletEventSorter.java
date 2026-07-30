@@ -19,25 +19,43 @@
 
 package org.apache.iotdb.db.pipe.sink.util.sorter;
 
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
+public class PipeTreeModelTabletEventSorter extends PipeInsertEventSorter {
 
+  /**
+   * Constructor for Tablet.
+   *
+   * @param tablet the tablet to sort
+   */
   public PipeTreeModelTabletEventSorter(final Tablet tablet) {
     super(tablet);
     deDuplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
+  /**
+   * Constructor for InsertTabletStatement.
+   *
+   * @param statement the insert tablet statement to sort
+   */
+  public PipeTreeModelTabletEventSorter(final InsertTabletStatement statement) {
+    super(statement);
+    deDuplicatedSize = statement == null ? 0 : statement.getRowCount();
+  }
+
   public void deduplicateAndSortTimestampsIfNecessary() {
-    if (tablet == null || tablet.getRowSize() == 0) {
+    if (dataAdapter == null || dataAdapter.getRowSize() == 0) {
       return;
     }
 
-    long[] timestamps = tablet.getTimestamps();
-    for (int i = 1, size = tablet.getRowSize(); i < size; ++i) {
+    long[] timestamps = dataAdapter.getTimestamps();
+    final int rowSize = dataAdapter.getRowSize();
+    for (int i = 1; i < rowSize; ++i) {
       final long currentTimestamp = timestamps[i];
       final long previousTimestamp = timestamps[i - 1];
 
@@ -54,9 +72,9 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
       return;
     }
 
-    index = new Integer[tablet.getRowSize()];
-    deDuplicatedIndex = new int[tablet.getRowSize()];
-    for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
+    index = new Integer[rowSize];
+    deDuplicatedIndex = new int[rowSize];
+    for (int i = 0; i < rowSize; i++) {
       index[i] = i;
     }
 
@@ -78,14 +96,16 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
 
   private void sortTimestamps() {
     // Index is sorted stably because it is Integer[]
-    Arrays.sort(index, Comparator.comparingLong(tablet::getTimestamp));
-    Arrays.sort(tablet.getTimestamps(), 0, tablet.getRowSize());
+    Arrays.sort(index, Comparator.comparingLong(dataAdapter::getTimestamp));
+    final long[] timestamps = dataAdapter.getTimestamps();
+    Arrays.sort(timestamps, 0, dataAdapter.getRowSize());
   }
 
   private void deduplicateTimestamps() {
     deDuplicatedSize = 0;
-    long[] timestamps = tablet.getTimestamps();
-    for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
+    long[] timestamps = dataAdapter.getTimestamps();
+    final int rowSize = dataAdapter.getRowSize();
+    for (int i = 1; i < rowSize; i++) {
       if (timestamps[i] != timestamps[i - 1]) {
         deDuplicatedIndex[deDuplicatedSize] = i - 1;
         timestamps[deDuplicatedSize] = timestamps[i - 1];
@@ -94,8 +114,8 @@ public class PipeTreeModelTabletEventSorter extends PipeTabletEventSorter {
       }
     }
 
-    deDuplicatedIndex[deDuplicatedSize] = tablet.getRowSize() - 1;
-    timestamps[deDuplicatedSize] = timestamps[tablet.getRowSize() - 1];
-    tablet.setRowSize(++deDuplicatedSize);
+    deDuplicatedIndex[deDuplicatedSize] = rowSize - 1;
+    timestamps[deDuplicatedSize] = timestamps[rowSize - 1];
+    dataAdapter.setRowSize(++deDuplicatedSize);
   }
 }

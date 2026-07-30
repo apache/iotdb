@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
 import org.apache.tsfile.common.regexp.LikePattern;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,6 +34,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class LikeFilter extends SchemaFilter {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LikeFilter.class);
+
   private final LikePattern pattern;
 
   public LikeFilter(final String regex, final Optional<Character> escape) {
@@ -99,5 +103,12 @@ public class LikeFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(pattern);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += RamUsageEstimator.sizeOfObject(pattern);
+    return size;
   }
 }

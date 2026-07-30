@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 public class RemoveRegion extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RemoveRegion.class);
 
   private final List<Integer> regionIds;
   private final int dataNodeId;
@@ -63,8 +71,8 @@ public class RemoveRegion extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitRemoveRegion(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitRemoveRegion(this, context);
   }
 
   public List<Integer> getRegionIds() {
@@ -73,5 +81,13 @@ public class RemoveRegion extends Statement {
 
   public int getDataNodeId() {
     return dataNodeId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(regionIds);
+    return size;
   }
 }

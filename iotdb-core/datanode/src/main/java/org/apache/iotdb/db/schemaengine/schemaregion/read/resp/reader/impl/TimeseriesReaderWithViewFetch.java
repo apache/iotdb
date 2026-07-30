@@ -21,12 +21,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
@@ -242,7 +242,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     cachedViewList.clear();
 
     ISchemaTree schemaTree =
-        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null, true);
     // process each view expression and get data type
     TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
     CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =

@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -29,7 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,7 +81,10 @@ public class SubscriptionTopicAgent {
     } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
       LOGGER.warn(
-          "Exception occurred when handling single topic meta changes for topic {}", topicName, e);
+          DataNodePipeMessages
+              .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_TOPIC_META_CHANGES_43434FC4,
+          topicName,
+          e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
@@ -86,8 +98,62 @@ public class SubscriptionTopicAgent {
 
   private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
     final String topicName = metaFromCoordinator.getTopicName();
+    final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName);
+    TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
     topicMetaKeeper.removeTopicMeta(topicName);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+    if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
+      SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
+    } else if (!metaFromCoordinator.getConfig().isTableTopic()) {
+      // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
+      // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
+      SubscriptionAgent.broker().dropColumnFilter(topicName);
+    }
+    SubscriptionAgent.broker()
+        .refreshConsensusQueueOrderMode(topicName, metaFromCoordinator.getConfig().getOrderMode());
+  }
+
+  static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
+    if (Objects.isNull(newMeta) || !newMeta.getConfig().isTableTopic()) {
+      return false;
+    }
+    if (Objects.isNull(oldMeta) || !oldMeta.getConfig().isTableTopic()) {
+      return true;
+    }
+
+    final TopicConfig oldConfig = oldMeta.getConfig();
+    final TopicConfig newConfig = newMeta.getConfig();
+    return !Objects.equals(
+            normalizeColumnFilterBindingValue(oldConfig.getColumnFilter()),
+            normalizeColumnFilterBindingValue(newConfig.getColumnFilter()))
+        || !Objects.equals(
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
+        || !Objects.equals(
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+            normalizeColumnFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
+  }
+
+  private static String getAttributeIgnoreCase(
+      final TopicConfig topicConfig, final String key, final String defaultValue) {
+    return topicConfig.getAttribute().entrySet().stream()
+        .filter(entry -> key.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(defaultValue);
+  }
+
+  private static String normalizeColumnFilterBindingValue(final String value) {
+    return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
@@ -100,7 +166,8 @@ public class SubscriptionTopicAgent {
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           LOGGER.warn(
-              "Exception occurred when handling single topic meta changes for topic {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_TOPIC_META_CHANGES_43434FC4,
               topicName,
               e);
           final String exceptionMessage =
@@ -123,7 +190,7 @@ public class SubscriptionTopicAgent {
       handleDropTopicInternal(topicName);
       return null;
     } catch (final Exception e) {
-      LOGGER.warn("Exception occurred when dropping topic {}", topicName, e);
+      LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_TOPIC, topicName, e);
       final String exceptionMessage =
           String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       return new TPushTopicMetaRespExceptionMessage(
@@ -135,6 +202,7 @@ public class SubscriptionTopicAgent {
 
   private void handleDropTopicInternal(final String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
+    SubscriptionAgent.broker().dropColumnFilter(topicName);
   }
 
   public boolean isTopicExisted(final String topicName) {
@@ -149,10 +217,12 @@ public class SubscriptionTopicAgent {
   public String getTopicFormat(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper
+              .getTopicMeta(topicName)
+              .getConfig()
+              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE)
+          : null;
     } finally {
       releaseReadLock();
     }
@@ -161,10 +231,18 @@ public class SubscriptionTopicAgent {
   public String getTopicMode(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper.getTopicMeta(topicName).getConfig().getMode()
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicOrderMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.getTopicMeta(topicName).getConfig().getOrderMode();
     } finally {
       releaseReadLock();
     }
@@ -174,12 +252,103 @@ public class SubscriptionTopicAgent {
     acquireReadLock();
     try {
       return topicNames.stream()
+          .filter(topicMetaKeeper::containsTopicMeta)
           .collect(
               Collectors.toMap(
                   topicName -> topicName,
                   topicName -> topicMetaKeeper.getTopicMeta(topicName).getConfig()));
     } finally {
       releaseReadLock();
+    }
+  }
+
+  public TSStatus checkTopicOwner(final ConsumerConfig consumerConfig, final String topicName) {
+    acquireReadLock();
+    try {
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
+      if (Objects.isNull(topicMeta) || !topicMeta.isOwnerFencingEnabled()) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
+
+      final String requestOwnerId = consumerConfig.getOwnerId();
+      if (Objects.isNull(requestOwnerId)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_REQUIRED,
+            String.format(
+                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-id.",
+                topicName, consumerConfig));
+      }
+
+      final Long requestOwnerEpoch = consumerConfig.getOwnerEpoch();
+      if (Objects.isNull(requestOwnerEpoch)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_REQUIRED,
+            String.format(
+                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-epoch.",
+                topicName, consumerConfig));
+      }
+
+      if (Objects.nonNull(topicMeta.getOwnerLeaseExpireTimeMs())
+          && System.currentTimeMillis() > topicMeta.getOwnerLeaseExpireTimeMs()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_LEASE_EXPIRED,
+            String.format(
+                "Subscription: owner lease for topic %s has expired, owner-id: %s, owner-epoch: %s.",
+                topicName, topicMeta.getOwnerId(), topicMeta.getOwnerEpoch()));
+      }
+
+      if (!topicMeta.matchesOwner(requestOwnerId, requestOwnerEpoch)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SUBSCRIPTION_OWNER_FENCED,
+            String.format(
+                "Subscription: consumer owner is fenced for topic %s, request owner-id: %s,"
+                    + " request owner-epoch: %s, current owner-id: %s, current owner-epoch: %s.",
+                topicName,
+                requestOwnerId,
+                requestOwnerEpoch,
+                topicMeta.getOwnerId(),
+                topicMeta.getOwnerEpoch()));
+      }
+
+      return RpcUtils.SUCCESS_STATUS;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TSStatus checkTopicOwners(
+      final ConsumerConfig consumerConfig, final Iterable<String> topicNames) {
+    for (final String topicName : topicNames) {
+      final TSStatus status = checkTopicOwner(consumerConfig, topicName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /**
+   * Apply owner lease renewals pushed by ConfigNode via the dedicated subscription owner heartbeat.
+   * The pushed remaining duration is converted to a DataNode-local expire time on the local clock,
+   * so no absolute timestamp is compared across nodes. Owner identity/epoch changes are delivered
+   * via the topic-meta push path; here we only refresh the lease for the matching current owner.
+   */
+  public void handleTopicOwnerLeases(final List<TTopicOwnerLeaseEntry> ownerLeases) {
+    if (Objects.isNull(ownerLeases) || ownerLeases.isEmpty()) {
+      return;
+    }
+    acquireWriteLock();
+    try {
+      for (final TTopicOwnerLeaseEntry lease : ownerLeases) {
+        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(lease.getTopicName());
+        if (Objects.isNull(topicMeta)) {
+          continue;
+        }
+        topicMeta.applyOwnerLeaseFromHeartbeat(
+            lease.getOwnerId(), lease.getOwnerEpoch(), lease.getLeaseRemainingMs());
+      }
+    } finally {
+      releaseWriteLock();
     }
   }
 }

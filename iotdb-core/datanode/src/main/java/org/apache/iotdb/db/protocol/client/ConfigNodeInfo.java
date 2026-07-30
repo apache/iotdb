@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,11 +84,11 @@ public class ConfigNodeInfo {
       storeConfigNodeList();
       long endTime = System.currentTimeMillis();
       logger.info(
-          "Update ConfigNode Successfully: {}, which takes {} ms.",
+          DataNodeMiscMessages.UPDATE_CONFIG_NODE_SUCCESSFULLY,
           onlineConfigNodes,
           (endTime - startTime));
     } catch (IOException e) {
-      logger.error("Update ConfigNode failed.", e);
+      logger.error(DataNodeMiscMessages.UPDATE_CONFIG_NODE_FAILED, e);
       return false;
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
@@ -102,7 +103,7 @@ public class ConfigNodeInfo {
    */
   public void storeConfigNodeList() throws IOException {
     if (!systemPropertiesHandler.fileExist()) {
-      logger.info("System properties file not exist, not necessary to store ConfigNode list");
+      logger.info(DataNodeMiscMessages.SYSTEM_PROPERTIES_NOT_EXIST);
       return;
     }
     systemPropertiesHandler.put(
@@ -123,18 +124,18 @@ public class ConfigNodeInfo {
       }
       if (onlineConfigNodes.isEmpty()) {
         throw new StartupException(
-            "Removing is only allowed in an environment where the datanode has been successfully started. "
-                + "Please check whether it is removed on the confignode, or if you have deleted the system.properties file by mistake.");
+            DataNodeMiscMessages
+                .MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA);
       }
       long endTime = System.currentTimeMillis();
       logger.info(
-          "Load ConfigNode successfully: {}, which takes {} ms.",
+          DataNodeMiscMessages.LOAD_CONFIG_NODE_SUCCESSFULLY,
           onlineConfigNodes,
           (endTime - startTime));
     } catch (IOException e) {
       throw new RuntimeException(e);
     } catch (BadNodeUrlException e) {
-      logger.error("Cannot parse config node list in system.properties");
+      logger.error(DataNodeMiscMessages.CANNOT_PARSE_CONFIG_NODE_LIST);
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }

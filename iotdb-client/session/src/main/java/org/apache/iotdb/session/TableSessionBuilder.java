@@ -218,24 +218,60 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the trust store path for SSL connections.
    *
-   * @param keyStore the trust store path.
+   * @param trustStore the trust store path.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
+  public TableSessionBuilder trustStore(String trustStore) {
+    this.trustStore = trustStore;
     return this;
   }
 
   /**
    * Sets the trust store password for SSL connections.
    *
-   * @param keyStorePwd the trust store password.
+   * @param trustStorePwd the trust store password.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
+  public TableSessionBuilder trustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the key store path for mutual SSL connections.
+   *
+   * @param keyStore the key store path.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStore(String keyStore) {
+    this.keyStore = keyStore;
+    return this;
+  }
+
+  /**
+   * Sets the key store password for mutual SSL connections.
+   *
+   * @param keyStorePwd the key store password.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the SSL protocol for secure connections.
+   *
+   * @param sslProtocol the SSL protocol.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue TLS
+   */
+  public TableSessionBuilder sslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
     return this;
   }
 

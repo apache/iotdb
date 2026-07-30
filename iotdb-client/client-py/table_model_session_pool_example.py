@@ -44,9 +44,9 @@ def prepare_data():
 
     print("now the tables are:")
     # show result
-    res = session.execute_query_statement("SHOW TABLES")
-    while res.has_next():
-        print(res.next())
+    with session.execute_query_statement("SHOW TABLES") as res:
+        while res.has_next():
+            print(res.next())
 
     session.close()
 
@@ -101,14 +101,14 @@ def query_data():
     session = session_pool.get_session()
 
     print("get data from table0")
-    res = session.execute_query_statement("select * from table0")
-    while res.has_next():
-        print(res.next())
+    with session.execute_query_statement("select * from table0") as res:
+        while res.has_next():
+            print(res.next())
 
     print("get data from table1")
-    res = session.execute_query_statement("select * from table0")
-    while res.has_next():
-        print(res.next())
+    with session.execute_query_statement("select * from table0") as res:
+        while res.has_next():
+            print(res.next())
 
     session.close()
 
@@ -117,9 +117,9 @@ def delete_data():
     session = session_pool.get_session()
     session.execute_non_query_statement("drop database db1")
     print("data has been deleted. now the databases are:")
-    res = session.execute_query_statement("show databases")
-    while res.has_next():
-        print(res.next())
+    with session.execute_query_statement("show databases") as res:
+        while res.has_next():
+            print(res.next())
     session.close()
 
 

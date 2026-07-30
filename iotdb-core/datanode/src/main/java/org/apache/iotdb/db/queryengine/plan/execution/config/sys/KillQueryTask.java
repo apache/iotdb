@@ -35,8 +35,9 @@ public class KillQueryTask implements IConfigTask {
     this.killQueryStatement = killQueryStatement;
   }
 
-  public KillQueryTask(KillQuery killQuery) {
+  public KillQueryTask(KillQuery killQuery, String username) {
     this.killQueryStatement = new KillQueryStatement(killQuery.getQueryId());
+    this.killQueryStatement.setAllowedUsername(username);
   }
 
   @Override

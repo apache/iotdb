@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.Column;
@@ -67,7 +68,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     this.rowLimit = rowLimit;
   }
 
-  public void initialize() {
+  public void reset() {
     this.rowCount = 0;
     this.times = new long[rowLimit];
     this.columns = new Object[this.measurements.length];
@@ -98,50 +99,15 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes[i]));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  dataTypes[i]));
       }
     }
     this.bitMaps = new BitMap[this.measurements.length];
     for (int i = 0; i < this.bitMaps.length; ++i) {
       this.bitMaps[i] = new BitMap(rowLimit);
       this.bitMaps[i].markAll();
-    }
-  }
-
-  public void reset() {
-    this.rowCount = 0;
-    Arrays.fill(times, 0L);
-    for (int i = 0; i < this.measurements.length; i++) {
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          Arrays.fill((boolean[]) columns[i], false);
-          break;
-        case INT32:
-        case DATE:
-          Arrays.fill((int[]) columns[i], 0);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          Arrays.fill((long[]) columns[i], 0L);
-          break;
-        case FLOAT:
-          Arrays.fill((float[]) columns[i], 0F);
-          break;
-        case DOUBLE:
-          Arrays.fill((double[]) columns[i], 0D);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes[i]));
-      }
-    }
-    for (BitMap bitMap : this.bitMaps) {
-      bitMap.markAll();
     }
   }
 
@@ -186,7 +152,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes[i]));
+                String.format(
+                    DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataTypes[i]));
         }
       }
     }
@@ -204,6 +172,10 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
 
   public boolean isEmpty() {
     return rowCount == 0;
+  }
+
+  public int getRowCount() {
+    return rowCount;
   }
 
   public String getDevice() {
@@ -253,7 +225,8 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "data type %s is not supported when convert data at client",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
                 valueColumn.getDataType()));
     }
   }
@@ -312,7 +285,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
         default:
           throw new UnSupportedDataTypeException(
               String.format(
-                  "data type %s is not supported when convert data at client", dataTypes[i]));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
+                  dataTypes[i]));
       }
     }
     return bytes;

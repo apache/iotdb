@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -62,7 +63,11 @@ public class RegularExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = Pattern.compile(Validate.notNull(patternString, "patternString cannot be null"));
+    pattern =
+        Pattern.compile(
+            Validate.notNull(
+                patternString,
+                DataNodeQueryMessages.EXCEPTION_PATTERNSTRING_CANNOT_BE_NULL_8A2903F8));
   }
 
   public String getPatternString() {

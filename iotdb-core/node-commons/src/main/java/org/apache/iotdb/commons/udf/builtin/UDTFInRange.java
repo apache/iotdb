@@ -86,6 +86,7 @@ public class UDTFInRange implements UDTF {
         collector.putBoolean(time, row.getDouble(0) >= lower && upper >= row.getDouble(0));
         break;
       case BLOB:
+      case OBJECT:
       case TEXT:
       case DATE:
       case STRING:
@@ -123,6 +124,7 @@ public class UDTFInRange implements UDTF {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -151,6 +153,7 @@ public class UDTFInRange implements UDTF {
         transformDouble(columns, builder);
         return;
       case BLOB:
+      case OBJECT:
       case TEXT:
       case DATE:
       case STRING:

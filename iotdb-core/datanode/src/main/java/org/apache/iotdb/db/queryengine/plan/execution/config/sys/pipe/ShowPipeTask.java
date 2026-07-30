@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
+  private final String userName;
 
   private static final Map<String, String> exception2ActionMap = new HashMap<>();
 
@@ -70,21 +71,23 @@ public class ShowPipeTask implements IConfigTask {
     exception2ActionMap.put("Connection", "Please check the connection to the receivers.");
   }
 
-  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement, final String userName) {
     this.showPipesStatement = showPipesStatement;
+    this.userName = userName;
   }
 
-  public ShowPipeTask(final ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node, final String userName) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
     showPipesStatement.setTableModel(true);
+    this.userName = userName;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipes(showPipesStatement);
+    return configTaskExecutor.showPipes(showPipesStatement, userName);
   }
 
   public static void buildTSBlock(
@@ -156,6 +159,11 @@ public class ShowPipeTask implements IConfigTask {
                       ? String.format("%.2f", remainingTime)
                       : "Unknown",
                   TSFileConfig.STRING_CHARSET));
+      if (tPipeInfo.isSetIsDegraded()) {
+        builder.getColumnBuilder(10).writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        builder.getColumnBuilder(10).appendNull();
+      }
       builder.declarePosition();
     }
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

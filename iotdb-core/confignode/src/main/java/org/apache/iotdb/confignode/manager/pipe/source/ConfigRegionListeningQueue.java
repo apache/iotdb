@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
@@ -89,7 +91,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
-            LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_UNSETTEMPLATEPLAN, e);
             return;
           }
           break;
@@ -112,7 +114,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
-            LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_COMMITCREATETABLEPLAN, e);
             return;
           }
           break;
@@ -135,25 +137,45 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
               && snapshotPath
                   .toFile()
                   .getName()
-                  .equals(AuthorityChecker.SUPER_USER + IoTDBConstant.PROFILE_SUFFIX)
+                  .equals(AuthorityChecker.SUPER_USER_ID_IN_STR + IoTDBConstant.PROFILE_SUFFIX)
           || type == CNSnapshotFileType.USER_ROLE
               && snapshotPath
                   .toFile()
                   .getName()
                   .equals(
-                      AuthorityChecker.SUPER_USER
+                      AuthorityChecker.SUPER_USER_ID_IN_STR
                           + LocalFileUserAccessor.ROLE_SUFFIX
-                          + IoTDBConstant.PROFILE_SUFFIX)) {
+                          + IoTDBConstant.PROFILE_SUFFIX)
+          || snapshotPath.toFile().getName().equals("user_id.profile")) {
         continue;
       }
       final Path templateFilePath = snapshotPathInfo.getLeft().getRight();
-      events.add(
+      PipeConfigRegionSnapshotEvent curEvent =
           new PipeConfigRegionSnapshotEvent(
               snapshotPath.toString(),
               Objects.nonNull(templateFilePath) && templateFilePath.toFile().length() > 0
                   ? templateFilePath.toString()
                   : null,
-              snapshotPathInfo.getRight()));
+              snapshotPathInfo.getRight());
+      if (type == CNSnapshotFileType.USER_ROLE) {
+        String userName = snapshotPath.toFile().getName().split("_")[0];
+        long userId;
+        if (userName.matches("\\d+")) {
+          userId = Long.parseLong(userName);
+          try {
+            curEvent.setAuthUserName(
+                ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getPermissionManager()
+                    .getUserName(userId));
+          } catch (AuthException e) {
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_USER_NAME_FOR_USER_ID, userId, e);
+          }
+        } else {
+          curEvent.setAuthUserName(userName);
+        }
+      }
+      events.add(curEvent);
     }
     tryListen(events);
   }
@@ -174,7 +196,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
       ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
     } catch (final IOException e) {
-      LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
+      LOGGER.error(ManagerMessages.FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER, byteBuffer);
     }
     return null;
   }

@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -37,7 +40,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.Collections;
 
 /** This loader is used to load deletion plan. */
@@ -52,29 +54,43 @@ public class DeletionLoader implements ILoader {
   }
 
   @Override
-  public void load() throws PipeException {
+  public void load(final SessionInfo sessionInfo) throws PipeException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new PipeException("storage engine readonly");
+      throw new PipeException(DataNodePipeMessages.STORAGE_ENGINE_READONLY);
     }
     try {
       Statement statement = generateStatement();
+      TSStatus authorityStatus =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  sessionInfo.getUserId(),
+                  sessionInfo.getUserName(),
+                  sessionInfo.getCliHostname()));
+      if (authorityStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(authorityStatus.getMessage());
+      }
+
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  sessionInfo,
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  statement.isDebug());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Delete {} error, statement: {}.", deletion, statement);
-        LOGGER.error("Delete result status : {}.", result.status);
+        LOGGER.error(DataNodePipeMessages.DELETE_ERROR_STATEMENT, deletion, statement);
+        LOGGER.error(DataNodePipeMessages.DELETE_RESULT_STATUS, result.status);
         throw new LoadFileException(
-            String.format("Can not execute delete statement: %s", statement));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_CAN_NOT_EXECUTE_DELETE_STATEMENT_S_3563E8A3,
+                statement));
       }
     } catch (Exception e) {
       throw new PipeException(e.getMessage());

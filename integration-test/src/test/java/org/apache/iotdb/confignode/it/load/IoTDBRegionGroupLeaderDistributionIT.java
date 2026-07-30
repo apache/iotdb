@@ -73,7 +73,6 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         .getConfig()
         .getCommonConfig()
         .setEnableAutoLeaderBalanceForRatisConsensus(true)
-        .setEnableAutoLeaderBalanceForIoTConsensus(true)
         .setSchemaRegionConsensusProtocolClass(TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
         .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
@@ -120,6 +119,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       showRegionResp
           .getRegionInfoList()
           .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+      showRegionResp
+          .getRegionInfoList()
+          .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
       showRegionResp
           .getRegionInfoList()
           .forEach(
@@ -173,6 +175,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -213,6 +218,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(
@@ -283,6 +291,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
         showRegionResp
             .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -334,6 +345,9 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.startsWith(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(

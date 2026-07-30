@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -26,10 +27,10 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
@@ -69,6 +70,8 @@ import java.util.stream.IntStream;
 import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
 
 public class IoTDBJDBCResultSet implements ResultSet {
+
+  public static final String OBJECT_ERR_MSG = "OBJECT Type only support getString";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
 
@@ -217,9 +220,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
     try {
       ioTDBRpcDataSet.close();
     } catch (StatementExecutionException e) {
-      throw new SQLException("Error occurs for close operation in server side because ", e);
+      throw new SQLException(JdbcMessages.CLOSE_SERVER_SIDE_ERROR, e);
     } catch (TException e) {
-      throw new SQLException("Error occurs when connecting to server for close operation ", e);
+      throw new SQLException(JdbcMessages.CLOSE_CONNECTING_ERROR, e);
     }
   }
 
@@ -301,6 +304,15 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public Blob getBlob(int arg0) throws SQLException {
     try {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(arg0);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new SQLException(OBJECT_ERR_MSG);
+      }
+
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
       if (ObjectUtils.isNotEmpty(binary)) {
         return new SerialBlob(binary.getValues());
@@ -314,6 +326,15 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public Blob getBlob(String arg0) throws SQLException {
     try {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(arg0);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new SQLException(OBJECT_ERR_MSG);
+      }
+
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
       if (ObjectUtils.isNotEmpty(binary)) {
         return new SerialBlob(binary.getValues());
@@ -360,7 +381,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return null;
       }
 
-      if (dataType.equals(TSDataType.BLOB)) {
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new SQLException(OBJECT_ERR_MSG);
+      } else if (dataType.equals(TSDataType.BLOB)) {
         Binary binary = ioTDBRpcDataSet.getBinary(columnIndex);
         return binary == null ? null : binary.getValues();
       } else {
@@ -379,8 +402,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
       if (dataType == null) {
         return null;
       }
-
-      if (dataType.equals(TSDataType.BLOB)) {
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new SQLException(OBJECT_ERR_MSG);
+      } else if (dataType.equals(TSDataType.BLOB)) {
         Binary binary = ioTDBRpcDataSet.getBinary(columnName);
         return binary == null ? null : binary.getValues();
       } else {
@@ -555,7 +579,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
       }
     } catch (SQLException throwables) {
-      LOGGER.error("get meta data error: {}", throwables.getMessage());
+      LOGGER.error(JdbcMessages.GET_METADATA_ERROR, throwables.getMessage());
     }
     return new IoTDBResultMetadata(
         nonAlign,

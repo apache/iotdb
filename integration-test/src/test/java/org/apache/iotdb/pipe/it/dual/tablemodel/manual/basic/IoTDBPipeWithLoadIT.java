@@ -59,11 +59,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         // Disable sender compaction to test mods
@@ -78,6 +78,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
@@ -100,7 +101,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -109,6 +109,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     // Enable mods transfer
     extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -119,10 +120,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Generate TsFile
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       TableModelUtils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =
@@ -155,6 +154,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -239,6 +239,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -320,6 +321,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -377,7 +379,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
-          10,
           "db",
           handleFailure);
     }
@@ -394,6 +395,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 
@@ -443,6 +445,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
     extractorAttributes.put("user", "root");
 

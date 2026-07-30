@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.consensus.exception;
 
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+
 public class IllegalPeerNumException extends ConsensusException {
 
   public IllegalPeerNumException(int size) {
-    super(String.format("Illegal peer num %d when adding consensus group", size));
+    super(String.format(ConsensusMessages.ILLEGAL_PEER_NUM, size));
   }
 }

@@ -110,7 +110,7 @@ public class IoTDBInsertQueryIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private static void prepareDatabase() {
+  protected static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
@@ -459,7 +459,8 @@ public class IoTDBInsertQueryIT {
       Assert.assertTrue(
           e.getMessage(),
           e.getMessage()
-              .contains("700: line 1:9: mismatched input 'INSERT'. Expecting: 'ANALYZE', <query>"));
+              .contains(
+                  "700: line 1:9: mismatched input 'INSERT'. Expecting: '(', 'ANALYZE', 'EXECUTE', <query>"));
     }
 
     try {
@@ -471,7 +472,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:17: mismatched input 'INSERT'. Expecting: 'VERBOSE', <query>"));
+                  "700: line 1:17: mismatched input 'INSERT'. Expecting: '(', 'EXECUTE', 'VERBOSE', <query>"));
     }
   }
 
@@ -594,7 +595,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
-  private static void prepareData() throws SQLException {
+  protected static void prepareData() throws SQLException {
     int deviceNum = 3;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

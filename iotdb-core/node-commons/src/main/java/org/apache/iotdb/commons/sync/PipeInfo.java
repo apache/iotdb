@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -111,7 +112,7 @@ public abstract class PipeInfo {
       serialize(dataOutputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurred when serializing PipeInfo.");
+      LOGGER.error(CommonMessages.UNEXPECTED_SERIALIZATION_ERROR);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -127,7 +128,8 @@ public abstract class PipeInfo {
       case WALPipe:
       default:
         throw new UnsupportedOperationException(
-            String.format("Can not recognize PipeType %s.", pipeType.name()));
+            String.format(
+                CommonMessages.EXCEPTION_CAN_NOT_RECOGNIZE_PIPETYPE_ARG_8850A249, pipeType.name()));
     }
     return pipeInfo;
   }

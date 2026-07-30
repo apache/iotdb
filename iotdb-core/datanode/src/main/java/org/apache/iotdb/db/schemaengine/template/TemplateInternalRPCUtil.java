@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.template;
 
+import org.apache.iotdb.commons.schema.template.Template;
+
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

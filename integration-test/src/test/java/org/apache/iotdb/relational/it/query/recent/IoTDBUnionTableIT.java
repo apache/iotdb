@@ -114,6 +114,24 @@ public class IoTDBUnionTableIT {
   }
 
   @Test
+  public void mappingTest() {
+    String[] expectedHeader = new String[] {"col_a"};
+    String[] retArray = new String[] {"1.0,", "2.0,", "3.0,"};
+    tableResultSetEqualTest(
+        "select col_a from ((select s1 as col_a, device as col_b from table1) union (select s2 as col_a, device as col_b from table2)) order by col_a",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray = new String[] {"1.0,", "1.0,", "2.0,", "3.0,"};
+    tableResultSetEqualTest(
+        "select col_a from ((select s1 as col_a, device as col_b from table1) union all (select s2 as col_a, device as col_b from table2)) order by col_a",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "(select * from table1) union all (select * from table4)",

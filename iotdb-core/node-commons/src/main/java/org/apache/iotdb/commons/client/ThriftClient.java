@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.client;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.iotdb.commons.i18n.ClientMessages;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +31,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.SocketException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Optional;
 
 /**
@@ -68,7 +71,7 @@ public interface ThriftClient {
       int level = 0;
       while (cur != null) {
         logger.debug(
-            "level-{} Exception class {}, message {}",
+            ClientMessages.EXCEPTION_LEVEL_DETAIL,
             level,
             cur.getClass().getName(),
             cur.getMessage());
@@ -83,16 +86,13 @@ public interface ThriftClient {
       // if the exception is SocketException and its error message is Broken pipe, it means that
       // the remote node may restart and all the connection we cached before should be cleared.
       logger.debug(
-          "root cause message {}, LocalizedMessage {}, ",
+          ClientMessages.ROOT_CAUSE_DETAIL,
           rootCause.getMessage(),
           rootCause.getLocalizedMessage(),
           rootCause);
       if (isConnectionBroken(rootCause)) {
         if (o.printLogWhenEncounterException()) {
-          logger.info(
-              "Broken pipe error happened in sending RPC,"
-                  + " we need to clear all previous cached connection, error msg is {}",
-              rootCause.toString());
+          logger.info(ClientMessages.BROKEN_PIPE_CLEAR_CONNECTIONS, rootCause.toString());
         }
         o.invalidateAll();
       }
@@ -113,7 +113,9 @@ public interface ThriftClient {
         || (cause instanceof IOException
             && (hasExpectedMessage(cause, "Connection reset by peer")
                 || hasExpectedMessage(cause, "Broken pipe")))
-        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused"));
+        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused")
+            || (cause instanceof ClosedChannelException))
+        || (cause instanceof java.util.concurrent.TimeoutException);
   }
 
   static boolean hasExpectedMessage(Throwable cause, String expectedMessage) {

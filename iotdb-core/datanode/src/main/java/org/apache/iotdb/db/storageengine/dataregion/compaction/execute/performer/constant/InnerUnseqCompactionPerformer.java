@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+
+import org.apache.tsfile.encrypt.EncryptParameter;
 
 public enum InnerUnseqCompactionPerformer {
   READ_POINT,
@@ -35,9 +39,13 @@ public enum InnerUnseqCompactionPerformer {
       return FAST;
     }
     throw new IllegalCompactionPerformerException(
-        "Illegal compaction performer for unseq inner compaction " + name);
+        String.format(
+            StorageEngineMessages
+                .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_UNSEQ_INNER_COMPACTION_50D566DF,
+            name));
   }
 
+  @TestOnly
   public IUnseqCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
@@ -46,7 +54,25 @@ public enum InnerUnseqCompactionPerformer {
         return new FastCompactionPerformer(false);
       default:
         throw new IllegalCompactionPerformerException(
-            "Illegal compaction performer for unseq inner compaction " + this);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_UNSEQ_INNER_COMPACTION_50D566DF,
+                this));
+    }
+  }
+
+  public IUnseqCompactionPerformer createInstance(EncryptParameter encryptParameter) {
+    switch (this) {
+      case READ_POINT:
+        return new ReadPointCompactionPerformer(encryptParameter);
+      case FAST:
+        return new FastCompactionPerformer(false, encryptParameter);
+      default:
+        throw new IllegalCompactionPerformerException(
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_UNSEQ_INNER_COMPACTION_50D566DF,
+                this));
     }
   }
 }

@@ -84,6 +84,7 @@ public class IoTDBSetSystemStatusTableIT {
           .until(
               () -> {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
+
                 int num = 0;
                 try {
                   while (resultSet.next()) {

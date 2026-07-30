@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -31,16 +30,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
-
 public class SetSqlDialectStatement extends Statement implements IConfigStatement {
-  private final IClientSession.SqlDialect sqlDialect;
+  private final SqlDialect sqlDialect;
 
-  public SetSqlDialectStatement(IClientSession.SqlDialect sqlDialect) {
+  public SetSqlDialectStatement(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
   }
 
-  public IClientSession.SqlDialect getSqlDialect() {
+  public SqlDialect getSqlDialect() {
     return sqlDialect;
   }
 
@@ -61,16 +58,11 @@ public class SetSqlDialectStatement extends Statement implements IConfigStatemen
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitSetSqlDialect(this, context);
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    return SUCCEED;
   }
 }

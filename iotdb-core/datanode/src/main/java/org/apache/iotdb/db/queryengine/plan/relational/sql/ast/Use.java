@@ -19,7 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -31,16 +40,18 @@ import static java.util.Objects.requireNonNull;
 
 public final class Use extends Statement {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Use.class);
+
   private final Identifier db;
 
   public Use(@Nonnull Identifier db) {
     super(null);
-    this.db = requireNonNull(db, "db is null");
+    this.db = requireNonNull(db, DataNodeQueryMessages.EXCEPTION_DB_IS_NULL_E1AD1B58);
   }
 
   public Use(@Nonnull NodeLocation location, @Nonnull Identifier db) {
-    super(requireNonNull(location, "location is null"));
-    this.db = requireNonNull(db, "db is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.db = requireNonNull(db, DataNodeQueryMessages.EXCEPTION_DB_IS_NULL_E1AD1B58);
   }
 
   public Identifier getDatabaseId() {
@@ -48,8 +59,8 @@ public final class Use extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitUse(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitUse(this, context);
   }
 
   @Override
@@ -77,5 +88,13 @@ public final class Use extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(db);
+    return size;
   }
 }

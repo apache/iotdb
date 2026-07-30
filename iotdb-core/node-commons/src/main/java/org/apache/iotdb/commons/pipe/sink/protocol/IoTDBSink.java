@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
@@ -86,6 +88,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
@@ -96,6 +99,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
@@ -126,12 +130,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LOAD_TSFILE_STRATEGY_KEY;
@@ -143,18 +149,19 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector {
+public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
-  private static final String PARSE_URL_ERROR_FORMATTER =
-      "Exception occurred while parsing node urls from target servers: {}";
-  private static final String PARSE_URL_ERROR_MESSAGE =
-      "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
+  private static final String PARSE_URL_ERROR_FORMATTER = PipeMessages.PARSE_URL_ERROR;
+  private static final String PARSE_URL_ERROR_MESSAGE = PipeMessages.PARSE_URL_ERROR_MESSAGE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSink.class);
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
+  protected String userId = "-1";
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+  protected String cliHostname = "";
+  protected UserEntity userEntity;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
   protected String loadBalanceStrategy;
@@ -163,6 +170,7 @@ public abstract class IoTDBSink implements PipeConnector {
   protected boolean loadTsFileValidation;
 
   protected boolean shouldMarkAsPipeRequest;
+  protected boolean skipIfNoPrivileges;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -181,6 +189,7 @@ public abstract class IoTDBSink implements PipeConnector {
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
+  protected String sinkTaskId;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -242,6 +251,9 @@ public abstract class IoTDBSink implements PipeConnector {
             CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_KEY, SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY),
         false);
 
+    userId =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_USER_ID, SINK_IOTDB_USER_ID), "-1");
     username =
         parameters.getStringOrDefault(
             Arrays.asList(
@@ -250,6 +262,10 @@ public abstract class IoTDBSink implements PipeConnector {
                 CONNECTOR_IOTDB_USERNAME_KEY,
                 SINK_IOTDB_USERNAME_KEY),
             CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
+    cliHostname =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_CLI_HOSTNAME, SINK_IOTDB_CLI_HOSTNAME), "");
+    userEntity = new UserEntity(Long.parseLong(userId), username, cliHostname);
     password =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
@@ -376,13 +392,15 @@ public abstract class IoTDBSink implements PipeConnector {
       throws Exception {
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
-      attributeSortedString =
-          ((PipeTaskSinkRuntimeEnvironment) environment).getAttributeSortedString();
+      final PipeTaskSinkRuntimeEnvironment sinkEnvironment =
+          (PipeTaskSinkRuntimeEnvironment) environment;
+      attributeSortedString = sinkEnvironment.getAttributeSortedString();
+      sinkTaskId = sinkEnvironment.getSinkTaskId();
     }
 
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
-    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+    LOGGER.info(PipeMessages.IOTDB_SINK_NODE_URLS, nodeUrls);
 
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
@@ -394,7 +412,7 @@ public abstract class IoTDBSink implements PipeConnector {
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
                 .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
-    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    LOGGER.info(PipeMessages.IOTDB_SINK_TABLET_BATCH_MODE, isTabletBatchModeEnabled);
 
     final boolean shouldMarkAsGeneralWriteRequest =
         parameters.getBooleanOrDefault(
@@ -410,7 +428,7 @@ public abstract class IoTDBSink implements PipeConnector {
               Arrays.asList(CONNECTOR_MARK_AS_PIPE_REQUEST_KEY, SINK_MARK_AS_PIPE_REQUEST_KEY),
               CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
     }
-    LOGGER.info("IoTDBConnector shouldMarkAsPipeRequest: {}", shouldMarkAsPipeRequest);
+    LOGGER.info(PipeMessages.IOTDB_SINK_MARK_AS_PIPE_REQUEST, shouldMarkAsPipeRequest);
 
     final String connectorSkipIfValue =
         parameters
@@ -424,12 +442,14 @@ public abstract class IoTDBSink implements PipeConnector {
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    boolean skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+          String.format(
+              PipeMessages.EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054,
+              skipIfOptionSet));
     }
-    LOGGER.info("IoTDBConnector skipIfNoPrivileges: {}", skipIfNoPrivileges);
+    LOGGER.info(PipeMessages.IOTDB_SINK_SKIP_IF_NO_PRIVILEGES, skipIfNoPrivileges);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(
@@ -469,7 +489,7 @@ public abstract class IoTDBSink implements PipeConnector {
                 SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY),
             CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE);
     LOGGER.info(
-        "IoTDBConnector {} = {}",
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
         shouldReceiverConvertOnTypeMismatch);
     isRealtimeFirst =
@@ -479,7 +499,9 @@ public abstract class IoTDBSink implements PipeConnector {
                 PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
             PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
     LOGGER.info(
-        "IoTDBConnector {} = {}", PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY, isRealtimeFirst);
+        PipeMessages.LOG_IOTDBSINK_ARG_ARG_4E140C06,
+        PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
+        isRealtimeFirst);
   }
 
   protected LinkedHashSet<TEndPoint> parseNodeUrls(final PipeParameters parameters)
@@ -551,11 +573,11 @@ public abstract class IoTDBSink implements PipeConnector {
   private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.HOST_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.PORT_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
@@ -625,7 +647,8 @@ public abstract class IoTDBSink implements PipeConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
    * its batched or queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
+  public synchronized void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
     // Do nothing by default
   }
 
@@ -637,11 +660,19 @@ public abstract class IoTDBSink implements PipeConnector {
     // do nothing by default
   }
 
+  public void setSchemaBatchSizeHistogram(Histogram schemaBatchSizeHistogram) {
+    // do nothing by default
+  }
+
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     // do nothing by default
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    // do nothing by default
+  }
+
+  public void setSchemaBatchTimeIntervalHistogram(Histogram schemaBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 

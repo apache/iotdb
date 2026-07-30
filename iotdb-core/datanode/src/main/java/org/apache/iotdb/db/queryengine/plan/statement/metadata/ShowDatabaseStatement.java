@@ -101,11 +101,9 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       if (isDetailed) {
         builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
-        builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
-        builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
-        builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
-        builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
-        builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(6).writeInt(databaseInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(databaseInfo.getDataRegionNum());
+        builder.getColumnBuilder(8).writeInt(databaseInfo.getMaxDataRegionNum());
       }
       builder.declarePosition();
     }
@@ -116,7 +114,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
 
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowStorageGroup(this, context);
+    return visitor.visitShowDatabase(this, context);
   }
 
   @Override

@@ -61,7 +61,7 @@ public class ImportDataTree extends AbstractImportData {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    sessionPool =
+    SessionPool.Builder sessionPoolBuilder =
         new SessionPool.Builder()
             .host(host)
             .port(Integer.parseInt(port))
@@ -70,8 +70,11 @@ public class ImportDataTree extends AbstractImportData {
             .maxSize(threadNum + 1)
             .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
-            .enableAutoFetch(false)
-            .build();
+            .enableAutoFetch(false);
+    if (useSsl) {
+      sessionPoolBuilder = configureSsl(sessionPoolBuilder);
+    }
+    sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);
     if (timeZoneID != null) {
       sessionPool.setTimeZone(timeZoneID);

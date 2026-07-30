@@ -92,7 +92,7 @@ public class CompactionAlignedChunkReader {
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
-    return getPontReader(
+    return getPointReader(
         timePageHeader,
         valuePageHeaders,
         compressedTimePageData,
@@ -106,11 +106,11 @@ public class CompactionAlignedChunkReader {
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
-    return getPontReader(
+    return getPointReader(
         timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas, false);
   }
 
-  private IPointReader getPontReader(
+  private IPointReader getPointReader(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
       ByteBuffer compressedTimePageData,
@@ -146,7 +146,7 @@ public class CompactionAlignedChunkReader {
                 valuePageHeaders.get(i),
                 uncompressedPageData,
                 valueType,
-                Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
+                valueChunkHeader.calculateDecoderForNonTimeChunk());
         valuePageReader.setDeleteIntervalList(valueDeleteIntervalList.get(i));
         valuePageReaders.add(valuePageReader);
       }

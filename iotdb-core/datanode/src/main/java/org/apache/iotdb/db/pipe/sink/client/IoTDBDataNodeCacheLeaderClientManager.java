@@ -21,13 +21,13 @@ package org.apache.iotdb.db.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
-import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,8 +42,6 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
     private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
-    private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
-
     // leader cache built by LRU
     private final Cache<String, TEndPoint> device2endpoint;
     // a hashmap to reuse the created endpoint
@@ -55,52 +53,48 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .tryAllocate(initMemorySizeInBytes)
-              .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
-              .setShrinkCallback(
-                  (oldMemory, newMemory) -> {
-                    memoryUsageCheatFactor.updateAndGet(
-                        factor -> factor * ((double) oldMemory / newMemory));
-                    LOGGER.info(
-                        "LeaderCacheManager.allocatedMemoryBlock has shrunk from {} to {}.",
-                        oldMemory,
-                        newMemory);
-                  })
-              .setExpandMethod(
-                  oldMemory ->
-                      Math.min(
-                          Math.max(oldMemory, 1) * 2,
-                          (long)
-                              (PipeDataNodeResourceManager.memory()
-                                      .getTotalNonFloatingMemorySizeInBytes()
-                                  * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())))
-              .setExpandCallback(
-                  (oldMemory, newMemory) -> {
-                    memoryUsageCheatFactor.updateAndGet(
-                        factor -> factor / ((double) newMemory / oldMemory));
-                    LOGGER.info(
-                        "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.",
-                        oldMemory,
-                        newMemory);
-                  });
+          PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
 
       device2endpoint =
           Caffeine.newBuilder()
               .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
-              .weigher(
-                  (Weigher<String, TEndPoint>)
-                      (device, endPoint) -> {
-                        final long weightInLong =
-                            (long) (device.getBytes().length * memoryUsageCheatFactor.get());
-                        if (weightInLong <= 0) {
-                          return Integer.MAX_VALUE;
-                        }
-                        final int weightInInt = (int) weightInLong;
-                        return weightInInt != weightInLong ? Integer.MAX_VALUE : weightInInt;
-                      })
+              .weigher((Weigher<String, TEndPoint>) (device, endPoint) -> device.getBytes().length)
               .recordStats()
               .build();
+
+      allocatedMemoryBlock
+          .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
+          .setShrinkCallback(
+              (oldMemory, newMemory) -> {
+                device2endpoint
+                    .policy()
+                    .eviction()
+                    .ifPresent(eviction -> eviction.setMaximum(newMemory));
+                LOGGER.info(
+                    DataNodePipeMessages.LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO,
+                    oldMemory,
+                    newMemory);
+              })
+          .setExpandMethod(
+              oldMemory ->
+                  Math.min(
+                      Math.max(oldMemory, 1) * 2,
+                      (long)
+                          (PipeDataNodeResourceManager.memory()
+                                  .getTotalNonFloatingMemorySizeInBytes()
+                              * CONFIG.getPipeLeaderCacheMemoryUsagePercentage())))
+          .setExpandCallback(
+              (oldMemory, newMemory) -> {
+                device2endpoint
+                    .policy()
+                    .eviction()
+                    .ifPresent(eviction -> eviction.setMaximum(newMemory));
+                LOGGER.info(
+                    DataNodePipeMessages
+                        .LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO,
+                    oldMemory,
+                    newMemory);
+              });
     }
 
     public TEndPoint getLeaderEndPoint(final String deviceId) {

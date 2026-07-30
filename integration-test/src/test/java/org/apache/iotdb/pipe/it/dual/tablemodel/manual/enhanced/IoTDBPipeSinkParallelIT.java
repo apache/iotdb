@@ -74,12 +74,15 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.serialize-by-region", "false");
       connectorAttributes.put("connector.parallel.tasks", "3");
 
       final TSStatus status =
@@ -93,7 +96,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.sg1.d1(time, s1) values (0, 1)",
@@ -101,9 +104,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
       expectedResSet.add("0,1.0,");
       expectedResSet.add("1,2.0,");

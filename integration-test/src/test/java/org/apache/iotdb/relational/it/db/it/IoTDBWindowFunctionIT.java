@@ -88,7 +88,7 @@ public class IoTDBWindowFunctionIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : sqlsWithoutNulls) {
@@ -106,14 +106,14 @@ public class IoTDBWindowFunctionIT {
   }
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(1024 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -130,7 +130,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,6,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER () AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER () AS cnt FROM demo ORDER BY device,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -149,7 +149,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -173,7 +173,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:22:00.000Z,null,2.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device) AS cnt FROM demo2 ORDER BY device,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -278,7 +278,7 @@ public class IoTDBWindowFunctionIT {
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
-        "SELECT *, count(value) OVER (PARTITION BY device ROWS 1 PRECEDING) AS cnt FROM demo ORDER BY device",
+        "SELECT *, count(value) OVER (PARTITION BY device ORDER BY time ROWS 1 PRECEDING) AS cnt FROM demo ORDER BY device",
         expectedHeader,
         retArray,
         DATABASE_NAME);

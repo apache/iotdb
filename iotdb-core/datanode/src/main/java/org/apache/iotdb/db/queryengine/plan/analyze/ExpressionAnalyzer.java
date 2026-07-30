@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -56,7 +58,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatD
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -108,7 +109,7 @@ public class ExpressionAnalyzer {
       if (path.getNodes().length > 1
           || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
-            "the suffix paths can only be measurement or one-level wildcard");
+            DataNodeQueryMessages.THE_SUFFIX_PATHS_CAN_ONLY_BE_MEASUREMENT_OR_ONE_LEVEL_WILDCARD);
       }
     } else if (expression instanceof TimestampOperand
         || expression instanceof ConstantOperand
@@ -184,7 +185,8 @@ public class ExpressionAnalyzer {
           if (identifyOutputColumnType(inputExpression, false)
               == ResultColumn.ColumnType.AGGREGATION) {
             throw new SemanticException(
-                "Aggregation results cannot be as input of the aggregation function.");
+                DataNodeQueryMessages
+                    .AGGREGATION_RESULTS_CANNOT_BE_AS_INPUT_OF_THE_AGGREGATION_FUNCTION);
           }
         }
         return ResultColumn.ColumnType.AGGREGATION;
@@ -203,7 +205,7 @@ public class ExpressionAnalyzer {
         if (checkedType == null) {
           throw new SemanticException(
               String.format(
-                  "Input of '%s' is illegal.",
+                  DataNodeQueryMessages.INPUT_OF_S_IS_ILLEGAL,
                   ((FunctionExpression) expression).getFunctionName()));
         }
         for (int i = lastCheckedIndex; i < inputExpressions.size(); i++) {
@@ -212,7 +214,8 @@ public class ExpressionAnalyzer {
           if (columnType != ResultColumn.ColumnType.CONSTANT && columnType != checkedType) {
             throw new SemanticException(
                 String.format(
-                    "Raw data and aggregation result hybrid input of '%s' is not supported.",
+                    DataNodeQueryMessages
+                        .RAW_DATA_AND_AGGREGATION_RESULT_HYBRID_INPUT_OF_S_IS_NOT_SUPPORTED,
                     ((FunctionExpression) expression).getFunctionName()));
           }
         }
@@ -247,7 +250,7 @@ public class ExpressionAnalyzer {
           return type;
         }
       }
-      throw new IllegalArgumentException("shouldn't attach here");
+      throw new IllegalArgumentException(DataNodeQueryMessages.SHOULDN_T_ATTACH_HERE);
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
       return ResultColumn.ColumnType.RAW;
     } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {
@@ -582,7 +585,10 @@ public class ExpressionAnalyzer {
   public static IDeviceID getDeviceNameInSourceExpression(Expression expression) {
     if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
-          "unsupported expression type for source expression: " + expression.getExpressionType());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_FOR_SOURCE_EXPRESSION_S_FB5583E7,
+              expression.getExpressionType()));
     }
     return ((TimeSeriesOperand) expression).getPath().getIDeviceID();
   }

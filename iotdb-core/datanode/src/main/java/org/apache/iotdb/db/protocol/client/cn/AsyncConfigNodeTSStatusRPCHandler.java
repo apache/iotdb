@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -60,10 +61,11 @@ public class AsyncConfigNodeTSStatusRPCHandler extends ConfigNodeAsyncRequestRPC
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info(
+          DataNodeMiscMessages.SUCCESSFULLY_ON_CONFIG_NODE, requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
-          "Failed to {} on ConfigNode: {}, response: {}",
+          DataNodeMiscMessages.FAILED_ON_CONFIG_NODE,
           requestType,
           formattedTargetLocation,
           response);

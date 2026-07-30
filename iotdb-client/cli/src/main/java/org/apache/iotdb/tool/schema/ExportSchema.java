@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
@@ -33,7 +34,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 
 import java.io.File;
@@ -77,7 +78,7 @@ public class ExportSchema extends AbstractSchemaTool {
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       ioTPrinter.println("Args args: " + e.getMessage());
-      ioTPrinter.println("Use -help for more information");
+      ioTPrinter.println(CliMessages.USE_HELP_FOR_MORE);
       System.exit(Constants.CODE_ERROR);
     } catch (Exception e) {
       ioTPrinter.println("Encounter an error, because " + e.getMessage());

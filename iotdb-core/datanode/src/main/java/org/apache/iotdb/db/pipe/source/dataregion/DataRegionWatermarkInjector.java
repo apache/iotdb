@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.watermark.PipeWatermarkEvent;
 
 import org.slf4j.Logger;
@@ -59,7 +60,7 @@ public class DataRegionWatermarkInjector {
       return watermarkEvent;
     } finally {
       LOGGER.info(
-          "Data region {}: Injected watermark event with timestamp: {}",
+          DataNodePipeMessages.DATA_REGION_INJECTED_WATERMARK_EVENT_WITH_TIMESTAMP,
           regionId,
           nextInjectionTime);
     }

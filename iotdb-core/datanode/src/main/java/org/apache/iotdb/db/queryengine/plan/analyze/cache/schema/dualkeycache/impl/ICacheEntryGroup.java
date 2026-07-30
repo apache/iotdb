@@ -45,6 +45,9 @@ interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
   T computeCacheEntry(
       final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation);
 
+  T computeCacheEntryIfPresent(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation);
+
   long removeCacheEntry(final SK secondKey);
 
   boolean isEmpty();

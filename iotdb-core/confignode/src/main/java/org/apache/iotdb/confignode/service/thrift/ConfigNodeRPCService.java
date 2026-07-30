@@ -61,17 +61,33 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
     try {
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.CONFIGNODE_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              configConf.getCnRpcMaxConcurrentClientNum(),
-              configConf.getThriftServerAwaitTimeForStopService(),
-              new ConfigNodeRPCServiceHandler(),
-              commonConfig.isRpcThriftCompressionEnabled(),
-              DeepCopyRpcTransportFactory.INSTANCE);
+          commonConfig.isEnableInternalSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.CONFIGNODE_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  configConf.getCnRpcMaxConcurrentClientNum(),
+                  configConf.getThriftServerAwaitTimeForStopService(),
+                  new ConfigNodeRPCServiceHandler(),
+                  commonConfig.isRpcThriftCompressionEnabled(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd(),
+                  commonConfig.getTrustStorePath(),
+                  commonConfig.getTrustStorePwd(),
+                  DeepCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.CONFIGNODE_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  configConf.getCnRpcMaxConcurrentClientNum(),
+                  configConf.getThriftServerAwaitTimeForStopService(),
+                  new ConfigNodeRPCServiceHandler(),
+                  commonConfig.isRpcThriftCompressionEnabled(),
+                  DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

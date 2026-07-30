@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -36,13 +37,13 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
@@ -66,6 +67,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -76,6 +78,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
   private static final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+  private static final int ATTRIBUTE_UPDATE_RETRY_NUM = 1;
   private final Map<Integer, Pair<Long, Integer>> dataNodeId2FailureDurationAndTimesMap =
       new HashMap<>();
   private final Set<ISchemaRegion> regionLeaders =
@@ -102,9 +105,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     // UpdateClearContainer and version / TEndPoint are not calculated
     final AtomicInteger limit =
         new AtomicInteger(
-            CommonDescriptor.getInstance()
-                .getConfig()
-                .getPipeConnectorRequestSliceThresholdBytes());
+            CommonDescriptor.getInstance().getConfig().getPipeSinkRequestSliceThresholdBytes());
 
     final AtomicBoolean hasRemaining = new AtomicBoolean(false);
     final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap =
@@ -150,7 +151,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
               // May fail due to region shutdown, migration or other reasons
               // Just ignore
               skipNextSleep = false;
-              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
+              LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_WRITE_ATTR_COMMIT, schemaRegionId);
             }
           });
     }
@@ -165,7 +166,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showClusterResp = client.showCluster();
     } catch (final ClientManagerException | TException e) {
-      LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
+      LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_FETCH_DATANODE_LOCATIONS);
       return Collections.emptyMap();
     }
     dataNodeId2FailureDurationAndTimesMap.clear();
@@ -215,46 +216,42 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
                                   ByteBuffer.wrap(bytes)));
                     }));
 
-    DnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithTimeoutInMs(
-            clientHandler,
+    final long timeoutInMs =
+        TimeUnit.SECONDS.toMillis(
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
+    DnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(clientHandler, ATTRIBUTE_UPDATE_RETRY_NUM, timeoutInMs);
 
     final AtomicBoolean needFetch = new AtomicBoolean(false);
+    final Set<Integer> failedDataNodes = new HashSet<>(clientHandler.getRequestIndices());
+    final long failureDurationToFetchInMs =
+        TimeUnit.SECONDS.toMillis(
+            iotdbConfig.getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch());
 
-    final Set<Integer> failedDataNodes =
-        clientHandler.getResponseMap().entrySet().stream()
-            .filter(
-                entry -> {
-                  final boolean failed =
-                      entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
-                  if (failed) {
-                    dataNodeId2FailureDurationAndTimesMap.compute(
-                        entry.getKey(),
-                        (k, v) -> {
-                          if (Objects.isNull(v)) {
-                            return new Pair<>(System.currentTimeMillis(), 1);
-                          }
-                          v.setRight(v.getRight() + 1);
-                          if (System.currentTimeMillis() - v.getLeft()
-                                  >= iotdbConfig
-                                      .getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch()
-                              || v.getRight()
-                                  >= iotdbConfig
-                                      .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
-                            needFetch.set(true);
-                          }
-                          return v;
-                        });
-                  } else {
-                    dataNodeId2FailureDurationAndTimesMap.remove(entry.getKey());
+    clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .map(Map.Entry::getKey)
+        .forEach(dataNodeId2FailureDurationAndTimesMap::remove);
+
+    failedDataNodes.forEach(
+        dataNodeId ->
+            dataNodeId2FailureDurationAndTimesMap.compute(
+                dataNodeId,
+                (k, v) -> {
+                  if (Objects.isNull(v)) {
+                    return new Pair<>(System.currentTimeMillis(), 1);
                   }
-                  return failed;
-                })
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toSet());
+                  v.setRight(v.getRight() + 1);
+                  if (System.currentTimeMillis() - v.getLeft() >= failureDurationToFetchInMs
+                      || v.getRight()
+                          >= iotdbConfig
+                              .getGeneralRegionAttributeSecurityServiceFailureTimesToFetch()) {
+                    needFetch.set(true);
+                  }
+                  return v;
+                }));
 
     // Compute node shrinkage before failure removal in commit
     final Map<SchemaRegionId, Set<TDataNodeLocation>> result =
@@ -302,7 +299,8 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     super(
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName()),
-        iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds() * 1000L);
+        TimeUnit.SECONDS.toMillis(
+            iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds()));
   }
 
   private static final class GeneralRegionAttributeSecurityServiceHolder {

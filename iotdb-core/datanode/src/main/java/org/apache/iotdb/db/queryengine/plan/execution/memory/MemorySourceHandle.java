@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -46,7 +47,10 @@ public class MemorySourceHandle implements ISourceHandle {
       RamUsageEstimator.shallowSizeOfInstance(MemorySourceHandle.class);
 
   public MemorySourceHandle(TsBlock result) {
-    Validate.notNull(result, "the TsBlock should not be null when constructing MemorySourceHandle");
+    Validate.notNull(
+        result,
+        DataNodeQueryMessages
+            .EXCEPTION_THE_TSBLOCK_SHOULD_NOT_BE_NULL_WHEN_CONSTRUCTING_MEMORYSOURCEHANDLE_8D205293);
     this.result = result;
     this.hasNext = true;
   }

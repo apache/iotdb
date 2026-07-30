@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.anomaly;
 
 import org.apache.iotdb.library.anomaly.util.WindowDetect;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -88,7 +89,7 @@ public class UDTFTwoSidedFilter implements UDTF {
       case TIMESTAMP:
       case DATE:
       default:
-        throw new UDFException("No such kind of data type.");
+        throw new UDFException(LibraryUdfMessages.NO_SUCH_DATA_TYPE);
     }
   }
 

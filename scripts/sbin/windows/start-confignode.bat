@@ -46,15 +46,15 @@ for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
 
 set JAVA_VERSION=%MAJOR_VERSION%
 
-@REM we do not check jdk that version less than 1.8 because they are too stale...
-IF "%JAVA_VERSION%" == "6" (
-	echo IoTDB only supports jdk >= 8, please check your java version.
-	goto finally
-)
-IF "%JAVA_VERSION%" == "7" (
-	echo IoTDB only supports jdk >= 8, please check your java version.
-	goto finally
-)
+	@REM IoTDB requires JDK 17 or later.
+	IF "%JAVA_VERSION%" == "" (
+		echo Failed to determine Java version. IoTDB only supports jdk ^>= 17, please check your java installation.
+		goto finally
+	)
+	IF %JAVA_VERSION% LSS 17 (
+		echo IoTDB only supports jdk ^>= 17, please check your java version.
+		goto finally
+	)
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -109,34 +109,6 @@ IF DEFINED CONFIG_FILE (
   echo "Can't find iotdb-system.properties or iotdb-confignode.properties, check the default ports"
   set cn_internal_port=10710
   set cn_consensus_port=10720
-)
-
-echo Check whether the ports are occupied....
-set occupied=0
-set cn_internal_port_occupied=0
-set cn_consensus_port_occupied=0
-for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
-    if %%i==TCP (
-       if %%j==%cn_internal_port% (
-         if !cn_internal_port_occupied!==0 (
-           echo The cn_internal_port %cn_internal_port% is already occupied, pid:%%k
-           set occupied=1
-           set cn_internal_port_occupied=1
-         )
-       ) else if %%j==%cn_consensus_port% (
-         if !cn_consensus_port_occupied!==0 (
-           echo The cn_consensus_port %cn_consensus_port% is already occupied, pid:%%k
-           set occupied=1
-           set cn_consensus_port_occupied=1
-         )
-       )
-    )
-)
-
-if %occupied%==1 (
-  echo There exists occupied port, please change the configuration.
-  TIMEOUT /T 10 /NOBREAK
-  exit 0
 )
 
 set CONF_PARAMS=-s

@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
@@ -34,9 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
@@ -166,7 +167,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
       logger.info(
-          "This TsFile {} isn't crashed, no need to redo wal log.", tsFileResource.getTsFilePath());
+          StorageEngineMessages
+              .STORAGE_LOG_THIS_TSFILE_ISN_T_CRASHED_NO_NEED_TO_REDO_WAL_LOG_A017A0F0,
+          tsFileResource.getTsFilePath());
       return;
     }
     try {
@@ -223,12 +226,14 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
           // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
           break;
+        case OBJECT_FILE_NODE:
+          break;
         default:
-          throw new RuntimeException("Unsupported type " + walEntry.getType());
+          throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_TYPE + walEntry.getType());
       }
     } catch (Exception e) {
       if (tsFileResource != null) {
-        logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+        logger.warn(StorageEngineMessages.ERROR_REDO_WAL, tsFileResource.getTsFile(), e);
       }
     }
   }
@@ -241,8 +246,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           .computeIfAbsent(
               tableName,
               t ->
-                  TableSchema.of(DataNodeTableCache.getInstance().getTable(databaseName, t))
-                      .toTsFileTableSchemaNoAttribute());
+                  TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(
+                      DataNodeTableCache.getInstance().getTable(databaseName, t)));
     }
   }
 
@@ -287,7 +292,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           long memTableSize = recoveryMemTable.memSize();
           double compressionRatio = ((double) memTableSize) / writer.getPos();
           logger.info(
-              "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3,
               writer.getFile().getAbsolutePath(),
               String.format("%.2f", compressionRatio),
               memTableSize,
@@ -295,7 +301,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           CompressionRatio.getInstance().updateRatio(memTableSize, writer.getPos(), dataRegionId);
         } catch (IOException e) {
           logger.error(
-              "{}: {} update compression ratio failed",
+              StorageEngineMessages.STORAGE_LOG_UPDATE_COMPRESSION_RATIO_FAILED_8A076DFC,
               databaseName,
               tsFileResource.getTsFile().getName(),
               e);

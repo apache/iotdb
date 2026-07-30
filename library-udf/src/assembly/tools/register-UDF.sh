@@ -89,6 +89,7 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function dwt as 'org.apache.iotdb.library.frequency.UDTFDWT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function idwt as 'org.apache.iotdb.library.frequency.UDTFIDWT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ifft as 'org.apache.iotdb.library.frequency.UDTFIFFT'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function envelope as 'org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis'"
 
 # Series Discovery
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function consecutivesequences as 'org.apache.iotdb.library.series.UDTFConsecutiveSequences'"
@@ -102,6 +103,7 @@ pass=root
 
 # Machine Learning
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function cluster as 'org.apache.iotdb.library.dlearn.UDTFCluster'"
 
 # Match
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function pattern_match as 'org.apache.iotdb.library.match.UDAFPatternMatch'"

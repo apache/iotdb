@@ -24,20 +24,26 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -51,12 +57,14 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -74,7 +82,14 @@ public class CompactionUtils {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String SYSTEM = "system";
 
+  private static ISchemaFetcher schemaFetcherForTest = null;
+
   private CompactionUtils() {}
+
+  @TestOnly
+  public static void setSchemaFetcher(ISchemaFetcher schemaFetcher) {
+    CompactionUtils.schemaFetcherForTest = schemaFetcher;
+  }
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
@@ -104,7 +119,7 @@ public class CompactionUtils {
       case SETTLE:
         return IoTDBConstant.SETTLE_SUFFIX;
       default:
-        logger.error("Current task type {} does not have tmp file suffix.", type);
+        logger.error(StorageEngineMessages.TASK_TYPE_NO_TMP_FILE_SUFFIX, type);
         return "";
     }
   }
@@ -115,7 +130,8 @@ public class CompactionUtils {
     // move to target file and delete old tmp target file
     if (!targetResource.getTsFile().exists()) {
       logger.info(
-          "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_TMP_TARGET_TSFILE_MAY_BE_DELETED_AFTER_COMPACTION_0BFFA73F,
           fullStorageGroupName,
           targetResource.getTsFilePath());
       return;
@@ -182,7 +198,7 @@ public class CompactionUtils {
                     try {
                       return tsFileResource.getModFileForWrite();
                     } catch (IOException e) {
-                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      logger.error(StorageEngineMessages.CANNOT_GET_MOD_FILE, tsFileResource, e);
                       return null;
                     }
                   })
@@ -252,13 +268,7 @@ public class CompactionUtils {
   }
 
   public static void addFilesToFileMetrics(TsFileResource resource) {
-    FileMetrics.getInstance()
-        .addTsFile(
-            resource.getDatabaseName(),
-            resource.getDataRegionId(),
-            resource.getTsFile().length(),
-            resource.isSeq(),
-            resource.getTsFile().getName());
+    FileMetrics.getInstance().addTsFile(resource);
   }
 
   private static void updateOneTargetMods(TsFileResource targetFile, Set<ModEntry> modifications)
@@ -286,14 +296,16 @@ public class CompactionUtils {
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_REAL_FILE, storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       if (!mergeTsFile.remove()) {
         result = false;
       }
       logger.info(
-          "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_DELETE_TSFILE_A97320DB,
+          storageGroupName,
+          mergeTsFile.getTsFilePath());
     }
     return result;
   }
@@ -306,7 +318,7 @@ public class CompactionUtils {
   @TestOnly
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_SOURCE_MODS, storageGroupName);
     for (TsFileResource tsFileResource : sourceFiles) {
       tsFileResource.removeModFile();
     }
@@ -336,22 +348,22 @@ public class CompactionUtils {
     for (TsFileResource targetResource : targetResources) {
       // Initial value
       targetResource.setGeneratedByPipe(true);
-      targetResource.setGeneratedByPipeConsensus(true);
+      targetResource.setGeneratedByIoTConsensusV2(true);
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            unseqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            unseqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            seqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            seqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
     }
   }
@@ -378,25 +390,25 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
-    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList, true);
-    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList, false);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList);
   }
 
-  public static void deleteSourceTsFileAndUpdateFileMetrics(
-      List<TsFileResource> resources, boolean seq) {
+  public static void deleteSourceTsFileAndUpdateFileMetrics(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
       deleteTsFileResourceWithoutLock(resource);
     }
-    FileMetrics.getInstance().deleteTsFile(seq, resources);
+    FileMetrics.getInstance().deleteTsFile(resources);
   }
 
   public static void deleteTsFileResourceWithoutLock(TsFileResource resource) {
     if (!resource.remove()) {
       logger.warn(
-          "[Compaction] delete file failed, file path is {}",
+          StorageEngineMessages.STORAGE_LOG_COMPACTION_DELETE_FILE_FAILED_FILE_PATH_IS_6E1D2670,
           resource.getTsFile().getAbsolutePath());
     } else {
-      logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+      logger.info(
+          StorageEngineMessages.COMPACTION_DELETE_FILE, resource.getTsFile().getAbsolutePath());
     }
   }
 
@@ -415,13 +427,22 @@ public class CompactionUtils {
   public static List<ModEntry> getMatchedModifications(
       PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
       IDeviceID deviceID,
-      String measurement)
+      String measurement,
+      ModEntry ttlDeletion)
       throws IllegalPathException {
-    if (patternTreeMap == null) {
-      return Collections.emptyList();
+    if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
+      return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
     PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
     List<ModEntry> modEntries = patternTreeMap.getOverlapped(path);
+    if (ttlDeletion != null) {
+      if (!(modEntries instanceof ArrayList)) {
+        List<ModEntry> newModEntries = new ArrayList<>(modEntries.size() + 1);
+        newModEntries.addAll(modEntries);
+        modEntries = newModEntries;
+      }
+      modEntries.add(ttlDeletion);
+    }
     if (path.getIDeviceID().isTableModel()) {
       modEntries =
           modEntries.stream()
@@ -462,6 +483,11 @@ public class CompactionUtils {
 
   public static ArrayDeviceTimeIndex buildDeviceTimeIndex(TsFileResource resource)
       throws IOException {
+    return buildDeviceTimeIndex(resource, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
+  }
+
+  public static ArrayDeviceTimeIndex buildDeviceTimeIndex(
+      TsFileResource resource, IDeviceID.Deserializer deserializer) throws IOException {
     long resourceFileSize =
         new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
@@ -486,5 +512,30 @@ public class CompactionUtils {
           new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
           new TimeRange(Long.MIN_VALUE, timeLowerBound));
     }
+  }
+
+  public static List<IMeasurementSchema> getLatestMeasurementSchemasForTreeModel(
+      IDeviceID deviceID, List<String> measurements) {
+    if (measurements.isEmpty()) {
+      return Collections.emptyList();
+    }
+    ISchemaFetcher schemaFetcher =
+        schemaFetcherForTest == null ? ClusterSchemaFetcher.getInstance() : schemaFetcherForTest;
+    PartialPath devicePath;
+    PathPatternTree patternTree = new PathPatternTree();
+    try {
+      devicePath = CompactionPathUtils.getPath(deviceID);
+      for (String measurement : measurements) {
+        patternTree.appendFullPath(devicePath, measurement);
+      }
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, false, null, true);
+    DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+    if (deviceSchemaInfo == null) {
+      return Collections.nCopies(measurements.size(), null);
+    }
+    return deviceSchemaInfo.getMeasurementSchemaList();
   }
 }

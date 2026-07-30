@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
+// When adding new types that need to be converted to ConfigPhysicalPlanType, you can refer to this
+// document:
+// https://docs.google.com/document/d/1WvAyuLn1y988svLl8rGUEcesMkAyH6UTT597KQAVm1A/edit?usp=sharing
 public enum AuthorRType {
   CREATE_USER,
   CREATE_ROLE,
@@ -49,5 +52,10 @@ public enum AuthorRType {
   LIST_USER,
   LIST_ROLE,
   LIST_USER_PRIV,
-  LIST_ROLE_PRIV
+  LIST_ROLE_PRIV,
+  UPDATE_MAX_USER_SESSION,
+  UPDATE_MIN_USER_SESSION,
+  // Remind to renew the convert codes in ConfigNodeRPCServiceProcessor
+  RENAME_USER,
+  ACCOUNT_UNLOCK
 }

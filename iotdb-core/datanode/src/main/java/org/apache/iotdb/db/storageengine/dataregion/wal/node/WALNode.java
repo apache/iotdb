@@ -21,19 +21,22 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -51,6 +54,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -58,10 +62,13 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractR
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -79,6 +86,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -93,7 +101,7 @@ public class WALNode implements IWALNode {
   // no iot consensus, all insert nodes can be safely deleted
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
   // timeout threshold when waiting for next wal entry
-  private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
+  public static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   // unique identifier of this WALNode
@@ -109,6 +117,8 @@ public class WALNode implements IWALNode {
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  // WAL files with versionId >= this value are retained for subscription consumers
+  private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
   private volatile boolean deleted = false;
 
@@ -122,7 +132,7 @@ public class WALNode implements IWALNode {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
-      logger.info("create folder {} for wal node-{}.", logDirectory, identifier);
+      logger.info(StorageEngineMessages.CREATE_FOLDER_FOR_WAL_NODE, logDirectory, identifier);
     }
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
     this.buffer =
@@ -133,7 +143,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     logger.debug(
-        "WAL node-{} logs insertRowNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_INSERTROWNODE_THE_SEARCH_INDEX_IS_027450AC,
         identifier,
         insertRowNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
@@ -143,7 +153,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
     logger.debug(
-        "WAL node-{} logs insertRowsNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_INSERTROWSNODE_THE_SEARCH_INDEX_IS_1AF72E25,
         identifier,
         insertRowsNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowsNode);
@@ -154,7 +164,8 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     logger.debug(
-        "WAL node-{} logs insertTabletNode, the search index is {}.",
+        StorageEngineMessages
+            .STORAGE_LOG_WAL_NODE_LOGS_INSERTTABLETNODE_THE_SEARCH_INDEX_IS_CF9A3600,
         identifier,
         insertTabletNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, rangeList);
@@ -164,7 +175,7 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
     logger.debug(
-        "WAL node-{} logs deleteDataNode, the search index is {}.",
+        StorageEngineMessages.STORAGE_LOG_WAL_NODE_LOGS_DELETEDATANODE_THE_SEARCH_INDEX_IS_6E49BC54,
         identifier,
         deleteDataNode.getSearchIndex());
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
@@ -175,7 +186,8 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
+          StorageEngineMessages
+              .STORAGE_LOG_WAL_NODE_LOGS_RELATIONALDELETEDATANODE_THE_SEARCH_INDEX_33258B30,
           identifier,
           deleteDataNode.getSearchIndex());
     }
@@ -187,6 +199,12 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(
       long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, separatorNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, ObjectNode objectNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, objectNode);
     return log(walEntry);
   }
 
@@ -247,7 +265,7 @@ public class WALNode implements IWALNode {
     try {
       new DeleteOutdatedFileTask().run();
     } catch (Exception e) {
-      logger.error("Fail to delete wal node-{}'s outdated files.", identifier, e);
+      logger.error(StorageEngineMessages.FAIL_TO_DELETE_WAL_NODE_OUTDATED_FILES, identifier, e);
     }
   }
 
@@ -277,7 +295,8 @@ public class WALNode implements IWALNode {
       if (allWalFilesOfOneNode == null || allWalFilesOfOneNode.length <= 1) {
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "wal node-{}:no wal file or wal file number less than or equal to one was found",
+              StorageEngineMessages
+                  .STORAGE_LOG_WAL_NODE_NO_WAL_FILE_OR_WAL_FILE_NUMBER_LESS_THAN_OR_EQUAL_3C65641C,
               identifier);
         }
         return false;
@@ -355,7 +374,8 @@ public class WALNode implements IWALNode {
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
       logger.debug(
-          "Effective information ratio is {}, active memTables cost is {}, total cost is {}",
+          StorageEngineMessages
+              .STORAGE_LOG_EFFECTIVE_INFORMATION_RATIO_IS_ACTIVE_MEMTABLES_COST_IS_D9A13DD2,
           effectiveInfoRatio,
           costOfActiveMemTables,
           totalCost);
@@ -364,7 +384,8 @@ public class WALNode implements IWALNode {
 
     private void summarizeExecuteResult() {
       logger.debug(
-          "Successfully delete {} outdated wal files for wal node-{}",
+          StorageEngineMessages
+              .STORAGE_LOG_SUCCESSFULLY_DELETE_OUTDATED_WAL_FILES_FOR_WAL_NODE_C141C741,
           successfullyDeleted.size(),
           identifier);
     }
@@ -383,7 +404,10 @@ public class WALNode implements IWALNode {
             successfullyDeleted.add(versionId);
           } else {
             logger.info(
-                "Fail to delete outdated wal file {} of wal node-{}.", currentWal, identifier);
+                StorageEngineMessages
+                    .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
+                currentWal,
+                identifier);
           }
         }
       }
@@ -431,7 +455,7 @@ public class WALNode implements IWALNode {
             StorageEngine.getInstance()
                 .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
       } catch (Exception e) {
-        logger.error("Fail to get data region processor for {}", oldestTsFile, e);
+        logger.error(StorageEngineMessages.FAIL_TO_GET_DATA_REGION_PROCESSOR, oldestTsFile, e);
         return false;
       }
       if (dataRegion == null) {
@@ -462,7 +486,8 @@ public class WALNode implements IWALNode {
             dataRegion.submitAFlushTask(
                 TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
-            "WAL node-{} flushes memTable-{} to TsFile {} because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
+            StorageEngineMessages
+                .STORAGE_LOG_WAL_NODE_FLUSHES_MEMTABLE_TO_TSFILE_BECAUSE_EFFECTIVE_INFORMATION_8CC86239,
             identifier,
             memTable.getMemTableId(),
             tsFile,
@@ -479,11 +504,11 @@ public class WALNode implements IWALNode {
             Thread.sleep(1_000);
             sleepTime += 1_000;
             if (sleepTime > 10_000) {
-              logger.warn("Waiting too long for memTable flush to be done.");
+              logger.warn(StorageEngineMessages.WAITING_TOO_LONG_FOR_MEMTABLE_FLUSH);
               break;
             }
           } catch (InterruptedException e) {
-            logger.warn("Interrupted when waiting for memTable flush to be done.");
+            logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_MEMTABLE_FLUSH);
             Thread.currentThread().interrupt();
           }
         }
@@ -512,7 +537,8 @@ public class WALNode implements IWALNode {
               new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
           WALFlushListener fileRolledListener = log(rollWALFileSignal);
           if (fileRolledListener.waitForResult() == Status.FAILURE) {
-            logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
+            logger.error(
+                StorageEngineMessages.FAIL_TO_ROLL_WAL_LOG_WRITER, fileRolledListener.getCause());
             return;
           }
 
@@ -527,11 +553,13 @@ public class WALNode implements IWALNode {
           // wait until getting the result
           // it's low-risk to block writes awhile because this memTable accumulates slowly
           if (flushListener.waitForResult() == Status.FAILURE) {
-            logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+            logger.error(
+                StorageEngineMessages.FAIL_TO_SNAPSHOT_MEMTABLE, tsFile, flushListener.getCause());
             return;
           }
           logger.info(
-              "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
+              StorageEngineMessages
+                  .STORAGE_LOG_WAL_NODE_SNAPSHOTS_MEMTABLE_TO_WAL_FILES_BECAUSE_EFFECTIVE_0A1304ED,
               identifier,
               memTable.getMemTableId(),
               String.format("%.4f", effectiveInfoRatio),
@@ -563,6 +591,7 @@ public class WALNode implements IWALNode {
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
+          && versionId < subscriptionRetainedMinVersionId
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
@@ -573,6 +602,11 @@ public class WALNode implements IWALNode {
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+  }
+
+  @Override
+  public void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    this.subscriptionRetainedMinVersionId = minVersionId;
   }
 
   /** This iterator is not concurrency-safe, cannot read the current-writing wal file. */
@@ -625,7 +659,9 @@ public class WALNode implements IWALNode {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
           logger.debug(
-              "update file to search failed, the next search index is {}", nextSearchIndex);
+              StorageEngineMessages
+                  .STORAGE_LOG_UPDATE_FILE_TO_SEARCH_FAILED_THE_NEXT_SEARCH_INDEX_IS_F3DC95F3,
+              nextSearchIndex);
           return false;
         }
       }
@@ -645,13 +681,26 @@ public class WALNode implements IWALNode {
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
+      // V3: track writer progress metadata for current entry group
+      AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
+      AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
+      AtomicLong currentEntryNodeId = new AtomicLong(-1);
+
+      long memorySize = 0;
 
       // try to collect current tmpNodes to insertNodes, return true if successfully collect an
       // insert node
       Runnable tryToCollectInsertNodeAndBumpIndex =
           () -> {
             if (!tmpNodes.get().isEmpty()) {
-              insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
+              long localSeq = currentEntryLocalSeq.get();
+              IndexedConsensusRequest req =
+                  (localSeq >= 0)
+                      ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
+                      : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
+              req.setPhysicalTime(currentEntryPhysicalTime.get())
+                  .setNodeId((int) currentEntryNodeId.get());
+              insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
               nextSearchIndex++;
               if (notFirstFile.get()) {
@@ -676,7 +725,9 @@ public class WALNode implements IWALNode {
             if (type.needSearch()) {
               // see WALInfoEntry#serialize, entry type + memtable id + plan node type
               buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
-              final long currentWalEntryIndex = buffer.getLong();
+              final long encodedSearchIndex = buffer.getLong();
+              final long currentWalEntryIndex = SearchNode.extractSearchIndex(encodedSearchIndex);
+              final boolean isLastFragment = SearchNode.isLastFragment(encodedSearchIndex);
               buffer.clear();
               if (currentWalEntryIndex == -1) {
                 // WAL entry of targetIndex has been fully collected, so put them into insertNodes
@@ -684,31 +735,80 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
-                tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
+                currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
+                currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                if (type == WALEntryType.OBJECT_FILE_NODE) {
+                  WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // only be called by leader read from wal
+                  // wal only has relativePath, offset, eof, length
+                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
+                  // content
+                  // need to add IoTConsensusRequest instead of ObjectNode
+                  tmpNodes
+                      .get()
+                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
+                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                } else {
+                  tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                  memorySize += buffer.remaining();
+                }
+                if (isLastFragment) {
+                  tryToCollectInsertNodeAndBumpIndex.run();
+                }
               } else {
                 // currentWalEntryIndex > targetIndex
                 // WAL entry of targetIndex has been fully collected, put them into insertNodes
                 tryToCollectInsertNodeAndBumpIndex.run();
                 if (currentWalEntryIndex != nextSearchIndex) {
                   logger.warn(
-                      "The search index of next WAL entry should be {}, but actually it's {}",
+                      StorageEngineMessages
+                          .STORAGE_LOG_THE_SEARCH_INDEX_OF_NEXT_WAL_ENTRY_SHOULD_BE_BUT_ACTUALLY_177BF8AF,
                       nextSearchIndex,
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
-                tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
+                currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
+                currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                if (type == WALEntryType.OBJECT_FILE_NODE) {
+                  WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // only be called by leader read from wal
+                  // wal only has relativePath, offset, eof, length
+                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
+                  // content
+                  // need to add IoTConsensusRequest instead of ObjectNode
+                  tmpNodes
+                      .get()
+                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
+                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                } else {
+                  tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                  memorySize += buffer.remaining();
+                }
+                if (isLastFragment) {
+                  tryToCollectInsertNodeAndBumpIndex.run();
+                }
               }
             } else {
               tryToCollectInsertNodeAndBumpIndex.run();
             }
-            if (hasCollectedSufficientData.get()) {
+            if (memorySize > config.getWalBufferSize()) {
+              tryToCollectInsertNodeAndBumpIndex.run();
+            }
+            if (memorySize > config.getWalBufferSize() || hasCollectedSufficientData.get()) {
               break COLLECT_FILE_LOOP;
             }
           }
         } catch (Exception e) {
           brokenFileId = WALFileUtils.parseVersionId(filesToSearch[currentFileIndex].getName());
           logger.error(
-              "Fail to read wal from wal file {}, skip this file.",
+              StorageEngineMessages
+                  .STORAGE_LOG_FAIL_TO_READ_WAL_FROM_WAL_FILE_SKIP_THIS_FILE_06A3B079,
               filesToSearch[currentFileIndex],
               e);
         }
@@ -746,11 +846,12 @@ public class WALNode implements IWALNode {
       while (!hasNext()) {
         if (!walFileRolled) {
           boolean timeout =
-              !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+              !buffer.waitForRollFile(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
           if (timeout) {
             bufferLastSearchIndex = buffer.getCurrentSearchIndex();
             logger.info(
-                "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
+                StorageEngineMessages
+                    .STORAGE_LOG_TIMEOUT_WHEN_WAITING_FOR_NEXT_WAL_ENTRY_READY_EXECUTE_ROLLWALFILE_FEE9700E,
                 bufferLastSearchIndex,
                 nextSearchIndex);
             rollWALFile();
@@ -759,7 +860,7 @@ public class WALNode implements IWALNode {
         } else {
           // only wait when the search index of the buffer remains the same as the previous check
           long finalBufferLastSearchIndex = bufferLastSearchIndex;
-          buffer.waitForFlush(buf -> buf.getCurrentSearchIndex() == finalBufferLastSearchIndex);
+          buffer.waitForRollFile(buf -> buf.getCurrentSearchIndex() == finalBufferLastSearchIndex);
         }
       }
     }
@@ -768,8 +869,8 @@ public class WALNode implements IWALNode {
     public void waitForNextReady(long time, TimeUnit unit)
         throws InterruptedException, TimeoutException {
       if (!hasNext()) {
-        boolean timeout = !buffer.waitForFlush(time, unit);
-        if (timeout || !hasNext()) {
+        boolean timeout = !buffer.waitForRollFile(time, unit);
+        if (timeout && !hasNext()) {
           throw new TimeoutException();
         }
       }
@@ -779,7 +880,8 @@ public class WALNode implements IWALNode {
     public void skipTo(long targetIndex) {
       if (targetIndex < nextSearchIndex) {
         logger.warn(
-            "Skip from {} to {}, it's a dangerous operation because insert plan {} may have been lost.",
+            StorageEngineMessages
+                .STORAGE_LOG_SKIP_FROM_TO_IT_S_A_DANGEROUS_OPERATION_BECAUSE_INSERT_PLAN_9283DC91,
             nextSearchIndex,
             targetIndex,
             targetIndex);
@@ -818,7 +920,10 @@ public class WALNode implements IWALNode {
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
-          "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
+          StorageEngineMessages.STORAGE_LOG_SEARCHINDEX_RESULT_FILES_6151DCEB,
+          nextSearchIndex,
+          fileIndex,
+          filesToSearch);
       // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose
       // searchIndex is larger than target searchIndex
       if (fileIndex == -1) {
@@ -852,9 +957,98 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALFileVersion();
   }
 
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    return buffer.getCurrentWALMetaDataSnapshot();
+  }
+
   @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
+  }
+
+  @Override
+  public long getRegionDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    return getDeletionBoundToFreeAtLeast(bytesToFree).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      // No files or only the current-writing file — cannot free anything
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    // Exclude the last file (currently being written)
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        // The next file's startSearchIndex is the boundary: everything before it can be deleted
+        if (i + 1 < walFiles.length) {
+          return new Pair<>(
+              WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName()),
+              WALFileUtils.parseVersionId(walFiles[i + 1].getName()));
+        }
+        break;
+      }
+    }
+    // Could not free enough even by deleting all non-current files — allow deleting all
+    return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return getDeletionBoundToFreeAtLeast(bytesToFree).right;
+  }
+
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
+    }
+    return new Pair<>(
+        WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName()),
+        WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName()));
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).right;
+  }
+
+  private int countExpiredRolledWalFiles(File[] walFiles, long cutoffTimeMs) {
+    int expiredPrefixLength = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      if (walFiles[i].lastModified() < cutoffTimeMs) {
+        expiredPrefixLength++;
+      } else {
+        break;
+      }
+    }
+    return expiredPrefixLength;
   }
 
   // endregion
@@ -888,7 +1082,8 @@ public class WALNode implements IWALNode {
     WALFlushListener walFlushListener = log(rollWALFileSignal);
     if (!deleted && walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
-          "Fail to trigger rolling wal node-{}'s wal file log writer.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAIL_TO_TRIGGER_ROLLING_WAL_NODE_S_WAL_FILE_LOG_WRITER_D1E595DC,
           identifier,
           walFlushListener.getCause());
     }

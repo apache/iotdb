@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
@@ -44,10 +45,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeMetaDeSerTest {
+
+  @Test
+  public void testPipeStatusTypeCompatibility() {
+    Assert.assertEquals((byte) 0, PipeStatus.RUNNING.getType());
+    Assert.assertEquals((byte) 1, PipeStatus.STOPPED.getType());
+    Assert.assertEquals((byte) 2, PipeStatus.DROPPED.getType());
+    Assert.assertEquals((byte) 3, PipeStatus.PRE_DELETE.getType());
+  }
 
   @Test
   public void test() throws IOException {
@@ -110,6 +120,16 @@ public class PipeMetaDeSerTest {
                     new PipeTaskMeta(
                         new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
                         789));
+                put(
+                    789,
+                    new PipeTaskMeta(
+                        new TimePartitionProgressIndex(
+                            Map.of(
+                                0L,
+                                new SimpleProgressIndex(0, 1),
+                                1L,
+                                new SimpleProgressIndex(0, 2))),
+                        789));
                 put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0));
               }
             });
@@ -140,8 +160,13 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta
         .getConsensusGroupId2TaskMetaMap()
         .get(456)
-        .trackException(new PipeRuntimeSinkCriticalException("test456"));
+        .trackExceptionMessage(new PipeRuntimeSinkCriticalException("test456"));
 
+    runtimeByteBuffer = pipeRuntimeMeta.serialize();
+    pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
+    Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
+
+    pipeRuntimeMeta.getStatus().set(PipeStatus.PRE_DELETE);
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
@@ -150,5 +175,43 @@ public class PipeMetaDeSerTest {
     final ByteBuffer byteBuffer = pipeMeta.serialize();
     final PipeMeta pipeMeta1 = PipeMeta.deserialize4Coordinator(byteBuffer);
     Assert.assertEquals(pipeMeta, pipeMeta1);
+  }
+
+  @Test
+  public void testClearExceptionMessagesBeforeClearTime() {
+    final PipeTaskMeta staleTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    staleTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("stale", 100L));
+    final PipeTaskMeta freshTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    freshTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("fresh", 300L));
+
+    final ConcurrentHashMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(1, staleTaskMeta);
+    taskMetaMap.put(2, freshTaskMeta);
+    final PipeRuntimeMeta runtimeMeta = new PipeRuntimeMeta(taskMetaMap);
+    runtimeMeta
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(1, new PipeRuntimeCriticalException("stale node", 100L));
+    runtimeMeta
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(2, new PipeRuntimeCriticalException("fresh node", 300L));
+
+    runtimeMeta.clearExceptionMessagesBefore(200L);
+
+    Assert.assertFalse(staleTaskMeta.hasExceptionMessages());
+    Assert.assertTrue(freshTaskMeta.hasExceptionMessages());
+    Assert.assertFalse(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(1));
+    Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(2));
+  }
+
+  @Test
+  public void testPipeTaskMetaKeepsOnlyLatestException() {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    pipeTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("first", 100L));
+    pipeTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("latest", 200L));
+
+    final Iterator<?> exceptions = pipeTaskMeta.getExceptionMessages().iterator();
+    Assert.assertTrue(exceptions.hasNext());
+    Assert.assertEquals(new PipeRuntimeCriticalException("latest", 200L), exceptions.next());
+    Assert.assertFalse(exceptions.hasNext());
   }
 }

@@ -77,7 +77,7 @@ def test_dialect():
         # test get_schema_names
         schema_names = insp.get_schema_names()
         if not operator.ge(
-            schema_names, ["root.__system", "root.cursor", "root.cursor_s1"]
+            schema_names, ["root.__audit", "root.cursor", "root.cursor_s1"]
         ):
             test_fail()
             print_message("Actual result " + str(schema_names))

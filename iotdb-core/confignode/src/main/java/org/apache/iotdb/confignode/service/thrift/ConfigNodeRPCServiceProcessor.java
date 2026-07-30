@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -30,6 +33,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -42,6 +46,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -79,9 +84,11 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
@@ -90,10 +97,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -109,16 +119,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -140,7 +150,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
@@ -148,21 +157,24 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -198,13 +210,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -223,11 +234,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -288,7 +298,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcSystemConfigurationResp();
 
     // Print log to record the ConfigNode that performs the GetConfigurationRequest
-    LOGGER.info("Execute GetSystemConfiguration with result {}", resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GETSYSTEMCONFIGURATION_WITH_RESULT, resp);
     return resp;
   }
 
@@ -297,12 +307,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TGetClusterIdResp resp = new TGetClusterIdResp();
     String clusterId = configManager.getClusterManager().getClusterId();
     if (clusterId == null) {
-      LOGGER.error("clusterId not generated yet, should never happen.");
+      LOGGER.error(ConfigNodeMessages.CLUSTERID_NOT_GENERATED_YET_SHOULD_NEVER_HAPPEN);
       return resp.setClusterId("")
           .setStatus(new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode()));
     }
     resp.setClusterId(clusterId).setStatus(RpcUtils.SUCCESS_STATUS);
-    LOGGER.info("Execute getClusterId with result {}", resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GETCLUSTERID_WITH_RESULT, resp);
     return resp;
   }
 
@@ -313,7 +323,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
-    LOGGER.info("Execute RegisterDataNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERDATANODEREQUEST_WITH_RESULT, req, resp);
 
     return resp;
   }
@@ -323,8 +333,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
-    LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_RESTARTDATANODEREQUEST_WITH_RESULT, req, resp);
 
+    return resp;
+  }
+
+  @Override
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
+    final TDataNodeLeaseRecoveryResp resp = configManager.reloadCacheAfterLeaseRecovery();
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GET_METADATA_WITH_RESULT, resp.getStatus());
     return resp;
   }
 
@@ -332,22 +349,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) {
     TAINodeRegisterResp resp =
         ((AINodeRegisterResp) configManager.registerAINode(req)).convertToAINodeRegisterResp();
-    LOGGER.info("Execute RegisterAINodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERAINODEREQUEST_WITH_RESULT, req, resp);
     return resp;
   }
 
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) {
     TAINodeRestartResp resp = configManager.restartAINode(req);
-    LOGGER.info("Execute RestartAINodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_RESTARTAINODEREQUEST_WITH_RESULT, req, resp);
     return resp;
   }
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove AINode");
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_AINODE);
     TSStatus status = configManager.removeAINode();
-    LOGGER.info("ConfigNode RPC Service finished to remove AINode, result: {}", status);
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT, status);
     return status;
   }
 
@@ -369,13 +386,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_DATANODE_REQ, req);
     RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
     DataNodeToStatusResp removeResp =
         (DataNodeToStatusResp) configManager.removeDataNode(removeDataNodePlan);
     TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
     LOGGER.info(
-        "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
+        ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_DATANODE_REQ_RESULT,
+        req,
+        resp);
     return resp;
   }
 
@@ -418,7 +437,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final TSStatus resp = configManager.setDatabase(setPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
-    LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, resp);
 
     return resp;
   }
@@ -431,37 +450,42 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (databaseSchema.isSetTTL() && !databaseSchema.isIsTableModel()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+              .setMessage(
+                  ConfigNodeMessages.FAILED_TO_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TTL_YET);
     }
     if (databaseSchema.isSetSchemaReplicationFactor()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER SchemaReplicationFactor yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_SCHEMAREPLICATIONFACTOR_YET_AD96111F);
     }
     if (databaseSchema.isSetDataReplicationFactor()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7);
     }
 
     if (databaseSchema.isSetTimePartitionOrigin()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3);
     }
 
     if (databaseSchema.isSetTimePartitionInterval()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F);
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);
+      LOGGER.warn(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -470,7 +494,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
-    LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, resp);
 
     return resp;
   }
@@ -521,7 +545,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final CountDatabasePlan plan =
         new CountDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
@@ -541,7 +568,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getDatabasePathPattern(),
             scope,
             req.isSetIsTableModel() && req.isIsTableModel(),
-            false);
+            false,
+            !req.isSetCanSeeAuditDB() || req.isCanSeeAuditDB());
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -572,7 +600,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
     return configManager.getSchemaPartition(
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())), true);
   }
 
   @Override
@@ -602,7 +630,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
+    return configManager.getNodePathsPartition(
+        partialPath, scope, req.getLevel(), !req.isSetNeedAuditDB() || req.isNeedAuditDB());
   }
 
   @Override
@@ -620,94 +649,139 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager.showRepairDataPartitionTableProgress();
+  }
+
+  @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
             req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
+  }
+
+  @Override
+  public TGetAINodeLocationResp getAINodeLocation() throws TException {
+    final TGetAINodeLocationResp resp = new TGetAINodeLocationResp();
+    final TSStatus status = new TSStatus();
+    try {
+      final List<TAINodeConfiguration> registeredAINodes =
+          configManager.getNodeManager().getRegisteredAINodes();
+
+      if (registeredAINodes == null || registeredAINodes.isEmpty()) {
+        status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
+        status.setMessage(ConfigNodeMessages.NO_REGISTERED_AINODE_FOUND);
+        resp.setStatus(status);
+        return resp;
+      }
+
+      final TAINodeLocation loc = registeredAINodes.get(0).getLocation();
+      resp.setAiNodeLocation(loc);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setMessage(ConfigNodeMessages.AINODE_LOCATION_RESOLVED);
+
+    } catch (Exception e) {
+      status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(ConfigNodeMessages.GETAINODELOCATION_FAILED + e.getMessage());
+    }
+    resp.setStatus(status);
+    return resp;
   }
 
   @Override
   public TAuthorizerResp queryPermission(final TAuthorizerReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
-    }
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorTreePlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
                     req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
+                    req.getExecutedByUserID(),
+                    req.getNewUsername()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
     resp.setTag(dataSet.getTag());
+    resp.setUsersInfo(dataSet.getUsersInfo());
     return resp;
   }
 
   @Override
   public TSStatus operateRPermission(final TAuthorizerRelationalReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
+    ConfigPhysicalPlanType configPhysicalPlanType =
+        AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType());
     return configManager.operatePermission(
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            configPhysicalPlanType,
             req.getUserName(),
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
             req.getPermissions(),
             req.isGrantOpt(),
-            req.getPassword()));
+            req.getPassword(),
+            req.getExecutedByUserID(),
+            req.getNewUsername()));
   }
 
   @Override
   public TAuthorizerResp queryRPermission(final TAuthorizerRelationalReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
                 new AuthorRelationalPlan(
-                    ConfigPhysicalPlanType.values()[
-                        req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+                    AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType()),
                     req.getUserName(),
                     req.getRoleName(),
                     req.getDatabase(),
                     req.getTable(),
                     req.getPermissions(),
                     req.isGrantOpt(),
-                    req.getPassword()));
+                    req.getPassword(),
+                    req.getExecutedByUserID(),
+                    ""));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
+    resp.setUsersInfo(dataSet.getUsersInfo());
     resp.setTag(dataSet.getTag());
     return resp;
   }
 
   @Override
   public TPermissionInfoResp login(TLoginReq req) {
-    return configManager.login(req.getUserrname(), req.getPassword());
+    return configManager.login(
+        req.getUserrname(),
+        req.getPassword(),
+        req.isSetUseEncryptedPassword() && req.isUseEncryptedPassword());
   }
 
   @Override
@@ -765,7 +839,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERCONFIGNODEREQUEST_WITH_RESULT, req, resp);
 
     return resp;
   }
@@ -780,13 +854,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     try {
       SystemPropertiesUtils.storeSystemParameters();
     } catch (IOException e) {
-      LOGGER.error("Write confignode-system.properties failed", e);
+      LOGGER.error(ConfigNodeMessages.WRITE_CONFIGNODE_SYSTEM_PROPERTIES_FAILED, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
 
     // The initial startup of Non-Seed-ConfigNode finished
     LOGGER.info(
-        "{} has successfully started and joined the cluster: {}.",
+        ConfigNodeMessages.HAS_SUCCESSFULLY_STARTED_AND_JOINED_THE_CLUSTER,
         ConfigNodeConstant.GLOBAL_NAME,
         configNodeConfig.getClusterName());
     return StatusUtils.OK;
@@ -799,7 +873,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
     LOGGER.info(
-        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        ConfigNodeMessages.THE_RESULT_OF_SUBMITTING_REMOVECONFIGNODE_JOB_IS_REMOVECONFIGNODEREQUEST,
         status,
         configNodeLocation);
 
@@ -808,23 +882,29 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
-    if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
+    if (configNodeConfig.getConfigNodeId() != -1
+        && configNodeLocation.getConfigNodeId() != configNodeConfig.getConfigNodeId()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
-              "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
+              ConfigNodeMessages
+                  .MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_TARGET_CONFIGNODE_NOT_CURRENT_CONFIGNODE_608E64F9);
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
     try {
       configManager.getConsensusManager().getConsensusImpl().deleteLocalPeer(groupId);
+    } catch (ConsensusGroupNotExistException e) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setMessage(ConfigNodeMessages.REMOVE_CONSENSUSGROUP_SUCCESS);
     } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
-              "remove ConsensusGroup failed because internal failure. See other logs for more details");
+              ConfigNodeMessages
+                  .MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_INTERNAL_FAILURE_SEE_OTHER_LOGS_MORE_51858EC2);
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("remove ConsensusGroup success.");
+        .setMessage(ConfigNodeMessages.REMOVE_CONSENSUSGROUP_SUCCESS);
   }
 
   @Override
@@ -855,7 +935,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop And Clear ConfigNode Success.");
+        .setMessage(ConfigNodeMessages.STOP_AND_CLEAR_CONFIGNODE_SUCCESS);
   }
 
   @Override
@@ -941,11 +1021,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus flush(final TFlushReq req) throws TException {
     if (req.storageGroups != null) {
-      final List<String> noExistSg =
+      final List<String> noExistDB =
           configManager.getPartitionManager().filterUnExistDatabases(req.storageGroups);
-      if (!noExistSg.isEmpty()) {
+      if (!noExistDB.isEmpty()) {
         final StringBuilder sb = new StringBuilder();
-        noExistSg.forEach(storageGroup -> sb.append(storageGroup).append(","));
+        noExistDB.forEach(database -> sb.append(database).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
             "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");
@@ -990,6 +1070,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowAppliedConfigurationsResp showAppliedConfigurations(int nodeId) throws TException {
+    return configManager.showAppliedConfigurations(nodeId);
+  }
+
+  @Override
   public TSStatus setSystemStatus(String status) {
     return configManager.setSystemStatus(status);
   }
@@ -1001,8 +1086,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus killQuery(String queryId, int dataNodeId) {
-    return configManager.killQuery(queryId, dataNodeId);
+  public TSStatus killQuery(String queryId, int dataNodeId, String allowedUsername) {
+    return configManager.killQuery(queryId, dataNodeId, allowedUsername);
   }
 
   @Override
@@ -1122,6 +1207,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) throws TException {
+    return configManager.alterEncodingCompressor(req);
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     return configManager.deleteTimeSeries(req);
   }
@@ -1134,6 +1224,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
     return configManager.alterLogicalView(req);
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+    return configManager.alterTimeSeriesDataType(req);
   }
 
   @Override
@@ -1203,6 +1298,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    return configManager.alterTopic(req);
+  }
+
+  @Override
   public TSStatus dropTopic(String topicName) {
     return configManager.dropTopic(
         new TDropTopicReq().setTopicName(topicName).setIfExistsCondition(false));
@@ -1259,6 +1359,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) {
+    return configManager.getCommitProgress(req);
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     return configManager.getRegionId(req);
   }
@@ -1276,6 +1381,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     return configManager.getSeriesSlotList(req);
+  }
+
+  @Override
+  public TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req) {
+    return configManager.getRegionGroupsByTime(req);
   }
 
   @Override
@@ -1314,33 +1424,28 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createModel(TCreateModelReq req) {
-    return configManager.createModel(req);
+  public TSStatus createExternalService(TCreateExternalServiceReq req) {
+    return configManager.createExternalService(req);
   }
 
   @Override
-  public TSStatus dropModel(TDropModelReq req) {
-    return configManager.dropModel(req);
+  public TSStatus startExternalService(int dataNodeId, String serviceName) {
+    return configManager.startExternalService(dataNodeId, serviceName);
   }
 
   @Override
-  public TShowModelResp showModel(TShowModelReq req) {
-    return configManager.showModel(req);
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) {
+    return configManager.stopExternalService(dataNodeId, serviceName);
   }
 
   @Override
-  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    return configManager.getModelInfo(req);
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) {
+    return configManager.dropExternalService(dataNodeId, serviceName);
   }
 
   @Override
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
-    return configManager.updateModelInfo(req);
-  }
-
-  @Override
-  public TSStatus createTraining(TCreateTrainingReq req) throws TException {
-    return configManager.createTraining(req);
+  public TExternalServiceListResp showExternalService(int dataNodeId) {
+    return configManager.showExternalService(dataNodeId);
   }
 
   @Override
@@ -1405,8 +1510,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
-    return configManager.fetchTables(fetchTableMap);
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final byte tableNodeStatus) {
+    return configManager.fetchTables(fetchTableMap, TableNodeStatus.deserialize(tableNodeStatus));
   }
 
   @Override

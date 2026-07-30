@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
@@ -108,19 +111,16 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
     if (fullyDirtyFiles.isEmpty() && filesView.sourceFilesInCompactionPerformer.isEmpty()) {
       LOGGER.info(
-          "{}-{} [Compaction] Settle compaction file list is empty, end it",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_SETTLE_COMPACTION_FILE_LIST_IS_EMPTY_END_IT_56CF079D,
           storageGroupName,
           dataRegionId);
     }
     long startTime = System.currentTimeMillis();
 
     LOGGER.info(
-        "{}-{} [Compaction] SettleCompaction task starts with {} fully_dirty files "
-            + "and {} partially_dirty files. "
-            + "Fully_dirty files : {}, partially_dirty files : {} . "
-            + "Fully_dirty files size is {} MB, "
-            + "partially_dirty file size is {} MB. "
-            + "Memory cost is {} MB.",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_STARTS_WITH_FULLY_DIRTY_0962C95A,
         storageGroupName,
         dataRegionId,
         fullyDirtyFiles.size(),
@@ -136,8 +136,12 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         new File(
             allSourceFiles.get(0).getTsFile().getAbsolutePath()
                 + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
+
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
       calculateSourceFilesAndTargetFiles();
+      CompactionUtils.prepareCompactionModFiles(
+          filesView.targetFilesInPerformer, filesView.sourceFilesInCompactionPerformer);
+
       isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
       Arrays.fill(isHoldingWriteLock, false);
       compactionLogger.logSourceFiles(fullyDirtyFiles);
@@ -158,16 +162,16 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (isSuccess) {
         if (partiallyDirtyFileSize == 0) {
           LOGGER.info(
-              "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s."
-                  + "Fully_dirty files num is {}.",
+              StorageEngineMessages
+                  .STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_SUCCESSFULLY_TIME_2BD3839A,
               storageGroupName,
               dataRegionId,
               String.format("%.2f", costTime),
               fullyDirtyFiles.size());
         } else {
           LOGGER.info(
-              "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s."
-                  + "Fully_dirty files num is {} and partially_dirty files num is {}.",
+              StorageEngineMessages
+                  .STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_SUCCESSFULLY_TIME_4FEB0F56,
               storageGroupName,
               dataRegionId,
               String.format("%.2f", costTime),
@@ -177,8 +181,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         }
       } else {
         LOGGER.info(
-            "{}-{} [Compaction] SettleCompaction task finishes with some error, time cost is {} s."
-                + "Fully_dirty files num is {} and there are {} files fail to delete.",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_SETTLECOMPACTION_TASK_FINISHES_WITH_SOME_ERROR_A8A15439,
             storageGroupName,
             dataRegionId,
             String.format("%.2f", costTime),
@@ -204,7 +208,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  public boolean settleWithFullyDirtyFiles() {
+  public boolean settleWithFullyDirtyFiles() throws IllegalPathException, IOException {
     if (fullyDirtyFiles.isEmpty()) {
       return true;
     }
@@ -213,19 +217,21 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
       }
+
       boolean res = deleteTsFileOnDisk(resource);
       if (res) {
         fullyDeletedSuccessNum++;
         LOGGER.debug(
-            "Settle task deletes fully_dirty tsfile {} successfully.",
+            StorageEngineMessages
+                .STORAGE_LOG_SETTLE_TASK_DELETES_FULLY_DIRTY_TSFILE_SUCCESSFULLY_18D81225,
             resource.getTsFile().getAbsolutePath());
         if (recoverMemoryStatus) {
-          FileMetrics.getInstance()
-              .deleteTsFile(resource.isSeq(), Collections.singletonList(resource));
+          FileMetrics.getInstance().deleteTsFile(Collections.singletonList(resource));
         }
       } else {
         LOGGER.error(
-            "Settle task fail to delete fully_dirty tsfile {}.",
+            StorageEngineMessages
+                .STORAGE_LOG_SETTLE_TASK_FAIL_TO_DELETE_FULLY_DIRTY_TSFILE_B7DAEA8D,
             resource.getTsFile().getAbsolutePath());
       }
       isSuccess = isSuccess && res;
@@ -239,8 +245,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       return;
     }
     LOGGER.info(
-        "{}-{} [Compaction] Start to settle {} {} partially_dirty files, "
-            + "total file size is {} MB",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_START_TO_SETTLE_PARTIALLY_DIRTY_FILES_TOTAL_FILE_BAC113C4,
         storageGroupName,
         dataRegionId,
         filesView.sourceFilesInCompactionPerformer.size(),
@@ -250,10 +256,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     compact(logger);
     double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
     LOGGER.info(
-        "{}-{} [Compaction] Finish to settle {} {} partially_dirty files successfully , "
-            + "target file is {},"
-            + "time cost is {} s, "
-            + "compaction speed is {} MB/s, {}",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_FINISH_TO_SETTLE_PARTIALLY_DIRTY_FILES_SUCCESSFULLY_9ACFD5C0,
         storageGroupName,
         dataRegionId,
         filesView.sourceFilesInCompactionPerformer.size(),
@@ -267,7 +271,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   @Override
   public void recover() {
     LOGGER.info(
-        "{}-{} [Compaction][Recover] Start to recover settle compaction.",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_RECOVER_START_TO_RECOVER_SETTLE_COMPACTION_C342241D,
         storageGroupName,
         dataRegionId);
     try {
@@ -277,7 +282,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       recoverFullyDirtyFiles();
       recoverPartiallyDirtyFiles();
       LOGGER.info(
-          "{}-{} [Compaction][Recover] Finish to recover settle compaction successfully.",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_RECOVER_FINISH_TO_RECOVER_SETTLE_COMPACTION_SUCCESSFULLY_714EF642,
           storageGroupName,
           dataRegionId);
       if (needRecoverTaskInfoFromLogFile) {
@@ -288,9 +294,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  public void recoverFullyDirtyFiles() {
+  public void recoverFullyDirtyFiles() throws IllegalPathException, IOException {
     if (!settleWithFullyDirtyFiles()) {
-      throw new CompactionRecoverException("Failed to delete fully_dirty source file.");
+      throw new CompactionRecoverException(StorageEngineMessages.FAILED_DELETE_FULLY_DIRTY_SOURCE);
     }
   }
 
@@ -304,7 +310,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   public void recoverSettleTaskInfoFromLogFile() throws IOException {
     LOGGER.info(
-        "{}-{} [Compaction][Recover] compaction log is {}",
+        StorageEngineMessages.STORAGE_LOG_COMPACTION_RECOVER_COMPACTION_LOG_IS_DF6FD183,
         storageGroupName,
         dataRegionId,
         logFile);

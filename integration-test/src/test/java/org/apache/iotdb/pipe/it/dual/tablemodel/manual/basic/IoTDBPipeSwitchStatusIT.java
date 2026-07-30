@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
@@ -66,6 +67,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -102,7 +104,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -118,7 +121,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p3").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -131,7 +135,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
@@ -140,7 +145,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
     }
@@ -160,6 +166,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -182,7 +189,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -194,20 +202,23 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), status.getCode());
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.stream().filter((o) -> o.id.equals("p1")).count());
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
@@ -215,7 +226,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
@@ -229,21 +241,19 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -267,14 +277,16 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           0,
@@ -288,7 +300,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.stream().filter((o) -> o.id.equals("p1")).count());
     }
@@ -308,6 +321,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
@@ -337,14 +351,16 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("p").getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("*").getCode());
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -357,14 +373,16 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("p").getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("*").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
@@ -377,14 +395,16 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("p").getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("*").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
     }

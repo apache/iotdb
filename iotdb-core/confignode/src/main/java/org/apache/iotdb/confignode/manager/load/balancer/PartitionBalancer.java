@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.structure.BalanceTreeMap;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.partition.DataPartitionPolicyTable;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -40,12 +41,12 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -84,7 +85,8 @@ public class PartitionBalancer {
         break;
       default:
         LOGGER.warn(
-            "Unknown DataPartition allocation strategy {}, using INHERIT strategy by default.",
+            ManagerMessages
+                .UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT,
             ConfigNodeDescriptor.getInstance().getConf().getDataPartitionAllocationStrategy());
         this.dataPartitionAllocationStrategy = DataPartitionAllocationStrategy.INHERIT;
         break;
@@ -260,7 +262,7 @@ public class PartitionBalancer {
       availableDataRegionGroupCounter.put(
           greedyGroupId, availableDataRegionGroupCounter.get(greedyGroupId) + 1);
       LOGGER.warn(
-          "[PartitionBalancer] The SeriesSlot: {} in TimeSlot: {} will be allocated to DataRegionGroup: {}, because the original target: {} is currently unavailable.",
+          ManagerMessages.PARTITIONBALANCER_THE_SERIESSLOT_IN_TIMESLOT_WILL_BE,
           seriesPartitionSlot,
           timePartitionSlot,
           greedyGroupId,
@@ -274,7 +276,7 @@ public class PartitionBalancer {
       List<TTimePartitionSlot> timePartitionSlots,
       BalanceTreeMap<TConsensusGroupId, Integer> availableDataRegionGroupCounter,
       SeriesPartitionTable seriesPartitionTable) {
-    final Random random = new Random();
+    final SecureRandom random = new SecureRandom();
     List<TConsensusGroupId> availableDataRegionGroups =
         new ArrayList<>(availableDataRegionGroupCounter.keySet());
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
@@ -330,7 +332,7 @@ public class PartitionBalancer {
       }
 
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Database {} not exists when updateDataAllotTable", database);
+      LOGGER.error(ManagerMessages.DATABASE_NOT_EXISTS_WHEN_UPDATEDATAALLOTTABLE, database);
     }
   }
 
@@ -354,7 +356,8 @@ public class PartitionBalancer {
                 dataPartitionPolicyTable.setDataAllotMap(
                     getPartitionManager().getLastDataAllotTable(database));
               } catch (DatabaseNotExistsException e) {
-                LOGGER.error("Database {} not exists when setupPartitionBalancer", database);
+                LOGGER.error(
+                    ManagerMessages.DATABASE_NOT_EXISTS_WHEN_SETUPPARTITIONBALANCER, database);
               } finally {
                 dataPartitionPolicyTable.releaseLock();
               }

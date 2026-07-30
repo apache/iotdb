@@ -19,46 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
-public class ShowPathSetTemplateStatement extends ShowStatement implements IConfigStatement {
-
-  private String templateName;
+public class ShowPathSetTemplateStatement extends AbstractShowExactTemplate {
 
   public ShowPathSetTemplateStatement(String templateName) {
-    super();
-    statementType = StatementType.SHOW_PATH_SET_SCHEMA_TEMPLATE;
-    this.templateName = templateName;
-  }
-
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public void setTemplateName(String templateName) {
-    this.templateName = templateName;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.SUPER_USER.equals(userName),
-        "Only the admin user can perform this operation");
+    super(templateName, StatementType.SHOW_PATH_SET_SCHEMA_TEMPLATE);
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowPathSetTemplate(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
   }
 }

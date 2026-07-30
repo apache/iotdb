@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestManager;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +39,17 @@ public class DataNodeExternalServiceAsyncRequestManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeExternalServiceAsyncRequestManager.class);
 
+  private DataNodeExternalServiceAsyncRequestManager() {
+    super(IoTDBDescriptor.getInstance().getConfig().getSelectorNumOfClientManager());
+  }
+
   @Override
-  protected void initClientManager() {
+  protected void initClientManager(int selectorNumOfAsyncClientManager) {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeExternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeExternalServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncDataNodeExternalServiceClientPoolFactory(
+                    selectorNumOfAsyncClientManager));
   }
 
   @Override

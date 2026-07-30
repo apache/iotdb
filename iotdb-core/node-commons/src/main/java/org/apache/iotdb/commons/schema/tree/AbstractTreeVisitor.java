@@ -415,6 +415,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     }
   }
 
+  protected final IStateMatchInfo getCurrentStateMatchInfo() {
+    return currentStateMatchInfo;
+  }
+
   // Release a child node.
   protected void releaseNode(N node) {}
 

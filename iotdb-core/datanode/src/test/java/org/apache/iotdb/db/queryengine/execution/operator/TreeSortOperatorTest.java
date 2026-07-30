@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -35,14 +40,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Asc
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -235,8 +237,8 @@ public class TreeSortOperatorTest {
   // with data spilling
   @Test
   public void sortOperatorSpillingTest() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(5000);
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     try (TreeSortOperator root = (TreeSortOperator) genSortOperator(Ordering.ASC, true)) {
       int lastValue = -1;
       int count = 0;
@@ -256,7 +258,7 @@ public class TreeSortOperatorTest {
       }
       assertEquals(500, count);
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
     }
   }
 

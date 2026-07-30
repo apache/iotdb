@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.utils.writelog.ILogWriter;
 
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
         }
       }
     } catch (ClosedChannelException ignored) {
-      logger.warn("someone interrupt current thread, so no need to do write for io safety");
+      logger.warn(StorageEngineMessages.THREAD_INTERRUPTED_SKIP_WRITE_FOR_IO_SAFETY);
     }
   }
 
@@ -92,7 +93,8 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
     close();
     Files.delete(this.logFile.toPath());
     if (!logFile.createNewFile()) {
-      logger.warn("Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
+      logger.warn(
+          StorageEngineMessages.PARTITION_LOG_FILE_ALREADY_EXISTS, logFile.getAbsolutePath());
     }
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();

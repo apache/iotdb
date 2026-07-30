@@ -18,7 +18,14 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -26,14 +33,11 @@ import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -64,7 +68,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
-public class LocalExecutionPlanContext {
+public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   // Save operators in this pipeline, a new one will be created when creating another pipeline
@@ -195,6 +199,10 @@ public class LocalExecutionPlanContext {
     return driverContext.getFragmentInstanceContext().getId();
   }
 
+  public long getOuterQueryDeadlineMs() {
+    return driverContext.getFragmentInstanceContext().getOuterQueryDeadlineMs();
+  }
+
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
   }
@@ -256,7 +264,8 @@ public class LocalExecutionPlanContext {
   public void setMaxBytesOneHandleCanReserve() {
     long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
     LOGGER.debug(
-        "MaxBytesOneHandleCanReserve for ExchangeOperator is {}, exchangeSumNum is {}.",
+        DataNodeQueryMessages
+            .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
         maxBytesOneHandleCanReserve,
         exchangeSumNum);
     exchangeOperatorList.forEach(
@@ -290,8 +299,10 @@ public class LocalExecutionPlanContext {
   }
 
   public void setISink(ISink sink) {
-    requireNonNull(sink, "sink is null");
-    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    requireNonNull(sink, DataNodeQueryMessages.EXCEPTION_SINK_IS_NULL_E33854B4);
+    checkArgument(
+        driverContext.getSink() == null,
+        DataNodeQueryMessages.EXCEPTION_THERE_MUST_BE_AT_MOST_ONE_SINKNODE_A965AFE7);
     driverContext.setSink(sink);
   }
 
@@ -305,6 +316,16 @@ public class LocalExecutionPlanContext {
 
   public TypeProvider getTypeProvider() {
     return typeProvider;
+  }
+
+  @Override
+  public ITableTypeProvider getTableTypeProvider() {
+    return typeProvider;
+  }
+
+  @Override
+  public MemoryReservationManager getMemoryReservationManager() {
+    return driverContext.getFragmentInstanceContext().getMemoryReservationContext();
   }
 
   public FragmentInstanceContext getInstanceContext() {

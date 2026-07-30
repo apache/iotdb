@@ -33,10 +33,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,6 +44,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
+
+  // This is -2 - leaderNodeId iff it's a newly added region with internal source.
   private final AtomicInteger leaderNodeId = new AtomicInteger(0);
 
   /**
@@ -56,13 +57,44 @@ public class PipeTaskMeta {
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.
    */
-  private final Set<PipeRuntimeException> lastException =
+  private final Set<PipeRuntimeException> exceptionMessages =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public PipeTaskMeta(/* @NotNull */ final ProgressIndex progressIndex, final int leaderNodeId) {
     this.progressIndex.set(progressIndex);
     this.leaderNodeId.set(leaderNodeId);
   }
+
+  ///////////////////////// Region old & new test /////////////////////////
+
+  public PipeTaskMeta markAsNewlyAdded() {
+    leaderNodeId.getAndUpdate(PipeTaskMeta::getRevertedLeader);
+    return this;
+  }
+
+  public boolean isNewlyAdded() {
+    return isNewlyAdded(leaderNodeId.get());
+  }
+
+  public int getLeaderNodeId() {
+    final int result = leaderNodeId.get();
+    return isNewlyAdded(result) ? getRevertedLeader(result) : result;
+  }
+
+  public void setLeaderNodeId(final int leaderNodeId) {
+    this.leaderNodeId.updateAndGet(
+        leaderId -> isNewlyAdded(leaderId) ? getRevertedLeader(leaderNodeId) : leaderNodeId);
+  }
+
+  public static int getRevertedLeader(final int leaderNodeId) {
+    return -2 - leaderNodeId;
+  }
+
+  public static boolean isNewlyAdded(final int leaderNodeId) {
+    return leaderNodeId < -1;
+  }
+
+  ///////////////////////// Normal /////////////////////////
 
   public ProgressIndex getProgressIndex() {
     return progressIndex.get();
@@ -73,42 +105,37 @@ public class PipeTaskMeta {
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
   }
 
-  public int getLeaderNodeId() {
-    return leaderNodeId.get();
+  public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
+    return new ArrayList<>(exceptionMessages);
   }
 
-  public void setLeaderNodeId(final int leaderNodeId) {
-    this.leaderNodeId.set(leaderNodeId);
+  public synchronized String getExceptionMessagesString() {
+    return exceptionMessages.toString();
   }
 
-  public synchronized Optional<PipeRuntimeException> getLastException() {
-    final Iterator<PipeRuntimeException> iterator = lastException.iterator();
-    return iterator.hasNext() ? Optional.of(iterator.next()) : Optional.empty();
-  }
-
-  public synchronized String getExceptionMessage() {
-    return lastException.toString();
-  }
-
-  public synchronized void trackException(final PipeRuntimeException exceptionMessage) {
+  public synchronized void trackExceptionMessage(final PipeRuntimeException exceptionMessage) {
     // Only keep the newest exception message to avoid excess rpc payload and
     // show pipe response
     // Here we still keep the map form to allow compatibility with legacy versions
-    lastException.clear();
-    lastException.add(exceptionMessage);
+    exceptionMessages.clear();
+    exceptionMessages.add(exceptionMessage);
   }
 
   public synchronized boolean containsExceptionMessage(
       final PipeRuntimeException exceptionMessage) {
-    return lastException.contains(exceptionMessage);
+    return exceptionMessages.contains(exceptionMessage);
   }
 
   public synchronized boolean hasExceptionMessages() {
-    return !lastException.isEmpty();
+    return !exceptionMessages.isEmpty();
   }
 
   public synchronized void clearExceptionMessages() {
-    lastException.clear();
+    exceptionMessages.clear();
+  }
+
+  public synchronized void clearExceptionMessagesBefore(final long exceptionsClearTime) {
+    exceptionMessages.removeIf(exception -> exception.getTimeStamp() <= exceptionsClearTime);
   }
 
   public synchronized void serialize(final OutputStream outputStream) throws IOException {
@@ -116,8 +143,8 @@ public class PipeTaskMeta {
 
     ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
 
-    ReadWriteIOUtils.write(lastException.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : lastException) {
+    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
@@ -133,7 +160,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
-      pipeTaskMeta.lastException.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -149,7 +176,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
-      pipeTaskMeta.lastException.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -165,12 +192,12 @@ public class PipeTaskMeta {
     final PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
         && leaderNodeId.get() == that.leaderNodeId.get()
-        && lastException.equals(that.lastException);
+        && exceptionMessages.equals(that.exceptionMessages);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex.get(), leaderNodeId.get(), lastException);
+    return Objects.hash(progressIndex.get(), leaderNodeId.get(), exceptionMessages);
   }
 
   @Override
@@ -181,7 +208,7 @@ public class PipeTaskMeta {
         + "', leaderNodeId="
         + leaderNodeId.get()
         + ", exceptionMessages='"
-        + lastException
+        + exceptionMessages
         + "'}";
   }
 }

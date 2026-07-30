@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public class LocalFileRoleAccessorTest {
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
+    testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test-LocalFileRoleAccessorTest"));
     testFolder.mkdirs();
     accessor = new LocalFileRoleAccessor(testFolder.getPath());
   }

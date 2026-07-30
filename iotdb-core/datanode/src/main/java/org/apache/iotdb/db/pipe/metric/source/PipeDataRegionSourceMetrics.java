@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -31,7 +32,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -187,7 +187,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
       deregister(taskID);
     }
     if (!extractorMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe extractor metrics, extractor map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_EXTRACTOR_METRICS);
     }
   }
 
@@ -289,7 +289,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull final IoTDBDataRegionSource extractor) {
+  public void register(final IoTDBDataRegionSource extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -299,9 +299,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe data region extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_EXTRACTOR, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -316,9 +314,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR_1, taskID);
       return;
     }
     rate.mark();
@@ -330,9 +326,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR_2, taskID);
       return;
     }
     rate.mark();
@@ -344,9 +338,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR, taskID);
       return;
     }
     rate.mark();
@@ -359,9 +351,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
     }
     final Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
     if (gauge == null) {
-      LOGGER.info(
-          "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_SET_RECENT_PROCESSED_TSFILE_EPOCH, taskID);
       return;
     }
     gauge.set(state.getId());

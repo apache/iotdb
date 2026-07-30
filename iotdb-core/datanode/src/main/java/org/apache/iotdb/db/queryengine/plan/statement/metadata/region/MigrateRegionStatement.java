@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.region;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -35,26 +33,26 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>MIGRATE REGION regionid=INTEGER_LITERAL FROM fromid=INTEGER_LITERAL TO toid=INTEGERLITERAL
+ * <p>MIGRATE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM
+ * fromid=INTEGER_LITERAL TO toid=INTEGER_LITERAL
  */
-// TODO: Whether to support more complex migration, such as, migrate all region from 1, 2 to 5, 6
 public class MigrateRegionStatement extends Statement implements IConfigStatement {
 
-  private final int regionId;
+  private final List<Integer> regionIds;
 
   private final int fromId;
 
   private final int toId;
 
-  public MigrateRegionStatement(int regionId, int fromId, int toId) {
+  public MigrateRegionStatement(List<Integer> regionIds, int fromId, int toId) {
     super();
-    this.regionId = regionId;
+    this.regionIds = regionIds;
     this.fromId = fromId;
     this.toId = toId;
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getFromId() {
@@ -66,18 +64,13 @@ public class MigrateRegionStatement extends Statement implements IConfigStatemen
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
-  }
-
-  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitMigrateRegion(this, context);
   }
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

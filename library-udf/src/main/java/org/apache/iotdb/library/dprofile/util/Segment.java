@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.LinearRegression;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -31,7 +32,7 @@ import java.util.List;
 /** Util for segment. */
 public class Segment {
   private Segment() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(LibraryUdfMessages.UTILITY_CLASS);
   }
 
   private static double calculateError(double[] y1, double[] y2) throws Exception {

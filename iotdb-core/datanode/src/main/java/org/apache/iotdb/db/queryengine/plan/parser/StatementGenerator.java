@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -68,8 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSch
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.utils.TabletDecoder;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -91,7 +93,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.util.TabletDecoder;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -176,7 +177,7 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq)
+  public static QueryStatement createStatement(TSLastDataQueryReq lastDataQueryReq)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct query statement
@@ -294,7 +295,8 @@ public class StatementGenerator {
       if (!insertRecordReq.isSetColumnCategoryies()
           || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
@@ -333,12 +335,11 @@ public class StatementGenerator {
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
-        DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
+        insertTabletReq.isWriteToTable()
+            ? new PartialPath(insertTabletReq.getPrefixPath(), false)
+            : DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
-    for (int i = 0; i < insertTabletReq.types.size(); i++) {
-      dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
-    }
+    TSDataType[] dataTypes = deserializeDataTypes(insertTabletReq.types);
     insertStatement.setDataTypes(dataTypes);
 
     TabletDecoder tabletDecoder =
@@ -372,7 +373,8 @@ public class StatementGenerator {
       if (!insertTabletReq.isSetColumnCategories()
           || insertTabletReq.getColumnCategoriesSize() != insertTabletReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
@@ -392,32 +394,29 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
-    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    for (int i = 0; i < req.prefixPaths.size(); i++) {
+    int tabletCount = req.prefixPaths.size();
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>(tabletCount);
+    for (int i = 0; i < tabletCount; i++) {
+      List<String> measurements = req.measurementsList.get(i);
+      TSDataType[] dataTypes = deserializeDataTypes(req.typesList.get(i));
+      int rowCount = req.sizeList.get(i);
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
       insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
-      insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
+      insertTabletStatement.setMeasurements(measurements.toArray(new String[0]));
       long[] timestamps =
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
+          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), rowCount);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
       }
       insertTabletStatement.setTimes(timestamps);
       insertTabletStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(
-              req.valuesList.get(i),
-              req.typesList.get(i),
-              req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
+              req.valuesList.get(i), dataTypes, measurements.size(), rowCount));
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
-                  req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i))
+                  req.valuesList.get(i), measurements.size(), rowCount)
               .orElse(null));
-      insertTabletStatement.setRowCount(req.sizeList.get(i));
-      TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
-      for (int j = 0; j < dataTypes.length; j++) {
-        dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
-      }
+      insertTabletStatement.setRowCount(rowCount);
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
       // skip empty tablet
@@ -429,6 +428,14 @@ public class StatementGenerator {
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
+  }
+
+  private static TSDataType[] deserializeDataTypes(List<Integer> serializedDataTypes) {
+    TSDataType[] dataTypes = new TSDataType[serializedDataTypes.size()];
+    for (int i = 0; i < dataTypes.length; i++) {
+      dataTypes[i] = TSDataType.deserialize((byte) serializedDataTypes.get(i).intValue());
+    }
+    return dataTypes;
   }
 
   public static InsertRowsStatement createStatement(TSInsertRecordsReq req)
@@ -693,11 +700,12 @@ public class StatementGenerator {
 
       if (measurementName == null) {
         throw new MetadataException(
-            "The name of a measurement in schema template shall not be null.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_NAME_OF_A_MEASUREMENT_IN_SCHEMA_TEMPLATE_SHALL_NOT_BE_937264BD);
       }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
-        throw new MetadataException("Align designation incorrect at: " + prefix);
+        throw new MetadataException(DataNodeQueryMessages.ALIGN_DESIGNATION_INCORRECT_AT + prefix);
       }
 
       if (isAlign && !alignedPrefix.containsKey(prefix)) {

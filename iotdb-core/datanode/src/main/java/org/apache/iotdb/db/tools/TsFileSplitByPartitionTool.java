@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -145,7 +146,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     byte version = reader.readMarker();
     if (version != (byte) 3 && version != (byte) 4) {
       throw new WriteProcessException(
-          "The version of this tsfile is too low, please upgrade it to the version 4.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C);
     }
     // start to scan chunks and chunkGroups
     byte marker;
@@ -232,10 +234,11 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
     } catch (IOException e2) {
       throw new IOException(
-          "TsFile rewrite process cannot proceed at position "
-              + reader.position()
-              + "because: "
-              + e2.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_TSFILE_REWRITE_PROCESS_CANNOT_PROCEED_AT_POSITION_SBECAUSE_3763D32F,
+              reader.position(),
+              e2.getMessage()));
     } finally {
       if (reader != null) {
         reader.close();
@@ -333,16 +336,16 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                   .getFile(partitionDir + File.separator + upgradeTsFileName(oldTsFile.getName()));
           try {
             if (newFile.exists()) {
-              LOGGER.debug("delete uncomplated file {}", newFile);
+              LOGGER.debug(DataNodeMiscMessages.DELETE_UNCOMPLETED_FILE, newFile);
               Files.delete(newFile.toPath());
             }
             if (!newFile.createNewFile()) {
-              LOGGER.error("Create new TsFile {} failed because it exists", newFile);
+              LOGGER.error(DataNodeMiscMessages.CREATE_TSFILE_FAILED_EXISTS, newFile);
             }
             TsFileIOWriter writer = new TsFileIOWriter(newFile);
             return writer;
           } catch (IOException e) {
-            LOGGER.error("Create new TsFile {} failed ", newFile, e);
+            LOGGER.error(DataNodeMiscMessages.CREATE_TSFILE_FAILED, newFile, e);
             return null;
           }
         });
@@ -430,11 +433,14 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           chunkWriter.write(time, (Binary) value);
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", schema.getType()));
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  schema.getType()));
       }
       batchData.next();
     }
@@ -450,18 +456,18 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
   protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
-      LOGGER.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
+      LOGGER.error(DataNodeMiscMessages.INCORRECT_MAGIC_STRING, reader.getFileName());
       return false;
     }
 
     byte versionNumber = reader.readVersionNumber();
     if (versionNumber != TSFileConfig.VERSION_NUMBER) {
-      LOGGER.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
+      LOGGER.error(DataNodeMiscMessages.INCORRECT_VERSION_NUMBER, reader.getFileName());
       return false;
     }
 
     if (!reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      LOGGER.error("the file is not closed correctly, file path: {}", reader.getFileName());
+      LOGGER.error(DataNodeMiscMessages.FILE_NOT_CLOSED_CORRECTLY, reader.getFileName());
       return false;
     }
     return true;

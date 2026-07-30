@@ -20,6 +20,7 @@
 package org.apache.iotdb.trigger.api.enums;
 
 import org.apache.iotdb.trigger.api.Trigger;
+import org.apache.iotdb.trigger.api.i18n.TriggerApiMessages;
 
 import org.apache.tsfile.write.record.Tablet;
 
@@ -62,7 +63,8 @@ public enum FailureStrategy {
       case 1:
         return FailureStrategy.PESSIMISTIC;
       default:
-        throw new UnsupportedOperationException("Unsupported FailureStrategy Type.");
+        throw new UnsupportedOperationException(
+            TriggerApiMessages.UNSUPPORTED_FAILURE_STRATEGY_TYPE);
     }
   }
 }

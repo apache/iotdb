@@ -71,7 +71,6 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setEnableAutoLeaderBalanceForIoTConsensus(true)
         .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
         .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
     EnvFactory.getEnv().initClusterEnvironment(1, TEST_DATA_NODE_NUM);
@@ -113,7 +112,8 @@ public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
         TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
         showRegionResp
             .getRegionInfoList()
-            .removeIf(r -> r.database.startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+            // Skip AUDIT database
+            .removeIf(r -> r.database.startsWith(SystemConstant.AUDIT_DATABASE));
         showRegionResp
             .getRegionInfoList()
             .forEach(

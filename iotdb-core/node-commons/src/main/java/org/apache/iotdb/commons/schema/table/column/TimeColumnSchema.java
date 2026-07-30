@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 
 public class TimeColumnSchema extends TsTableColumnSchema {
@@ -54,5 +55,10 @@ public class TimeColumnSchema extends TsTableColumnSchema {
     final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new TimeColumnSchema(columnName, dataType, props);
+  }
+
+  @Override
+  public TsTableColumnSchema copy() {
+    return new TimeColumnSchema(columnName, dataType, props == null ? null : new HashMap<>(props));
   }
 }

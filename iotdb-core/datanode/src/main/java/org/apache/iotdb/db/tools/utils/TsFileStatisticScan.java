@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -32,6 +34,8 @@ import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,6 +50,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class TsFileStatisticScan extends TsFileSequenceScan {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileStatisticScan.class);
 
   // (deviceId, measurementId) -> data type
   private final Map<Pair<IDeviceID, String>, TSDataType> seriesDataTypeMap = new HashMap<>();
@@ -261,6 +267,6 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
 
   @Override
   protected void onException(Throwable t) {
-    t.printStackTrace();
+    LOGGER.warn(DataNodeMiscMessages.MEET_ERROR, t);
   }
 }

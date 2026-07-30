@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
@@ -119,7 +120,8 @@ public class MemTableFlushTask {
             MAX_NUMBER_OF_POINTS_IN_CHUNK,
             TARGET_CHUNK_SIZE);
     LOGGER.debug(
-        "flush task of database {} memtable is created, flushing to file {}.",
+        StorageEngineMessages
+            .STORAGE_LOG_FLUSH_TASK_OF_DATABASE_MEMTABLE_IS_CREATED_FLUSHING_TO_FILE_E44B3AA0,
         storageGroup,
         writer.getFile().getName());
   }
@@ -185,7 +187,8 @@ public class MemTableFlushTask {
     }
     encodingTaskQueue.put(new TaskEnd());
     LOGGER.debug(
-        "Database {} memtable flushing into file {}: data sort time cost {} ms.",
+        StorageEngineMessages
+            .STORAGE_LOG_DATABASE_MEMTABLE_FLUSHING_INTO_FILE_DATA_SORT_TIME_COST_3D39AA17,
         storageGroup,
         writer.getFile().getName(),
         sortTime);
@@ -236,7 +239,8 @@ public class MemTableFlushTask {
         @Override
         public void run() {
           LOGGER.debug(
-              "Database {} memtable flushing to file {} starts to encoding data.",
+              StorageEngineMessages
+                  .STORAGE_LOG_DATABASE_MEMTABLE_FLUSHING_TO_FILE_STARTS_TO_ENCODING_DATA_6A89F32E,
               storageGroup,
               writer.getFile().getName());
           while (true) {
@@ -245,7 +249,7 @@ public class MemTableFlushTask {
             try {
               task = encodingTaskQueue.take();
             } catch (InterruptedException e1) {
-              LOGGER.error("Take task into ioTaskQueue Interrupted");
+              LOGGER.error(StorageEngineMessages.TAKE_TASK_INTO_IO_QUEUE_INTERRUPTED);
               Thread.currentThread().interrupt();
               break;
             }
@@ -256,7 +260,8 @@ public class MemTableFlushTask {
                   @SuppressWarnings("squid:S2142")
                   InterruptedException e) {
                 LOGGER.error(
-                    "Database {} memtable flushing to file {}, encoding task is interrupted.",
+                    StorageEngineMessages
+                        .STORAGE_LOG_DATABASE_MEMTABLE_FLUSHING_TO_FILE_ENCODING_TASK_IS_INTERRUPTED_9D7BF4EF,
                     storageGroup,
                     writer.getFile().getName(),
                     e);
@@ -280,7 +285,7 @@ public class MemTableFlushTask {
           try {
             ioTaskQueue.put(new TaskEnd());
           } catch (InterruptedException e) {
-            LOGGER.error("Put task into ioTaskQueue Interrupted");
+            LOGGER.error(StorageEngineMessages.PUT_TASK_INTO_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
           }
 
@@ -327,7 +332,7 @@ public class MemTableFlushTask {
   private Runnable ioTask =
       () -> {
         LOGGER.debug(
-            "Database {} memtable flushing to file {} start io.",
+            StorageEngineMessages.STORAGE_LOG_DATABASE_MEMTABLE_FLUSHING_TO_FILE_START_IO_CB72C2DA,
             storageGroup,
             writer.getFile().getName());
         while (true) {
@@ -335,7 +340,7 @@ public class MemTableFlushTask {
           try {
             ioMessage = ioTaskQueue.take();
           } catch (InterruptedException e1) {
-            LOGGER.error("take task from ioTaskQueue Interrupted");
+            LOGGER.error(StorageEngineMessages.TAKE_TASK_FROM_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
             break;
           }
@@ -354,7 +359,10 @@ public class MemTableFlushTask {
             }
           } catch (IOException e) {
             LOGGER.error(
-                "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
+                StorageEngineMessages.STORAGE_LOG_DATABASE_MEMTABLE_IO_TASK_MEETS_ERROR_EC383D33,
+                storageGroup,
+                memTable,
+                e);
             return;
           }
           long subTaskTime = System.currentTimeMillis() - starTime;
@@ -362,7 +370,8 @@ public class MemTableFlushTask {
           WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.IO_TASK, subTaskTime);
         }
         LOGGER.debug(
-            "flushing a memtable to file {} in database {}, io cost {}ms",
+            StorageEngineMessages
+                .STORAGE_LOG_FLUSHING_A_MEMTABLE_TO_FILE_IN_DATABASE_IO_COST_MS_2306578A,
             writer.getFile().getName(),
             storageGroup,
             ioTime);

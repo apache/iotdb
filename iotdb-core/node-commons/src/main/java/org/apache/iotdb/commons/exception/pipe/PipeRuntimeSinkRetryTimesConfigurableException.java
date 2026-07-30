@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import java.util.Objects;
+
 public class PipeRuntimeSinkRetryTimesConfigurableException
     extends PipeRuntimeSinkCriticalException {
 
@@ -32,5 +34,34 @@ public class PipeRuntimeSinkRetryTimesConfigurableException
 
   public int getRetryTimes() {
     return retryTimes;
+  }
+
+  // We do not record the timestamp here for logger reduction detection
+  @Override
+  public String toString() {
+    return "PipeRuntimeSinkRetryTimesConfigurableException{"
+        + "message='"
+        + getMessage()
+        + "', retryTimes='"
+        + retryTimes
+        + "'}";
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PipeRuntimeSinkRetryTimesConfigurableException that =
+        (PipeRuntimeSinkRetryTimesConfigurableException) o;
+    return super.equals(that) && retryTimes == that.retryTimes;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), retryTimes);
   }
 }

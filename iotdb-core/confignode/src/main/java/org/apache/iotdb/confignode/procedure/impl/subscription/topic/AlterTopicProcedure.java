@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -85,7 +87,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
-    LOGGER.info("AlterTopicProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.ALTERTOPICPROCEDURE_EXECUTEFROMVALIDATE);
 
     subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
 
@@ -97,22 +99,25 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   @Override
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("AlterTopicProcedure: executeFromOperateOnConfigNodes, try to alter topic");
+    LOGGER.info(
+        ProcedureMessages.ALTERTOPICPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_TRY_TO_ALTER_TOPIC);
 
     TSStatus response;
     try {
       response =
           env.getConfigManager().getConsensusManager().write(new AlterTopicPlan(updatedTopicMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to alter topic (%s -> %s) on config nodes, because %s",
-              existedTopicMeta, updatedTopicMeta, response));
+              ProcedureMessages.FAILED_TO_ALTER_TOPIC_ON_CONFIG_NODES_BECAUSE,
+              existedTopicMeta,
+              updatedTopicMeta,
+              response));
     }
   }
 
@@ -120,7 +125,8 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
     LOGGER.info(
-        "AlterTopicProcedure: executeFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
+        ProcedureMessages.ALTERTOPICPROCEDURE_EXECUTEFROMOPERATEONDATANODES,
+        updatedTopicMeta.getTopicName());
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(updatedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
@@ -128,21 +134,25 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to alter topic (%s -> %s) on data nodes, because %s",
-              existedTopicMeta, updatedTopicMeta, statuses));
+              ProcedureMessages.FAILED_TO_ALTER_TOPIC_ON_DATA_NODES_BECAUSE,
+              existedTopicMeta,
+              updatedTopicMeta,
+              statuses));
     }
   }
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterTopicProcedure: rollbackFromValidate({})", updatedTopicMeta.getTopicName());
+    LOGGER.info(
+        ProcedureMessages.ALTERTOPICPROCEDURE_ROLLBACKFROMVALIDATE,
+        updatedTopicMeta.getTopicName());
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info(
-        "AlterTopicProcedure: rollbackFromOperateOnConfigNodes({})",
+        ProcedureMessages.ALTERTOPICPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES,
         updatedTopicMeta.getTopicName());
 
     TSStatus response;
@@ -150,15 +160,17 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           env.getConfigManager().getConsensusManager().write(new AlterTopicPlan(existedTopicMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback from altering topic (%s -> %s) on config nodes, because %s",
-              updatedTopicMeta, existedTopicMeta, response));
+              ProcedureMessages.FAILED_TO_ROLLBACK_FROM_ALTERING_TOPIC_ON_CONFIG_NODES_BECAUSE,
+              updatedTopicMeta,
+              existedTopicMeta,
+              response));
     }
   }
 
@@ -166,7 +178,8 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
     LOGGER.info(
-        "AlterTopicProcedure: rollbackFromOperateOnDataNodes({})", updatedTopicMeta.getTopicName());
+        ProcedureMessages.ALTERTOPICPROCEDURE_ROLLBACKFROMOPERATEONDATANODES,
+        updatedTopicMeta.getTopicName());
 
     final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(existedTopicMeta.serialize());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
@@ -174,8 +187,10 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s",
-              updatedTopicMeta, existedTopicMeta, statuses));
+              ProcedureMessages.FAILED_TO_ROLLBACK_FROM_ALTERING_TOPIC_ON_DATA_NODES_BECAUSE,
+              updatedTopicMeta,
+              existedTopicMeta,
+              statuses));
     }
   }
 

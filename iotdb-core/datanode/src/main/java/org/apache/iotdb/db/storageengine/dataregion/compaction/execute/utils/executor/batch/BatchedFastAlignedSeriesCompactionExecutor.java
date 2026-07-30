@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -173,7 +175,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
             ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(
-        "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
+        StorageEngineMessages
+            .STORAGE_LOG_BATCH_COMPACTION_CURRENT_DEVICE_IS_FIRST_BATCH_COMPACTED_34910754,
         deviceId,
         batchCompactionPlan);
   }
@@ -249,7 +252,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         throws PageException, IllegalPathException, IOException, WriteProcessException {
       FirstBatchCompactionAlignedChunkWriter firstBatchCompactionAlignedChunkWriter =
           new FirstBatchCompactionAlignedChunkWriter(
-              this.measurementSchemas.remove(0), this.measurementSchemas);
+              this.measurementSchemas.remove(0),
+              this.measurementSchemas,
+              EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter()));
 
       firstBatchCompactionAlignedChunkWriter.registerBeforeFlushChunkWriterCallback(
           chunkWriter -> {
@@ -359,7 +364,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           new FollowingBatchCompactionAlignedChunkWriter(
               measurementSchemas.remove(0),
               measurementSchemas,
-              batchCompactionPlan.getCompactChunkPlan(0));
+              batchCompactionPlan.getCompactChunkPlan(0),
+              EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter()));
       flushController =
           new FollowedBatchedCompactionFlushController(
               batchCompactionPlan, followingBatchCompactionAlignedChunkWriter);

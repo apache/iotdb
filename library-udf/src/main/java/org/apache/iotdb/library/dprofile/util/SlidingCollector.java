@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -100,7 +102,7 @@ public class SlidingCollector<T> implements Collector<T, List<List<T>>, List<Lis
   @Override
   public BinaryOperator<List<List<T>>> combiner() {
     return (l1, l2) -> {
-      throw new UnsupportedOperationException("Combining not possible");
+      throw new UnsupportedOperationException(LibraryUdfMessages.COMBINING_NOT_POSSIBLE);
     };
   }
 

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,8 +33,9 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary> {
-  private UnseqSpaceStatistics unseqSpaceStatistics;
-  private String seqFile;
+  private static final Logger LOGGER = LoggerFactory.getLogger(SingleSequenceFileTask.class);
+  private final UnseqSpaceStatistics unseqSpaceStatistics;
+  private final String seqFile;
 
   public SingleSequenceFileTask(UnseqSpaceStatistics unseqSpaceStatistics, String seqFile) {
     this.unseqSpaceStatistics = unseqSpaceStatistics;
@@ -94,10 +99,10 @@ public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary>
       summary.totalChunkGroups = chunkGroupStatisticsList.size();
     } catch (IOException e) {
       if (e instanceof NoSuchFileException) {
-        System.out.println(seqFile + " is not exist");
+        LOGGER.warn(StorageEngineMessages.DOES_NOT_EXIST, seqFile);
         return new SequenceFileTaskSummary();
       }
-      e.printStackTrace();
+      LOGGER.error(StorageEngineMessages.CHECK_FAILED, seqFile, e);
       return new SequenceFileTaskSummary();
     }
     return summary;

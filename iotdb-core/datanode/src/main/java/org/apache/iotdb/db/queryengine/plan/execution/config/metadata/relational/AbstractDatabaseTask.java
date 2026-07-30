@@ -27,8 +27,8 @@ public abstract class AbstractDatabaseTask implements IConfigTask {
   /////////////////////////////// Allowed properties ///////////////////////////////
   public static final String TTL_KEY = "ttl";
   public static final String TIME_PARTITION_INTERVAL_KEY = "time_partition_interval";
-  public static final String SCHEMA_REGION_GROUP_NUM_KEY = "schema_region_group_num";
-  public static final String DATA_REGION_GROUP_NUM_KEY = "data_region_group_num";
+  public static final String MAX_SCHEMA_REGION_GROUP_NUM_KEY = "max_schema_region_group_num";
+  public static final String MAX_DATA_REGION_GROUP_NUM_KEY = "max_data_region_group_num";
 
   // Deprecated
   public static final String SCHEMA_REPLICATION_FACTOR_KEY = "schema_replication_factor";

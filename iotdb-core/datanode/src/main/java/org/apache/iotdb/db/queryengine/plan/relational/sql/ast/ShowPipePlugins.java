@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowPipePlugins extends PipeStatement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowPipePlugins.class);
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipePlugins(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowPipePlugins(this, context);
   }
 
   @Override
@@ -41,5 +49,12 @@ public class ShowPipePlugins extends PipeStatement {
   @Override
   public String toString() {
     return toStringHelper(this).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

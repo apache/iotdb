@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
@@ -47,10 +48,11 @@ public class SynchronizedHandler implements InvocationHandler {
         throw e.getTargetException();
       } else {
         // should not happen
-        throw new TException("Error in calling method " + method.getName(), e.getTargetException());
+        throw new TException(
+            RpcMessages.ERROR_IN_CALLING_METHOD + method.getName(), e.getTargetException());
       }
     } catch (Exception e) {
-      throw new TException("Error in calling method " + method.getName(), e);
+      throw new TException(RpcMessages.ERROR_IN_CALLING_METHOD + method.getName(), e);
     }
   }
 }

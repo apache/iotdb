@@ -23,11 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
@@ -146,7 +148,8 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of CreateMultiTimeSeriesNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_CREATEMULTITIMESERIESNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -160,8 +163,8 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitCreateMultiTimeSeries(this, schemaRegion);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C schemaRegion) {
+    return ((PlanVisitor<R, C>) visitor).visitCreateMultiTimeSeries(this, schemaRegion);
   }
 
   public static CreateMultiTimeSeriesNode deserialize(ByteBuffer byteBuffer) {

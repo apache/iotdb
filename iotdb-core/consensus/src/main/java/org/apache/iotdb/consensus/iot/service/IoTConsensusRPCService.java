@@ -74,17 +74,33 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
       throws IllegalAccessException, InstantiationException, ClassNotFoundException {
     try {
       thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.IOT_CONSENSUS_RPC_PROCESSOR.getName(),
-              getBindIP(),
-              getBindPort(),
-              config.getRpc().getRpcMaxConcurrentClientNum(),
-              config.getRpc().getThriftServerAwaitTimeForStopService(),
-              new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
-              config.getRpc().isRpcThriftCompressionEnabled(),
-              ZeroCopyRpcTransportFactory.INSTANCE);
+          config.getRpc().isEnableSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.IOT_CONSENSUS_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpc().getRpcMaxConcurrentClientNum(),
+                  config.getRpc().getThriftServerAwaitTimeForStopService(),
+                  new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
+                  config.getRpc().isRpcThriftCompressionEnabled(),
+                  config.getRpc().getSslKeyStorePath(),
+                  config.getRpc().getSslKeyStorePassword(),
+                  config.getRpc().getSslTrustStorePath(),
+                  config.getRpc().getSslTrustStorePassword(),
+                  ZeroCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.IOT_CONSENSUS_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpc().getRpcMaxConcurrentClientNum(),
+                  config.getRpc().getThriftServerAwaitTimeForStopService(),
+                  new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
+                  config.getRpc().isRpcThriftCompressionEnabled(),
+                  ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

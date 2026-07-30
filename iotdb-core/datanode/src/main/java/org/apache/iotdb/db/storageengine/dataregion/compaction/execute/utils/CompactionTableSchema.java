@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTableSchemaNotMatchException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -33,13 +34,17 @@ public class CompactionTableSchema extends TableSchema {
     super(tableName);
   }
 
-  public void merge(TableSchema tableSchema) {
+  public boolean merge(TableSchema tableSchema) {
     if (tableSchema == null) {
-      return;
+      return true;
     }
     if (!tableSchema.getTableName().equals(this.tableName)) {
       throw new CompactionTableSchemaNotMatchException(
-          "this.tableName is " + tableName + " merge tableName is " + tableSchema.getTableName());
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_THIS_TABLENAME_IS_S_MERGE_TABLENAME_IS_S_4B05FA97,
+              tableName,
+              tableSchema.getTableName()));
     }
     // filter id columns
     List<IMeasurementSchema> otherSchemaColumnSchemas = tableSchema.getColumnSchemas();
@@ -60,11 +65,7 @@ public class CompactionTableSchema extends TableSchema {
       IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
       IMeasurementSchema currentIdColumn = measurementSchemas.get(i);
       if (!idColumnToMerge.getMeasurementName().equals(currentIdColumn.getMeasurementName())) {
-        throw new CompactionTableSchemaNotMatchException(
-            "current id column name is "
-                + currentIdColumn.getMeasurementName()
-                + ", other id column name in same position is "
-                + idColumnToMerge.getMeasurementName());
+        return false;
       }
     }
 
@@ -75,6 +76,7 @@ public class CompactionTableSchema extends TableSchema {
       columnCategories.add(ColumnCategory.TAG);
       measurementSchemas.add(newIdColumn);
     }
+    return true;
   }
 
   public CompactionTableSchema copy() {

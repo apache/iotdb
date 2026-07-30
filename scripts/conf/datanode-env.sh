@@ -19,7 +19,8 @@
 #
 
 # You can set DataNode memory size, example '2G' or '2048M'
-MEMORY_SIZE=
+# If the MEMORY_SIZE environment variable is already set, its value will be used.
+MEMORY_SIZE=${MEMORY_SIZE:-}
 
 
 # You can put your env variable here
@@ -63,86 +64,6 @@ esac
 
 # whether we allow enable heap dump files
 IOTDB_ALLOW_HEAP_DUMP="true"
-
-calculate_memory_sizes()
-{
-    case "`uname`" in
-        Linux)
-            system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
-            system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
-        ;;
-        FreeBSD)
-            system_memory_in_bytes=`sysctl hw.physmem | awk '{print $2}'`
-            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
-            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
-        ;;
-        SunOS)
-            system_memory_in_mb=`prtconf | awk '/Memory size:/ {print $3}'`
-            system_cpu_cores=`psrinfo | wc -l`
-        ;;
-        Darwin)
-            system_memory_in_bytes=`sysctl hw.memsize | awk '{print $2}'`
-            system_memory_in_mb=`expr $system_memory_in_bytes / 1024 / 1024`
-            system_cpu_cores=`sysctl hw.ncpu | awk '{print $2}'`
-        ;;
-        *)
-            # assume reasonable defaults for e.g. a modern desktop or
-            # cheap server
-            system_memory_in_mb="2048"
-            system_cpu_cores="2"
-        ;;
-    esac
-
-    # some systems like the raspberry pi don't report cores, use at least 1
-    if [ "$system_cpu_cores" -lt "1" ]
-    then
-        system_cpu_cores="1"
-    fi
-
-    # suggest using memory, system memory 1 / 2
-    suggest_using_memory_in_mb=`expr $system_memory_in_mb / 2`
-
-    if [ -n "$MEMORY_SIZE" ]
-    then
-        if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ] || [ "${MEMORY_SIZE%"M"}" != "$MEMORY_SIZE" ]
-        then
-          if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ]
-          then
-              memory_size_in_mb=`expr ${MEMORY_SIZE%"G"} "*" 1024`
-          else
-              memory_size_in_mb=`expr ${MEMORY_SIZE%"M"}`
-          fi
-        else
-            echo "Invalid format of MEMORY_SIZE, please use the format like 2048M or 2G"
-            exit 1
-        fi
-    else
-        memory_size_in_mb=$suggest_using_memory_in_mb
-    fi
-
-    # set on heap memory size
-    # when memory_size_in_mb is less than 4 * 1024, we will set on heap memory size to memory_size_in_mb / 4 * 3
-    # when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
-    # when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
-    # when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
-    if [ "$memory_size_in_mb" -lt "4096" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 4 \* 3`
-    elif [ "$memory_size_in_mb" -lt "16384" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 5 \* 4`
-    elif [ "$memory_size_in_mb" -lt "131072" ]
-    then
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 8 \* 7`
-    else
-        on_heap_memory_size_in_mb=`expr $memory_size_in_mb - 16384`
-    fi
-    off_heap_memory_size_in_mb=`expr $memory_size_in_mb - $on_heap_memory_size_in_mb`
-
-    ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
-    OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
-}
-
 
 # find first dir of dn_data_dirs from properties file
 get_first_data_dir() {
@@ -198,7 +119,7 @@ else
     JAVA=java
 fi
 
-if [ -z $JAVA ] ; then
+if [ -z "$JAVA" ] ; then
     echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
     exit 1;
 fi
@@ -207,61 +128,43 @@ fi
 java_ver_output=`"$JAVA" -version 2>&1`
 jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`
 JVM_VERSION=${jvmver%_*}
-JVM_PATCH_VERSION=${jvmver#*_}
-if [ "$JVM_VERSION" \< "1.8" ] ; then
-    echo "IoTDB requires Java 8u92 or later."
-    exit 1;
-fi
-
-if [ "$JVM_VERSION" \< "1.8" ] && [ "$JVM_PATCH_VERSION" -lt 92 ] ; then
-    echo "IoTDB requires Java 8u92 or later."
-    exit 1;
-fi
-
 version_arr=(${JVM_VERSION//./ })
+if [ "${version_arr[0]}" = "1" ] ; then
+    MAJOR_VERSION=${version_arr[1]}
+else
+    MAJOR_VERSION=${version_arr[0]}
+fi
+
+if [ "$MAJOR_VERSION" -lt 17 ] ; then
+    echo "IoTDB requires Java 17 or later."
+    exit 1;
+fi
 
 illegal_access_params=""
 #GC log path has to be defined here because it needs to access IOTDB_HOME
-if [ "${version_arr[0]}" = "1" ] ; then
-    # Java 8
-    MAJOR_VERSION=${version_arr[1]}
-    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]loggc"
-    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
-        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
-        mkdir -p ${IOTDB_HOME}/logs
-        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
-            # For more detailed GC information, you can uncomment option below.
-            # NOTE: more detailed GC information may bring larger GC log files.
-            # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:+PrintTenuringDistribution -XX:+PrintHeapAtGC -XX:+PrintReferenceGC -XX:+PrintSafepointStatistics -XX:PrintSafepointStatisticsCount=1 -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
-        fi
+# See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
+# The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]log:gc"
+if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+    # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+    mkdir -p ${IOTDB_HOME}/logs
+    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+        IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
+        # For more detailed GC information, you can uncomment option below.
+        # NOTE: more detailed GC information may bring larger GC log files.
+        # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc*=debug,heap*=debug,age*=trace,metaspace*=info,safepoint*=debug,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level,tags:filecount=10,filesize=100M"
     fi
-else
-    #JDK 11 and others
-    MAJOR_VERSION=${version_arr[0]}
-    # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
-    # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
-    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]log:gc"
-    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
-        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
-        mkdir -p ${IOTDB_HOME}/logs
-        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
-            # For more detailed GC information, you can uncomment option below.
-            # NOTE: more detailed GC information may bring larger GC log files.
-            # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc*=debug,heap*=debug,age*=trace,metaspace*=info,safepoint*=debug,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level,tags:filecount=10,filesize=100M"
-        fi
-    fi
-    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 fi
+# Add argLine for Java 17 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
+illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 
-calculate_memory_sizes
+# DataNode: suggest 50% of system memory (1/2), no cap.
+calculate_memory_sizes 1 2 0
 
 # on heap memory size
 #ON_HEAP_MEMORY="2G"
@@ -334,10 +237,19 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFE
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
+# Enable the CRC32 intrinsic on compiled paths to avoid the JNI critical fallback.
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UnlockDiagnosticVMOptions"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseCRC32Intrinsics"
 # these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
+# Append tsfile locale option populated by Maven at package time
+# (see conf/iotdb-common.sh; empty in default build, "-Dtsfile.locale=zh" under with-zh-locale).
+if [ -n "$TSFILE_LOCALE_JVM_OPT" ]; then
+    IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS $TSFILE_LOCALE_JVM_OPT"
+fi
 
 # option below tries to optimize safepoint stw time for large counted loop.
 # NOTE: it may have an impact on JIT's black-box optimization.
@@ -363,4 +275,3 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/datanode-env.sh."
-

@@ -26,8 +26,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 
 import java.util.List;
 import java.util.Map;
