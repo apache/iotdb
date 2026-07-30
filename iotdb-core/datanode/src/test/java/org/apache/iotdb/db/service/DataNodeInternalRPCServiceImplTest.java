@@ -68,6 +68,7 @@ import org.apache.ratis.util.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -88,6 +89,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.when;
@@ -252,6 +254,9 @@ public class DataNodeInternalRPCServiceImplTest {
             .getTable2DevicesNumMap();
 
     try {
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> SchemaRegionConsensusImpl.getInstance().isLeader(new SchemaRegionId(0)));
       hasPullTaskNowRef.set(true);
       tableDeviceNumberMap.put("table", 1L);
       leaseManager.recoveryLeaseForTest(false);
