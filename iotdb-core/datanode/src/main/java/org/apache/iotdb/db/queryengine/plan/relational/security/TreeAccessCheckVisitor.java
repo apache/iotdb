@@ -1785,7 +1785,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
     if (!checkHasGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
-        PrivilegeType.SYSTEM,
+        PrivilegeType.MAINTAIN,
         () -> "")) {
       statement.setAllowedUsername(context.getUsername());
     }
@@ -1963,7 +1963,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (!checkHasGlobalAuth(context, PrivilegeType.SYSTEM, () -> "")) {
+    if (!checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;
