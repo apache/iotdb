@@ -80,6 +80,7 @@ public class MPPQueryContext implements IAuditEntity {
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPQueryContext.class);
 
   private String sql;
+  private String auditSqlString;
   private final QueryId queryId;
 
   /** The type of explanation for a query. */
@@ -222,6 +223,7 @@ public class MPPQueryContext implements IAuditEntity {
       TEndPoint localInternalEndpoint) {
     this(queryId);
     this.sql = sql;
+    this.auditSqlString = sql;
     this.session = session;
     this.localQueryId = localQueryId;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
@@ -1040,12 +1042,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getSqlString() {
-    return sql;
+    return auditSqlString;
   }
 
   @Override
   public IAuditEntity setSqlString(String sqlString) {
-    // Do nothing
+    this.auditSqlString = sqlString;
     return this;
   }
 
