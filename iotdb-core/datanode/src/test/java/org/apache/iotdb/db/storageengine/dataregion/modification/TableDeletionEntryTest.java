@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -69,7 +70,28 @@ public class TableDeletionEntryTest {
   public void testDeserializePredicateTypeFromEmptyStream() {
     assertThrows(
         EOFException.class,
-        () -> IDPredicate.IDPredicateType.deserialize(new ByteArrayInputStream(new byte[0])));
+        () -> TagPredicate.TagPredicateType.deserialize(new ByteArrayInputStream(new byte[0])));
+  }
+
+  @Test
+  public void testDeviceInSerialization() throws IOException {
+    DeviceIn predicate =
+        new DeviceIn(
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}),
+                Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id3", "id4"})));
+
+    ByteBuffer buffer = ByteBuffer.allocate(predicate.serializedSize());
+    predicate.serialize(buffer);
+    assertEquals(predicate.serializedSize(), buffer.position());
+    buffer.flip();
+    assertEquals(predicate, TagPredicate.createFrom(buffer));
+
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    predicate.serialize(bos);
+    byte[] byteArray = bos.toByteArray();
+    assertEquals(predicate.serializedSize(), byteArray.length);
+    assertEquals(predicate, TagPredicate.createFrom(new ByteArrayInputStream(byteArray)));
   }
 
   @Test
@@ -91,6 +113,15 @@ public class TableDeletionEntryTest {
             new DeletionPredicate(
                 "table1",
                 new And(new SegmentExactMatch("id1", 1), new SegmentExactMatch("id2", 2))),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry5 =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table1",
+                new DeviceIn(
+                    Arrays.asList(
+                        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}),
+                        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1"})))),
             new TimeRange(1, 5));
 
     IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"});
@@ -128,6 +159,13 @@ public class TableDeletionEntryTest {
     assertFalse(entry4.affects(deviceID4));
     assertFalse(entry4.affects(deviceID5));
     assertFalse(entry4.affects(deviceID6));
+
+    assertTrue(entry5.affects(deviceID1));
+    assertFalse(entry5.affects(deviceID2));
+    assertFalse(entry5.affects(deviceID3));
+    assertTrue(entry5.affects(deviceID4));
+    assertFalse(entry5.affects(deviceID5));
+    assertFalse(entry5.affects(deviceID6));
   }
 
   @Test

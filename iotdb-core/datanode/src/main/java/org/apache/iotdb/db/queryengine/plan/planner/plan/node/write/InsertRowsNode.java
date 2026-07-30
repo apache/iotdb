@@ -167,6 +167,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     results.clear();
   }
 
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    insertRowNodeList.forEach(InsertRowNode::clearUselessFieldsAfterRouting);
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
@@ -273,6 +279,15 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    int size = PlanNodeType.BYTES + Integer.BYTES;
+    for (InsertRowNode node : insertRowNodeList) {
+      size += node.serializedSubAttributesSize();
+    }
+    return size + insertRowNodeIndexList.size() * Integer.BYTES;
   }
 
   @Override

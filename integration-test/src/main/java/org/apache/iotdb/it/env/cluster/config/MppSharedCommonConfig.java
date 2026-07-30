@@ -62,6 +62,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    cnConfig.setMetadataLeaseFenceMs(metadataLeaseFenceMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     cnConfig.setPartitionInterval(partitionInterval);
     dnConfig.setPartitionInterval(partitionInterval);

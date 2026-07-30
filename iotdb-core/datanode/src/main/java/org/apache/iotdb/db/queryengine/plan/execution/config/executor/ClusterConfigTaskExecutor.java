@@ -60,6 +60,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -84,6 +85,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -347,6 +349,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -436,7 +439,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE.setException(
         new IoTDBException(
-            "Subscription is not enabled.",
+            DataNodeQueryMessages.QUERY_EXCEPTION_SUBSCRIPTION_IS_NOT_ENABLED_7F43DCBB,
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
   }
 
@@ -456,8 +459,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new IllegalPathException(
               databaseName,
               TsFileConstant.PATH_ROOT.equals(databaseName)
-                  ? "the database name in tree model must start with 'root.'."
-                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+                  ? DataNodeQueryMessages.TREE_MODEL_DATABASE_NAME_MUST_START_WITH_ROOT
+                  : String.format(
+                      DataNodeQueryMessages.DATABASE_NAME_LENGTH_SHALL_NOT_EXCEED_FMT,
+                      MAX_DATABASE_NAME_LENGTH));
       future.setException(
           new IoTDBException(
               illegalPathException.getMessage(), illegalPathException.getErrorCode()));
@@ -480,7 +485,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           LOGGER.warn(
-              "Failed to execute create database {} in config node, status is {}.",
+              DataNodeQueryMessages
+                  .FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG,
               databaseSchemaStatement.getDatabasePath(),
               tsStatus);
           future.setException(new IoTDBException(tsStatus));
@@ -511,7 +517,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         if (databaseSchemaStatement.getEnablePrintExceptionLog()) {
           LOGGER.warn(
-              "Failed to execute alter database {} in config node, status is {}.",
+              DataNodeQueryMessages
+                  .FAILED_TO_EXECUTE_ALTER_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG,
               databaseSchemaStatement.getDatabasePath(),
               tsStatus);
         }
@@ -583,7 +590,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute delete database {} in config node, status is {}.",
+            DataNodeQueryMessages
+                .FAILED_TO_EXECUTE_DELETE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG,
             deleteDatabaseStatement.getPrefixPath(),
             tsStatus);
         if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
@@ -613,7 +621,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to create UDF [%s], the given function name conflicts with the built-in function name.",
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_CREATE_UDF_S_THE_GIVEN_FUNCTION_NAME_CONFLICTS_6FBB1136,
                   udfName.toUpperCase()),
               TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode()));
       return future;
@@ -634,7 +643,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (uri.getScheme() == null) {
             future.setException(
                 new IoTDBException(
-                    "The scheme of URI is not set, please specify the scheme of URI.",
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_THE_SCHEME_OF_URI_IS_NOT_SET_PLEASE_SPECIFY_THE_SCHEME_OF_225DFB9E,
                     TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
             return future;
           }
@@ -667,7 +677,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               e);
           future.setException(
               new IoTDBException(
-                  "Failed to get executable for UDF '" + udfName + "', please check the URI.",
+                  String.format(
+                      DataNodeQueryMessages
+                          .QUERY_EXCEPTION_FAILED_TO_GET_EXECUTABLE_FOR_UDF_S_PLEASE_CHECK_THE_URI_F4D87A1E,
+                      udfName),
                   TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
@@ -708,21 +721,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               if (!argNames.add(specification.getName().toUpperCase())) {
                 future.setException(
                     new IoTDBException(
-                        "Failed to create function '"
-                            + udfName
-                            + "', because there is duplicate argument name '"
-                            + specification.getName()
-                            + "'.",
+                        String.format(
+                            DataNodeQueryMessages
+                                .QUERY_EXCEPTION_FAILED_TO_CREATE_FUNCTION_S_BECAUSE_THERE_IS_DUPLICATE_ARGUMENT_7905BC09,
+                            udfName,
+                            specification.getName()),
                         TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
                 return future;
               } else if (checkObjectScalarParameter(specification)) {
                 future.setException(
                     new IoTDBException(
-                        "Failed to create function '"
-                            + udfName
-                            + "', because there is an argument with OBJECT type '"
-                            + specification.getName()
-                            + "'.",
+                        String.format(
+                            DataNodeQueryMessages
+                                .QUERY_EXCEPTION_FAILED_TO_CREATE_FUNCTION_S_BECAUSE_THERE_IS_AN_ARGUMENT_E7A0B1D6,
+                            udfName,
+                            specification.getName()),
                         TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
                 return future;
               }
@@ -737,16 +750,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create function when try to create {}({}) instance first.",
+            DataNodeQueryMessages
+                .FAILED_TO_CREATE_FUNCTION_WHEN_TRY_TO_CREATE_ARG_ARG_INSTANCE_FIRST,
             baseClazz.getSimpleName(),
             udfName,
             e);
         future.setException(
             new IoTDBException(
-                "Failed to load class '"
-                    + className
-                    + "', because it's not found in jar file or is invalid: "
-                    + stringURI.orElse(null),
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FAILED_TO_LOAD_CLASS_S_BECAUSE_IT_S_NOT_FOUND_IN_JAR_FILE_E467D08D,
+                    className,
+                    stringURI.orElse(null)),
                 TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
@@ -778,7 +793,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (UDFManagementService.getInstance().checkIsBuiltInFunctionName(model, udfName)) {
       future.setException(
           new IoTDBException(
-              String.format("Built-in function %s can not be deregistered.", udfName.toUpperCase()),
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_BUILT_IN_FUNCTION_S_CAN_NOT_BE_DEREGISTERED_1CC7D3C3,
+                  udfName.toUpperCase()),
               TSStatusCode.DROP_UDF_ERROR.getStatusCode()));
       return future;
     }
@@ -857,7 +875,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (uri.getScheme() == null) {
             future.setException(
                 new IoTDBException(
-                    "The scheme of URI is not set, please specify the scheme of URI.",
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_THE_SCHEME_OF_URI_IS_NOT_SET_PLEASE_SPECIFY_THE_SCHEME_OF_225DFB9E,
                     TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
             return future;
           }
@@ -886,15 +905,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } catch (IOException | URISyntaxException e) {
           LOGGER.warn(
-              "Failed to get executable for Trigger({}) using URI: {}.",
+              DataNodeQueryMessages.FAILED_TO_GET_EXECUTABLE_FOR_TRIGGER_ARG_USING_URI_ARG,
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getUriString(),
               e);
           future.setException(
               new IoTDBException(
-                  "Failed to get executable for Trigger '"
-                      + createTriggerStatement.getUriString()
-                      + "', please check the URI.",
+                  String.format(
+                      DataNodeQueryMessages
+                          .QUERY_EXCEPTION_FAILED_TO_GET_EXECUTABLE_FOR_TRIGGER_S_PLEASE_CHECK_THE_DA49134A,
+                      createTriggerStatement.getUriString()),
                   TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
@@ -923,15 +943,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create trigger when try to create trigger({}) instance first.",
+            DataNodeQueryMessages
+                .FAILED_TO_CREATE_TRIGGER_WHEN_TRY_TO_CREATE_TRIGGER_ARG_INSTANCE_FIRST,
             createTriggerStatement.getTriggerName(),
             e);
         future.setException(
             new IoTDBException(
-                "Failed to load class '"
-                    + createTriggerStatement.getClassName()
-                    + "', because it's not found in jar file or is invalid: "
-                    + createTriggerStatement.getUriString(),
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FAILED_TO_LOAD_CLASS_S_BECAUSE_IT_S_NOT_FOUND_IN_JAR_FILE_E467D08D,
+                    createTriggerStatement.getClassName(),
+                    createTriggerStatement.getUriString()),
                 TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
@@ -940,7 +962,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
-            "[{}] Failed to create trigger {}. TSStatus is {}",
+            DataNodeQueryMessages.ARG_FAILED_TO_CREATE_TRIGGER_ARG_TSSTATUS_IS_ARG,
             executionStatus,
             createTriggerStatement.getTriggerName(),
             executionStatus.message);
@@ -1006,7 +1028,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (Objects.nonNull(pathError)) {
       future.setException(
           new IoTDBException(
-              String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
+              String.format(
+                  DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_PLUGIN_PREFIX_FMT + pathError,
+                  pluginName),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
@@ -1014,7 +1038,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (uriString == null || uriString.isEmpty()) {
       future.setException(
           new IoTDBException(
-              "Failed to create pipe plugin, because the URI is empty.",
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_FAILED_TO_CREATE_PIPE_PLUGIN_BECAUSE_THE_URI_IS_EMPTY_7FCB6EF4,
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
@@ -1031,7 +1056,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (uri.getScheme() == null) {
           future.setException(
               new IoTDBException(
-                  "The scheme of URI is not set, please specify the scheme of URI.",
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_THE_SCHEME_OF_URI_IS_NOT_SET_PLEASE_SPECIFY_THE_SCHEME_OF_225DFB9E,
                   TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
           return future;
         }
@@ -1063,15 +1089,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       } catch (final IOException e) {
         LOGGER.warn(
-            "Failed to get executable for PipePlugin({}) using URI: {}.",
+            DataNodeQueryMessages.FAILED_TO_GET_EXECUTABLE_FOR_PIPEPLUGIN_ARG_USING_URI_ARG,
             createPipePluginStatement.getPluginName(),
             createPipePluginStatement.getUriString(),
             e);
         future.setException(
             new IoTDBException(
-                "Failed to get executable for PipePlugin "
-                    + createPipePluginStatement.getPluginName()
-                    + ", please check the URI.",
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FAILED_TO_GET_EXECUTABLE_FOR_PIPEPLUGIN_S_PLEASE_CHECK_THE_FAC5DCB7,
+                    createPipePluginStatement.getPluginName()),
                 TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
         return future;
       }
@@ -1085,16 +1112,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final boolean isTableModel = createPipePluginStatement.isTableModel();
         if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
           LOGGER.info(
-              "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
+              DataNodeQueryMessages
+                  .FAILED_TO_CREATE_PIPEPLUGIN_ARG_BECAUSE_THIS_PLUGIN_IS_NOT_DESIGNED_FOR_ARG_MODEL,
               createPipePluginStatement.getPluginName(),
-              isTableModel ? "table" : "tree");
+              isTableModel ? DataNodeQueryMessages.MODEL_TABLE : DataNodeQueryMessages.MODEL_TREE);
           future.setException(
               new IoTDBException(
-                  "Failed to create PipePlugin '"
-                      + createPipePluginStatement.getPluginName()
-                      + "', because this plugin is not designed for "
-                      + (isTableModel ? "table" : "tree")
-                      + " model.",
+                  String.format(
+                      DataNodeQueryMessages
+                          .QUERY_EXCEPTION_FAILED_TO_CREATE_PIPEPLUGIN_S_BECAUSE_THIS_PLUGIN_IS_NOT_F5A284B4,
+                      createPipePluginStatement.getPluginName(),
+                      (isTableModel
+                          ? DataNodeQueryMessages.MODEL_TABLE
+                          : DataNodeQueryMessages.MODEL_TREE)),
                   TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
           return future;
         }
@@ -1108,15 +1138,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create function when try to create PipePlugin({}) instance first.",
+            DataNodeQueryMessages
+                .FAILED_TO_CREATE_FUNCTION_WHEN_TRY_TO_CREATE_PIPEPLUGIN_ARG_INSTANCE_FIRST,
             createPipePluginStatement.getPluginName(),
             e);
         future.setException(
             new IoTDBException(
-                "Failed to load class '"
-                    + createPipePluginStatement.getClassName()
-                    + "', because it's not found in jar file or is invalid: "
-                    + createPipePluginStatement.getUriString(),
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FAILED_TO_LOAD_CLASS_S_BECAUSE_IT_S_NOT_FOUND_IN_JAR_FILE_E467D08D,
+                    createPipePluginStatement.getClassName(),
+                    createPipePluginStatement.getUriString()),
                 TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
@@ -1137,7 +1169,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                           jarFileName.substring(jarFileName.lastIndexOf(".") + 1))));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
-            "Failed to create PipePlugin {}({}) because {}",
+            DataNodeQueryMessages.FAILED_TO_CREATE_PIPEPLUGIN_ARG_ARG_BECAUSE_ARG,
             pluginName,
             className,
             executionStatus.getMessage());
@@ -1166,7 +1198,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         if (TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode() != executionStatus.getCode()) {
           LOGGER.warn(
-              "[{}] Failed to drop pipe plugin {}.",
+              DataNodeQueryMessages.ARG_FAILED_TO_DROP_PIPE_PLUGIN_ARG,
               executionStatus,
               dropPipePluginStatement.getPluginName());
         }
@@ -1217,7 +1249,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute {} {} in config node, status is {}.",
+            DataNodeQueryMessages.FAILED_TO_EXECUTE_ARG_ARG_IN_CONFIG_NODE_STATUS_IS_ARG,
             taskName,
             setTTLStatement.getPath(),
             tsStatus);
@@ -1324,9 +1356,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (!ignoredConfigItems.isEmpty()) {
       warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       warningTsStatus.setMessage(
-          "ignored config items: "
+          DataNodeQueryMessages.MESSAGE_IGNORED_CONFIG_ITEMS_FE28ADBC
               + ignoredConfigItems
-              + " because they are immutable or undefined.");
+              + DataNodeQueryMessages.MESSAGE_BECAUSE_THEY_IMMUTABLE_UNDEFINED_07C04F65);
       if (req.getConfigs().isEmpty()) {
         future.setException(new IoTDBException(warningTsStatus));
         return future;
@@ -1407,13 +1439,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
         future.setException(
             new IoTDBException(
-                "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+                DataNodeQueryMessages.QUERY_EXCEPTION_NOT_ALL_SG_IS_READY_9F51CF3E,
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
       if (!CompactionTaskManager.getInstance().isInit()) {
         future.setException(
             new IoTDBException(
-                "cannot start repair task because compaction is not enabled",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_CANNOT_START_REPAIR_TASK_BECAUSE_COMPACTION_IS_NOT_ENABLED_975C8DCD,
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
@@ -1582,7 +1616,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (splits.length != 4 || ((dataNodeId = Integer.parseInt(splits[3])) < 0)) {
           future.setException(
               new IoTDBException(
-                  "Please ensure your input <queryId> is correct",
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_PLEASE_ENSURE_YOUR_INPUT_QUERYID_IS_CORRECT_D86C841E,
                   TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
                   true));
           return future;
@@ -1590,7 +1625,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } catch (NumberFormatException e) {
         future.setException(
             new IoTDBException(
-                "Please ensure your input <queryId> is correct",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_PLEASE_ENSURE_YOUR_INPUT_QUERYID_IS_CORRECT_D86C841E,
                 TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
                 true));
         return future;
@@ -2086,7 +2122,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new MetadataException(
                 String.format(
-                    "Duplicated measurement [%s] in device template alter request",
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_DUPLICATED_MEASUREMENT_S_IN_DEVICE_TEMPLATE_ALTER_REQUEST_963FE4A6,
                     duplicateMeasurement)));
         return future;
       }
@@ -2206,7 +2243,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_CREATE_PIPE_S_BECAUSE_TSFILE_IS_CONFIGURED_WITH_2F8CD704,
                   pipeName),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
@@ -2217,8 +2255,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
-                  pipeName, PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_CREATE_PIPE_S_PIPE_NAME_STARTING_WITH_S_ARE_NOT_201FE8C3,
+                  pipeName,
+                  PipeStaticMeta.SYSTEM_PIPE_PREFIX),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2227,7 +2267,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (Objects.nonNull(pathError)) {
       future.setException(
           new IoTDBException(
-              String.format("Failed to create pipe %s, " + pathError, pipeName),
+              String.format(
+                  DataNodeQueryMessages.FAILED_TO_CREATE_PIPE_PREFIX_FMT + pathError, pipeName),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
@@ -2240,6 +2281,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate pipe plugin before creation
     try {
       if (isDoubleLivingPipe(sourcePipeParameters)) {
+        validateDoubleLivingPipeParameters(sourcePipeParameters);
         validatePipePlugin(
             pipeName,
             cloneSourceParametersWithDialect(
@@ -2304,18 +2346,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private boolean isDoubleLivingPipe(final PipeParameters sourcePipeParameters) {
-    return sourcePipeParameters.getBooleanOrDefault(
-        Arrays.asList(
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-        PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    return PipeSourceConstant.isDoubleLiving(sourcePipeParameters);
+  }
+
+  private void validateDoubleLivingPipeParameters(final PipeParameters sourcePipeParameters) {
+    final Boolean isForwardingPipeRequests =
+        sourcePipeParameters.getBooleanByKeys(
+            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
+    if (Boolean.TRUE.equals(isForwardingPipeRequests)) {
+      throw new PipeParameterNotValidException(
+          PipeMessages
+              .EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1);
+    }
   }
 
   private PipeParameters cloneSourceParametersWithDialect(
       final PipeParameters sourcePipeParameters, final String sqlDialect) {
     final Map<String, String> sourceAttributes = new HashMap<>(sourcePipeParameters.getAttribute());
-    sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY);
-    sourceAttributes.remove(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
+    PipeSourceConstant.removeDoubleLivingAttributes(sourceAttributes);
+    PipeSourceConstant.disableForwardingPipeRequests(sourceAttributes);
     sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
     sourceAttributes.put(
         SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
@@ -2508,7 +2558,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setIsTableModel(isTableModel));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != rollbackStatus.getCode()) {
       LOGGER.warn(
-          "Failed to rollback created realtime pipe {}. Status: {}", pipeName, rollbackStatus);
+          DataNodePipeMessages
+              .MESSAGE_FAILED_TO_ROLLBACK_CREATED_REALTIME_PIPE_ARG_STATUS_ARG_CE14334A,
+          pipeName,
+          rollbackStatus);
     }
   }
 
@@ -2521,8 +2574,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
-                  alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_ALTER_PIPE_S_PIPE_NAME_STARTING_WITH_S_ARE_NOT_03D99ECF,
+                  alterPipeStatement.getPipeName(),
+                  PipeStaticMeta.SYSTEM_PIPE_PREFIX),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2560,7 +2615,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IoTDBException(
                 String.format(
-                    "Failed to alter pipe %s, pipe not found in system.",
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FAILED_TO_ALTER_PIPE_S_PIPE_NOT_FOUND_IN_SYSTEM_63B5D3CC,
                     alterPipeStatement.getPipeName()),
                 TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
@@ -2569,8 +2625,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to alter pipe %s, because %s",
-                  alterPipeStatement.getPipeName(), e.getMessage()),
+                  DataNodeQueryMessages.QUERY_EXCEPTION_FAILED_TO_ALTER_PIPE_S_BECAUSE_S_A1823289,
+                  alterPipeStatement.getPipeName(),
+                  e.getMessage()),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2746,8 +2803,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (!PipeDataNodeAgent.plugin().checkIfPluginSameType(oldPluginName, newPluginName)) {
       throw new SemanticException(
           String.format(
-              "Failed to alter pipe, the source plugin of the pipe cannot be changed from %s to %s",
-              oldPluginName, newPluginName));
+              DataNodeQueryMessages
+                  .FAILED_TO_ALTER_PIPE_THE_SOURCE_PLUGIN_OF_THE_PIPE_CANNOT_BE_CHANGED_FROM_S_TO_S,
+              oldPluginName,
+              newPluginName));
     }
   }
 
@@ -2756,7 +2815,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (checkSourceType(replacedSourceAttributes)) {
       throw new SemanticException(
           String.format(
-              "Failed to alter pipe %s, in iotdb-source, password must be set when the username is specified.",
+              DataNodeQueryMessages
+                  .FAILED_TO_ALTER_PIPE_S_IN_IOTDB_SOURCE_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS,
               pipeName));
     }
   }
@@ -2797,7 +2857,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (checkSinkType(sinkAttributes)) {
       throw new SemanticException(
           String.format(
-              "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
+              DataNodeQueryMessages
+                  .FAILED_TO_ALTER_PIPE_S_IN_WRITE_BACK_SINK_PASSWORD_MUST_BE_SET_WHEN_THE_USERNAME_IS,
               pipeName));
     }
   }
@@ -2824,8 +2885,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
-                  startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_START_PIPE_S_PIPE_NAME_STARTING_WITH_S_ARE_NOT_F16D488F,
+                  startPipeStatement.getPipeName(),
+                  PipeStaticMeta.SYSTEM_PIPE_PREFIX),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2857,8 +2920,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
-                  dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_DROP_PIPE_S_PIPE_NAME_STARTING_WITH_S_ARE_NOT_840E238B,
+                  dropPipeStatement.getPipeName(),
+                  PipeStaticMeta.SYSTEM_PIPE_PREFIX),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2891,8 +2956,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format(
-                  "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
-                  stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FAILED_TO_STOP_PIPE_S_PIPE_NAME_STARTING_WITH_S_ARE_NOT_C78DFC3D,
+                  stopPipeStatement.getPipeName(),
+                  PipeStaticMeta.SYSTEM_PIPE_PREFIX),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -3614,7 +3681,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute alter view {} by pipe, status is {}.",
+            DataNodeQueryMessages.FAILED_TO_EXECUTE_ALTER_VIEW_ARG_BY_PIPE_STATUS_IS_ARG,
             viewPathToSourceMap,
             tsStatus);
       }
@@ -3866,10 +3933,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (nodeIds.isEmpty()) {
         LOGGER.error(
-            "The DataNode to be removed is not in the cluster, or the input format is incorrect.");
+            DataNodeQueryMessages
+                .THE_DATANODE_TO_BE_REMOVED_IS_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT);
         future.setException(
             new IOException(
-                "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+                DataNodeQueryMessages
+                    .THE_DATANODE_TO_BE_REMOVED_IS_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT));
         return future;
       }
 
@@ -3907,10 +3976,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       } else {
         LOGGER.info(
-            "Submit remove-datanode request successfully, but the process may fail. "
-                + "more details are shown in the logs of confignode-leader and removed-datanode, "
-                + "and after the process of removing datanode ends successfully, "
-                + "you are supposed to delete directory and data of the removed-datanode manually");
+            DataNodeQueryMessages
+                    .SUBMIT_REMOVE_DATANODE_REQUEST_SUCCESSFULLY_BUT_THE_PROCESS_MAY_FAIL
+                + DataNodeQueryMessages
+                    .MORE_DETAILS_ARE_SHOWN_IN_THE_LOGS_OF_CONFIGNODE_LEADER_AND_REMOVED_DATANODE
+                + DataNodeQueryMessages.AND_AFTER_THE_PROCESS_OF_REMOVING_DATANODE_ENDS_SUCCESSFULLY
+                + DataNodeQueryMessages
+                    .YOU_ARE_SUPPOSED_TO_DELETE_DIRECTORY_AND_DATA_OF_THE_REMOVED_DATANODE_MANUALLY);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (Exception e) {
@@ -3939,10 +4011,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .collect(Collectors.toList());
       if (removeConfigNodeLocations.size() != 1) {
         LOGGER.error(
-            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
+            DataNodeQueryMessages
+                .THE_CONFIGNODE_TO_BE_REMOVED_IS_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT);
         future.setException(
             new IOException(
-                "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
+                DataNodeQueryMessages
+                    .THE_CONFIGNODE_TO_BE_REMOVED_IS_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT));
         return future;
       }
 
@@ -4596,17 +4670,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           LOGGER.info(
-              "Failed to DROP DATABASE {}, because it doesn't exist",
+              DataNodeQueryMessages.FAILED_TO_DROP_DATABASE_ARG_BECAUSE_IT_DOESN_T_EXIST,
               dropDB.getDbName().getValue());
           future.setException(
               new IoTDBException(
-                  String.format("Database %s doesn't exist", dropDB.getDbName().getValue()),
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_DATABASE_S_DOESN_T_EXIST_5A8EE8CA,
+                      dropDB.getDbName().getValue()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
         unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else {
         LOGGER.warn(
-            "Failed to execute delete database {} in config node, status is {}.",
+            DataNodeQueryMessages
+                .FAILED_TO_EXECUTE_DELETE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG,
             dropDB.getDbName().getValue(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus));
@@ -4644,7 +4721,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           future.setException(
               new IoTDBException(
-                  String.format("Database %s already exists", databaseSchema.getName()),
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_DATABASE_S_ALREADY_EXISTS_D8BE5332,
+                      databaseSchema.getName()),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
       } else {
@@ -4675,7 +4754,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           future.setException(
               new IoTDBException(
-                  String.format("Database %s doesn't exist", databaseSchema.getName()),
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_DATABASE_S_DOESN_T_EXIST_5A8EE8CA,
+                      databaseSchema.getName()),
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
         unsetDatabaseIfNotExist(
@@ -4796,10 +4877,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final TableNodeStatus tableNodeStatus) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TFetchTableResp fetchTableResp = configNodeClient.fetchTables(fetchTableMap);
+      final TFetchTableResp fetchTableResp =
+          configNodeClient.fetchTables(fetchTableMap, tableNodeStatus.getStatus());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != fetchTableResp.getStatus().getCode()) {
         LOGGER.warn(DataNodeQueryMessages.FAILED_TO_FETCHTABLES_STATUS_IS, fetchTableResp);
       }

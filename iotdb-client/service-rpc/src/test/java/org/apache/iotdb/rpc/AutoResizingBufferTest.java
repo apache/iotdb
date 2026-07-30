@@ -152,6 +152,43 @@ public class AutoResizingBufferTest {
     }
   }
 
+  @Test
+  public void testBufferReleasesMemoryToTheControlUsedForAllocation() throws Exception {
+    TestMemoryControl firstMemoryControl = new TestMemoryControl();
+    AutoResizingBufferMemoryManager.setMemoryControl(firstMemoryControl);
+    AutoResizingBuffer firstBuffer = new AutoResizingBuffer(100);
+
+    TestMemoryControl secondMemoryControl = new TestMemoryControl();
+    AutoResizingBufferMemoryManager.setMemoryControl(secondMemoryControl);
+    AutoResizingBuffer secondBuffer = new AutoResizingBuffer(200);
+
+    firstBuffer.close();
+    Assert.assertEquals(0, firstMemoryControl.getUsedMemoryInBytes());
+    Assert.assertEquals(200, secondMemoryControl.getUsedMemoryInBytes());
+
+    secondBuffer.close();
+    Assert.assertEquals(0, secondMemoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testBufferCreatedWithoutControlDoesNotReleaseToNewControl() throws Exception {
+    AutoResizingBuffer bufferWithoutControl = new AutoResizingBuffer(100);
+
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBuffer bufferWithControl = new AutoResizingBuffer(100);
+
+    bufferWithoutControl.close();
+    Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
+
+    bufferWithoutControl.resizeIfNecessary(100);
+    Assert.assertEquals(200, memoryControl.getUsedMemoryInBytes());
+    bufferWithoutControl.close();
+    Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
+
+    bufferWithControl.close();
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
   private void setLastShrinkTime(AutoResizingBuffer buffer, long lastShrinkTime) throws Exception {
     Field field = AutoResizingBuffer.class.getDeclaredField("lastShrinkTime");
     field.setAccessible(true);

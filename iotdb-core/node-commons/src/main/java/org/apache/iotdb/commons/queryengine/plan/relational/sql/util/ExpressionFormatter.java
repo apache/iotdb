@@ -130,9 +130,13 @@ public final class ExpressionFormatter {
     public Formatter(
         Optional<Function<Literal, String>> literalFormatter,
         Optional<Function<SymbolReference, String>> symbolReferenceFormatter) {
-      this.literalFormatter = requireNonNull(literalFormatter, "literalFormatter is null");
+      this.literalFormatter =
+          requireNonNull(
+              literalFormatter, QueryMessages.EXCEPTION_LITERALFORMATTER_IS_NULL_3F4F4A2B);
       this.symbolReferenceFormatter =
-          requireNonNull(symbolReferenceFormatter, "symbolReferenceFormatter is null");
+          requireNonNull(
+              symbolReferenceFormatter,
+              QueryMessages.EXCEPTION_SYMBOLREFERENCEFORMATTER_IS_NULL_B9B540EC);
     }
 
     @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -66,10 +67,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,10 +96,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_KEY_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY;
@@ -137,8 +147,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       new ConcurrentHashMap<>();
 
   private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
-  private final Map<String, ReceiverTemporaryUnavailableBackoff> receiverBackoffMap =
-      new ConcurrentHashMap<>();
+  private final Map<String, ReceiverRetryBackoff> receiverBackoffMap = new ConcurrentHashMap<>();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -151,11 +160,23 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     final PipeParameters parameters = validator.getParameters();
 
     validator.validate(
-        args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
+        args ->
+            !((boolean) args[0]
+                || (boolean) args[1]
+                || (boolean) args[2]
+                || (boolean) args[3]
+                || (boolean) args[4]),
         "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
-        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_TRUST_STORE_PWD_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PATH_KEY, SINK_IOTDB_SSL_KEY_STORE_PATH_KEY),
+        parameters.hasAnyAttributes(
+            CONNECTOR_IOTDB_SSL_KEY_STORE_PWD_KEY, SINK_IOTDB_SSL_KEY_STORE_PWD_KEY));
   }
 
   @Override
@@ -227,8 +248,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Current event: {}.",
+          DataNodePipeMessages
+              .IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PI,
           tabletInsertionEvent);
       return;
     }
@@ -262,6 +283,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
+      int transferredFileCount = 0;
       try {
         for (final Pair<String, File> sealedFile : dbTsFilePairs) {
           transfer(
@@ -275,13 +297,22 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                   null,
                   false,
                   sealedFile.left));
+          transferredFileCount++;
         }
       } catch (final Exception e) {
+        for (int i = transferredFileCount; i < dbTsFilePairs.size(); i++) {
+          final Pair<String, File> untransferredFile = dbTsFilePairs.get(i);
+          if (untransferredFile.right.exists()
+              && !FileUtils.deleteQuietly(untransferredFile.right)) {
+            LOGGER.warn(
+                DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
+          }
+        }
         PipeLogger.log(
             ignored ->
                 LOGGER.warn(DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH, dbTsFilePairs, e),
             e,
-            "Failed to transfer tsfile batch (%s).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH,
             dbTsFilePairs);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
@@ -457,24 +488,30 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     transferTsFileCounter.incrementAndGet();
-    CompletableFuture<Void> completableFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              AsyncPipeDataTransferServiceClient client = null;
-              try {
-                client = transferTsFileClientManager.borrowClient();
-                markHandshakeSucceeded();
-                pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
-              } catch (final Exception ex) {
-                markSchedulingDelayIfHandshakeFailed(client);
-                logOnClientException(client, ex);
-                pipeTransferTsFileHandler.onError(ex);
-              } finally {
-                transferTsFileCounter.decrementAndGet();
-              }
-              return null;
-            },
-            transferTsFileClientManager.getExecutor());
+    final CompletableFuture<Void> completableFuture;
+    try {
+      completableFuture =
+          CompletableFuture.supplyAsync(
+              () -> {
+                AsyncPipeDataTransferServiceClient client = null;
+                try {
+                  client = transferTsFileClientManager.borrowClient();
+                  markHandshakeSucceeded();
+                  pipeTransferTsFileHandler.transfer(transferTsFileClientManager, client);
+                } catch (final Exception ex) {
+                  markSchedulingDelayIfHandshakeFailed(client);
+                  logOnClientException(client, ex);
+                  pipeTransferTsFileHandler.onError(ex);
+                } finally {
+                  transferTsFileCounter.decrementAndGet();
+                }
+                return null;
+              },
+              transferTsFileClientManager.getExecutor());
+    } catch (final RuntimeException e) {
+      transferTsFileCounter.decrementAndGet();
+      throw e;
+    }
 
     if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {
@@ -489,7 +526,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                       pipeTransferTsFileHandler.getTsFile(),
                       e),
               e,
-              "Transfer tsfile event %s asynchronously was interrupted.",
+              DataNodePipeMessages.TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED,
               pipeTransferTsFileHandler.getTsFile());
         }
 
@@ -501,7 +538,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                     pipeTransferTsFileHandler.getTsFile(),
                     e),
             e,
-            "Failed to transfer tsfile event %s asynchronously.",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
             pipeTransferTsFileHandler.getTsFile());
       }
     }
@@ -606,6 +643,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary(final boolean forced) {
+    throwIfReceiverProbeIsDelayed();
+
     if ((retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty())
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
@@ -658,15 +697,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         retryEventQueueEventCounter.decreaseEventCount(polledEvent);
         if (polledEvent != peekedEvent) {
           LOGGER.error(
-              "The event polled from the queue is not the same as the event peeked from the queue. "
-                  + "Peeked event: {}, polled event: {}.",
-              peekedEvent,
-              polledEvent);
+              DataNodePipeMessages.THE_EVENT_POLLED_FROM_THE_QUEUE_IS, peekedEvent, polledEvent);
         }
         if (polledEvent != null && LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodePipeMessages.POLLED_EVENT_FROM_RETRY_QUEUE, polledEvent);
         }
       }
+
+      throwIfReceiverProbeIsDelayed();
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
       if (System.currentTimeMillis() - retryStartTime
@@ -804,30 +842,71 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     return enableSendTsFileLimit;
   }
 
-  public void waitIfReceiverTemporarilyUnavailable(final TEndPoint endPoint) {
+  public void waitIfReceiverRetryIsBackedOff(final TEndPoint endPoint) {
     final String endPointKey = format(endPoint);
     if (Objects.isNull(endPointKey)) {
       return;
     }
 
-    final ReceiverTemporaryUnavailableBackoff backoff = receiverBackoffMap.get(endPointKey);
+    final ReceiverRetryBackoff backoff = receiverBackoffMap.get(endPointKey);
     if (Objects.isNull(backoff)) {
       return;
     }
 
-    while (!isClosed.get()) {
-      final long waitTimeInMs = backoff.getRemainingWaitTimeInMs();
-      if (waitTimeInMs <= 0) {
-        return;
+    while (!isClosed.get() && backoff.isActive()) {
+      if (backoff.isRetryMaxDurationExceeded()) {
+        final long probeDelayInMs = backoff.tryAcquireProbeAndGetDelayInMs();
+        if (probeDelayInMs <= 0) {
+          return;
+        }
+        schedulingDelayMs.accumulateAndGet(probeDelayInMs, Math::max);
+        throw createReceiverProbeDelayException(endPointKey, backoff);
       }
 
-      try {
-        Thread.sleep(waitTimeInMs);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return;
+      final long retryTimeInMs = backoff.reserveNextRetryTimeInMs();
+      while (!isClosed.get() && backoff.isActive()) {
+        if (backoff.isRetryMaxDurationExceeded()) {
+          break;
+        }
+
+        final long waitTimeInMs = retryTimeInMs - System.currentTimeMillis();
+        if (waitTimeInMs <= 0) {
+          return;
+        }
+
+        try {
+          Thread.sleep(Math.min(waitTimeInMs, 1000L));
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return;
+        }
       }
     }
+  }
+
+  private void throwIfReceiverProbeIsDelayed() {
+    for (final Map.Entry<String, ReceiverRetryBackoff> entry : receiverBackoffMap.entrySet()) {
+      final long probeDelayInMs = entry.getValue().getRemainingProbeDelayInMs();
+      if (probeDelayInMs <= 0) {
+        continue;
+      }
+
+      schedulingDelayMs.accumulateAndGet(probeDelayInMs, Math::max);
+      throw createReceiverProbeDelayException(entry.getKey(), entry.getValue());
+    }
+  }
+
+  private static PipeRuntimeSinkNonReportTimeConfigurableException
+      createReceiverProbeDelayException(
+          final String endPointKey, final ReceiverRetryBackoff backoff) {
+    return new PipeRuntimeSinkNonReportTimeConfigurableException(
+        String.format(
+            DataNodePipeMessages
+                .EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2,
+            endPointKey,
+            backoff.getRetryMaxDurationInMs(),
+            backoff.getRetryProbeIntervalInMs()),
+        Long.MAX_VALUE);
   }
 
   public void recordReceiverStatus(final TEndPoint endPoint, final TSStatus status) {
@@ -836,40 +915,46 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       return;
     }
 
-    if (isReceiverTemporarilyUnavailable(status)) {
+    if (isReceiverRetryNeeded(status)) {
       final long backoffTimeInMs =
           receiverBackoffMap
-              .computeIfAbsent(endPointKey, key -> new ReceiverTemporaryUnavailableBackoff())
-              .markTemporarilyUnavailable();
+              .computeIfAbsent(endPointKey, key -> new ReceiverRetryBackoff())
+              .markRetryNeeded();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}",
+            DataNodePipeMessages
+                .MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6,
             endPointKey,
             backoffTimeInMs,
             status);
       }
     } else if (isSuccess(status)) {
-      final ReceiverTemporaryUnavailableBackoff backoff = receiverBackoffMap.get(endPointKey);
-      if (Objects.nonNull(backoff) && backoff.getRemainingWaitTimeInMs() <= 0) {
-        receiverBackoffMap.remove(endPointKey, backoff);
+      receiverBackoffMap.computeIfPresent(
+          endPointKey,
+          (key, backoff) -> {
+            if (!backoff.shouldResetOnSuccess()) {
+              return backoff;
+            }
+            backoff.markAvailable();
+            return null;
+          });
+      if (receiverBackoffMap.isEmpty()) {
+        schedulingDelayMs.set(0);
       }
     }
   }
 
-  private static boolean isReceiverTemporarilyUnavailable(final TSStatus status) {
+  private static boolean isReceiverRetryNeeded(final TSStatus status) {
     if (Objects.isNull(status)) {
       return false;
     }
 
-    final int statusCode = status.getCode();
-    if (statusCode == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+    if (!isSuccess(status)) {
       return true;
     }
 
     return status.isSetSubStatus()
-        && status.getSubStatus().stream()
-            .anyMatch(IoTDBDataRegionAsyncSink::isReceiverTemporarilyUnavailable);
+        && status.getSubStatus().stream().anyMatch(IoTDBDataRegionAsyncSink::isReceiverRetryNeeded);
   }
 
   private static boolean isSuccess(final TSStatus status) {
@@ -878,7 +963,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   private static String format(final TEndPoint endPoint) {
-    return Objects.isNull(endPoint) ? null : endPoint.getIp() + ":" + endPoint.getPort();
+    return Objects.isNull(endPoint) ? null : UrlUtils.convertTEndPointIpv4AndIpv6Url(endPoint);
   }
 
   //////////////////////////// Operations for close ////////////////////////////
@@ -1058,27 +1143,94 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
   }
 
-  private static class ReceiverTemporaryUnavailableBackoff {
+  private static class ReceiverRetryBackoff {
 
     private final long maxBackoffTimeInMs =
         Math.max(0, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs());
-    private final AtomicLong currentBackoffTimeInMs =
-        new AtomicLong(
-            Math.min(
-                Math.max(1, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
-                maxBackoffTimeInMs));
-    private final AtomicLong nextAvailableTimeInMs = new AtomicLong(0);
+    private final long initialBackoffTimeInMs =
+        Math.min(
+            Math.max(1, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs()),
+            maxBackoffTimeInMs);
+    private final long retryMaxDurationInMs =
+        PipeConfig.getInstance().getPipeAsyncSinkRetryMaxDurationMs();
+    private final long retryProbeIntervalInMs =
+        Math.max(1, PipeConfig.getInstance().getPipeAsyncSinkRetryProbeIntervalMs());
 
-    private long markTemporarilyUnavailable() {
-      final long backoffTimeInMs = currentBackoffTimeInMs.get();
-      nextAvailableTimeInMs.updateAndGet(
-          current -> Math.max(current, System.currentTimeMillis() + backoffTimeInMs));
-      currentBackoffTimeInMs.updateAndGet(this::getNextBackoffTimeInMs);
+    private boolean active = false;
+    private long firstRetryTimeInMs = 0;
+    private long currentBackoffTimeInMs = initialBackoffTimeInMs;
+    private long failureBackoffUntilInMs = 0;
+    private long nextReservedRetryTimeInMs = 0;
+    private long nextProbeTimeInMs = 0;
+
+    private synchronized long markRetryNeeded() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      if (!active) {
+        active = true;
+        firstRetryTimeInMs = currentTimeInMs;
+        currentBackoffTimeInMs = initialBackoffTimeInMs;
+        failureBackoffUntilInMs = 0;
+        nextReservedRetryTimeInMs = 0;
+        nextProbeTimeInMs = 0;
+      }
+
+      final long backoffTimeInMs = currentBackoffTimeInMs;
+      failureBackoffUntilInMs =
+          Math.max(failureBackoffUntilInMs, safeAdd(currentTimeInMs, backoffTimeInMs));
+      nextReservedRetryTimeInMs = Math.max(nextReservedRetryTimeInMs, failureBackoffUntilInMs);
+      currentBackoffTimeInMs = getNextBackoffTimeInMs(currentBackoffTimeInMs);
       return backoffTimeInMs;
     }
 
-    private long getRemainingWaitTimeInMs() {
-      return nextAvailableTimeInMs.get() - System.currentTimeMillis();
+    private synchronized boolean isActive() {
+      return active;
+    }
+
+    private synchronized boolean isRetryMaxDurationExceeded() {
+      return active
+          && retryMaxDurationInMs >= 0
+          && System.currentTimeMillis() - firstRetryTimeInMs >= retryMaxDurationInMs;
+    }
+
+    private synchronized long reserveNextRetryTimeInMs() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      final long retryTimeInMs =
+          Math.max(currentTimeInMs, Math.max(failureBackoffUntilInMs, nextReservedRetryTimeInMs));
+      nextReservedRetryTimeInMs = safeAdd(retryTimeInMs, currentBackoffTimeInMs);
+      return retryTimeInMs;
+    }
+
+    private synchronized long tryAcquireProbeAndGetDelayInMs() {
+      final long currentTimeInMs = System.currentTimeMillis();
+      if (currentTimeInMs >= nextProbeTimeInMs) {
+        nextProbeTimeInMs = safeAdd(currentTimeInMs, retryProbeIntervalInMs);
+        return 0;
+      }
+      return nextProbeTimeInMs - currentTimeInMs;
+    }
+
+    private synchronized long getRemainingProbeDelayInMs() {
+      return isRetryMaxDurationExceeded()
+          ? Math.max(0, nextProbeTimeInMs - System.currentTimeMillis())
+          : 0;
+    }
+
+    private synchronized boolean shouldResetOnSuccess() {
+      return active
+          && (isRetryMaxDurationExceeded()
+              || failureBackoffUntilInMs - System.currentTimeMillis() <= 0);
+    }
+
+    private synchronized void markAvailable() {
+      active = false;
+    }
+
+    private long getRetryMaxDurationInMs() {
+      return retryMaxDurationInMs;
+    }
+
+    private long getRetryProbeIntervalInMs() {
+      return retryProbeIntervalInMs;
     }
 
     private long getNextBackoffTimeInMs(final long currentBackoffTimeInMs) {
@@ -1088,6 +1240,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       return currentBackoffTimeInMs >= maxBackoffTimeInMs - currentBackoffTimeInMs
           ? maxBackoffTimeInMs
           : currentBackoffTimeInMs << 1;
+    }
+
+    private static long safeAdd(final long left, final long right) {
+      return left >= Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
     }
   }
 }

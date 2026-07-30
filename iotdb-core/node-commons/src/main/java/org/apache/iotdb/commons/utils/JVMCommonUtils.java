@@ -28,10 +28,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 
 public class JVMCommonUtils {
 
@@ -92,11 +94,7 @@ public class JVMCommonUtils {
       long totalSpace = dirFile.getTotalSpace();
       double ratio = 1.0 * freeSpace / totalSpace;
       if (ratio <= diskSpaceWarningThreshold) {
-        LOGGER.warn(
-            "{} is above the warning threshold, free space {}, total space {}",
-            dir,
-            freeSpace,
-            totalSpace);
+        LOGGER.warn(UtilMessages.DISK_ABOVE_WARNING_THRESHOLD, dir, freeSpace, totalSpace);
       }
       return ratio;
     } catch (Exception e) {
@@ -114,15 +112,23 @@ public class JVMCommonUtils {
     if (!Files.exists(folder)) {
       return 0;
     }
-    try (Stream<Path> s = Files.walk(folder)) {
-      return s.filter(p -> p.toFile().isFile())
-          .mapToLong(
-              p -> {
-                File file = p.toFile();
-                return file.exists() ? file.length() : 0L;
-              })
-          .sum();
-    }
+    final long[] occupiedSpace = {0L};
+    Files.walkFileTree(
+        folder,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            occupiedSpace[0] += attrs.size();
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) {
+            // A file or directory may be deleted concurrently during traversal; ignore it.
+            return FileVisitResult.CONTINUE;
+          }
+        });
+    return occupiedSpace[0];
   }
 
   public static int getCpuCores() {

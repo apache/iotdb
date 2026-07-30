@@ -169,7 +169,10 @@ public class TableDeviceSchemaFetcher {
                 ? new IoTDBRuntimeException(
                     e.getCause(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode())
                 : new IoTDBRuntimeException(
-                    String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+                    String.format(
+                        DataNodeQueryMessages
+                            .QUERY_EXCEPTION_FETCH_TABLE_DEVICE_SCHEMA_FAILED_BECAUSE_S_20B7D6C2,
+                        e.getMessage()),
                     e.getErrorCode(),
                     e.isUserException());
           }
@@ -546,7 +549,10 @@ public class TableDeviceSchemaFetcher {
           } catch (final IoTDBException e) {
             t = e;
             throw new IoTDBRuntimeException(
-                String.format("Fetch Table Device Schema failed because %s", e.getMessage()),
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_FETCH_TABLE_DEVICE_SCHEMA_FAILED_BECAUSE_S_20B7D6C2,
+                    e.getMessage()),
                 e.getErrorCode(),
                 e.isUserException());
           }
@@ -616,7 +622,7 @@ public class TableDeviceSchemaFetcher {
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryList.add(deviceEntry);
       // Only cache those exact device query
-      // Fetch paths is null iff there are fuzzy queries related to id columns
+      // Fetch paths is null iff there are fuzzy queries related to tag columns
       if (Objects.nonNull(statement.getPartitionKeyList())) {
         cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
       }

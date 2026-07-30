@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -94,6 +95,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     alterConsumerGroupProcedure = null;
     createPipeProcedures = new ArrayList<>();
+    consensusTopicNames = new HashSet<>();
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
@@ -122,8 +124,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         // skip pipe creation
         consensusTopicNames.add(topicName);
         LOGGER.info(
-            "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode "
-                + "(mode={}), skipping pipe creation",
+            ProcedureMessages
+                    .LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049
+                + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026,
             topicName,
             topicMode);
         continue;
@@ -201,10 +204,25 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     // Push consumer group meta to data nodes
     alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
 
+    final Set<String> newlySubscribedConsensusTopicNames =
+        getNewlySubscribedConsensusTopicNames(
+            alterConsumerGroupProcedure.getExistingConsumerGroupMeta(),
+            alterConsumerGroupProcedure.getUpdatedConsumerGroupMeta(),
+            consensusTopicNames);
+    if (!newlySubscribedConsensusTopicNames.isEmpty()) {
+      LOGGER.info(
+          ProcedureMessages
+              .LOG_CREATESUBSCRIPTIONPROCEDURE_SYNCHRONIZING_COMMIT_PROGRESS_AFTER_CONSUMER_GROUP_NEWLY_SUBSCRIBED_CONSENSUS_TOPICS_ARG_F5687D36,
+          newlySubscribedConsensusTopicNames);
+      CommitProgressSyncProcedure.syncCommitProgressFromDataNodesRequired(
+          env, subscriptionInfo.get());
+    }
+
     if (!consensusTopicNames.isEmpty()) {
       LOGGER.info(
-          "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode "
-              + "via consumer group meta push (no pipe creation needed)",
+          ProcedureMessages
+                  .LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD
+              + ProcedureMessages.LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31,
           consensusTopicNames);
     }
 
@@ -438,6 +456,18 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         alterConsumerGroupProcedure,
         createPipeProcedures,
         consensusTopicNames);
+  }
+
+  static Set<String> getNewlySubscribedConsensusTopicNames(
+      final ConsumerGroupMeta existingConsumerGroupMeta,
+      final ConsumerGroupMeta updatedConsumerGroupMeta,
+      final Set<String> consensusTopicNames) {
+    final Set<String> newlySubscribedConsensusTopicNames =
+        new HashSet<>(
+            ConsumerGroupMeta.getTopicsNewlySubByGroup(
+                existingConsumerGroupMeta, updatedConsumerGroupMeta));
+    newlySubscribedConsensusTopicNames.retainAll(consensusTopicNames);
+    return newlySubscribedConsensusTopicNames;
   }
 
   @TestOnly

@@ -32,6 +32,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.DummyNodesSupplier;
@@ -426,7 +427,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -469,7 +470,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
@@ -574,7 +575,7 @@ public class SessionPool implements ISessionPool {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
-      this.formattedNodeUrls = String.format("%s:%s", host, port);
+      this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
       if (enableAutoFetch) {
         initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
       } else {
@@ -718,12 +719,14 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             LOGGER.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {} with {}",
+                SessionMessages
+                    .LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A,
                 (System.currentTimeMillis() - start) / 1000,
                 formattedNodeUrls,
                 user);
             LOGGER.warn(
-                "current occupied size {}, queue size {}, considered size {} ",
+                SessionMessages
+                    .LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E,
                 occupied.size(),
                 queue.size(),
                 size);
@@ -912,8 +915,10 @@ public class SessionPool implements ISessionPool {
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
-              "retry to execute statement on %s failed %d times: %s",
-              formattedNodeUrls, RETRY, e.getMessage()),
+              SessionMessages.EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873,
+              formattedNodeUrls,
+              RETRY,
+              e.getMessage()),
           e);
     }
   }
@@ -3135,7 +3140,9 @@ public class SessionPool implements ISessionPool {
     // 'use XXX' and 'set sql_dialect' is forbidden in SessionPool.executeNonQueryStatement
     if (isUseDatabase(sql) || isSetSqlDialect(sql)) {
       throw new IllegalArgumentException(
-          String.format("SessionPool doesn't support executing %s directly", sql));
+          String.format(
+              SessionMessages.EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701,
+              sql));
     }
 
     ISession session = getSession();

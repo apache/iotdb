@@ -150,7 +150,8 @@ public class PipeInfo implements SnapshotProcessor {
           ConfigNodeMessages.FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
           .setMessage(
-              "Failed to set pipe status with stopped-by-runtime-exception flag, because "
+              ConfigNodeMessages
+                      .MESSAGE_FAILED_SET_PIPE_STATUS_STOPPED_RUNTIME_EXCEPTION_FLAG_BECAUSE_BFEA15AA
                   + e.getMessage());
     }
   }
@@ -310,11 +311,6 @@ public class PipeInfo implements SnapshotProcessor {
 
     try {
       pipeTaskInfo.processLoadSnapshot(snapshotDir);
-
-      for (final PipeMeta pipeMeta : pipeTaskInfo.getPipeMetaList()) {
-        PipeConfigNodeAgent.runtime()
-            .increaseListenerReference(pipeMeta.getStaticMeta().getSourceParameters());
-      }
     } catch (final Exception ex) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_LOAD_PIPE_TASK_INFO_FROM_SNAPSHOT, ex);
       loadPipeTaskInfoException = ex;
@@ -330,9 +326,9 @@ public class PipeInfo implements SnapshotProcessor {
     if (loadPipeTaskInfoException != null || loadPipePluginInfoException != null) {
       throw new IOException(
           ConfigNodeMessages.FAILED_TO_LOAD_PIPE_INFO_FROM_SNAPSHOT
-              + "loadPipeTaskInfoException="
+              + ConfigNodeMessages.EXCEPTION_LOADPIPETASKINFOEXCEPTION_2270468E
               + loadPipeTaskInfoException
-              + ", loadPipePluginInfoException="
+              + ConfigNodeMessages.EXCEPTION_LOADPIPEPLUGININFOEXCEPTION_40362E11
               + loadPipePluginInfoException);
     }
   }

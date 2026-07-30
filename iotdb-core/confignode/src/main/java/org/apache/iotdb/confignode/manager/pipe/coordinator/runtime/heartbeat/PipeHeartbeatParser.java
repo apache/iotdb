@@ -142,6 +142,11 @@ public class PipeHeartbeatParser {
       final int nodeId,
       final PipeHeartbeat pipeHeartbeat) {
     for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
+      if (PipeStatus.PRE_DELETE.equals(
+          pipeMetaFromCoordinator.getRuntimeMeta().getStatus().get())) {
+        continue;
+      }
+
       final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
@@ -235,8 +240,10 @@ public class PipeHeartbeatParser {
               .ifPresent(
                   l ->
                       l.info(
-                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
-                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          ManagerMessages
+                                  .LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F
+                              + ManagerMessages
+                                  .LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5,
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
                           runtimeMetaFromCoordinator.getKey(),
                           runtimeMetaFromCoordinator.getValue().getProgressIndex(),
@@ -290,6 +297,9 @@ public class PipeHeartbeatParser {
                         }
 
                         final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+                        if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+                          return;
+                        }
                         if (!runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
                           // Record the connector exception for each pipe affected
                           Map<Integer, PipeRuntimeException> exceptionMap =

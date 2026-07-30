@@ -625,7 +625,8 @@ public abstract class TabletInsertionEventParser {
         }
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
     }
   }
 
@@ -670,7 +671,8 @@ public abstract class TabletInsertionEventParser {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4, type));
     }
   }
 

@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
@@ -303,6 +305,20 @@ public class TableDeviceSchemaCache {
         false);
   }
 
+  public void updateLastCacheIfExists(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final LastCacheUpdateSource updateSource) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        false);
+  }
+
   /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
    * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
@@ -455,7 +471,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
         deviceID,
-        new TableDeviceCacheEntry(),
+        Objects.isNull(timeValuePairs) ? new TableDeviceCacheEntry() : null,
         initOrInvalidate
             ? entry ->
                 entry.setMeasurementSchema(
@@ -471,6 +487,26 @@ public class TableDeviceSchemaCache {
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  void updateLastCache(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
+
+    dualKeyCache.update(
+        new TableId(null, deviceID.getTableName()),
+        deviceID,
+        null,
+        entry ->
+            entry.setMeasurementSchema(database2Use, isAligned, measurements, measurementSchemas)
+                + entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        false);
   }
 
   public boolean getLastCache(
@@ -500,7 +536,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_TABLEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   tableId.getTableName(),
                   devicePath);
               return true;
@@ -511,7 +548,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_DEVICEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   cachedDeviceID,
                   devicePath);
               return true;
@@ -538,7 +576,8 @@ public class TableDeviceSchemaCache {
               return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_TABLEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   tableId.getTableName(),
                   devicePath);
               return true;
@@ -551,7 +590,8 @@ public class TableDeviceSchemaCache {
                   : devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
-                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  DataNodeQueryMessages
+                      .ILLEGAL_DEVICEID_ARG_FOUND_IN_CACHE_WHEN_INVALIDATING_BY_PATH_ARG_INVALIDATE_IT_ANYWAY,
                   cachedDeviceID,
                   devicePath);
               return true;
@@ -633,11 +673,12 @@ public class TableDeviceSchemaCache {
   }
 
   // Only used by table model
-  public void invalidate(final String database, final String tableName) {
+  public void invalidateAndPreDelete(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
       // Table cache's invalidate must be guarded by this lock
-      DataNodeTableCache.getInstance().invalid(database, tableName);
+      DataNodeTableCache.getInstance()
+          .preUpdateTable(database, new PreDeleteTsTable(tableName), null);
       dualKeyCache.invalidate(new TableId(database, tableName));
     } finally {
       readWriteLock.writeLock().unlock();

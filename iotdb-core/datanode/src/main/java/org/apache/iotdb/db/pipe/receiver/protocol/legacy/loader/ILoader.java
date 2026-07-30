@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -34,5 +35,5 @@ public interface ILoader {
 
   ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  void load();
+  void load(SessionInfo sessionInfo);
 }
