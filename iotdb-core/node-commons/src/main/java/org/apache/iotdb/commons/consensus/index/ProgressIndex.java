@@ -165,38 +165,8 @@ public abstract class ProgressIndex implements Accountable {
    * <p>{@link StateProgressIndex} and {@link HybridProgressIndex} are recursively unwrapped because
    * they may contain progress indexes from other causal chains.
    */
-  public final <T extends ProgressIndex> Optional<T> getProgressIndexByType(
-      final Class<T> progressIndexClass) {
-    if (progressIndexClass.isInstance(this)) {
-      return Optional.of(progressIndexClass.cast(this));
-    }
-
-    if (this instanceof StateProgressIndex) {
-      return ((StateProgressIndex) this)
-          .getInnerProgressIndex()
-          .getProgressIndexByType(progressIndexClass);
-    }
-
-    if (this instanceof HybridProgressIndex) {
-      final Map<Short, ProgressIndex> type2Index = ((HybridProgressIndex) this).getType2Index();
-
-      // Prefer a direct component over one nested in another composite progress index.
-      for (final ProgressIndex progressIndex : type2Index.values()) {
-        if (progressIndexClass.isInstance(progressIndex)) {
-          return Optional.of(progressIndexClass.cast(progressIndex));
-        }
-      }
-      for (final ProgressIndex progressIndex : type2Index.values()) {
-        final Optional<T> extractedProgressIndex =
-            progressIndex.getProgressIndexByType(progressIndexClass);
-        if (extractedProgressIndex.isPresent()) {
-          return extractedProgressIndex;
-        }
-      }
-    }
-
-    return Optional.empty();
-  }
+  public abstract <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      Class<T> progressIndexClass);
 
   /**
    * Get the sum of the tuples of each total order relation of the {@link ProgressIndex}, which is
