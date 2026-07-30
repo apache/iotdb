@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -40,10 +41,12 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.QUERY_ID;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEMENT;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.rpc.TSStatusCode.NO_PERMISSION;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -54,6 +57,7 @@ public class IoTDBShowQueriesIT {
   private static final String TIMESERIES = DEVICE + ".s1";
   private static final String QUERY_USER = "show_queries_query_user";
   private static final String SHOW_USER = "show_queries_show_user";
+  private static final String KILL_USER = "show_queries_kill_user";
   private static final String PASSWORD = "password123456";
   private static final String PENDING_QUERY = "SELECT s1 FROM " + DEVICE;
   // Leave one default 1,000-row TsBlock after the initial Session fetch.
@@ -80,6 +84,7 @@ public class IoTDBShowQueriesIT {
     }
     createUser(QUERY_USER, PASSWORD);
     createUser(SHOW_USER, PASSWORD);
+    createUser(KILL_USER, PASSWORD);
     grantUserSeriesPrivilege(QUERY_USER, PrivilegeType.READ_DATA, DATABASE + ".**");
   }
 
@@ -102,6 +107,27 @@ public class IoTDBShowQueriesIT {
     }
   }
 
+  @Test
+  public void killQueryAuthTest() throws Exception {
+    try (ISession querySession = EnvFactory.getEnv().getSessionConnection(QUERY_USER, PASSWORD);
+        ISession killSession = EnvFactory.getEnv().getSessionConnection(KILL_USER, PASSWORD);
+        ISession adminSession = EnvFactory.getEnv().getSessionConnection();
+        SessionDataSet pendingDataSet = querySession.executeQueryStatement(PENDING_QUERY)) {
+      // Keep QUERY_USER's query active by not consuming pendingDataSet.
+      String queryId = getQueryId(adminSession, PENDING_QUERY);
+
+      StatementExecutionException exception =
+          Assert.assertThrows(
+              StatementExecutionException.class,
+              () -> killSession.executeNonQueryStatement("KILL QUERY '" + queryId + "'"));
+      Assert.assertEquals(NO_PERMISSION.getStatusCode(), exception.getStatusCode());
+      Assert.assertEquals(queryId, getQueryId(adminSession, PENDING_QUERY));
+
+      grantUserSystemPrivileges(KILL_USER, PrivilegeType.SYSTEM);
+      killSession.executeNonQueryStatement("KILL QUERY '" + queryId + "'");
+    }
+  }
+
   private static boolean containsQuery(ISession session, String query) throws Exception {
     try (SessionDataSet dataSet = session.executeQueryStatement("SHOW QUERIES")) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
@@ -112,5 +138,18 @@ public class IoTDBShowQueriesIT {
       }
       return false;
     }
+  }
+
+  private static String getQueryId(ISession session, String query) throws Exception {
+    try (SessionDataSet dataSet = session.executeQueryStatement("SHOW QUERIES")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        if (query.equals(iterator.getString(STATEMENT))) {
+          return iterator.getString(QUERY_ID);
+        }
+      }
+    }
+    Assert.fail("Query not found: " + query);
+    return null;
   }
 }
