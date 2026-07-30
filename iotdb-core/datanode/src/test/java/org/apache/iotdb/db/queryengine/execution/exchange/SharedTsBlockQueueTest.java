@@ -32,10 +32,12 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
@@ -140,8 +142,9 @@ public class SharedTsBlockQueueTest {
 
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
+      ExecutorCompletionService<Void> completionService = new ExecutorCompletionService<>(executor);
       Future<Void> sender =
-          executor.submit(
+          completionService.submit(
               () -> {
                 for (int i = 0; i < numOfTsBlocks; i++) {
                   ListenableFuture<Void> blockedOnMemory;
@@ -156,7 +159,7 @@ public class SharedTsBlockQueueTest {
                 return null;
               });
       Future<Void> receiver =
-          executor.submit(
+          completionService.submit(
               () -> {
                 for (int i = 0; i < numOfTsBlocks; i++) {
                   ListenableFuture<Void> blocked;
@@ -171,8 +174,22 @@ public class SharedTsBlockQueueTest {
                 return null;
               });
 
-      sender.get(30, TimeUnit.SECONDS);
-      receiver.get(30, TimeUnit.SECONDS);
+      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+      try {
+        for (int completedWorkerCount = 0; completedWorkerCount < 2; completedWorkerCount++) {
+          final long remainingNanos = deadline - System.nanoTime();
+          final Future<Void> completedWorker =
+              completionService.poll(Math.max(remainingNanos, 0), TimeUnit.NANOSECONDS);
+          if (completedWorker == null) {
+            throw new TimeoutException();
+          }
+          completedWorker.get();
+        }
+      } catch (Exception e) {
+        sender.cancel(true);
+        receiver.cancel(true);
+        throw e;
+      }
 
       Assert.assertTrue(queue.hasNoMoreTsBlocks());
       Assert.assertTrue(queue.isEmpty());
