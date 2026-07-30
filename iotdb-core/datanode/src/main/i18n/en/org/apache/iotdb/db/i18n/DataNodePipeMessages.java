@@ -945,6 +945,9 @@ public final class DataNodePipeMessages {
       "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "OPC UA endpoint selected: configured={}, advertised={}, effective={}, allowEndpointRedirect={}.";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "When %s or %s is true, specify a complete trust-store pair under the same "
           + "alias: %s and %s, %s and %s, or %s and %s";
@@ -1315,8 +1318,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: Failure status encountered while executing statement {}: {}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: Exception encountered while executing statement {}: ";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}, statement = {}, exception = {}, message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "Unknown PipeRequestType %s.";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "Exception %s encountered while handling request %s.";
@@ -1535,6 +1536,14 @@ public final class DataNodePipeMessages {
   public static final String UNABLE_CREATE_SECURITY_DIR = "Unable to create security dir: ";
   public static final String OPC_UA_SECURITY_DIR = "Security dir: {}";
   public static final String OPC_UA_SECURITY_PKI_DIR = "Security pki dir: {}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "The advertised host must be a hostname or IP address without a scheme, port, or path.";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "Advertised host {} is not present in the loaded OPC UA server certificate subject "
+              + "alternative names. Secured clients may reject it; replace or regenerate the "
+              + "certificate and establish trust again.";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -2541,10 +2550,10 @@ public final class DataNodePipeMessages {
       "Incomplete column values in current tablet format deserialization.";
   public static final String EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461 =
       "Incomplete timestamps in current tablet format deserialization.";
-  public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
-      "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}";
-  public static final String EXCEPTION_RECEIVER_ARG_REMAINED_TEMPORARILY_UNAVAILABLE_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_C515DD97 =
-      "Receiver %s remained temporarily unavailable for more than %d ms, pause regular retries and probe every %d ms.";
+  public static final String MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6 =
+      "Receiver {} requires a retry, throttle requests for {} ms. Status: {}";
+  public static final String EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2 =
+      "Receiver %s has required retries for more than %d ms, pause regular retries and probe every %d ms.";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "Successfully transferred batched schema events, batch size {}.";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =
@@ -2574,4 +2583,6 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
+      "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
 }

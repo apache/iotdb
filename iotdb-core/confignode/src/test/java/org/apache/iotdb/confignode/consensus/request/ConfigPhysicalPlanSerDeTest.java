@@ -1014,7 +1014,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetPipeStatusPlanV2Test() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
-            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING, true);
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.PRE_DELETE, true);
     final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());

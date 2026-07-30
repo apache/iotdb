@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -125,6 +126,9 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
+              if (PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get())) {
+                return;
+              }
               if (!pipeMeta.getStaticMeta().isSourceExternal()) {
                 return;
               }

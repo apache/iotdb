@@ -172,29 +172,24 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           // We have to parse the privilege first, to avoid passing no-privilege data to processor
           if (event instanceof PipeTsFileInsertionEvent
               && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
-            try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
-                (PipeTsFileInsertionEvent) event) {
-              final AtomicReference<Exception> ex = new AtomicReference<>();
-              tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
-                  event1 -> {
-                    try {
-                      pipeProcessor.process(event1, outputEventCollector);
-                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-                      throw e;
-                    } catch (Exception e) {
-                      ex.set(e);
-                    }
-                  },
-                  "PipeProcessorSubtask::executeOnce");
-              if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
-                PipeTerminateEvent.markHistoricalTsFileSplit(
-                    tsFileInsertionEvent.getPipeName(),
-                    tsFileInsertionEvent.getCreationTime(),
-                    regionId);
-              }
-              if (ex.get() != null) {
-                throw ex.get();
-              }
+            final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+            tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
+                event1 -> {
+                  try {
+                    pipeProcessor.process(event1, outputEventCollector);
+                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                    throw e;
+                  } catch (Exception e) {
+                    throw new PipeException(e.getMessage(), e);
+                  }
+                },
+                "PipeProcessorSubtask::executeOnce");
+            tsFileInsertionEvent.close();
+            if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
+              PipeTerminateEvent.markHistoricalTsFileSplit(
+                  tsFileInsertionEvent.getPipeName(),
+                  tsFileInsertionEvent.getCreationTime(),
+                  regionId);
             }
           } else {
             pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);

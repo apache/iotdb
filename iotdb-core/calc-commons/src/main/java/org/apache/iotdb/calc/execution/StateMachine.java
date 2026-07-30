@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution;
+package org.apache.iotdb.calc.execution;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -47,9 +46,6 @@ import static java.util.Objects.requireNonNull;
 
 @ThreadSafe
 public class StateMachine<T> {
-
-  private static final String LOCK_HELD_ERROR_MSG = "Cannot set state while holding the lock";
-  private static final String STATE_IS_NULL = "newState is null";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StateMachine.class);
 
@@ -88,15 +84,12 @@ public class StateMachine<T> {
    * @param terminalStates the terminal states
    */
   public StateMachine(String name, Executor executor, T initialState, Iterable<T> terminalStates) {
-    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
-    this.executor =
-        requireNonNull(executor, DataNodeQueryMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
-    this.state =
-        requireNonNull(initialState, DataNodeQueryMessages.EXCEPTION_INITIALSTATE_IS_NULL_8992A39F);
+    this.name = requireNonNull(name, CalcMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.executor = requireNonNull(executor, CalcMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
+    this.state = requireNonNull(initialState, CalcMessages.EXCEPTION_INITIALSTATE_IS_NULL_8992A39F);
     this.terminalStates =
         ImmutableSet.copyOf(
-            requireNonNull(
-                terminalStates, DataNodeQueryMessages.EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93));
+            requireNonNull(terminalStates, CalcMessages.EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93));
   }
 
   // State changes are atomic and state is volatile, so a direct read is safe here
@@ -116,7 +109,7 @@ public class StateMachine<T> {
     T oldState = trySet(newState);
     checkState(
         oldState.equals(newState) || !isTerminalState(oldState),
-        DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30,
+        CalcMessages.EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30,
         name,
         state,
         newState);
@@ -131,8 +124,10 @@ public class StateMachine<T> {
    * @return the state before the possible state change
    */
   public T trySet(T newState) {
-    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
-    requireNonNull(newState, STATE_IS_NULL);
+    checkState(
+        !Thread.holdsLock(lock),
+        CalcMessages.EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188);
+    requireNonNull(newState, CalcMessages.EXCEPTION_NEWSTATE_IS_NULL_D29A5454);
 
     T oldState;
     FutureStateChange<T> oldFutureStateChange;
@@ -166,8 +161,10 @@ public class StateMachine<T> {
    * @return true if the state is set
    */
   public boolean setIf(T newState, Predicate<T> predicate) {
-    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
-    requireNonNull(newState, STATE_IS_NULL);
+    checkState(
+        !Thread.holdsLock(lock),
+        CalcMessages.EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188);
+    requireNonNull(newState, CalcMessages.EXCEPTION_NEWSTATE_IS_NULL_D29A5454);
 
     while (true) {
       // check if the current state passes the predicate
@@ -197,9 +194,11 @@ public class StateMachine<T> {
    * @return true if the state is set
    */
   public boolean compareAndSet(T expectedState, T newState) {
-    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
-    requireNonNull(expectedState, DataNodeQueryMessages.EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32);
-    requireNonNull(newState, STATE_IS_NULL);
+    checkState(
+        !Thread.holdsLock(lock),
+        CalcMessages.EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188);
+    requireNonNull(expectedState, CalcMessages.EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32);
+    requireNonNull(newState, CalcMessages.EXCEPTION_NEWSTATE_IS_NULL_D29A5454);
 
     FutureStateChange<T> oldFutureStateChange;
     ImmutableList<StateChangeListener<T>> curStateChangeListeners;
@@ -215,7 +214,7 @@ public class StateMachine<T> {
 
       checkState(
           !isTerminalState(state),
-          DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30,
+          CalcMessages.EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30,
           name,
           state,
           newState);
@@ -243,16 +242,15 @@ public class StateMachine<T> {
       List<StateChangeListener<T>> stateChangeListeners) {
     checkState(
         !Thread.holdsLock(lock),
-        DataNodeQueryMessages
-            .EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4);
-    requireNonNull(newState, STATE_IS_NULL);
+        CalcMessages.EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4);
+    requireNonNull(newState, CalcMessages.EXCEPTION_NEWSTATE_IS_NULL_D29A5454);
 
     // always fire listener callbacks from a different thread
     safeExecute(
         () -> {
           checkState(
               !Thread.holdsLock(lock),
-              DataNodeQueryMessages.EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48);
+              CalcMessages.EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48);
           try {
             futureStateChange.complete(newState);
           } catch (Throwable e) {
@@ -280,9 +278,8 @@ public class StateMachine<T> {
   public ListenableFuture<T> getStateChange(T currentState) {
     checkState(
         !Thread.holdsLock(lock),
-        DataNodeQueryMessages
-            .EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784);
-    requireNonNull(currentState, DataNodeQueryMessages.EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB);
+        CalcMessages.EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784);
+    requireNonNull(currentState, CalcMessages.EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB);
 
     synchronized (lock) {
       // return a completed future if the state has already changed, or we are in a terminal state
@@ -303,7 +300,7 @@ public class StateMachine<T> {
    */
   public void addStateChangeListener(StateChangeListener<T> stateChangeListener) {
     requireNonNull(
-        stateChangeListener, DataNodeQueryMessages.EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2);
+        stateChangeListener, CalcMessages.EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2);
 
     T currentState;
     synchronized (lock) {

@@ -147,8 +147,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       new ConcurrentHashMap<>();
 
   private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
-  private final Map<String, ReceiverTemporaryUnavailableBackoff> receiverBackoffMap =
-      new ConcurrentHashMap<>();
+  private final Map<String, ReceiverRetryBackoff> receiverBackoffMap = new ConcurrentHashMap<>();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -843,13 +842,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     return enableSendTsFileLimit;
   }
 
-  public void waitIfReceiverTemporarilyUnavailable(final TEndPoint endPoint) {
+  public void waitIfReceiverRetryIsBackedOff(final TEndPoint endPoint) {
     final String endPointKey = format(endPoint);
     if (Objects.isNull(endPointKey)) {
       return;
     }
 
-    final ReceiverTemporaryUnavailableBackoff backoff = receiverBackoffMap.get(endPointKey);
+    final ReceiverRetryBackoff backoff = receiverBackoffMap.get(endPointKey);
     if (Objects.isNull(backoff)) {
       return;
     }
@@ -886,8 +885,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   }
 
   private void throwIfReceiverProbeIsDelayed() {
-    for (final Map.Entry<String, ReceiverTemporaryUnavailableBackoff> entry :
-        receiverBackoffMap.entrySet()) {
+    for (final Map.Entry<String, ReceiverRetryBackoff> entry : receiverBackoffMap.entrySet()) {
       final long probeDelayInMs = entry.getValue().getRemainingProbeDelayInMs();
       if (probeDelayInMs <= 0) {
         continue;
@@ -900,11 +898,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   private static PipeRuntimeSinkNonReportTimeConfigurableException
       createReceiverProbeDelayException(
-          final String endPointKey, final ReceiverTemporaryUnavailableBackoff backoff) {
+          final String endPointKey, final ReceiverRetryBackoff backoff) {
     return new PipeRuntimeSinkNonReportTimeConfigurableException(
         String.format(
             DataNodePipeMessages
-                .EXCEPTION_RECEIVER_ARG_REMAINED_TEMPORARILY_UNAVAILABLE_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_C515DD97,
+                .EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2,
             endPointKey,
             backoff.getRetryMaxDurationInMs(),
             backoff.getRetryProbeIntervalInMs()),
@@ -917,15 +915,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       return;
     }
 
-    if (isReceiverTemporarilyUnavailable(status)) {
+    if (isReceiverRetryNeeded(status)) {
       final long backoffTimeInMs =
           receiverBackoffMap
-              .computeIfAbsent(endPointKey, key -> new ReceiverTemporaryUnavailableBackoff())
-              .markTemporarilyUnavailable();
+              .computeIfAbsent(endPointKey, key -> new ReceiverRetryBackoff())
+              .markRetryNeeded();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             DataNodePipeMessages
-                .MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9,
+                .MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6,
             endPointKey,
             backoffTimeInMs,
             status);
@@ -946,20 +944,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
   }
 
-  private static boolean isReceiverTemporarilyUnavailable(final TSStatus status) {
+  private static boolean isReceiverRetryNeeded(final TSStatus status) {
     if (Objects.isNull(status)) {
       return false;
     }
 
-    final int statusCode = status.getCode();
-    if (statusCode == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+    if (!isSuccess(status)) {
       return true;
     }
 
     return status.isSetSubStatus()
-        && status.getSubStatus().stream()
-            .anyMatch(IoTDBDataRegionAsyncSink::isReceiverTemporarilyUnavailable);
+        && status.getSubStatus().stream().anyMatch(IoTDBDataRegionAsyncSink::isReceiverRetryNeeded);
   }
 
   private static boolean isSuccess(final TSStatus status) {
@@ -1148,7 +1143,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
   }
 
-  private static class ReceiverTemporaryUnavailableBackoff {
+  private static class ReceiverRetryBackoff {
 
     private final long maxBackoffTimeInMs =
         Math.max(0, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs());
@@ -1162,17 +1157,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         Math.max(1, PipeConfig.getInstance().getPipeAsyncSinkRetryProbeIntervalMs());
 
     private boolean active = false;
-    private long firstUnavailableTimeInMs = 0;
+    private long firstRetryTimeInMs = 0;
     private long currentBackoffTimeInMs = initialBackoffTimeInMs;
     private long failureBackoffUntilInMs = 0;
     private long nextReservedRetryTimeInMs = 0;
     private long nextProbeTimeInMs = 0;
 
-    private synchronized long markTemporarilyUnavailable() {
+    private synchronized long markRetryNeeded() {
       final long currentTimeInMs = System.currentTimeMillis();
       if (!active) {
         active = true;
-        firstUnavailableTimeInMs = currentTimeInMs;
+        firstRetryTimeInMs = currentTimeInMs;
         currentBackoffTimeInMs = initialBackoffTimeInMs;
         failureBackoffUntilInMs = 0;
         nextReservedRetryTimeInMs = 0;
@@ -1194,7 +1189,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     private synchronized boolean isRetryMaxDurationExceeded() {
       return active
           && retryMaxDurationInMs >= 0
-          && System.currentTimeMillis() - firstUnavailableTimeInMs >= retryMaxDurationInMs;
+          && System.currentTimeMillis() - firstRetryTimeInMs >= retryMaxDurationInMs;
     }
 
     private synchronized long reserveNextRetryTimeInMs() {

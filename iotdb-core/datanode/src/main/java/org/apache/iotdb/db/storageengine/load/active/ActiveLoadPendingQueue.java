@@ -61,9 +61,9 @@ public class ActiveLoadPendingQueue {
   }
 
   public synchronized void removeFromLoading(final String file) {
-    loadingFileSet.remove(file);
-
-    ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(-1);
+    if (loadingFileSet.remove(file)) {
+      ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(-1);
+    }
   }
 
   public synchronized boolean isFilePendingOrLoading(final String file) {
@@ -76,6 +76,20 @@ public class ActiveLoadPendingQueue {
 
   public synchronized boolean isEmpty() {
     return pendingFileQueue.isEmpty() && loadingFileSet.isEmpty();
+  }
+
+  public synchronized void clear() {
+    final int loadingFileCount = loadingFileSet.size();
+    clearPending();
+    loadingFileSet.clear();
+    ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(-loadingFileCount);
+  }
+
+  public synchronized void clearPending() {
+    final int pendingFileCount = pendingFileSet.size();
+    pendingFileSet.clear();
+    pendingFileQueue.clear();
+    ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-pendingFileCount);
   }
 
   public static class ActiveLoadEntry {

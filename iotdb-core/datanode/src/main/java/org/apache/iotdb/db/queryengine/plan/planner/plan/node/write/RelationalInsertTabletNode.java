@@ -325,6 +325,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  protected int serializedAttributesSize() {
+    int size = super.serializedAttributesSize();
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += Byte.BYTES;
+      }
+    }
+    return size;
+  }
+
+  @Override
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
     TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];

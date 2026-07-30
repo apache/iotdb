@@ -1080,7 +1080,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void logStatementExceptionIfNecessary(final Statement statement, final Exception e) {
-    if (shouldLogStatementException(receiverId.get(), statement, e)) {
+    if (shouldLogStatementException(statement, e)) {
       PipeLogger.log(
           LOGGER::warn,
           e,
@@ -1090,16 +1090,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
-  static boolean shouldLogStatementException(
-      final long receiverId, final Statement statement, final Exception e) {
-    // Use the reducer cache as a gate. The actual stack trace is logged only when it passes.
-    return LoggerPeriodicalLogReducer.log(
-        message -> {},
-        DataNodePipeMessages.RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE,
-        receiverId,
-        Objects.isNull(statement) ? null : statement.getPipeLoggingString(),
-        e.getClass().getName(),
-        e.getMessage());
+  static boolean shouldLogStatementException(final Statement statement, final Exception e) {
+    final Throwable rootCause = getRootCause(e);
+    final StackTraceElement[] rootCauseStackTrace = rootCause.getStackTrace();
+    final StackTraceElement rootCauseLocation =
+        rootCauseStackTrace.length > 0 ? rootCauseStackTrace[0] : null;
+
+    // Reduce exceptions raised from the same code location regardless of receiver, statement
+    // content, or dynamic exception message. Different statement types and failure locations are
+    // still logged independently.
+    return LoggerPeriodicalLogReducer.shouldLog(
+        IoTDBDataNodeReceiver.class.getName()
+            + '|'
+            + (Objects.isNull(statement)
+                ? Statement.class.getName()
+                : statement.getClass().getName())
+            + '|'
+            + rootCause.getClass().getName()
+            + '|'
+            + rootCauseLocation);
   }
 
   private TSStatus executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(

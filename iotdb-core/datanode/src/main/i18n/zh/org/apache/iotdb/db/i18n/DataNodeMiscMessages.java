@@ -370,8 +370,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "正在配置 IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "正在恢复 Schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode 启动失败。";
-  public static final String WAIT_DATABASES_READY =
-      "等待所有数据库就绪，耗时 {} 毫秒。";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "等待本地 DataRegion 恢复任务结束，耗时 {} 毫秒。";
   public static final String PREPARE_PIPE_RESOURCES =
       "Pipe 资源准备完成，耗时 {} 毫秒。";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =
@@ -1362,6 +1363,15 @@ public final class DataNodeMiscMessages {
       "无法重新加载配置文件 %s，原因：%s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "配置项 udf_reader_transformer_collector_memory_proportion 的每个子项都应为整数，当前为 %s";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941 =
+          "查询内存比例必须包含 8 个或 9 个以冒号分隔的值，但实际有 %d 个";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75 =
+          "查询内存比例中第 %d 个值必须为非负数，但实际为 %d";
+  public static final String
+      EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6 =
+          "查询内存比例之和必须为正数，但实际为 %d";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2 =
       "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
