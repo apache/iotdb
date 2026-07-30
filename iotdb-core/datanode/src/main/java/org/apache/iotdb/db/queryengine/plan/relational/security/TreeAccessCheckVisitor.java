@@ -1963,7 +1963,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
+    if (!checkHasGlobalAuth(context, PrivilegeType.SYSTEM, () -> "")) {
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;
