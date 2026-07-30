@@ -127,6 +127,8 @@ public interface ISchemaFetcher {
       final List<PartialPath> devicePaths,
       final List<String[]> measurementsList,
       final MPPQueryContext context) {
+    // The lock is recorded in the query context and intentionally remains held through execution.
+    // The query lifecycle releases all recorded schema read locks in Coordinator's finally block.
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TREE);
     final PathPatternTree patternTree = new PathPatternTree();

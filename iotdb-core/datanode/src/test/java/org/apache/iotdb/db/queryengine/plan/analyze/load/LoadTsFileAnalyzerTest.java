@@ -246,7 +246,7 @@ public class LoadTsFileAnalyzerTest {
       try (final LoadTsFileAnalyzer waitingAnalyzer =
           new LoadTsFileAnalyzer(
               waitingStatement, true, new MPPQueryContext(new QueryId("load_pipe_waiting_test")))) {
-        Assert.assertFalse(waitingAnalyzer.isAutoCreateSchemaAllowed());
+        Assert.assertFalse(waitingAnalyzer.isAutoCreateSchemaRequested());
         Assert.assertTrue(
             waitingAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
                 new LoadAnalyzeMissingSchemaException("missing schema")));
@@ -257,7 +257,7 @@ public class LoadTsFileAnalyzerTest {
               LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
               true,
               new MPPQueryContext(new QueryId("load_pipe_default_test")))) {
-        Assert.assertTrue(defaultAnalyzer.isAutoCreateSchemaAllowed());
+        Assert.assertTrue(defaultAnalyzer.isAutoCreateSchemaRequested());
         Assert.assertFalse(
             defaultAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
                 new LoadAnalyzeMissingSchemaException("missing schema")));
@@ -282,8 +282,8 @@ public class LoadTsFileAnalyzerTest {
             LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
             true,
             new MPPQueryContext(new QueryId("load_global_auto_create_disabled_test")))) {
-      Assert.assertFalse(analyzer.isAutoCreateSchema());
-      Assert.assertTrue(analyzer.isAutoCreateSchemaAllowed());
+      Assert.assertFalse(analyzer.isAutoCreateSchemaEnabled());
+      Assert.assertTrue(analyzer.isAutoCreateSchemaRequested());
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()

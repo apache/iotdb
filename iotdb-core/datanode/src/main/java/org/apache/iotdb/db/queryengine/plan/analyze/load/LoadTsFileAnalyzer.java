@@ -114,8 +114,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private String databaseForTableData;
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
-  private final boolean isAutoCreateSchemaAllowed;
-  private final boolean isAutoCreateSchema;
+  private final boolean isAutoCreateSchemaRequested;
+  private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
@@ -143,10 +143,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseForTableData = loadTsFileStatement.getDatabase();
     this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
-    this.isAutoCreateSchemaAllowed = loadTsFileStatement.isAutoCreateSchema();
-    this.isAutoCreateSchema =
+    this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-            && isAutoCreateSchemaAllowed;
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
@@ -171,10 +171,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
     this.isAsyncLoad = loadTsFileTableStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
-    this.isAutoCreateSchemaAllowed = loadTsFileTableStatement.isAutoCreateSchema();
-    this.isAutoCreateSchema =
+    this.isAutoCreateSchemaRequested = loadTsFileTableStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-            && isAutoCreateSchemaAllowed;
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
@@ -198,12 +198,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return isAutoCreateDatabase;
   }
 
-  protected boolean isAutoCreateSchema() {
-    return isAutoCreateSchema;
+  protected boolean isAutoCreateSchemaEnabled() {
+    return isAutoCreateSchemaEnabled;
   }
 
-  protected boolean isAutoCreateSchemaAllowed() {
-    return isAutoCreateSchemaAllowed;
+  protected boolean isAutoCreateSchemaRequested() {
+    return isAutoCreateSchemaRequested;
   }
 
   protected boolean isConvertOnTypeMismatch() {
@@ -316,7 +316,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
-              isAutoCreateSchemaAllowed,
+              isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
               Objects.nonNull(context) ? context.getUsername() : null);
@@ -555,7 +555,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     getOrCreateTreeSchemaVerifier().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
-    final boolean isAutoCreateSchemaOrVerifySchemaEnabled = isAutoCreateSchema || isVerifySchema();
+    final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+        isAutoCreateSchemaEnabled || isVerifySchema();
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
@@ -864,7 +865,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
-    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchema) {
+    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchemaEnabled) {
       return false;
     }
 
