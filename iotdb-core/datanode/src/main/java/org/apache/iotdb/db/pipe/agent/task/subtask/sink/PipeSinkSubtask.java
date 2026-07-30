@@ -504,7 +504,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected String getRootCause(final Throwable throwable) {
-    return ErrorHandlingCommonUtils.getRootCause(throwable).getMessage();
+    return ErrorHandlingCommonUtils.getRootCause(throwable).toString();
   }
 
   @Override

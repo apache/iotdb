@@ -172,6 +172,16 @@ public class TsFileInsertionDataContainerTest {
             null,
             null,
             false)) {
+      replaceAllocatedTabletMemory(
+          container,
+          new PipeMemoryBlock(0) {
+            @Override
+            public void close() {
+              Assert.assertEquals(0, getMemoryUsageInBytes());
+              super.close();
+            }
+          });
+
       final Iterator<TabletInsertionEvent> iterator =
           container.toTabletInsertionEvents().iterator();
 
