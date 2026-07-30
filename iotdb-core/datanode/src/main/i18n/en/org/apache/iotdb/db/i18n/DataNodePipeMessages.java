@@ -651,8 +651,8 @@ public final class DataNodePipeMessages {
       "When '{}' ('{}') is set to false, specifying {} and {} is invalid.";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "When '{}' ('{}', '{}', '{}') is set to true, specifying {} and {} is invalid.";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "When {}, {}, {} or {} is specified, specifying {}, {}, {} or {} is invalid.";
 
   // ===================== SINK =====================
 
