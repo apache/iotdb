@@ -186,6 +186,7 @@ public final class ConfigNodeMessages {
       "Execute RestartAINodeRequest {} with result {}";
   public static final String EXECUTE_RESTARTDATANODEREQUEST_WITH_RESULT =
       "Execute RestartDataNodeRequest {} with result {}";
+  public static final String EXECUTE_GET_METADATA_WITH_RESULT = "Execute getMetaDataCache with result {}";
   public static final String EXECUTE_SETDATABASE_WITH_RESULT =
       "Execute SetDatabase: {} with result: {}";
   public static final String FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =
@@ -527,15 +528,23 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_SET_PIPE_STATUS_BECAUSE = "Failed to set pipe status, because ";
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "Failed to drop pipe, because ";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "Failed to alter pipe, because ";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_DOES_NOT_EXIST_29E0DCEB =
+      "Failed to alter pipe %s, the pipe does not exist";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B =
+      "Failed to alter pipe %s, the pipe is being dropped";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "Failed to create multiple pipes, because ";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "Failed to start pipe %s, the pipe does not exist";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "Failed to start pipe %s, the pipe is already dropped";
+  public static final String EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638 =
+      "Failed to start pipe %s, the pipe is being dropped";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "Failed to stop pipe %s, the pipe does not exist";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "Failed to stop pipe %s, the pipe is already dropped";
+  public static final String EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B =
+      "Failed to stop pipe %s, the pipe is being dropped";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "Failed to handle leader change, because ";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "Failed to handle meta changes, because ";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "Get PipePlugin_Jar failed, because ";
@@ -673,4 +682,7 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
       "procedure_completed_evict_ttl should be greater than 0, but was ";
 
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
+          "Failed to create or alter topic, mode=consensus does not support topic attributes %s";
 }

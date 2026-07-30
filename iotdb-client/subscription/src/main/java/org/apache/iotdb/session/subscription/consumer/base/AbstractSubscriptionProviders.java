@@ -247,6 +247,9 @@ final class AbstractSubscriptionProviders {
 
     acquireWriteLock();
     try {
+      if (consumer.isClosed()) {
+        return;
+      }
       heartbeatInternal(consumer);
     } finally {
       releaseWriteLock();
@@ -293,6 +296,9 @@ final class AbstractSubscriptionProviders {
 
     acquireWriteLock();
     try {
+      if (consumer.isClosed()) {
+        return;
+      }
       syncInternal(consumer);
     } finally {
       releaseWriteLock();

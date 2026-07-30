@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -31,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
@@ -78,6 +82,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -139,6 +144,7 @@ public class SeriesScanUtil implements Accountable {
 
   protected SeriesScanOptions scanOptions;
   private final PaginationController paginationController;
+  private boolean runtimeFilterExhausted;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -205,6 +211,9 @@ public class SeriesScanUtil implements Accountable {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
+    if (scanOptions.getTopKRuntimeFilter() != null) {
+      dataSource.initRuntimeFilterTracking();
+    }
     dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
@@ -276,7 +285,7 @@ public class SeriesScanUtil implements Accountable {
   // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
   // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -339,6 +348,27 @@ public class SeriesScanUtil implements Accountable {
         && filterAllSatisfy(scanOptions.getPushDownFilter(), firstTimeSeriesMetadata);
   }
 
+  /**
+   * Returns false when the time range cannot contain any row that may still qualify for TopK, so
+   * the caller can skip decoding the whole file/chunk/page.
+   */
+  private boolean mayQualifyRuntimeFilterRange(Statistics<? extends Serializable> statistics) {
+    TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
+    if (filter == null) {
+      return true;
+    }
+    return filter.mayQualifyRange(statistics.getStartTime(), statistics.getEndTime());
+  }
+
+  private boolean skipByTopKRuntimeFilter(
+      Statistics<? extends Serializable> statistics, Runnable skip) {
+    if (!mayQualifyRuntimeFilterRange(statistics)) {
+      skip.run();
+      return true;
+    }
+    return false;
+  }
+
   @SuppressWarnings("squid:S3740")
   public Statistics currentFileTimeStatistics() {
     return firstTimeSeriesMetadata.getTimeStatistics();
@@ -369,7 +399,7 @@ public class SeriesScanUtil implements Accountable {
    * @throws IllegalStateException illegal state
    */
   public Optional<Boolean> hasNextChunk() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
 
@@ -416,6 +446,10 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
+      return;
+    }
+
+    if (skipByTopKRuntimeFilter(firstChunkMetadata.getStatistics(), this::skipCurrentChunk)) {
       return;
     }
 
@@ -542,7 +576,7 @@ public class SeriesScanUtil implements Accountable {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
-    if (!paginationController.hasCurLimit()) {
+    if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return false;
     }
 
@@ -665,6 +699,14 @@ public class SeriesScanUtil implements Accountable {
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    final File tsFile;
+    if (chunkLoader instanceof DiskChunkLoader) {
+      tsFile = ((DiskChunkLoader) chunkLoader).getTsFile();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      tsFile = ((DiskAlignedChunkLoader) chunkLoader).getTsFile();
+    } else {
+      tsFile = null;
+    }
     if ((chunkLoader instanceof MemChunkLoader)
         && ((MemChunkLoader) chunkLoader).isStreamingQueryMemChunk()) {
       unpackOneFakeMemChunkMetaData(
@@ -673,7 +715,7 @@ public class SeriesScanUtil implements Accountable {
     }
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList(), context);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -688,7 +730,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
-                  true));
+                  true,
+                  tsFile));
         }
       } else {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
@@ -699,7 +742,8 @@ public class SeriesScanUtil implements Accountable {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
-                  true));
+                  true,
+                  tsFile));
         }
       }
     } else {
@@ -712,7 +756,8 @@ public class SeriesScanUtil implements Accountable {
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
-                      false)));
+                      false,
+                      tsFile)));
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -919,6 +964,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private TsBlock filterAndPaginateCachedBlock(TsBlock tsBlock) {
+    tsBlock = applyRuntimeFilterToTsBlock(tsBlock);
+    if (tsBlock == null || tsBlock.isEmpty()) {
+      return null;
+    }
     if (scanOptions.getPushDownFilter() == null) {
       return paginationController.applyTsBlock(tsBlock);
     }
@@ -935,6 +984,31 @@ public class SeriesScanUtil implements Accountable {
         new TsBlockBuilder(getTsDataTypeList()),
         scanOptions.getPushDownFilter(),
         paginationController);
+  }
+
+  private TsBlock applyRuntimeFilterToTsBlock(TsBlock tsBlock) {
+    TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
+    if (filter == null) {
+      return tsBlock;
+    }
+
+    int positionCount = tsBlock.getPositionCount();
+    int keepCount = positionCount;
+    for (int i = 0; i < positionCount; i++) {
+      if (!filter.mayQualify(tsBlock.getTimeByIndex(i))) {
+        keepCount = i;
+        runtimeFilterExhausted = true;
+        break;
+      }
+    }
+
+    if (keepCount == positionCount) {
+      return tsBlock;
+    }
+    if (keepCount == 0) {
+      return null;
+    }
+    return tsBlock.getRegion(0, keepCount);
   }
 
   private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
@@ -1403,6 +1477,10 @@ public class SeriesScanUtil implements Accountable {
   /** filter data in whole page level, and apply the offset at the same time */
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
+      return;
+    }
+
+    if (skipByTopKRuntimeFilter(firstPageReader.getStatistics(), this::skipCurrentPage)) {
       return;
     }
 
@@ -1892,6 +1970,10 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
 
+    if (skipByTopKRuntimeFilter(firstTimeSeriesMetadata.getStatistics(), this::skipCurrentFile)) {
+      return;
+    }
+
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstTimeSeriesMetadata)) {
@@ -2016,6 +2098,7 @@ public class SeriesScanUtil implements Accountable {
     protected final boolean isSeq;
     protected final boolean isAligned;
     protected final boolean isMem;
+    protected final File tsFile;
 
     VersionPageReader(
         QueryContext context,
@@ -2023,7 +2106,8 @@ public class SeriesScanUtil implements Accountable {
         long version,
         long offset,
         IPageReader data,
-        boolean isSeq) {
+        boolean isSeq,
+        File tsFile) {
       this.context = context;
       this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
@@ -2033,6 +2117,7 @@ public class SeriesScanUtil implements Accountable {
               || data instanceof MemAlignedPageReader
               || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
+      this.tsFile = tsFile;
     }
 
     @SuppressWarnings("squid:S3740")
@@ -2077,6 +2162,21 @@ public class SeriesScanUtil implements Accountable {
               CommonUtils.toString(tsBlock));
         }
         return tsBlock;
+      } catch (Exception e) {
+        if (tsFile != null) {
+          throw new CorruptedTsFileException(
+              tsFile,
+              CorruptedTsFileException.Stage.DECODE_PAGE_DATA,
+              context.isExternalTsFileScan()
+                  ? String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377,
+                      tsFile)
+                  : DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9,
+              e);
+        }
+        throw e;
       } finally {
         long time = System.nanoTime() - startTime;
         if (isAligned) {
@@ -2393,10 +2493,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
+          curSeqFileIndex--;
+          continue;
+        }
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
+            break;
+          }
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curSeqFileIndex--;
       }
@@ -2405,10 +2518,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
+          curUnseqFileIndex++;
+          continue;
+        }
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
+            break;
+          }
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curUnseqFileIndex++;
       }
@@ -2522,10 +2648,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(true, curSeqFileIndex)) {
+          curSeqFileIndex++;
+          continue;
+        }
         if (dataSource.isSeqSatisfied(
             deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isSeqSatisfiedByRuntimeFilter(curSeqFileIndex, filter, false)) {
+            break;
+          }
+          dataSource.setSeqTsFileResourceInvalidated(curSeqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curSeqFileIndex++;
       }
@@ -2534,10 +2673,23 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
+      TopKRuntimeFilter filter = scanOptions.getTopKRuntimeFilter();
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID)) {
+        if (filter != null && dataSource.isRuntimeFilterPruned(false, curUnseqFileIndex)) {
+          curUnseqFileIndex++;
+          continue;
+        }
         if (dataSource.isUnSeqSatisfied(
             deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
-          break;
+          if (filter == null
+              || dataSource.isUnSeqSatisfiedByRuntimeFilter(curUnseqFileIndex, filter)) {
+            break;
+          }
+          dataSource.setUnseqTsFileResourceInvalidated(curUnseqFileIndex);
+          if (!dataSource.hasValidResource()) {
+            runtimeFilterExhausted = true;
+            return false;
+          }
         }
         curUnseqFileIndex++;
       }

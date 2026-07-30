@@ -84,6 +84,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTsFileParserMemory();
   }
 
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNum();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+  }
+
   public long getSinkBatchMemoryInsertNode() {
     return COMMON_CONFIG.getPipeSinkBatchMemoryInsertNode();
   }
@@ -218,6 +226,14 @@ public class PipeConfig {
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
     return COMMON_CONFIG.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall();
+  }
+
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryMaxDurationMs();
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryProbeIntervalMs();
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
@@ -498,6 +514,12 @@ public class PipeConfig {
 
     LOGGER.info(PipeMessages.CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK, isPipeEnableMemoryCheck());
     LOGGER.info(PipeMessages.CONFIG_PIPE_TSFILE_PARSER_MEMORY, getTsFileParserMemory());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM,
+        getPipeTsFileParserInFlightMaxNum());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION,
+        getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_INSERT_NODE, getSinkBatchMemoryInsertNode());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_TSFILE, getSinkBatchMemoryTsFile());
     LOGGER.info(PipeMessages.CONFIG_SEND_TSFILE_READ_BUFFER, getSendTsFileReadBuffer());
@@ -622,6 +644,12 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL,
         getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS,
+        getPipeAsyncSinkRetryMaxDurationMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS,
+        getPipeAsyncSinkRetryProbeIntervalMs());
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER, getPipeAsyncSinkSelectorNumber());
     LOGGER.info(

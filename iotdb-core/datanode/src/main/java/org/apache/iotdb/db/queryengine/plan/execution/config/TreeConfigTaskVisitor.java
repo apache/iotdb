@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
+import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -234,6 +236,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -338,7 +341,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
     statement.setExecutedByUserId(context.getUserId());
     if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
-      visitUpdateUser(statement);
+      return visitUpdateUser(statement, context);
     }
     if (statement.getAuthorType() == AuthorType.RENAME_USER) {
       visitRenameUser(statement);
@@ -350,11 +353,27 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     return new AuthorizerTask(statement);
   }
 
-  private void visitUpdateUser(AuthorStatement statement) {
-    statement.setPassWord(
-        AuthorityChecker.getAuthorityFetcher()
-            .getUser(statement.getUserName(), true)
-            .getPassword());
+  private IConfigTask visitUpdateUser(AuthorStatement statement, MPPQueryContext context) {
+    PasswordChangeAuditContext auditContext =
+        PasswordChangeAuditContext.forTreeStatement(statement, context.getSession());
+    boolean executionDelegated = false;
+    try {
+      statement.setPassWord(
+          AuthorityChecker.getAuthorityFetcher()
+              .getUser(statement.getUserName(), true)
+              .getPassword());
+      TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AccessDeniedException(status.getMessage());
+      }
+      IConfigTask task = PasswordChangeAuditTask.wrap(new AuthorizerTask(statement), auditContext);
+      executionDelegated = true;
+      return task;
+    } finally {
+      if (!executionDelegated) {
+        auditContext.log(null);
+      }
+    }
   }
 
   private void visitRenameUser(AuthorStatement statement) {
@@ -749,6 +768,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    rejectColumnFilterForTreeTopic(createTopicStatement.getTopicAttributes());
 
     return new CreateTopicTask(createTopicStatement);
   }
@@ -759,8 +779,20 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    rejectColumnFilterForTreeTopic(alterTopicStatement.getTopicAttributes());
 
     return new AlterTopicTask(alterTopicStatement);
+  }
+
+  private static void rejectColumnFilterForTreeTopic(final Map<String, String> topicAttributes) {
+    for (final String key : topicAttributes.keySet()) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create or alter topic, %s is only supported for table topics",
+                TopicConstant.COLUMN_FILTER_KEY));
+      }
+    }
   }
 
   @Override

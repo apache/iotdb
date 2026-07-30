@@ -311,11 +311,6 @@ public class PipeInfo implements SnapshotProcessor {
 
     try {
       pipeTaskInfo.processLoadSnapshot(snapshotDir);
-
-      for (final PipeMeta pipeMeta : pipeTaskInfo.getPipeMetaList()) {
-        PipeConfigNodeAgent.runtime()
-            .increaseListenerReference(pipeMeta.getStaticMeta().getSourceParameters());
-      }
     } catch (final Exception ex) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_LOAD_PIPE_TASK_INFO_FROM_SNAPSHOT, ex);
       loadPipeTaskInfoException = ex;

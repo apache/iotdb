@@ -497,11 +497,11 @@ public class LogicalPlanBuilder {
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    List<SortItem> sortItemList = queryStatement.getSortItemList();
-
-    if (sortItemList.isEmpty()) {
-      sortItemList = new ArrayList<>();
-    }
+    // DEVICE and TIME are implicit merge keys for DeviceView. Append them to a planning-owned copy
+    // so rebuilding the plan after a dispatch failure does not mutate the parsed statement or
+    // accumulate duplicate keys. Keep the complete parameter in Analysis because a downstream
+    // SortNode must use the same implicit keys without reading a mutated QueryStatement.
+    List<SortItem> sortItemList = new ArrayList<>(queryStatement.getSortItemList());
     if (!queryStatement.isOrderByDevice()) {
       sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
@@ -510,6 +510,7 @@ public class LogicalPlanBuilder {
     }
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
+    analysis.setMergeOrderParameter(orderByParameter);
 
     long limitValue =
         queryStatement.hasOffset()
@@ -1431,7 +1432,10 @@ public class LogicalPlanBuilder {
 
     Set<Expression> orderByExpressions = analysis.getOrderByExpressions();
     updateTypeProvider(orderByExpressions);
-    OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
+    OrderByParameter orderByParameter =
+        queryStatement.isAlignByDevice()
+            ? analysis.getMergeOrderParameter()
+            : new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }

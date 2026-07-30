@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -91,6 +92,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -157,6 +159,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
+
+  private AtomicBoolean isRecordedByMetric = new AtomicBoolean(false);
 
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -258,6 +262,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
+    this.isRecordedByMetric = originTsFileResource.isRecordedByMetric;
     this.tierLevel = originTsFileResource.tierLevel;
   }
 
@@ -283,7 +288,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private void serializeTo(BufferedOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-    timeIndex.serialize(outputStream);
+    getTimeIndexForSerialization().serialize(outputStream);
 
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
@@ -315,6 +320,14 @@ public class TsFileResource implements PersistentResource, Cloneable {
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByIoTConsensusV2, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
+  }
+
+  private ITimeIndex getTimeIndexForSerialization() throws IOException {
+    if (!(timeIndex instanceof FileTimeIndex) || !resourceFileExists()) {
+      return timeIndex;
+    }
+
+    return deserializeTimeIndexFromResourceFile(Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /** deserialize from disk */
@@ -694,20 +707,13 @@ public class TsFileResource implements PersistentResource, Cloneable {
       throws IOException {
     readLock();
     try {
-      if (!resourceFileExists()) {
-        throw new IOException(StorageEngineMessages.RESOURCE_FILE_NOT_FOUND);
-      }
-      try (InputStream inputStream =
-          FSFactoryProducer.getFSFactory()
-              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-        ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile =
-            ITimeIndex.createTimeIndex(inputStream, deserializer);
-        if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
-          throw new IOException(
-              StorageEngineMessages.CANNOT_BUILD_DEVICE_TIME_INDEX + file.getPath());
+      try {
+        ITimeIndex timeIndexFromResourceFile = deserializeTimeIndexFromResourceFile(deserializer);
+        if (timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex) {
+          return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
         }
-        return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
+        throw new IOException(
+            StorageEngineMessages.CANNOT_BUILD_DEVICE_TIME_INDEX + file.getPath());
       } catch (Exception e) {
         throw new IOException(
             String.format(
@@ -718,6 +724,18 @@ public class TsFileResource implements PersistentResource, Cloneable {
       }
     } finally {
       readUnlock();
+    }
+  }
+
+  private ITimeIndex deserializeTimeIndexFromResourceFile(IDeviceID.Deserializer deserializer)
+      throws IOException {
+    if (!resourceFileExists()) {
+      throw new IOException(StorageEngineMessages.RESOURCE_FILE_NOT_FOUND);
+    }
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      return ITimeIndex.createTimeIndex(inputStream, deserializer);
     }
   }
 
@@ -1358,6 +1376,18 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return isSeq;
   }
 
+  public boolean isRecordedByMetric() {
+    return isRecordedByMetric.get();
+  }
+
+  public boolean markAsRecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(false, true);
+  }
+
+  public boolean markAsUnrecordedByMetric() {
+    return isRecordedByMetric.compareAndSet(true, false);
+  }
+
   public int compareIndexDegradePriority(TsFileResource tsFileResource) {
     int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
     return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
@@ -1651,6 +1681,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.sharedModFileOffset = this.sharedModFileOffset;
     cloned.compactionModFile = this.compactionModFile;
     cloned.isSeq = this.isSeq;
+    cloned.isRecordedByMetric = this.isRecordedByMetric;
     cloned.tsFileRepairStatus = this.tsFileRepairStatus;
     cloned.settleTsFileCallBack = this.settleTsFileCallBack;
     cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;

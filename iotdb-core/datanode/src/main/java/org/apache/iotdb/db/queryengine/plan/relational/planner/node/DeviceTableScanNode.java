@@ -79,6 +79,9 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected transient boolean containsNonAlignedDevice;
 
+  // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
+  @Nullable protected String topKRuntimeFilterSourceId;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -129,20 +132,23 @@ public class DeviceTableScanNode extends TableScanNode {
 
   @Override
   public DeviceTableScanNode clone() {
-    return new DeviceTableScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice);
+    DeviceTableScanNode cloned =
+        new DeviceTableScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice);
+    cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    return cloned;
   }
 
   protected static void serializeMemberVariables(
@@ -170,6 +176,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, byteBuffer);
   }
 
   protected static void serializeMemberVariables(
@@ -198,6 +206,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
+
+    ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, stream);
   }
 
   protected static void deserializeMemberVariables(
@@ -227,6 +237,8 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
+    node.topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
@@ -305,6 +317,15 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setContainsNonAlignedDevice() {
     this.containsNonAlignedDevice = true;
+  }
+
+  @Nullable
+  public String getTopKRuntimeFilterSourceId() {
+    return topKRuntimeFilterSourceId;
+  }
+
+  public void setTopKRuntimeFilterSourceId(@Nullable String topKRuntimeFilterSourceId) {
+    this.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
   }
 
   public String toString() {

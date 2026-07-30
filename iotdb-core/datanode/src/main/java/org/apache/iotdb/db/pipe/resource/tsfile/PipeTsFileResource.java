@@ -70,9 +70,15 @@ public class PipeTsFileResource implements AutoCloseable {
   }
 
   public boolean decreaseReferenceCount() {
+    return decreaseReferenceCount(true);
+  }
+
+  public boolean decreaseReferenceCount(final boolean deleteFileWhenNoReference) {
     final int finalReferenceCount = referenceCount.addAndGet(-1);
     if (finalReferenceCount == 0) {
-      close();
+      if (deleteFileWhenNoReference) {
+        close();
+      }
       return true;
     }
     if (finalReferenceCount < 0) {

@@ -48,6 +48,10 @@ public final class PipeMessages {
   public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
       "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
+      "PipeTsFileParserInFlightMaxNum: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
@@ -145,6 +149,10 @@ public final class PipeMessages {
           "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
+      "PipeAsyncSinkRetryMaxDurationMs: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS =
+      "PipeAsyncSinkRetryProbeIntervalMs: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER =
       "PipeAsyncSinkSelectorNumber: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_CLIENT_NUMBER =
@@ -187,7 +195,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
-      "PipePeriodicalLogMinIntervalSeconds: {}";
+      "LoggerPeriodicalLogMinIntervalSeconds: {}";
   public static final String CONFIG_PIPE_RETRY_LOCALLY_FOR_PARALLEL_OR_USER_CONFLICT =
       "PipeRetryLocallyForParallelOrUserConflict: {}";
   public static final String CONFIG_PIPE_META_REPORT_MAX_LOG_NUM_PER_ROUND =
@@ -199,7 +207,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PIN_MAX_LOG_INTERVAL_ROUNDS =
       "PipeTsFilePinMaxLogIntervalRounds: {}";
   public static final String CONFIG_PIPE_LOGGER_CACHE_MAX_SIZE_IN_BYTES =
-      "PipeLoggerCacheMaxSizeInBytes: {}";
+      "LoggerCacheMaxSizeInBytes: {}";
   public static final String CONFIG_PIPE_MEMORY_MANAGEMENT_ENABLED =
       "PipeMemoryManagementEnabled: {}";
   public static final String CONFIG_PIPE_MEMORY_ALLOCATE_MAX_RETRIES =
@@ -428,11 +436,11 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "PipeConnectionException occurred, %s retries to handshake with the target system.";
+      "PipeConnectionException occurred, %s retries to handshake with the target system. Root cause: %s.";
   public static final String HANDSHAKE_SUCCESS = "{} handshakes with the target system successfully.";
   public static final String HANDSHAKE_FAILED_RETRYING =
       "{} failed to handshake with the target system for {} times, "
-          + "will retry at most {} times.";
+          + "will retry at most {} times. Root cause: {}.";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "Interrupted while sleeping, will retry to handshake with the target system.";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -484,6 +492,12 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "When ssl transport is enabled, specify a complete trust-store pair under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store path and password must be specified together under the same "
+          + "alias: %s and %s, %s and %s, or %s and %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync client manager has been closed";
   public static final String REDIRECT_FILE_POSITION = "Redirect file position to {}.";
@@ -501,9 +515,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.";
+      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it. Root cause: {}.";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "Handshake error with target server, socket: %s";
+      "Handshake error with target server, endpoint: %s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "Handshake success. Socket: {}";
   public static final String FAILED_TO_CLOSE_CLIENT = "Failed to close client {}.";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
@@ -595,6 +609,8 @@ public final class PipeMessages {
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "Receiver id = %s: Handshake failed because login failed, response status = %s.";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
       "Receiver id = {}: User {} login successfully.";
   public static final String RECEIVER_EXITED =
@@ -900,6 +916,9 @@ public final class PipeMessages {
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "Unexpected EOF reading region progress key";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "Unexpected EOF reading region progress value length";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "Unexpected EOF reading region progress value";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F = "Invalid region progress entry count: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 = "Invalid region progress key length: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "Invalid region progress value length: %d";
   public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 =
       "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer"
       + " group %s";
@@ -945,6 +964,5 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
-  public static final String MESSAGE_PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_ARG_BYTES_54E0E369 = "PipePeriodicalLogReducer is allocated to {} bytes.";
 
 }

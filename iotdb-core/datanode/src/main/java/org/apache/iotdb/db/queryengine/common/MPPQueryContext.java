@@ -80,6 +80,7 @@ public class MPPQueryContext implements IAuditEntity {
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPQueryContext.class);
 
   private String sql;
+  private String auditSqlString;
   private final QueryId queryId;
 
   /** The type of explanation for a query. */
@@ -222,6 +223,7 @@ public class MPPQueryContext implements IAuditEntity {
       TEndPoint localInternalEndpoint) {
     this(queryId);
     this.sql = sql;
+    this.auditSqlString = sql;
     this.session = session;
     this.localQueryId = localQueryId;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
@@ -291,7 +293,10 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(
-      String tableName, List<String> tsFilePaths, Map<Symbol, ColumnSchema> tableColumnSchema) {
+      String tableName,
+      List<String> tsFilePaths,
+      Map<Symbol, ColumnSchema> tableColumnSchema,
+      long deviceMetadataInfoSwapThreshold) {
     int resourceIndex = externalTsFileQueryResourceIndex.getAndIncrement();
     ExternalTsFileQueryResource externalTsFileQueryResource =
         new ExternalTsFileQueryResource(
@@ -302,7 +307,8 @@ public class MPPQueryContext implements IAuditEntity {
                 .resolve(String.valueOf(resourceIndex)),
             tableName,
             tsFilePaths,
-            tableColumnSchema);
+            tableColumnSchema,
+            deviceMetadataInfoSwapThreshold);
     externalTsFileQueryResources.add(externalTsFileQueryResource);
     return externalTsFileQueryResource;
   }
@@ -1036,12 +1042,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getSqlString() {
-    return sql;
+    return auditSqlString;
   }
 
   @Override
   public IAuditEntity setSqlString(String sqlString) {
-    // Do nothing
+    this.auditSqlString = sqlString;
     return this;
   }
 

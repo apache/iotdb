@@ -49,6 +49,17 @@ public final class ManagerMessages {
       "[CreateRegionGroups] Starting to create the following RegionGroups:";
   public static final String CREATE_DATAPARTITION_FAILED_BECAUSE =
       "Create DataPartition failed because: ";
+  public static final String
+      DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED =
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.";
+  public static final String
+      LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES =
+          "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s";
+  public static final String NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE =
+      "No running DataPartitionTable integrity check procedure";
+  public static final String
+      LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES =
+          "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s";
   public static final String CREATE_SCHEMAPARTITION_FAILED_BECAUSE =
       "Create SchemaPartition failed because: ";
   public static final String DATABASE_DOESN_T_EXIST = "Database: {} doesn't exist";
@@ -277,6 +288,8 @@ public final class ManagerMessages {
       "LoadStatistics service is stopped successfully.";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
+  public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
+      "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist";
   public static final String MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO =
       "Mismatched CRC32 code when deserializing service info.";
   public static final String NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE =
@@ -357,6 +370,10 @@ public final class ManagerMessages {
       "Receiver id = {}: Failure status encountered while executing plan {}: {}";
   public static final String RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN =
       "Receiver id = {}: Permission check failed while executing plan {}: {}";
+  public static final String UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE =
+      "Unsupported PipeRequestType on ConfigNode %s.";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST =
+      "Exception encountered while handling pipe transfer request. Root cause: %s";
   public static final String RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS =
       "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.";
   public static final String RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY =
@@ -534,6 +551,9 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "Remove ConfigNode failed because the ConfigNode not in current Cluster.";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "Successfully remove confignode.";
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "Remove ConfigNode failed because transfer ConfigNode leader failed.";
+  public static final String LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92 = "Failed to transfer ConfigNode leader from {} to {}, trying another candidate.";
+  public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "Could not confirm a ConfigNode leader other than {} after attempting to transfer leadership to {}, trying another candidate.";
+  public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "Stopped retrying ConfigNode leader transfer because the remaining RPC timeout is insufficient.";
 
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
@@ -598,6 +618,9 @@ public final class ManagerMessages {
   public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d";
   public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "Failed to alter database. The DataRegionGroupNum could only be increased. ";
   public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MIN_ARG_REGIONGROUPNUM_ARG_B81D93DF = "%s should be greater than or equal to current min %sRegionGroupNum: %d.";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_CURRENT_MAX_ARG_REGIONGROUPNUM_ARG_3D170323 = "%s should be greater than or equal to current max %sRegionGroupNum: %d.";
+  public static final String MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ALLOCATED_ARG_REGIONGROUPNUM_ARG_994394A1 = "%s should be greater than or equal to allocated %sRegionGroupNum: %d.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "Failed to create database. The schemaReplicationFactor should be positive.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "Failed to create database. The dataReplicationFactor should be positive.";
   public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "Failed to create database. The timePartitionOrigin should be non-negative.";
@@ -674,5 +697,8 @@ public final class ManagerMessages {
   public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer is stopped successfully.";
   public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
       "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s Please manually check later whether the procedure is executed successfully.";
 
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -541,30 +542,29 @@ public class AggregateProcessor implements PipeProcessor {
   public void process(
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
-    try {
-      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-        final AtomicReference<Exception> ex = new AtomicReference<>();
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-            .consumeTabletInsertionEventsWithRetry(
-                event -> {
-                  try {
-                    process(event, eventCollector);
-                  } catch (Exception e) {
-                    ex.set(e);
-                  }
-                },
-                "AggregateProcessor::process");
-        if (ex.get() != null) {
-          throw ex.get();
-        }
-      } else {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                try {
+                  process(event, eventCollector);
+                } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                  throw e;
+                } catch (Exception e) {
+                  throw new PipeException(e.getMessage(), e);
+                }
+              },
+              "AggregateProcessor::process");
+      tsFileInsertionEvent.close();
+    } else {
+      try {
         for (final TabletInsertionEvent tabletInsertionEvent :
             tsFileInsertionEvent.toTabletInsertionEvents()) {
           process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
-    } finally {
-      tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events

@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -79,7 +80,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -200,7 +200,7 @@ public class IoTConsensus implements IConsensus {
                   recvSnapshotDirs,
                   recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
@@ -315,7 +315,7 @@ public class IoTConsensus implements IConsensus {
                             recvSnapshotDirs,
                             recvFolderStrategyType,
                             new Peer(groupId, thisNodeId, thisNode),
-                            new TreeSet<>(peers),
+                            peers,
                             registry.apply(groupId),
                             backgroundTaskService,
                             clientManager,
@@ -378,7 +378,9 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    FileUtils.deleteFileOrDirectoryWithRateLimiter(
+        new File(buildPeerDir(storageDir, groupId)),
+        RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 

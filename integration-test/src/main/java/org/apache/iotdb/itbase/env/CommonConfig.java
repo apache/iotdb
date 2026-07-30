@@ -32,6 +32,8 @@ public interface CommonConfig {
 
   CommonConfig setMemtableSizeThreshold(long memtableSizeThreshold);
 
+  CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
+
   CommonConfig setPartitionInterval(long partitionInterval);
 
   CommonConfig setCompressor(String compressor);

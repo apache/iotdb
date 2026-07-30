@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateTableV
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rest.protocol.handler.AuthorizationHandler;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.rest.protocol.v1.RestApiService;
 import org.apache.iotdb.rest.protocol.v1.handler.ExceptionHandler;
@@ -70,14 +71,15 @@ public class RestApiServiceImpl extends RestApiService {
   private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
-  private final Integer defaultQueryRowLimit;
+  private final int defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
     defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
   }
 
   @Override
@@ -152,7 +154,9 @@ public class RestApiServiceImpl extends RestApiService {
           .build();
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -231,11 +235,13 @@ public class RestApiServiceImpl extends RestApiService {
         return QueryDataSetHandler.fillQueryDataSet(
             queryExecution,
             statement,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+            QueryRowLimitUtils.resolveActualRowSizeLimit(sql.getRowLimit(), defaultQueryRowLimit));
       }
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -306,7 +312,9 @@ public class RestApiServiceImpl extends RestApiService {
                       .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)

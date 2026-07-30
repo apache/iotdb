@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaEngineMetric;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -495,7 +496,13 @@ public class SchemaEngine {
     return schemaEngineStatistics;
   }
 
+  public ISchemaEngineMetric getSchemaEngineMetric() {
+    return schemaMetricManager == null ? null : schemaMetricManager.getEngineMetric();
+  }
+
   public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
-    return schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
+    return schemaMetricManager == null
+        ? null
+        : schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
   }
 }
