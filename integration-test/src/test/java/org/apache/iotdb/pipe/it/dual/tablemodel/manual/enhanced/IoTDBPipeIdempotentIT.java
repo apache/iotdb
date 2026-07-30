@@ -257,14 +257,20 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
     TestUtils.executeNonQueries(
         database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null);
 
+    // Config events are applied asynchronously. A database marker queued after the setup
+    // statements ensures their receiver-side preconditions are ready before creating the
+    // idempotent conflict.
+    TableModelUtils.createDatabase(senderEnv, "before_test");
+    TableModelUtils.hasDataBase("before_test", receiverEnv);
+
     TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null);
 
     // Create an idempotent conflict
     TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null);
 
-    TableModelUtils.createDatabase(senderEnv, "test2");
+    TableModelUtils.createDatabase(senderEnv, "after_test");
 
     // Assume that the "database" is executed on receiverEnv
-    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 3, null);
+    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 4, null);
   }
 }
