@@ -37,6 +37,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -214,6 +215,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       // the real result on the conversion will be set in the analysis.
       return analysis;
     } catch (Exception e) {
+      if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+        return analysis;
+      }
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",
@@ -225,7 +229,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    if (isGeneratedByPipe) {
+      LOGGER.debug("Load - Analysis Stage: all tsfiles have been analyzed.");
+    } else {
+      LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    }
 
     if (reconstructStatementIfMiniFileConverted()) {
       // All mini tsfiles are converted to tablets, so the analysis is finished.
@@ -283,22 +291,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
         }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
+        logAnalyzeProgress(i + 1, tsfileNum);
         continue;
       }
 
       final long startTime = System.nanoTime();
       try {
         analyzeSingleTsFile(tsFile, i);
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
-        }
+        logAnalyzeProgress(i + 1, tsfileNum);
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
@@ -315,6 +315,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
       } catch (Exception e) {
+        if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+          return false;
+        }
         final String exceptionMessage =
             String.format(
                 "Loading file %s failed. Detail: %s",
@@ -330,6 +333,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     return true;
+  }
+
+  private void logAnalyzeProgress(final int analyzedTsFileNum, final int totalTsFileNum) {
+    if (isGeneratedByPipe && !LOGGER.isDebugEnabled()) {
+      return;
+    }
+    if (!isGeneratedByPipe && !LOGGER.isInfoEnabled()) {
+      return;
+    }
+
+    final String progress = String.format("%.3f", analyzedTsFileNum * 100.00 / totalTsFileNum);
+    if (isGeneratedByPipe) {
+      LOGGER.debug(
+          "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+          analyzedTsFileNum, totalTsFileNum, progress);
+    } else {
+      LOGGER.info(
+          "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+          analyzedTsFileNum, totalTsFileNum, progress);
+    }
   }
 
   private void analyzeSingleTsFile(final File tsFile, int index) throws Exception {
@@ -484,6 +507,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private Analysis executeTabletConversionOnException(
       final Analysis analysis, final LoadAnalyzeException e) {
+    if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
+      return analysis;
+    }
+
     if (shouldSkipConversion(e)) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
@@ -517,6 +544,52 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return analysis;
   }
 
+  private boolean setTemporaryUnavailableStatusIfNecessary(
+      final Analysis analysis, final Throwable throwable) {
+    if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
+      setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
+      return true;
+    }
+    if (isGeneratedByPipe && LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(LoadTsFileDataTypeConverter.getMemoryPressureStatus(throwable));
+      analysis.setStatement(loadTsFileStatement);
+      return true;
+    }
+    return false;
+  }
+
+  private void setFailAnalysisForTemporaryUnavailablePipeSchema(
+      final Analysis analysis, final Throwable throwable) {
+    final String exceptionMessage =
+        String.format(
+            "Pipe generated LoadTsFile is waiting for schema metadata to be transferred. Detail: %s",
+            throwable.getMessage() == null
+                ? throwable.getClass().getName()
+                : throwable.getMessage());
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setFailStatus(
+        RpcUtils.getStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, exceptionMessage));
+    analysis.setStatement(loadTsFileStatement);
+  }
+
+  boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
+    if (!isGeneratedByPipe
+        || !isVerifySchema
+        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      return false;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof LoadAnalyzeMissingSchemaException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
     return (e instanceof LoadAnalyzeTypeMismatchException)
         && !loadTsFileStatement.isConvertOnTypeMismatch();
@@ -545,7 +618,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
         Map<IDeviceID, List<TimeseriesMetadata>> device2TimeSeriesMetadataList)
-        throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
+        throws IOException, AuthException, LoadAnalyzeException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeSeriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
@@ -647,14 +720,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       schemaCache.clearDeviceIsAlignedCacheIfNecessary();
     }
 
-    public void flush() throws AuthException, LoadAnalyzeTypeMismatchException {
+    public void flush() throws AuthException, LoadAnalyzeException {
       doAutoCreateAndVerify();
 
       schemaCache.clearTimeSeries();
     }
 
     private void doAutoCreateAndVerify()
-        throws SemanticException, AuthException, LoadAnalyzeTypeMismatchException {
+        throws SemanticException, AuthException, LoadAnalyzeException {
       if (schemaCache.getDevice2TimeSeries().isEmpty()) {
         return;
       }
@@ -677,6 +750,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
         throw e;
+      } catch (LoadAnalyzeMissingSchemaException e) {
+        if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
+          throw e;
+        }
+        LOGGER.warn("Auto create or verify schema error.", e);
+        throw new SemanticException(
+            String.format(
+                "Auto create or verify schema error when executing statement %s.  Detail: %s.",
+                loadTsFileStatement, e.getMessage()));
       } catch (Exception e) {
         if (e.getCause() instanceof LoadAnalyzeTypeMismatchException && isConvertOnTypeMismatch) {
           throw (LoadAnalyzeTypeMismatchException) e.getCause();
@@ -711,9 +793,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-        final PartialPath devicePath = new PartialPath(device);
+        final PartialPath devicePath;
+        try {
+          devicePath = new PartialPath(device);
+        } catch (final IllegalPathException e) {
+          throw new LoadAnalyzeException(e.getMessage());
+        }
 
         final String[] devicePrefixNodes = devicePath.getNodes();
+        if (hasEmptyPathNode(devicePath)) {
+          throw new LoadAnalyzeException(
+              new IllegalPathException(devicePath.getFullPath()).getMessage());
+        }
         if (devicePrefixNodes.length < databasePrefixNodesLength) {
           throw new LoadAnalyzeException(
               String.format(
@@ -740,13 +831,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   SchemaConstant.ALL_MATCH_SCOPE.serialize());
           final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-          for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-            schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-            databasesNeededToBeSet.removeIf(
-                database ->
-                    database.startsWith(databaseName)
-                        || databaseName.startsWith(database.getFullPath()));
-          }
+          filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
         } catch (IOException | TException | ClientManagerException e) {
           throw new LoadFileException(e);
         }
@@ -764,6 +849,36 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
         schemaCache.addAlreadySetDatabase(databasePath);
       }
+    }
+
+    private void filterAlreadySetDatabases(
+        final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+      for (final String databaseName : alreadySetDatabaseNames) {
+        final PartialPath databasePath;
+        try {
+          databasePath = new PartialPath(databaseName);
+        } catch (final IllegalPathException e) {
+          // Ignore malformed databases left by older versions so they do not block valid loads.
+          continue;
+        }
+
+        if (hasEmptyPathNode(databasePath)) {
+          continue;
+        }
+
+        schemaCache.addAlreadySetDatabase(databasePath);
+        databasesNeededToBeSet.removeIf(
+            database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
+      }
+    }
+
+    private boolean hasEmptyPathNode(final PartialPath path) {
+      for (final String node : path.getNodes()) {
+        if (node == null || node.isEmpty()) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private void executeSetDatabaseStatement(Statement statement)
@@ -863,10 +978,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                     .collect(Collectors.toList()));
 
         if (iotdbDeviceSchemaInfo == null) {
-          throw new LoadAnalyzeException(
+          throw new LoadAnalyzeMissingSchemaException(
               String.format(
                   "Device %s does not exist in IoTDB and can not be created. "
-                      + "Please check weather auto-create-schema is enabled.",
+                      + "Please check whether auto-create-schema is enabled.",
                   device));
         }
 
@@ -889,22 +1004,23 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
           final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
           if (iotdbSchema == null) {
-            throw new LoadAnalyzeException(
+            throw new LoadAnalyzeMissingSchemaException(
                 String.format(
                     "Measurement %s does not exist in IoTDB and can not be created. "
-                        + "Please check weather auto-create-schema is enabled.",
+                        + "Please check whether auto-create-schema is enabled.",
                     device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
           }
 
           // check datatype
-          if (LOGGER.isInfoEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
-            LOGGER.info(
-                "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
-                device,
-                TsFileConstant.PATH_SEPARATOR,
-                iotdbSchema.getMeasurementId(),
-                tsFileSchema.getType(),
-                iotdbSchema.getType());
+          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
+            throw new LoadAnalyzeTypeMismatchException(
+                String.format(
+                    "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s",
+                    device,
+                    TsFileConstant.PATH_SEPARATOR,
+                    iotdbSchema.getMeasurementId(),
+                    tsFileSchema.getType(),
+                    iotdbSchema.getType()));
           }
 
           // check encoding

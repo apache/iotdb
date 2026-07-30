@@ -70,8 +70,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -116,7 +120,7 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public synchronized void start() throws IOException {
-    initAndRecover();
+    Future<Void> recoverFuture = initAndRecover();
 
     rpcService.initSyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
     try {
@@ -125,50 +129,83 @@ public class PipeConsensus implements IConsensus {
       throw new IOException(e);
     }
 
+    waitForRecovery(recoverFuture);
+
     consensusPipeGuardian.start(
         CONSENSUS_PIPE_GUARDIAN_TASK_ID,
         this::checkAllConsensusPipe,
         config.getPipe().getConsensusPipeGuardJobIntervalInSeconds());
   }
 
-  private void initAndRecover() throws IOException {
+  static void waitForRecovery(Future<Void> recoverFuture) throws IOException {
+    try {
+      recoverFuture.get();
+    } catch (CancellationException e) {
+      throw new IOException("IoTV2 Recover Task is cancelled", e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof CompletionException && cause.getCause() != null) {
+        cause = cause.getCause();
+      }
+      if (cause instanceof IOException) {
+        throw (IOException) cause;
+      }
+      if (cause instanceof RuntimeException) {
+        throw (RuntimeException) cause;
+      }
+      if (cause instanceof Error) {
+        throw (Error) cause;
+      }
+      throw new IOException("Exception while waiting for recover future completion", cause);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("IoTV2 Recover Task is interrupted", e);
+    }
+  }
+
+  private Future<Void> initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       // init
       if (!storageDir.mkdirs()) {
         LOGGER.warn("Unable to create consensus dir at {}", storageDir);
         throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
       }
+      return CompletableFuture.completedFuture(null);
     } else {
       // asynchronously recover, retry logic is implemented at PipeConsensusImpl
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-                  () -> {
-                    try (DirectoryStream<Path> stream =
-                        Files.newDirectoryStream(storageDir.toPath())) {
-                      for (Path path : stream) {
-                        ConsensusGroupId consensusGroupId =
-                            parsePeerFileName(path.getFileName().toString());
-                        PipeConsensusServerImpl consensus =
-                            new PipeConsensusServerImpl(
-                                new Peer(consensusGroupId, thisNodeId, thisNode),
-                                registry.apply(consensusGroupId),
-                                path.toString(),
-                                new ArrayList<>(),
-                                config,
-                                consensusPipeManager,
-                                syncClientManager);
-                        stateMachineMap.put(consensusGroupId, consensus);
-                        checkPeerListAndStartIfEligible(consensusGroupId, consensus);
-                      }
-                    } catch (Exception e) {
-                      LOGGER.error("Failed to recover consensus from {}", storageDir, e);
-                    }
-                  })
-              .exceptionally(
-                  e -> {
-                    LOGGER.error("Failed to recover consensus from {}", storageDir, e);
-                    return null;
-                  });
+      return CompletableFuture.runAsync(
+          () -> {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+              for (Path path : stream) {
+                ConsensusGroupId consensusGroupId =
+                    parsePeerFileName(path.getFileName().toString());
+                IStateMachine stateMachine = registry.apply(consensusGroupId);
+                try {
+                  PipeConsensusServerImpl consensus =
+                      new PipeConsensusServerImpl(
+                          new Peer(consensusGroupId, thisNodeId, thisNode),
+                          stateMachine,
+                          path.toString(),
+                          new ArrayList<>(),
+                          config,
+                          consensusPipeManager,
+                          syncClientManager);
+                  stateMachineMap.put(consensusGroupId, consensus);
+                  checkPeerListAndStartIfEligible(consensusGroupId, consensus);
+                } catch (Exception e) {
+                  LOGGER.error(
+                      "Failed to recover consensus from {} for {}, ignore it and continue recover other group, async backend checker thread will automatically deregister related pipe side effects for this failed consensus group.",
+                      storageDir,
+                      consensusGroupId,
+                      e);
+                }
+              }
+            } catch (IOException e) {
+              LOGGER.error(
+                  "Failed to recover consensus from {} because read dir failed", storageDir, e);
+              throw new CompletionException(e);
+            }
+          });
     }
   }
 

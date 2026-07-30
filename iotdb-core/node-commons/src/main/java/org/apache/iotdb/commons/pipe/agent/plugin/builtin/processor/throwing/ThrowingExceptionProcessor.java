@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -37,6 +38,7 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
   private boolean throwInCustomize = false;
   private boolean throwInProcessTabletInsertionEvent = false;
   private boolean throwInProcessTsFileInsertionEvent = false;
+  private boolean throwInProcessTsFileInsertionEventWithTemporaryOutOfMemory = false;
   private boolean throwInProcessEvent = false;
   private boolean throwInClose = false;
 
@@ -55,6 +57,8 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
     throwInCustomize = throwingStages.contains("customize");
     throwInProcessTabletInsertionEvent = throwingStages.contains("process-tablet-insertion-event");
     throwInProcessTsFileInsertionEvent = throwingStages.contains("process-tsfile-insertion-event");
+    throwInProcessTsFileInsertionEventWithTemporaryOutOfMemory =
+        throwingStages.contains("process-tsfile-insertion-event-with-temporary-oom");
     throwInProcessEvent = throwingStages.contains("process-event");
     throwInClose = throwingStages.contains("close");
   }
@@ -78,8 +82,32 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    if (throwInProcessTsFileInsertionEventWithTemporaryOutOfMemory) {
+      parseTsFileWithShortTimeout(tsFileInsertionEvent);
+    }
     if (throwInProcessTsFileInsertionEvent) {
       throw new Exception("Throwing exception in process(TsFileInsertionEvent, EventCollector)");
+    }
+  }
+
+  private void parseTsFileWithShortTimeout(final TsFileInsertionEvent tsFileInsertionEvent)
+      throws Exception {
+    try {
+      tsFileInsertionEvent
+          .getClass()
+          .getMethod("toTabletInsertionEvents", long.class)
+          .invoke(tsFileInsertionEvent, 1L);
+    } catch (final NoSuchMethodException e) {
+      tsFileInsertionEvent.toTabletInsertionEvents();
+    } catch (final InvocationTargetException e) {
+      final Throwable cause = e.getCause();
+      if (cause instanceof Exception) {
+        throw (Exception) cause;
+      }
+      if (cause instanceof Error) {
+        throw (Error) cause;
+      }
+      throw new RuntimeException(cause);
     }
   }
 

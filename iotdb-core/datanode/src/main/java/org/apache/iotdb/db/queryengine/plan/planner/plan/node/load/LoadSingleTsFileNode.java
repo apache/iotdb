@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -215,16 +216,23 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public void clean() {
+    if (!deleteAfterLoad) {
+      return;
+    }
+    deleteFile(tsFile);
+    deleteFile(new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+    deleteFile(new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+  }
+
+  private void deleteFile(final File file) {
     try {
-      if (deleteAfterLoad) {
-        Files.deleteIfExists(tsFile.toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+      RetryUtils.retryOnException(
+          () -> {
+            Files.deleteIfExists(file.toPath());
+            return null;
+          });
+    } catch (final Exception e) {
+      LOGGER.warn("Delete After Loading {} error.", file, e);
     }
   }
 

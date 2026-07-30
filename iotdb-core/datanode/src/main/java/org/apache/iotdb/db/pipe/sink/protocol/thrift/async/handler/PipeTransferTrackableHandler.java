@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -50,6 +51,10 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
+    if (Objects.nonNull(client) && Objects.nonNull(response)) {
+      sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
+    }
+
     if (sink.isClosed()) {
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
@@ -88,7 +93,7 @@ public abstract class PipeTransferTrackableHandler
    * @param client the client used for data transfer
    * @param req the request containing transfer details
    * @return {@code true} if the transfer was initiated successfully, {@code false} if the connector
-   *     is closed
+   *     is closed or the receiver probe is delayed
    * @throws TException if an error occurs during the transfer
    */
   protected boolean tryTransfer(
@@ -99,25 +104,58 @@ public abstract class PipeTransferTrackableHandler
     }
     // track handler before checking if connector is closed
     sink.trackHandler(this);
-    if (sink.isClosed()) {
-      clearEventsReferenceCount();
-      sink.eliminateHandler(this, true);
-      client.setShouldReturnSelf(true);
-      client.returnSelf(
-          (e) -> {
-            if (e instanceof IllegalStateException) {
-              PipeLogger.log(
-                  LOGGER::info,
-                  "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
-              return true;
-            }
-            return false;
-          });
-      this.client = null;
+    if (returnFalseIfSinkIsClosed(client)) {
+      return false;
+    }
+    try {
+      sink.waitIfReceiverRetryIsBackedOff(client.getEndPoint());
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      returnClientToPool(client);
+      onError(e);
+      return false;
+    }
+    if (returnFalseIfSinkIsClosed(client)) {
       return false;
     }
     doTransfer(client, req);
     return true;
+  }
+
+  private boolean returnFalseIfSinkIsClosed(final AsyncPipeDataTransferServiceClient client) {
+    if (!sink.isClosed()) {
+      return false;
+    }
+
+    clearEventsReferenceCount();
+    sink.eliminateHandler(this, true);
+    client.setShouldReturnSelf(true);
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            PipeLogger.log(
+                LOGGER::info,
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
+    this.client = null;
+    return true;
+  }
+
+  private void returnClientToPool(final AsyncPipeDataTransferServiceClient client) {
+    client.setShouldReturnSelf(true);
+    client.returnSelf(
+        e -> {
+          if (e instanceof IllegalStateException) {
+            PipeLogger.log(
+                LOGGER::info,
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
+    this.client = null;
   }
 
   /**
@@ -188,6 +226,10 @@ public abstract class PipeTransferTrackableHandler
               return;
             }
 
+            if (Objects.nonNull(response)) {
+              sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
+            }
+
             if (response == null) {
               fallbackToWholeRequest(
                   client,
@@ -251,7 +293,14 @@ public abstract class PipeTransferTrackableHandler
 
     try {
       client.setShouldReturnSelf(shouldReturnSelf);
+      sink.waitIfReceiverRetryIsBackedOff(client.getEndPoint());
+      if (returnFalseIfSinkIsClosed(client)) {
+        return;
+      }
       client.pipeTransfer(originalReq, this);
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      returnClientToPool(client);
+      PipeTransferTrackableHandler.this.onError(e);
     } catch (final Exception e) {
       PipeTransferTrackableHandler.this.onError(e);
     }

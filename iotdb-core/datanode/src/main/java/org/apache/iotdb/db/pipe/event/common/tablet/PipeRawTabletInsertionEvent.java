@@ -54,6 +54,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   private Tablet tablet;
   private String deviceId; // Only used when the tablet is released.
   private final boolean isAligned;
+  private final Boolean isTableModelEvent;
+  private final String sourceDatabaseNameFromDataRegion;
+  private final String tableModelDatabaseName;
+  private final String treeModelDatabaseName;
 
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
@@ -65,6 +69,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   private volatile ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String sourceDatabaseNameFromDataRegion,
+      final String tableModelDatabaseName,
+      final String treeModelDatabaseName,
       final Tablet tablet,
       final boolean isAligned,
       final EnrichedEvent sourceEvent,
@@ -78,6 +86,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
+    this.isTableModelEvent = isTableModelEvent;
+    this.sourceDatabaseNameFromDataRegion = sourceDatabaseNameFromDataRegion;
+    this.tableModelDatabaseName = tableModelDatabaseName;
+    this.treeModelDatabaseName = treeModelDatabaseName;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
 
@@ -96,6 +108,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String sourceDatabaseNameFromDataRegion,
+      final String tableModelDatabaseName,
+      final String treeModelDatabaseName,
       final Tablet tablet,
       final boolean isAligned,
       final String pipeName,
@@ -104,6 +120,35 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
       final EnrichedEvent sourceEvent,
       final boolean needToReport) {
     this(
+        isTableModelEvent,
+        sourceDatabaseNameFromDataRegion,
+        tableModelDatabaseName,
+        treeModelDatabaseName,
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
+  }
+
+  public PipeRawTabletInsertionEvent(
+      final Tablet tablet,
+      final boolean isAligned,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean needToReport) {
+    this(
+        null,
+        null,
+        null,
+        null,
         tablet,
         isAligned,
         sourceEvent,
@@ -118,19 +163,49 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
-    this(tablet, isAligned, null, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        null,
+        null,
+        null,
+        null,
+        tablet,
+        isAligned,
+        null,
+        false,
+        null,
+        0,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
-    this(tablet, isAligned, null, false, null, 0, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        null,
+        null,
+        null,
+        null,
+        tablet,
+        isAligned,
+        null,
+        false,
+        null,
+        0,
+        null,
+        pattern,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(tablet, false, null, false, null, 0, null, null, startTime, endTime);
+    this(
+        null, null, null, null, tablet, false, null, false, null, 0, null, null, startTime,
+        endTime);
   }
 
   @Override
@@ -219,6 +294,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
       final long startTime,
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
+        isTableModelEvent,
+        sourceDatabaseNameFromDataRegion,
+        tableModelDatabaseName,
+        treeModelDatabaseName,
         tablet,
         isAligned,
         sourceEvent,
@@ -239,11 +318,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.timestamps;
-    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+    final int rowSize = tablet.rowSize;
+    if (Objects.isNull(timestamps) || rowSize <= 0) {
       return false;
     }
     // We assume that `timestamps` is ordered.
-    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+    return startTime <= timestamps[rowSize - 1] && timestamps[0] <= endTime;
   }
 
   @Override
@@ -276,6 +356,36 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  public boolean isTableModelEvent() {
+    return Boolean.TRUE.equals(isTableModelEvent);
+  }
+
+  public Boolean getRawIsTableModelEvent() {
+    return isTableModelEvent;
+  }
+
+  public String getSourceDatabaseNameFromDataRegion() {
+    return sourceDatabaseNameFromDataRegion;
+  }
+
+  public String getRawTableModelDataBase() {
+    return tableModelDatabaseName;
+  }
+
+  public String getRawTreeModelDataBase() {
+    return treeModelDatabaseName;
+  }
+
+  public String getTreeModelDatabaseName() {
+    return treeModelDatabaseName != null ? treeModelDatabaseName : sourceDatabaseNameFromDataRegion;
+  }
+
+  public String getTableModelDatabaseName() {
+    return tableModelDatabaseName != null
+        ? tableModelDatabaseName
+        : sourceDatabaseNameFromDataRegion;
   }
 
   @Override
@@ -344,7 +454,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, creationTime, pipeTaskMeta, this, needToReport);
+        isTableModelEvent,
+        sourceDatabaseNameFromDataRegion,
+        tableModelDatabaseName,
+        treeModelDatabaseName,
+        convertToTablet(),
+        isAligned,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        this,
+        needToReport);
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {

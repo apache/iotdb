@@ -55,7 +55,7 @@ public abstract class PipeSubtask
   // For fail-over
   public static final int MAX_RETRY_TIMES = 5;
   protected final AtomicInteger retryCount = new AtomicInteger(0);
-  protected Event lastEvent;
+  protected volatile Event lastEvent;
 
   protected PipeSubtask(final String taskID, final long creationTime) {
     super();

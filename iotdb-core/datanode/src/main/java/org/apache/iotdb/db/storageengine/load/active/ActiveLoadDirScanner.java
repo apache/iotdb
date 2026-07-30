@@ -39,7 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,6 +54,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private static final String MODS = ".mods";
 
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
+  private final AtomicReference<String> pipeListeningDirConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
@@ -107,23 +108,14 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .map(file -> new File(getTsFilePath(file.getAbsolutePath())))
+              .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
-              .map(
-                  file ->
-                      (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                          ? getTsFilePath(file.getAbsolutePath())
-                          : file.getAbsolutePath())
-              .filter(this::isTsFileCompleted)
+              .filter(file -> isTsFileCompleted(file.getAbsolutePath()))
               .limit(currentAllowedPendingSize)
               .forEach(
-                  filePath -> {
-                    final File tsFile = new File(filePath);
-                    final Map<String, String> attributes =
-                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
-
-                    final File parentFile = tsFile.getParentFile();
-
+                  tsFile -> {
                     activeLoadTsFileLoader.tryTriggerTsFileLoad(
                         tsFile.getAbsolutePath(),
                         listeningDirFile.getAbsolutePath(),
@@ -201,8 +193,20 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       } else {
         listeningDirs.clear();
       }
-      // Hot reload active load listening dir for pipe data sync
-      // Active load is always enabled for pipe data sync
+      if (!Objects.equals(
+          IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+        synchronized (this) {
+          if (!Objects.equals(
+              IOTDB_CONFIG.getLoadActiveListeningPipeDir(), pipeListeningDirConfig.get())) {
+            if (pipeListeningDirConfig.get() != null) {
+              listeningDirs.remove(pipeListeningDirConfig.get());
+            }
+            pipeListeningDirConfig.set(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+          }
+        }
+      }
+
+      // Active load is always enabled for pipe data sync.
       listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
       // Create directories if not exists
@@ -228,11 +232,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   }
 
   private static String getTsFilePath(final String filePathWithResourceOrModsTail) {
-    return filePathWithResourceOrModsTail.endsWith(RESOURCE)
-        ? filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - RESOURCE.length())
-        : filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - MODS.length());
+    if (filePathWithResourceOrModsTail.endsWith(RESOURCE)) {
+      return filePathWithResourceOrModsTail.substring(
+          0, filePathWithResourceOrModsTail.length() - RESOURCE.length());
+    }
+    if (filePathWithResourceOrModsTail.endsWith(MODS)) {
+      return filePathWithResourceOrModsTail.substring(
+          0, filePathWithResourceOrModsTail.length() - MODS.length());
+    }
+    return filePathWithResourceOrModsTail;
   }
 
   // Metrics

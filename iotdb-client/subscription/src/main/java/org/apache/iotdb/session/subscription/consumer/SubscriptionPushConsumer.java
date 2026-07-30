@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,6 +56,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   // avoid interval less than or equal to zero
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -117,10 +120,15 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker
     submitAutoPollWorker();
@@ -132,8 +140,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return;
     }
 
-    super.close();
     isClosed.set(true);
+    super.close();
   }
 
   @Override
@@ -176,14 +184,21 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
         final List<SubscriptionMessage> messages =
             multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
         if (messages.isEmpty()) {
-          LOGGER.info(
-              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
-              this,
-              CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
-              autoPollTimeoutMs);
+          final OptionalLong consecutiveEmptyPollCount =
+              emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+          if (consecutiveEmptyPollCount.isPresent()) {
+            LOGGER.info(
+                "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s), "
+                    + "consecutive empty polls: {}",
+                SubscriptionPushConsumer.this,
+                CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
+                autoPollTimeoutMs,
+                consecutiveEmptyPollCount.getAsLong());
+          }
           return;
         }
 
+        emptyPollLogThrottler.reset();
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
         }

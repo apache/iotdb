@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -112,6 +113,7 @@ public class AggregateProcessor implements PipeProcessor {
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
+  private String outputDatabase;
   private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
@@ -213,7 +215,7 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    final String outputDatabase =
+    outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
     outputDatabaseWithPathSeparator =
@@ -413,6 +415,8 @@ public class AggregateProcessor implements PipeProcessor {
       final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
 
+    resetOutputDatabaseForGeneratedEvent(rowCollector);
+
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
       // Do not calculate null values
@@ -512,30 +516,29 @@ public class AggregateProcessor implements PipeProcessor {
   public void process(
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
-    try {
-      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-        final AtomicReference<Exception> ex = new AtomicReference<>();
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-            .consumeTabletInsertionEventsWithRetry(
-                event -> {
-                  try {
-                    process(event, eventCollector);
-                  } catch (Exception e) {
-                    ex.set(e);
-                  }
-                },
-                "AggregateProcessor::process");
-        if (ex.get() != null) {
-          throw ex.get();
-        }
-      } else {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                try {
+                  process(event, eventCollector);
+                } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                  throw e;
+                } catch (Exception e) {
+                  throw new PipeException(e.getMessage(), e);
+                }
+              },
+              "AggregateProcessor::process");
+      tsFileInsertionEvent.close();
+    } else {
+      try {
         for (final TabletInsertionEvent tabletInsertionEvent :
             tsFileInsertionEvent.toTabletInsertionEvents()) {
           process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
-    } finally {
-      tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events
@@ -564,6 +567,7 @@ public class AggregateProcessor implements PipeProcessor {
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  resetOutputDatabaseForGeneratedEvent(rowCollector);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
@@ -594,6 +598,13 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     eventCollector.collect(event);
+  }
+
+  private void resetOutputDatabaseForGeneratedEvent(final RowCollector rowCollector) {
+    if (!outputDatabase.isEmpty() && rowCollector instanceof PipeRowCollector) {
+      ((PipeRowCollector) rowCollector)
+          .resetDatabaseInfo(outputDatabase, Boolean.FALSE, null, outputDatabase);
+    }
   }
 
   /**

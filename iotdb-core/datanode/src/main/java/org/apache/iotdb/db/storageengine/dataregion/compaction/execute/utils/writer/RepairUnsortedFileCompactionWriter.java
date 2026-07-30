@@ -74,8 +74,8 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   }
 
   private void writeToChunkWriter(TimeValuePair timeValuePair, int subTaskId) throws IOException {
-    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(
+        timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
   }
 

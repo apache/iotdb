@@ -218,8 +218,13 @@ public class TabletInsertionDataContainer {
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
-    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
-    this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
+    final int originRowCount = insertTabletNode.getRowCount();
+    final long[] actualTimestampColumn =
+        originTimestampColumn.length == originRowCount
+            ? originTimestampColumn
+            : Arrays.copyOf(originTimestampColumn, originRowCount);
+    final List<Integer> rowIndexList = generateRowIndexList(actualTimestampColumn);
+    this.timestampColumn = rowIndexList.stream().mapToLong(i -> actualTimestampColumn[i]).toArray();
 
     generateColumnIndexMapper(
         insertTabletNode.getMeasurements(),
@@ -407,6 +412,9 @@ public class TabletInsertionDataContainer {
 
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
     final int rowCount = originTimestampColumn.length;
+    if (rowCount == 0) {
+      return generateFullRowIndexList(rowCount);
+    }
     if (Objects.isNull(sourceEvent) || !sourceEvent.shouldParseTime()) {
       return generateFullRowIndexList(rowCount);
     }
@@ -680,7 +688,8 @@ public class TabletInsertionDataContainer {
 
   public List<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
-    final PipeTabletCollector tabletCollector = new PipeTabletCollector(pipeTaskMeta, sourceEvent);
+    final PipeTabletCollector tabletCollector =
+        new PipeTabletCollector(pipeTaskMeta, sourceEvent, isAligned);
     consumer.accept(convertToTablet(), tabletCollector);
     return tabletCollector.convertToTabletInsertionEvents(shouldReport);
   }

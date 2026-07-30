@@ -242,11 +242,19 @@ public class LoadTsFileScheduler implements IScheduler {
 
           if (isLoadSingleTsFileSuccess) {
             node.clean();
-            LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
-                filePath,
-                i + 1,
-                tsFileNodeListSize);
+            if (isGeneratedByPipe) {
+              LOGGER.debug(
+                  "Load TsFile {} Successfully, load process [{}/{}]",
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            } else {
+              LOGGER.info(
+                  "Load TsFile {} Successfully, load process [{}/{}]",
+                  filePath,
+                  i + 1,
+                  tsFileNodeListSize);
+            }
           } else {
             isLoadSuccess = false;
             failedTsFileNodeIndexes.add(i);
@@ -299,6 +307,7 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
     } finally {
+      dispatcher.close();
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
   }
@@ -339,7 +348,8 @@ public class LoadTsFileScheduler implements IScheduler {
             null,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
-            queryContext.getSession());
+            queryContext.getSession(),
+            queryContext.isDebug());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(null, Collections.singletonList(instance));
@@ -387,7 +397,11 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean secondPhase(
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
-    LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    if (isGeneratedByPipe) {
+      LOGGER.debug("Start dispatching Load command for uuid {}", uuid);
+    } else {
+      LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    }
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -473,7 +487,8 @@ public class LoadTsFileScheduler implements IScheduler {
               null,
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
-              queryContext.getSession());
+              queryContext.getSession(),
+              queryContext.isDebug());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
@@ -594,7 +609,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void stop(Throwable t) {
-    // Do nothing
+    dispatcher.abort();
   }
 
   @Override
@@ -687,8 +702,7 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
+          releaseMemoryUsage(pieceNode.getDataSize());
 
           if (!isDispatchSuccess) {
             // Currently there is no retry, so return directly
@@ -773,7 +787,7 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isAllSuccess = true;
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
-        block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
+        releaseMemoryUsage(entry.getValue().getRight().getDataSize());
         if (isAllSuccess
             && !scheduler.dispatchOnePieceNode(
                 entry.getValue().getRight(), entry.getValue().getLeft())) {
@@ -787,7 +801,17 @@ public class LoadTsFileScheduler implements IScheduler {
       return isAllSuccess;
     }
 
+    private void releaseMemoryUsage(final long memorySize) {
+      dataSize -= memorySize;
+      block.reduceMemoryUsage(memorySize);
+    }
+
     private void clear() {
+      if (dataSize > 0) {
+        block.reduceMemoryUsage(dataSize);
+        dataSize = 0;
+      }
+      nonDirectionalChunkData.clear();
       regionId2ReplicaSetAndNode.clear();
     }
   }

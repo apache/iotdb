@@ -104,11 +104,24 @@ public class TemplatePreSetTableTest {
       newTemplatePreSetTable = new TemplatePreSetTable();
       newTemplatePreSetTable.processLoadSnapshot(snapshotDir);
 
-      Assert.assertTrue(templatePreSetTable.isPreSet(templateId1, templateSetPath1));
-      Assert.assertTrue(templatePreSetTable.isPreSet(templateId2, templateSetPath1));
-      Assert.assertTrue(templatePreSetTable.isPreSet(templateId2, templateSetPath2));
+      Assert.assertTrue(newTemplatePreSetTable.isPreSet(templateId1, templateSetPath1));
+      Assert.assertTrue(newTemplatePreSetTable.isPreSet(templateId2, templateSetPath1));
+      Assert.assertTrue(newTemplatePreSetTable.isPreSet(templateId2, templateSetPath2));
     } catch (IOException e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testEmptySnapshotReplacesExistingState() throws IOException, IllegalPathException {
+    final int templateId = 5;
+    final PartialPath templateSetPath = new PartialPath("root.db.t1");
+
+    Assert.assertTrue(templatePreSetTable.processTakeSnapshot(snapshotDir));
+    templatePreSetTable.preSetTemplate(templateId, templateSetPath);
+
+    templatePreSetTable.processLoadSnapshot(snapshotDir);
+
+    Assert.assertFalse(templatePreSetTable.isPreSet(templateId, templateSetPath));
   }
 }

@@ -327,6 +327,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final DataNodeThrottleQuotaManager throttleQuotaManager =
       DataNodeThrottleQuotaManager.getInstance();
 
+  private static final long TEST_CONNECTION_TIMEOUT_MS =
+      CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
+  private static final int TEST_CONNECTION_RETRY_NUM = 1;
+
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final ExecutorService schemaExecutor =
@@ -1151,49 +1155,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
-    boolean hasException = false;
-    // If there is any exception, we use the size of exceptionMessages to record the fail index
-    List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
-    try {
-      if (req.isSetPipeNamesToDrop()) {
-        for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleDropPipe(pipeNameToDrop);
-          exceptionMessages.add(message);
-          if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
+    return PushMultiPipeMetaHelper.pushMultiPipeMeta(
+        req,
+        new PushMultiPipeMetaHelper.Handler() {
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
+            return PipeDataNodeAgent.task().handleDropPipe(pipeName);
           }
-        }
-      } else if (req.isSetPipeMetas()) {
-        for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-          final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
-          TPushPipeMetaRespExceptionMessage message =
-              PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
-          exceptionMessages.add(message);
-          if (message != null) {
-            // If there is any exception, skip the remaining pipes
-            hasException = true;
-            break;
-          }
-        }
-      } else {
-        throw new Exception("Invalid TPushMultiPipeMetaReq");
-      }
 
-      return hasException
-          ? new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-              .setExceptionMessages(exceptionMessages)
-          : new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing multi pipe meta", e);
-      return new TPushPipeMetaResp()
-          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
-          .setExceptionMessages(exceptionMessages);
-    }
+          @Override
+          public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
+            return PipeDataNodeAgent.task()
+                .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
+          }
+        });
   }
 
   @Override
@@ -1517,6 +1492,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
+              false,
               false);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1613,7 +1589,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.ConfigNodeInternalService,
         DnToCnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
-            DnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DnToCnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
@@ -1625,7 +1603,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DnToDnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
@@ -1637,7 +1617,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeMPPService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DataNodeMPPServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
@@ -1649,7 +1631,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeExternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeExternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DataNodeExternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequest(
+                    handler, TEST_CONNECTION_RETRY_NUM, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   @Override

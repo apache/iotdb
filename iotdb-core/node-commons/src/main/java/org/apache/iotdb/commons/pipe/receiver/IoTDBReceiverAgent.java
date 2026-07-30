@@ -120,14 +120,14 @@ public abstract class IoTDBReceiverAgent {
             FileUtils.deleteDirectory(receiverFileDir);
             return null;
           });
-      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
+      LOGGER.debug("Clean pipe receiver dir {} successfully.", receiverFileDir);
     } catch (final Exception e) {
       LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
     }
 
     try {
       FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
+      LOGGER.debug("Create pipe receiver dir {} successfully.", receiverFileDir);
     } catch (final IOException e) {
       LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
     }

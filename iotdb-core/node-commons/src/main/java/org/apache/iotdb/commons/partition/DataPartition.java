@@ -172,8 +172,20 @@ public class DataPartition extends Partition {
     List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         dataBasePartitionMap = dataPartitionMap.get(storageGroup);
+    if (dataBasePartitionMap == null) {
+      throw new RuntimeException(
+          "Database "
+              + storageGroup
+              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+    }
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
+    if (slotReplicaSetMap == null) {
+      throw new RuntimeException(
+          String.format(
+              "Data partition is empty. device: %s, seriesSlot: %s, database: %s",
+              deviceName, seriesPartitionSlot, storageGroup));
+    }
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
@@ -199,7 +211,9 @@ public class DataPartition extends Partition {
         databasePartitionMap = dataPartitionMap.get(storageGroup);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
-          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+          "Database "
+              + storageGroup
+              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);

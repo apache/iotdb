@@ -192,6 +192,16 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   }
 
   @Override
+  protected void markReserved(DriverTask task) {
+    task.markReservedInReadyQueue();
+  }
+
+  @Override
+  protected boolean releaseReserved(DriverTask task) {
+    return task.releaseReservedInReadyQueue();
+  }
+
+  @Override
   protected void clearAllElements() {
     highestPriorityLevelQueue.clear();
     for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
