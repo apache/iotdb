@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
@@ -413,8 +414,10 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
-      DNAuditLogger.getInstance()
-          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+      DNAuditLogger auditLogger = DNAuditLogger.getInstance();
+      TSStatus status = result == null ? null : result.status;
+      auditLogger.logRevokeFailure(statement, session, sql, status);
+      auditLogger.logUserRoleModification(statement, session, sql, status);
     }
   }
 
@@ -561,8 +564,10 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
-      DNAuditLogger.getInstance()
-          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+      DNAuditLogger auditLogger = DNAuditLogger.getInstance();
+      TSStatus status = result == null ? null : result.status;
+      auditLogger.logRevokeFailure(statement, session, sql, status);
+      auditLogger.logUserRoleModification(statement, session, sql, status);
     }
   }
 
