@@ -297,12 +297,12 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
-  public void testVariableWidthResultsAreSplitBySerializedSize() throws Exception {
-    assertVariableWidthResultsAreSplitBySerializedSize(false);
-    assertVariableWidthResultsAreSplitBySerializedSize(true);
+  public void testVariableWidthResultsAreSplitByEstimatedSize() throws Exception {
+    assertVariableWidthResultsAreSplitByEstimatedSize(false);
+    assertVariableWidthResultsAreSplitByEstimatedSize(true);
   }
 
-  private void assertVariableWidthResultsAreSplitBySerializedSize(boolean withPassThrough)
+  private void assertVariableWidthResultsAreSplitByEstimatedSize(boolean withPassThrough)
       throws Exception {
     QueryId queryId = new QueryId("large_finish_result_" + withPassThrough);
     FragmentInstanceId instanceId =
@@ -319,7 +319,8 @@ public class TableFunctionOperatorTest {
     int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     Assert.assertTrue(maxLineNumber >= 3);
     int wideRowCount = maxLineNumber + 1;
-    int wideValueLength = maxBlockSize / (maxLineNumber - 1) + 1;
+    int maxWideRowsPerBlock = 8;
+    int wideValueLength = maxBlockSize / maxWideRowsPerBlock + 1;
     Binary narrowValue = new Binary("narrow", TSFileConfig.STRING_CHARSET);
     Binary wideValue = new Binary(new byte[wideValueLength]);
     TableFunctionProcessorProvider provider =
@@ -342,8 +343,8 @@ public class TableFunctionOperatorTest {
               @Override
               public void finish(
                   List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-                // This result exceeds both limits and must be split after pass-through columns are
-                // appended.
+                // The result must be sliced into bounded regions after pass-through columns are
+                // appended, without rebuilding or serializing it merely to determine its size.
                 for (int i = 0; i < wideRowCount; i++) {
                   properColumnBuilders.get(0).writeBinary(wideValue);
                   if (passThroughIndexBuilder != null) {
@@ -411,6 +412,7 @@ public class TableFunctionOperatorTest {
 
     int returnedRows = 0;
     int returnedBlocks = 0;
+    TsBlockSerde serde = new TsBlockSerde();
     try (TableFunctionOperator operator =
         new TableFunctionOperator(
             operatorContext,
@@ -436,7 +438,10 @@ public class TableFunctionOperatorTest {
         returnedBlocks++;
         returnedRows += block.getPositionCount();
         Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
-        Assert.assertTrue(new TsBlockSerde().serialize(block).remaining() <= maxBlockSize);
+        Assert.assertTrue(serde.serialize(block).remaining() <= maxBlockSize);
+        if (block.getColumn(0).getBinary(0).getLength() == wideValueLength) {
+          Assert.assertTrue(block.getPositionCount() <= maxWideRowsPerBlock);
+        }
         for (int i = 0; i < block.getPositionCount(); i++) {
           int expectedLength =
               returnedRows - block.getPositionCount() + i == 0 ? 6 : wideValueLength;
@@ -449,7 +454,7 @@ public class TableFunctionOperatorTest {
     }
 
     assertEquals(wideRowCount + 1, returnedRows);
-    Assert.assertTrue(returnedBlocks > 2);
+    Assert.assertTrue(returnedBlocks > maxWideRowsPerBlock);
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {

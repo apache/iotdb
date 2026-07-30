@@ -43,10 +43,8 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,6 +61,13 @@ public class TableFunctionOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
+  // Allow for the null marker, nested encoding metadata, and dictionary metadata of each column.
+  // These values deliberately overestimate array-encoded columns so the result can be sliced
+  // without serializing it first.
+  private static final int ESTIMATED_SERIALIZED_COLUMN_METADATA_SIZE_IN_BYTES =
+      2 * Integer.BYTES + 2 * Byte.BYTES;
+  private static final int ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES =
+      Byte.BYTES + Integer.BYTES;
 
   private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
@@ -71,6 +76,9 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TsBlockBuilder properBlockBuilder;
   private final int maxTsBlockSizeInBytes;
   private final int maxTsBlockLineNumber;
+  private final long estimatedSerializedBlockFixedSizeInBytes;
+  private final long estimatedSerializedPositionFixedSizeInBytes;
+  private final int[] variableWidthColumnIndexes;
   private final int properChannelCount;
   private final boolean needPassThrough;
   private final PartitionCache partitionCache;
@@ -84,7 +92,6 @@ public class TableFunctionOperator implements ProcessOperator {
   private boolean finished = false;
 
   private final Queue<TsBlock> resultTsBlocks;
-  private final TsBlockSerde tsBlockSerde;
 
   public TableFunctionOperator(
       CommonOperatorContext operatorContext,
@@ -107,17 +114,22 @@ public class TableFunctionOperator implements ProcessOperator {
     this.partitionRecognizer =
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
+    List<TSDataType> resultDataTypes = new ArrayList<>(outputDataTypes);
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
-    this.needPassThrough = properChannelCount != outputDataTypes.size();
+    this.needPassThrough = properChannelCount != resultDataTypes.size();
     this.partitionState = null;
-    this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
+    this.properBlockBuilder = new TsBlockBuilder(resultDataTypes.subList(0, properChannelCount));
     this.maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     this.maxTsBlockLineNumber =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    this.estimatedSerializedBlockFixedSizeInBytes =
+        getEstimatedSerializedBlockFixedSizeInBytes(resultDataTypes.size());
+    this.estimatedSerializedPositionFixedSizeInBytes =
+        getEstimatedSerializedPositionFixedSizeInBytes(resultDataTypes);
+    this.variableWidthColumnIndexes = getVariableWidthColumnIndexes(resultDataTypes);
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
-    this.tsBlockSerde = new TsBlockSerde();
     this.requireRecordSnapshot = requireRecordSnapshot;
     this.ioTDBLocal = ioTDBLocal;
   }
@@ -216,8 +228,7 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private List<TsBlock> buildTsBlock(
-      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder)
-      throws IOException {
+      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
     int positionCount = 0;
     if (properChannelCount > 0) {
       // if there is proper column, use its position count
@@ -258,41 +269,123 @@ public class TableFunctionOperator implements ProcessOperator {
     return result;
   }
 
-  private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) throws IOException {
-    int offset = 0;
-    while (offset < source.getPositionCount()) {
-      int candidatePositionCount =
-          Math.min(source.getPositionCount() - offset, Math.max(1, maxTsBlockLineNumber));
-      int resultPositionCount =
-          getMaxSerializedPositionCount(source, offset, candidatePositionCount);
-      result.add(source.getRegion(offset, resultPositionCount));
-      offset += resultPositionCount;
+  /**
+   * Splits the final result using a conservative serialized-size upper bound.
+   *
+   * <p>Serializing candidate regions to find their exact sizes would write every value into
+   * temporary buffers, only for the exchange layer to serialize the selected regions again.
+   * Rebuilding the result with a size-tracking {@link TsBlockBuilder} would avoid that temporary
+   * serialization, but it would turn the UDF's batched column output into row-by-row,
+   * column-by-column copies.
+   *
+   * <p>Instead, fixed-width values are accounted for directly from their data types, while only the
+   * lengths of variable-width values are inspected. The estimate also reserves space for null
+   * indicators, dictionary indexes, and encoding metadata, so the currently supported encodings
+   * cannot make the serialized result exceed the estimate. The resulting regions are views over the
+   * original columns and do not copy their values.
+   */
+  private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) {
+    if (variableWidthColumnIndexes.length == 0) {
+      addFixedWidthTsBlocks(result, source);
+      return;
     }
-  }
 
-  private int getMaxSerializedPositionCount(TsBlock source, int offset, int candidatePositionCount)
-      throws IOException {
-    if (getSerializedSizeInBytes(source, offset, candidatePositionCount) <= maxTsBlockSizeInBytes) {
-      return candidatePositionCount;
+    int regionOffset = 0;
+    int regionPositionCount = 0;
+    long estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
+    Column[] variableWidthColumns = new Column[variableWidthColumnIndexes.length];
+    for (int i = 0; i < variableWidthColumnIndexes.length; i++) {
+      variableWidthColumns[i] = source.getColumn(variableWidthColumnIndexes[i]);
     }
+    for (int position = 0; position < source.getPositionCount(); position++) {
+      long estimatedPositionSizeInBytes =
+          getEstimatedPositionSizeInBytes(variableWidthColumns, position);
+      if (regionPositionCount > 0
+          && (regionPositionCount >= maxTsBlockLineNumber
+              || estimatedRegionSizeInBytes + estimatedPositionSizeInBytes
+                  > maxTsBlockSizeInBytes)) {
+        result.add(source.getRegion(regionOffset, regionPositionCount));
+        regionOffset = position;
+        regionPositionCount = 0;
+        estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
+      }
 
-    // A row is indivisible, so return it alone if it is larger than maxTsBlockSizeInBytes.
-    int left = 1;
-    int right = candidatePositionCount - 1;
-    while (left < right) {
-      int mid = left + (right - left + 1) / 2;
-      if (getSerializedSizeInBytes(source, offset, mid) <= maxTsBlockSizeInBytes) {
-        left = mid;
-      } else {
-        right = mid - 1;
+      estimatedRegionSizeInBytes += estimatedPositionSizeInBytes;
+      regionPositionCount++;
+      if (regionPositionCount >= maxTsBlockLineNumber
+          || estimatedRegionSizeInBytes >= maxTsBlockSizeInBytes) {
+        result.add(source.getRegion(regionOffset, regionPositionCount));
+        regionOffset = position + 1;
+        regionPositionCount = 0;
+        estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
       }
     }
-    return left;
+    if (regionPositionCount > 0) {
+      result.add(source.getRegion(regionOffset, regionPositionCount));
+    }
   }
 
-  private int getSerializedSizeInBytes(TsBlock source, int offset, int positionCount)
-      throws IOException {
-    return tsBlockSerde.serialize(source.getRegion(offset, positionCount)).remaining();
+  private void addFixedWidthTsBlocks(List<TsBlock> result, TsBlock source) {
+    long availableSizeInBytes = maxTsBlockSizeInBytes - estimatedSerializedBlockFixedSizeInBytes;
+    int maxPositionCountBySize =
+        availableSizeInBytes <= 0
+            ? 1
+            : (int)
+                Math.max(
+                    1,
+                    Math.min(
+                        Integer.MAX_VALUE,
+                        availableSizeInBytes / estimatedSerializedPositionFixedSizeInBytes));
+    int maxPositionCount = Math.min(maxTsBlockLineNumber, maxPositionCountBySize);
+    for (int offset = 0; offset < source.getPositionCount(); offset += maxPositionCount) {
+      result.add(
+          source.getRegion(offset, Math.min(maxPositionCount, source.getPositionCount() - offset)));
+    }
+  }
+
+  private long getEstimatedPositionSizeInBytes(Column[] variableWidthColumns, int position) {
+    long sizeInBytes = estimatedSerializedPositionFixedSizeInBytes;
+    for (Column column : variableWidthColumns) {
+      if (!column.isNull(position)) {
+        sizeInBytes += column.getBinary(position).getLength();
+      }
+    }
+    return sizeInBytes;
+  }
+
+  private static long getEstimatedSerializedBlockFixedSizeInBytes(int valueColumnCount) {
+    int serializedColumnCount = valueColumnCount + 1;
+    return 2L * Integer.BYTES
+        + (long) valueColumnCount * TSDataType.getSerializedSize()
+        + (long) serializedColumnCount
+            * (Byte.BYTES + ESTIMATED_SERIALIZED_COLUMN_METADATA_SIZE_IN_BYTES);
+  }
+
+  private static long getEstimatedSerializedPositionFixedSizeInBytes(
+      List<TSDataType> outputDataTypes) {
+    long sizeInBytes = Long.BYTES + ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES;
+    for (TSDataType dataType : outputDataTypes) {
+      sizeInBytes += ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES;
+      sizeInBytes += dataType.isBinary() ? Integer.BYTES : dataType.getDataTypeSize();
+    }
+    return sizeInBytes;
+  }
+
+  private static int[] getVariableWidthColumnIndexes(List<TSDataType> outputDataTypes) {
+    int variableWidthColumnCount = 0;
+    for (TSDataType dataType : outputDataTypes) {
+      if (dataType.isBinary()) {
+        variableWidthColumnCount++;
+      }
+    }
+    int[] columnIndexes = new int[variableWidthColumnCount];
+    int index = 0;
+    for (int columnIndex = 0; columnIndex < outputDataTypes.size(); columnIndex++) {
+      if (outputDataTypes.get(columnIndex).isBinary()) {
+        columnIndexes[index++] = columnIndex;
+      }
+    }
+    return columnIndexes;
   }
 
   private void consumeCurrentPartitionState() {
