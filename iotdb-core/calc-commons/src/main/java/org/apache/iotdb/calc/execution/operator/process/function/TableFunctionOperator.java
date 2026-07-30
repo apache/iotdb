@@ -40,9 +40,11 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
@@ -61,13 +63,6 @@ public class TableFunctionOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
-  // Allow for the null marker, nested encoding metadata, and dictionary metadata of each column.
-  // These values deliberately overestimate array-encoded columns so the result can be sliced
-  // without serializing it first.
-  private static final int ESTIMATED_SERIALIZED_COLUMN_METADATA_SIZE_IN_BYTES =
-      2 * Integer.BYTES + 2 * Byte.BYTES;
-  private static final int ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES =
-      Byte.BYTES + Integer.BYTES;
 
   private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
@@ -76,8 +71,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TsBlockBuilder properBlockBuilder;
   private final int maxTsBlockSizeInBytes;
   private final int maxTsBlockLineNumber;
-  private final long estimatedSerializedBlockFixedSizeInBytes;
-  private final long estimatedSerializedPositionFixedSizeInBytes;
+  private final long estimatedFixedSizePerPositionInBytes;
   private final int[] variableWidthColumnIndexes;
   private final int properChannelCount;
   private final boolean needPassThrough;
@@ -123,10 +117,8 @@ public class TableFunctionOperator implements ProcessOperator {
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     this.maxTsBlockLineNumber =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    this.estimatedSerializedBlockFixedSizeInBytes =
-        getEstimatedSerializedBlockFixedSizeInBytes(resultDataTypes.size());
-    this.estimatedSerializedPositionFixedSizeInBytes =
-        getEstimatedSerializedPositionFixedSizeInBytes(resultDataTypes);
+    this.estimatedFixedSizePerPositionInBytes =
+        getEstimatedFixedSizePerPositionInBytes(resultDataTypes);
     this.variableWidthColumnIndexes = getVariableWidthColumnIndexes(resultDataTypes);
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
@@ -270,7 +262,8 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   /**
-   * Splits the final result using a conservative serialized-size upper bound.
+   * Splits the final result using the same logical in-memory size accounting as {@link
+   * TsBlockBuilder}.
    *
    * <p>Serializing candidate regions to find their exact sizes would write every value into
    * temporary buffers, only for the exchange layer to serialize the selected regions again.
@@ -279,10 +272,10 @@ public class TableFunctionOperator implements ProcessOperator {
    * column-by-column copies.
    *
    * <p>Instead, fixed-width values are accounted for directly from their data types, while only the
-   * lengths of variable-width values are inspected. The estimate also reserves space for null
-   * indicators, dictionary indexes, and encoding metadata, so the currently supported encodings
-   * cannot make the serialized result exceed the estimate. The resulting regions are views over the
-   * original columns and do not copy their values.
+   * retained sizes of variable-width values are inspected. This deliberately estimates the
+   * in-memory TsBlock size rather than its serialized size because the two representations are not
+   * equivalent. The resulting regions are views over the original columns and do not copy their
+   * values.
    */
   private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) {
     if (variableWidthColumnIndexes.length == 0) {
@@ -292,7 +285,7 @@ public class TableFunctionOperator implements ProcessOperator {
 
     int regionOffset = 0;
     int regionPositionCount = 0;
-    long estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
+    long estimatedRegionSizeInBytes = 0;
     Column[] variableWidthColumns = new Column[variableWidthColumnIndexes.length];
     for (int i = 0; i < variableWidthColumnIndexes.length; i++) {
       variableWidthColumns[i] = source.getColumn(variableWidthColumnIndexes[i]);
@@ -307,7 +300,7 @@ public class TableFunctionOperator implements ProcessOperator {
         result.add(source.getRegion(regionOffset, regionPositionCount));
         regionOffset = position;
         regionPositionCount = 0;
-        estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
+        estimatedRegionSizeInBytes = 0;
       }
 
       estimatedRegionSizeInBytes += estimatedPositionSizeInBytes;
@@ -317,7 +310,7 @@ public class TableFunctionOperator implements ProcessOperator {
         result.add(source.getRegion(regionOffset, regionPositionCount));
         regionOffset = position + 1;
         regionPositionCount = 0;
-        estimatedRegionSizeInBytes = estimatedSerializedBlockFixedSizeInBytes;
+        estimatedRegionSizeInBytes = 0;
       }
     }
     if (regionPositionCount > 0) {
@@ -326,16 +319,13 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private void addFixedWidthTsBlocks(List<TsBlock> result, TsBlock source) {
-    long availableSizeInBytes = maxTsBlockSizeInBytes - estimatedSerializedBlockFixedSizeInBytes;
     int maxPositionCountBySize =
-        availableSizeInBytes <= 0
-            ? 1
-            : (int)
-                Math.max(
-                    1,
-                    Math.min(
-                        Integer.MAX_VALUE,
-                        availableSizeInBytes / estimatedSerializedPositionFixedSizeInBytes));
+        (int)
+            Math.max(
+                1,
+                Math.min(
+                    Integer.MAX_VALUE,
+                    maxTsBlockSizeInBytes / estimatedFixedSizePerPositionInBytes));
     int maxPositionCount = Math.min(maxTsBlockLineNumber, maxPositionCountBySize);
     for (int offset = 0; offset < source.getPositionCount(); offset += maxPositionCount) {
       result.add(
@@ -344,29 +334,22 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private long getEstimatedPositionSizeInBytes(Column[] variableWidthColumns, int position) {
-    long sizeInBytes = estimatedSerializedPositionFixedSizeInBytes;
+    long sizeInBytes = estimatedFixedSizePerPositionInBytes;
     for (Column column : variableWidthColumns) {
       if (!column.isNull(position)) {
-        sizeInBytes += column.getBinary(position).getLength();
+        sizeInBytes += column.getBinary(position).ramBytesUsed();
       }
     }
     return sizeInBytes;
   }
 
-  private static long getEstimatedSerializedBlockFixedSizeInBytes(int valueColumnCount) {
-    int serializedColumnCount = valueColumnCount + 1;
-    return 2L * Integer.BYTES
-        + (long) valueColumnCount * TSDataType.getSerializedSize()
-        + (long) serializedColumnCount
-            * (Byte.BYTES + ESTIMATED_SERIALIZED_COLUMN_METADATA_SIZE_IN_BYTES);
-  }
-
-  private static long getEstimatedSerializedPositionFixedSizeInBytes(
-      List<TSDataType> outputDataTypes) {
-    long sizeInBytes = Long.BYTES + ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES;
+  private static long getEstimatedFixedSizePerPositionInBytes(List<TSDataType> outputDataTypes) {
+    long sizeInBytes = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     for (TSDataType dataType : outputDataTypes) {
-      sizeInBytes += ESTIMATED_SERIALIZED_POSITION_OVERHEAD_IN_BYTES;
-      sizeInBytes += dataType.isBinary() ? Integer.BYTES : dataType.getDataTypeSize();
+      sizeInBytes +=
+          dataType.isBinary()
+              ? BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION
+              : dataType.getDataTypeSize() + Byte.BYTES;
     }
     return sizeInBytes;
   }

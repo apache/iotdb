@@ -44,8 +44,10 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -297,12 +299,12 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
-  public void testVariableWidthResultsAreSplitByEstimatedSize() throws Exception {
-    assertVariableWidthResultsAreSplitByEstimatedSize(false);
-    assertVariableWidthResultsAreSplitByEstimatedSize(true);
+  public void testVariableWidthResultsAreSplitByEstimatedMemorySize() throws Exception {
+    assertVariableWidthResultsAreSplitByEstimatedMemorySize(false);
+    assertVariableWidthResultsAreSplitByEstimatedMemorySize(true);
   }
 
-  private void assertVariableWidthResultsAreSplitByEstimatedSize(boolean withPassThrough)
+  private void assertVariableWidthResultsAreSplitByEstimatedMemorySize(boolean withPassThrough)
       throws Exception {
     QueryId queryId = new QueryId("large_finish_result_" + withPassThrough);
     FragmentInstanceId instanceId =
@@ -343,8 +345,8 @@ public class TableFunctionOperatorTest {
               @Override
               public void finish(
                   List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-                // The result must be sliced into bounded regions after pass-through columns are
-                // appended, without rebuilding or serializing it merely to determine its size.
+                // The result must be sliced according to its estimated in-memory size after
+                // pass-through columns are appended, without rebuilding or serializing it.
                 for (int i = 0; i < wideRowCount; i++) {
                   properColumnBuilders.get(0).writeBinary(wideValue);
                   if (passThroughIndexBuilder != null) {
@@ -412,7 +414,6 @@ public class TableFunctionOperatorTest {
 
     int returnedRows = 0;
     int returnedBlocks = 0;
-    TsBlockSerde serde = new TsBlockSerde();
     try (TableFunctionOperator operator =
         new TableFunctionOperator(
             operatorContext,
@@ -438,18 +439,25 @@ public class TableFunctionOperatorTest {
         returnedBlocks++;
         returnedRows += block.getPositionCount();
         Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
-        Assert.assertTrue(serde.serialize(block).remaining() <= maxBlockSize);
         if (block.getColumn(0).getBinary(0).getLength() == wideValueLength) {
           Assert.assertTrue(block.getPositionCount() <= maxWideRowsPerBlock);
         }
+        long estimatedBlockSize = 0;
         for (int i = 0; i < block.getPositionCount(); i++) {
+          Binary value = block.getColumn(0).getBinary(i);
+          estimatedBlockSize +=
+              TimeColumn.SIZE_IN_BYTES_PER_POSITION
+                  + BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION
+                  + value.ramBytesUsed()
+                  + (withPassThrough ? LongColumn.SIZE_IN_BYTES_PER_POSITION : 0);
           int expectedLength =
               returnedRows - block.getPositionCount() + i == 0 ? 6 : wideValueLength;
-          assertEquals(expectedLength, block.getColumn(0).getBinary(i).getLength());
+          assertEquals(expectedLength, value.getLength());
           if (withPassThrough) {
             assertEquals(1, block.getColumn(1).getLong(i));
           }
         }
+        Assert.assertTrue(estimatedBlockSize <= maxBlockSize);
       }
     }
 
