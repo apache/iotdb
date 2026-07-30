@@ -136,6 +136,11 @@ public class PipeHeartbeatParser {
       final int nodeId,
       final PipeHeartbeat pipeHeartbeat) {
     for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
+      if (PipeStatus.PRE_DELETE.equals(
+          pipeMetaFromCoordinator.getRuntimeMeta().getStatus().get())) {
+        continue;
+      }
+
       final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
@@ -271,6 +276,9 @@ public class PipeHeartbeatParser {
                   .filter(true, pipeName).getAllPipeMeta().stream()
                       .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
                       .map(PipeMeta::getRuntimeMeta)
+                      .filter(
+                          runtimeMeta ->
+                              !PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get()))
                       .filter(
                           runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
                       .forEach(

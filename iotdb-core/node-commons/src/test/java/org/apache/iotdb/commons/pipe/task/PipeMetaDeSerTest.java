@@ -50,6 +50,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeMetaDeSerTest {
 
   @Test
+  public void testPipeStatusTypeCompatibility() {
+    Assert.assertEquals((byte) 0, PipeStatus.RUNNING.getType());
+    Assert.assertEquals((byte) 1, PipeStatus.STOPPED.getType());
+    Assert.assertEquals((byte) 2, PipeStatus.DROPPED.getType());
+    Assert.assertEquals((byte) 3, PipeStatus.PRE_DELETE.getType());
+  }
+
+  @Test
   public void test() throws IOException {
     final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
@@ -142,6 +150,11 @@ public class PipeMetaDeSerTest {
         .get(456)
         .trackExceptionMessage(new PipeRuntimeSinkCriticalException("test456"));
 
+    runtimeByteBuffer = pipeRuntimeMeta.serialize();
+    pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
+    Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
+
+    pipeRuntimeMeta.getStatus().set(PipeStatus.PRE_DELETE);
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
