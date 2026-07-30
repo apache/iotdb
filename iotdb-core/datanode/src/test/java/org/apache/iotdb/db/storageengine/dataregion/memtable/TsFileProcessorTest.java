@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -65,6 +66,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -698,6 +700,59 @@ public class TsFileProcessorTest {
     Assert.assertNull(extendedColumnBitMaps.get(1));
     Assert.assertNotNull(extendedColumnBitMaps.get(2));
     assertAlignedTvListRamCostMatchesActual(deviceId);
+  }
+
+  @Test
+  public void alignedTabletRamCostSnapshotUsesSingleDeviceFastPath() {
+    IMemTable memTable = new PrimitiveMemTable("root.snapshot", "0");
+    IDeviceID firstDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d0");
+    IDeviceID secondDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d1");
+    List<int[]> rangeList = Collections.singletonList(new int[] {0, 2});
+
+    int[] treeSplitCalls = {0};
+    InsertTabletNode treeNode =
+        new InsertTabletNode(new PlanNodeId("tree")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return firstDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            treeSplitCalls[0]++;
+            return Collections.singletonList(new Pair<>(firstDevice, end));
+          }
+        };
+    treeNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, treeNode, rangeList));
+    Assert.assertEquals(0, treeSplitCalls[0]);
+
+    int[] relationalSplitCalls = {0};
+    RelationalInsertTabletNode relationalNode =
+        new RelationalInsertTabletNode(new PlanNodeId("table")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return rowIdx == 0 ? firstDevice : secondDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            relationalSplitCalls[0]++;
+            return Arrays.asList(new Pair<>(firstDevice, 1), new Pair<>(secondDevice, end));
+          }
+        };
+    relationalNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
+
+    relationalNode.setSingleDevice();
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
   }
 
   @Test
