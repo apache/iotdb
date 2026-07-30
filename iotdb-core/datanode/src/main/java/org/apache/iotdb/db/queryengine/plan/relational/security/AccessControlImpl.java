@@ -547,6 +547,17 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject) {
+    authChecker.checkGlobalPrivilege(
+        auditEntity.getUsername(),
+        TableModelPrivilege.SYSTEM,
+        auditLogOperation,
+        auditEntity,
+        auditObject);
+  }
+
+  @Override
   public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
     return AuthorityChecker.SUPER_USER_ID == entity.getUserId()
         || AuthorityChecker.checkSystemPermission(entity.getUsername(), privilegeType);
