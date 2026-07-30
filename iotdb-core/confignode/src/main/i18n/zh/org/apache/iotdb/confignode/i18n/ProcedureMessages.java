@@ -446,6 +446,9 @@ public final class ProcedureMessages {
       "无法移除 %d 个 DataNode：集群当前有 %d 个可用 DataNode，且至少需保留 %d 个（max(schema_replication_factor=%d, data_replication_factor=%d)），以保证每个 Region 仍有足够的副本；但本次请求执行后将只剩 %d 个。";
   public static final String FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT =
       " 单副本下没有其它节点可供迁移 Region，因此必须始终保留至少一个 DataNode。";
+  public static final String
+      MESSAGE_CANNOT_REMOVE_ARG_REPLICAS_FROM_REGION_ARG_WITH_ARG_REPLICAS_USING_ARG_BECAUSE_THE_REMOVAL_SAFETY_CONDITION_ARG_REMOVEDREPLICACOUNT_REPLICACOUNT_IS_NOT_SATISFIED_4CF41C73 =
+          "无法移除 %d 个副本：Region %s 当前有 %d 个副本并使用 %s，未满足移除安全条件：%d * removedReplicaCount < replicaCount。";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "回滚修改 pipe {} 失败，详情：{}，元数据将稍后同步。";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =

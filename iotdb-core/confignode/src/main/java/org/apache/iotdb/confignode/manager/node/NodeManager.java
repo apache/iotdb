@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -923,12 +924,52 @@ public class NodeManager {
   public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
     removeConfigNodeLock.lock();
     try {
+      final List<TConfigNodeLocation> registeredConfigNodes = getRegisteredConfigNodes();
+
       // Check ConfigNodes number
-      if (getRegisteredConfigNodes().size() <= 1) {
+      if (registeredConfigNodes.size() <= 1) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 ManagerMessages
                     .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758);
+      }
+
+      // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
+      if (!registeredConfigNodes.contains(removeConfigNodePlan.getConfigNodeLocation())) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            .setMessage(
+                ManagerMessages
+                    .REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER);
+      }
+
+      final List<TConfigNodeLocation> removingConfigNodes =
+          configManager.getProcedureManager().getRemovingConfigNodes().stream()
+              .filter(registeredConfigNodes::contains)
+              .collect(Collectors.toList());
+      if (removingConfigNodes.contains(removeConfigNodePlan.getConfigNodeLocation())) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages
+                        .MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_BECAUSE_IT_IS_ALREADY_BEING_REMOVED_EEE0128D,
+                    removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId()));
+      }
+
+      final boolean strongConsistency =
+          ConsensusFactory.RATIS_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass());
+      final int removingConfigNodeCount = removingConfigNodes.size() + 1;
+      if (!NodeRemovalSafety.isSafe(
+          removingConfigNodeCount, registeredConfigNodes.size(), strongConsistency)) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages
+                        .MESSAGE_CANNOT_REMOVE_CONFIGNODE_ARG_REMOVING_ARG_CONFIGNODES_AT_THE_SAME_TIME_FROM_A_ARG_REPLICA_CONFIGNODEGROUP_USING_ARG_WOULD_VIOLATE_THE_SAFETY_CONDITION_ARG_REMOVINGCONFIGNODECOUNT_REPLICACOUNT_A64BF23B,
+                    removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
+                    removingConfigNodeCount,
+                    registeredConfigNodes.size(),
+                    CONF.getConfigNodeConsensusProtocolClass(),
+                    NodeRemovalSafety.getSafetyMultiplier(strongConsistency)));
       }
 
       // Check OnlineConfigNodes number
@@ -950,14 +991,6 @@ public class NodeManager {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
               .setMessage(ManagerMessages.REMOVE_CONFIGNODE_FAILED_DUE_TO_THREAD_INTERRUPTION);
         }
-      }
-
-      // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
-      if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-            .setMessage(
-                ManagerMessages
-                    .REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER);
       }
 
       // Check whether the remove ConfigNode is leader

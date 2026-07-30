@@ -125,12 +125,6 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           removedDataNodes.forEach(
               dataNode -> removedNodeStatusMap.put(dataNode.getDataNodeId(), NodeStatus.Removing));
           removeDataNodeHandler.changeDataNodeStatus(removedDataNodes, removedNodeStatusMap);
-          regionMigrationPlans =
-              removeDataNodeHandler.selectedRegionMigrationPlans(removedDataNodes);
-          LOG.info(
-              ProcedureMessages.LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7,
-              REMOVE_DATANODE_PROCESS,
-              regionMigrationPlans);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
@@ -138,11 +132,22 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
-          // Avoid re-submit region-migration when leader change or ConfigNode reboot
-          if (!isStateDeserialized()) {
+          // Generate plans from the latest partition table on every round. At most one replica of
+          // each RegionGroup is migrated in a round, while different RegionGroups are migrated in
+          // parallel. Recomputing also makes recovery idempotent: completed migrations disappear
+          // from the next plan, and persisted child procedures keep the parent waiting.
+          regionMigrationPlans =
+              removeDataNodeHandler.selectedRegionMigrationPlans(removedDataNodes);
+          if (regionMigrationPlans.isEmpty()) {
+            setNextState(RemoveDataNodeState.STOP_DATA_NODE);
+          } else {
+            LOG.info(
+                ProcedureMessages.LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7,
+                REMOVE_DATANODE_PROCESS,
+                regionMigrationPlans);
             submitChildRegionMigrate(env);
+            setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           }
-          setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
           checkRegionStatusAndStopDataNode(env);

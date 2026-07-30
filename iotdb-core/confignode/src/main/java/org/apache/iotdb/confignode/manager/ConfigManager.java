@@ -1608,7 +1608,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+  public synchronized TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

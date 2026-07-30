@@ -58,11 +58,13 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllRegionMap;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getSchemaRegionMap;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.awaitUntilSuccess;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.generateRemoveString;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.getConnectionWithSQLType;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.restartDataNodes;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodes;
+import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodesSharingWeakRegionSafely;
 import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeUtils.selectRemoveDataNodesWithoutRegionConflict;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
@@ -158,10 +160,11 @@ public class IoTDBRemoveDataNodeNormalIT {
   }
 
   @Test
-  public void success1C5DRemoveTwoDataNodesUseSQL() throws Exception {
-    // Setup 1C5D, and remove 2D in a single "remove datanode a, b" statement; 3 DataNodes remain
-    // which is enough to keep both the data (factor 2) and schema (factor 3) replicas.
-    successTest(2, 3, 1, 5, 2, 2, true, SQLModel.TREE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
+  public void success1C5DRemoveTwoDataNodesSharingRegionUseTableSQL() throws Exception {
+    // IoTConsensus is weakly consistent, so two replicas of a three-replica DataRegion can be
+    // removed by one statement. The procedure migrates the two replicas in separate rounds.
+    successTestWithDataRegionConflict(
+        3, 3, 1, 5, 2, 2, true, SQLModel.TABLE_MODEL_SQL, ConsensusFactory.IOT_CONSENSUS);
   }
 
   //  @Test
@@ -209,7 +212,33 @@ public class IoTDBRemoveDataNodeNormalIT {
         true,
         rejoinRemovedDataNode,
         model,
-        dataRegionGroupConsensusProtocol);
+        dataRegionGroupConsensusProtocol,
+        false);
+  }
+
+  private void successTestWithDataRegionConflict(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      final int removeDataNodeNum,
+      final int dataRegionPerDataNode,
+      final boolean rejoinRemovedDataNode,
+      final SQLModel model,
+      final String dataRegionGroupConsensusProtocol)
+      throws Exception {
+    testRemoveDataNode(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        removeDataNodeNum,
+        dataRegionPerDataNode,
+        true,
+        rejoinRemovedDataNode,
+        model,
+        dataRegionGroupConsensusProtocol,
+        true);
   }
 
   private void failTest(
@@ -233,7 +262,8 @@ public class IoTDBRemoveDataNodeNormalIT {
         false,
         rejoinRemovedDataNode,
         model,
-        dataRegionGroupConsensusProtocol);
+        dataRegionGroupConsensusProtocol,
+        false);
   }
 
   public void testRemoveDataNode(
@@ -246,7 +276,8 @@ public class IoTDBRemoveDataNodeNormalIT {
       final boolean expectRemoveSuccess,
       final boolean rejoinRemovedDataNode,
       final SQLModel model,
-      final String dataRegionGroupConsensusProtocol)
+      final String dataRegionGroupConsensusProtocol,
+      final boolean selectWithDataRegionConflict)
       throws Exception {
     // Set up specific environment
     EnvFactory.getEnv()
@@ -288,17 +319,17 @@ public class IoTDBRemoveDataNodeNormalIT {
         allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
-      // Select data nodes to remove. When removing more than one DataNode we must avoid picking two
-      // DataNodes that host replicas of the same consensus group, otherwise the
-      // RemoveDataNodesProcedure would try to migrate two replicas of one group at once, which the
-      // ConfigNode rejects ("Only one replica of the same consensus group is allowed to be migrated
-      // at the same time."). Selecting purely at random therefore makes this test flaky, so use a
-      // conflict-free selection.
+      // Most multi-node cases use a conflict-free selection so strong-consistency RegionGroups do
+      // not exceed their removal threshold. The targeted weak-consistency case deliberately picks
+      // replicas from the same DataRegion to verify round-based migration orchestration.
       final Set<Integer> removeDataNodes =
-          removeDataNodeNum > 1
-              ? selectRemoveDataNodesWithoutRegionConflict(
-                  allDataNodeId, removeDataNodeNum, getAllRegionMap(statement))
-              : selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
+          selectWithDataRegionConflict
+              ? selectRemoveDataNodesSharingWeakRegionSafely(
+                  removeDataNodeNum, regionMap, getSchemaRegionMap(statement))
+              : removeDataNodeNum > 1
+                  ? selectRemoveDataNodesWithoutRegionConflict(
+                      allDataNodeId, removeDataNodeNum, getAllRegionMap(statement))
+                  : selectRemoveDataNodes(allDataNodeId, removeDataNodeNum);
 
       List<DataNodeWrapper> removeDataNodeWrappers =
           removeDataNodes.stream()

@@ -39,4 +39,9 @@ public class IoTDBRemoveConfigNodeNormalIT extends IoTDBRemoveConfigNodeITFramew
   public void test3C1DUseTableSQL() throws Exception {
     testRemoveConfigNode(1, 1, 3, 1, 2, SQLModel.TABLE_MODEL_SQL);
   }
+
+  @Test
+  public void testRejectRemovingOneOfTwoConfigNodes() throws Exception {
+    testRejectRemoveConfigNodeFromTwoReplicaGroup(SQLModel.TREE_MODEL_SQL);
+  }
 }
