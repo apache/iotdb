@@ -35,8 +35,54 @@ import org.mockito.Mockito;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class SubscriptionCoordinatorTest {
+
+  @Test
+  public void testTopicAlterationLockSerializesOnlyTheSameTopic() throws Exception {
+    final SubscriptionCoordinator coordinator =
+        new SubscriptionCoordinator(Mockito.mock(ConfigManager.class), new SubscriptionInfo());
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch sameTopicAttemptStarted = new CountDownLatch(1);
+    final CountDownLatch sameTopicLockAcquired = new CountDownLatch(1);
+    boolean topic1LockHeld = true;
+
+    coordinator.lockTopicAlteration("topic1");
+    try {
+      final Future<?> sameTopicAlteration =
+          executor.submit(
+              () -> {
+                sameTopicAttemptStarted.countDown();
+                coordinator.lockTopicAlteration("topic1");
+                try {
+                  sameTopicLockAcquired.countDown();
+                } finally {
+                  coordinator.unlockTopicAlteration("topic1");
+                }
+              });
+
+      Assert.assertTrue(sameTopicAttemptStarted.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(sameTopicLockAcquired.await(100, TimeUnit.MILLISECONDS));
+
+      coordinator.lockTopicAlteration("topic2");
+      coordinator.unlockTopicAlteration("topic2");
+
+      coordinator.unlockTopicAlteration("topic1");
+      topic1LockHeld = false;
+      Assert.assertTrue(sameTopicLockAcquired.await(5, TimeUnit.SECONDS));
+      sameTopicAlteration.get(5, TimeUnit.SECONDS);
+    } finally {
+      if (topic1LockHeld) {
+        coordinator.unlockTopicAlteration("topic1");
+      }
+      executor.shutdownNow();
+    }
+  }
 
   @Test
   public void testOwnerTransferPreservesConcurrentAlterationDuringLeaseWait() throws Exception {
