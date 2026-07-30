@@ -90,6 +90,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -907,6 +908,175 @@ public class TypeServices {
                       ExtremeValueAccumulatorStrategy.unsupported();
                 };
 
+    public static final TypeService<TimeValueAccumulatorStrategy>
+        TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32, DATE ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateIntResult(column.getInt(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateIntResult(
+                                  ((Number) getStatisticsValue(statistics, first)).intValue(),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setInt(column.getInt(0)),
+                          (builder, result) -> builder.writeInt(result.getInt()));
+                  case INT64, TIMESTAMP ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateLongResult(column.getLong(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateLongResult(
+                                  ((Number) getStatisticsValue(statistics, first)).longValue(),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setLong(column.getLong(0)),
+                          (builder, result) -> builder.writeLong(result.getLong()));
+                  case FLOAT ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateFloatResult(column.getFloat(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateFloatResult(
+                                  ((Number) getStatisticsValue(statistics, first)).floatValue(),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setFloat(column.getFloat(0)),
+                          (builder, result) -> builder.writeFloat(result.getFloat()));
+                  case DOUBLE ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateDoubleResult(column.getDouble(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateDoubleResult(
+                                  ((Number) getStatisticsValue(statistics, first)).doubleValue(),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setDouble(column.getDouble(0)),
+                          (builder, result) -> builder.writeDouble(result.getDouble()));
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateBinaryResult(column.getBinary(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateBinaryResult(
+                                  getBinaryStatisticsValue(statistics, first),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setBinary(column.getBinary(0)),
+                          (builder, result) -> builder.writeBinary(result.getBinary()));
+                  case BOOLEAN ->
+                      timeValueAccumulatorStrategy(
+                          (accumulator, column, index, time) ->
+                              accumulator.updateBooleanResult(column.getBoolean(index), time),
+                          (accumulator, statistics, first) ->
+                              accumulator.updateBooleanResult(
+                                  (boolean) getStatisticsValue(statistics, first),
+                                  getStatisticsTime(statistics, first)),
+                          (accumulator, column) ->
+                              accumulator.getTimeValueResult().setBoolean(column.getBoolean(0)),
+                          (builder, result) -> builder.writeBoolean(result.getBoolean()));
+                  case ROW, UNKNOWN, VECTOR -> TimeValueAccumulatorStrategy.unsupported();
+                };
+
+    private static TimeValueAccumulatorStrategy timeValueAccumulatorStrategy(
+        final TimeValueColumnUpdater columnUpdater,
+        final TimeValueStatisticsUpdater statisticsUpdater,
+        final TimeValueFinalSetter finalSetter,
+        final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter) {
+      return new TimeValueAccumulatorStrategy(
+          columnUpdater, statisticsUpdater, finalSetter, resultWriter);
+    }
+
+    private static Object getStatisticsValue(final Statistics<?> statistics, final boolean first) {
+      return first ? statistics.getFirstValue() : statistics.getLastValue();
+    }
+
+    private static long getStatisticsTime(final Statistics<?> statistics, final boolean first) {
+      return first ? statistics.getStartTime() : statistics.getEndTime();
+    }
+
+    private static Binary getBinaryStatisticsValue(
+        final Statistics<?> statistics, final boolean first) {
+      final Object value = getStatisticsValue(statistics, first);
+      if (statistics instanceof DateStatistics) {
+        return new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+      }
+      return value instanceof Binary
+          ? (Binary) value
+          : new Binary(String.valueOf(value), StandardCharsets.UTF_8);
+    }
+
+    public static final class TimeValueAccumulatorStrategy {
+      private final TimeValueColumnUpdater columnUpdater;
+      private final TimeValueStatisticsUpdater statisticsUpdater;
+      private final TimeValueFinalSetter finalSetter;
+      private final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter;
+
+      private TimeValueAccumulatorStrategy(
+          final TimeValueColumnUpdater columnUpdater,
+          final TimeValueStatisticsUpdater statisticsUpdater,
+          final TimeValueFinalSetter finalSetter,
+          final BiConsumer<ColumnBuilder, TsPrimitiveType> resultWriter) {
+        this.columnUpdater = columnUpdater;
+        this.statisticsUpdater = statisticsUpdater;
+        this.finalSetter = finalSetter;
+        this.resultWriter = resultWriter;
+      }
+
+      private static TimeValueAccumulatorStrategy unsupported() {
+        return new TimeValueAccumulatorStrategy(null, null, null, null);
+      }
+
+      public boolean isSupported() {
+        return columnUpdater != null;
+      }
+
+      public void addInput(
+          final TimeValueAccumulator accumulator,
+          final Column[] columns,
+          final BitMap bitMap,
+          final boolean stopAfterFirstValue,
+          final boolean bitmapMarksSelected) {
+        final int count = columns[0].getPositionCount();
+        for (int i = 0; i < count; i++) {
+          if (bitMap != null && bitmapMarksSelected != bitMap.isMarked(i)) {
+            continue;
+          }
+          if (!columns[1].isNull(i)) {
+            columnUpdater.update(accumulator, columns[1], i, columns[0].getLong(i));
+            if (stopAfterFirstValue) {
+              return;
+            }
+          }
+        }
+      }
+
+      public void addIntermediate(
+          final TimeValueAccumulator accumulator,
+          final Column valueColumn,
+          final Column timeColumn) {
+        columnUpdater.update(accumulator, valueColumn, 0, timeColumn.getLong(0));
+      }
+
+      public void addStatistics(
+          final TimeValueAccumulator accumulator,
+          final Statistics<?> statistics,
+          final boolean first) {
+        statisticsUpdater.update(accumulator, statistics, first);
+      }
+
+      public void setFinal(final TimeValueAccumulator accumulator, final Column column) {
+        finalSetter.set(accumulator, column);
+      }
+
+      public void writeResult(final ColumnBuilder builder, final TsPrimitiveType result) {
+        resultWriter.accept(builder, result);
+      }
+    }
+
     private static ExtremeValueAccumulatorStrategy extremeValueAccumulatorStrategy(
         final ExtremeValueColumnUpdater columnUpdater,
         final ExtremeValueStatisticsUpdater statisticsUpdater,
@@ -1004,6 +1174,7 @@ public class TypeServices {
 
     static {
       EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
+      TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
       OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
       MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
     }
@@ -1026,6 +1197,22 @@ public class TypeServices {
       void updateBinaryResult(Binary value);
     }
 
+    public interface TimeValueAccumulator {
+      TsPrimitiveType getTimeValueResult();
+
+      void updateIntResult(int value, long time);
+
+      void updateLongResult(long value, long time);
+
+      void updateFloatResult(float value, long time);
+
+      void updateDoubleResult(double value, long time);
+
+      void updateBinaryResult(Binary value, long time);
+
+      void updateBooleanResult(boolean value, long time);
+    }
+
     @FunctionalInterface
     private interface ExtremeValueColumnUpdater {
       void update(ExtremeValueAccumulator accumulator, Column column, int index);
@@ -1039,6 +1226,21 @@ public class TypeServices {
     @FunctionalInterface
     private interface ExtremeValueFinalSetter {
       void set(ExtremeValueAccumulator accumulator, Column column);
+    }
+
+    @FunctionalInterface
+    private interface TimeValueColumnUpdater {
+      void update(TimeValueAccumulator accumulator, Column column, int index, long time);
+    }
+
+    @FunctionalInterface
+    private interface TimeValueStatisticsUpdater {
+      void update(TimeValueAccumulator accumulator, Statistics<?> statistics, boolean first);
+    }
+
+    @FunctionalInterface
+    private interface TimeValueFinalSetter {
+      void set(TimeValueAccumulator accumulator, Column column);
     }
   }
 

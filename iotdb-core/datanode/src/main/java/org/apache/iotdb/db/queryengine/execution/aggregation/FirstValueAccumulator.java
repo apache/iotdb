@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.TimeValueAccumulatorStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -32,53 +34,37 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.nio.charset.StandardCharsets;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class FirstValueAccumulator implements Accumulator {
+public class FirstValueAccumulator
+    implements Accumulator, TypeServices.Aggregation.TimeValueAccumulator {
 
   protected final TSDataType seriesDataType;
   protected boolean hasCandidateResult;
   protected TsPrimitiveType firstValue;
+  private final TimeValueAccumulatorStrategy strategy;
   protected long minTime = Long.MAX_VALUE;
 
   public FirstValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    firstValue = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    final Type type = Type.fromTsDataType(seriesDataType);
+    firstValue = type.getTsPrimitiveType();
+    strategy = TypeServices.Aggregation.TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.call(type);
+    ensureSupported();
   }
 
   // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(columns, bitMap);
-        return;
-      case BOOLEAN:
-        addBooleanInput(columns, bitMap);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
-    }
+    addInputWithStrategy(columns, bitMap, true, true);
+  }
+
+  protected final void addInputWithStrategy(
+      final Column[] columns,
+      final BitMap bitMap,
+      final boolean stopAfterFirstValue,
+      final boolean bitmapMarksSelected) {
+    strategy.addInput(this, columns, bitMap, stopAfterFirstValue, bitmapMarksSelected);
   }
 
   // partialResult should be like: | FirstValue | MinTime |
@@ -88,34 +74,7 @@ public class FirstValueAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntFirstValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongFirstValue(partialResult[0].getLong(0), partialResult[1].getLong(0));
-        break;
-      case FLOAT:
-        updateFloatFirstValue(partialResult[0].getFloat(0), partialResult[1].getLong(0));
-        break;
-      case DOUBLE:
-        updateDoubleFirstValue(partialResult[0].getDouble(0), partialResult[1].getLong(0));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        updateBinaryFirstValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
-        break;
-      case BOOLEAN:
-        updateBooleanFirstValue(partialResult[0].getBoolean(0), partialResult[1].getLong(0));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
-    }
+    strategy.addIntermediate(this, partialResult[0], partialResult[1]);
   }
 
   @Override
@@ -123,52 +82,7 @@ public class FirstValueAccumulator implements Accumulator {
     if (statistics == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntFirstValue(
-            ((Number) statistics.getFirstValue()).intValue(), statistics.getStartTime());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongFirstValue(
-            ((Number) statistics.getFirstValue()).longValue(), statistics.getStartTime());
-        break;
-      case FLOAT:
-        updateFloatFirstValue(
-            ((Number) statistics.getFirstValue()).floatValue(), statistics.getStartTime());
-        break;
-      case DOUBLE:
-        updateDoubleFirstValue(
-            ((Number) statistics.getFirstValue()).doubleValue(), statistics.getStartTime());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        if (statistics instanceof DateStatistics) {
-          updateBinaryFirstValue(
-              new Binary(
-                  TSDataType.getDateStringValue((Integer) statistics.getFirstValue()),
-                  StandardCharsets.UTF_8),
-              statistics.getStartTime());
-        } else {
-          if (statistics.getFirstValue() instanceof Binary) {
-            updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
-          } else {
-            updateBinaryFirstValue(
-                new Binary(String.valueOf(statistics.getFirstValue()), StandardCharsets.UTF_8),
-                statistics.getStartTime());
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanFirstValue((boolean) statistics.getFirstValue(), statistics.getStartTime());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
-    }
+    strategy.addStatistics(this, statistics, true);
   }
 
   // finalResult should be single column, like: | finalFirstValue |
@@ -177,34 +91,7 @@ public class FirstValueAccumulator implements Accumulator {
     reset();
     if (!finalResult.isNull(0)) {
       hasCandidateResult = true;
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          firstValue.setInt(finalResult.getInt(0));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          firstValue.setLong(finalResult.getLong(0));
-          break;
-        case FLOAT:
-          firstValue.setFloat(finalResult.getFloat(0));
-          break;
-        case DOUBLE:
-          firstValue.setDouble(finalResult.getDouble(0));
-          break;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          firstValue.setBinary(finalResult.getBinary(0));
-          break;
-        case BOOLEAN:
-          firstValue.setBoolean(finalResult.getBoolean(0));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FirstValue: %s", seriesDataType));
-      }
+      strategy.setFinal(this, finalResult);
     }
   }
 
@@ -217,34 +104,7 @@ public class FirstValueAccumulator implements Accumulator {
       columnBuilders[1].appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilders[0].writeInt(firstValue.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilders[0].writeLong(firstValue.getLong());
-        break;
-      case FLOAT:
-        columnBuilders[0].writeFloat(firstValue.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilders[0].writeDouble(firstValue.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        columnBuilders[0].writeBinary(firstValue.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilders[0].writeBoolean(firstValue.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    strategy.writeResult(columnBuilders[0], firstValue);
     columnBuilders[1].writeLong(minTime);
   }
 
@@ -254,34 +114,7 @@ public class FirstValueAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(firstValue.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(firstValue.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(firstValue.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(firstValue.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        columnBuilder.writeBinary(firstValue.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(firstValue.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
-    }
+    strategy.writeResult(columnBuilder, firstValue);
   }
 
   @Override
@@ -311,20 +144,13 @@ public class FirstValueAccumulator implements Accumulator {
     return 2;
   }
 
-  protected void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateIntFirstValue(column[1].getInt(i), column[0].getLong(i));
-        return;
-      }
-    }
+  @Override
+  public TsPrimitiveType getTimeValueResult() {
+    return firstValue;
   }
 
-  protected void updateIntFirstValue(int value, long curTime) {
+  @Override
+  public void updateIntResult(final int value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
@@ -332,20 +158,8 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateLongFirstValue(column[1].getLong(i), column[0].getLong(i));
-        return;
-      }
-    }
-  }
-
-  protected void updateLongFirstValue(long value, long curTime) {
+  @Override
+  public void updateLongResult(final long value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
@@ -353,20 +167,8 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateFloatFirstValue(column[1].getFloat(i), column[0].getLong(i));
-        return;
-      }
-    }
-  }
-
-  protected void updateFloatFirstValue(float value, long curTime) {
+  @Override
+  public void updateFloatResult(final float value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
@@ -374,20 +176,8 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateDoubleFirstValue(column[1].getDouble(i), column[0].getLong(i));
-        return;
-      }
-    }
-  }
-
-  protected void updateDoubleFirstValue(double value, long curTime) {
+  @Override
+  public void updateDoubleResult(final double value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
@@ -395,20 +185,8 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBooleanInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBooleanFirstValue(column[1].getBoolean(i), column[0].getLong(i));
-        return;
-      }
-    }
-  }
-
-  protected void updateBooleanFirstValue(boolean value, long curTime) {
+  @Override
+  public void updateBooleanResult(final boolean value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
@@ -416,24 +194,19 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBinaryInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBinaryFirstValue(column[1].getBinary(i), column[0].getLong(i));
-        return;
-      }
-    }
-  }
-
-  protected void updateBinaryFirstValue(Binary value, long curTime) {
+  @Override
+  public void updateBinaryResult(final Binary value, final long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;
       firstValue.setBinary(value);
+    }
+  }
+
+  private void ensureSupported() {
+    if (!strategy.isSupported()) {
+      throw new UnSupportedDataTypeException(
+          String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, seriesDataType));
     }
   }
 }

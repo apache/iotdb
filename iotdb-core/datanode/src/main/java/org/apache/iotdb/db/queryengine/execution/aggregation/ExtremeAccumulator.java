@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.TypeServices.Aggregation.ExtremeValueAccumulatorStrategy;
 
@@ -54,11 +55,11 @@ public class ExtremeAccumulator
     final Type type = Type.fromTsDataType(seriesDataType);
     this.extremeResult = type.getTsPrimitiveType();
     this.strategy = TypeServices.Aggregation.EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.call(type);
+    ensureSupported();
   }
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    ensureSupported();
     strategy.addInput(this, columns, bitMap);
   }
 
@@ -69,7 +70,6 @@ public class ExtremeAccumulator
     if (partialResult[0].isNull(0)) {
       return;
     }
-    ensureSupported();
     strategy.addIntermediate(this, partialResult[0]);
   }
 
@@ -78,7 +78,6 @@ public class ExtremeAccumulator
     if (statistics == null) {
       return;
     }
-    ensureSupported();
     strategy.addStatistics(this, statistics.getMaxValue());
     strategy.addStatistics(this, statistics.getMinValue());
   }
@@ -89,7 +88,6 @@ public class ExtremeAccumulator
       return;
     }
     initResult = true;
-    ensureSupported();
     strategy.setFinal(this, finalResult);
   }
 
@@ -101,7 +99,6 @@ public class ExtremeAccumulator
       columnBuilders[0].appendNull();
       return;
     }
-    ensureSupported();
     strategy.writeResult(columnBuilders[0], extremeResult);
   }
 
@@ -111,7 +108,6 @@ public class ExtremeAccumulator
       columnBuilder.appendNull();
       return;
     }
-    ensureSupported();
     strategy.writeResult(columnBuilder, extremeResult);
   }
 
@@ -202,7 +198,7 @@ public class ExtremeAccumulator
 
   private UnSupportedDataTypeException unsupportedDataTypeException() {
     return new UnSupportedDataTypeException(
-        String.format("Unsupported data type in Extreme: %s", seriesDataType));
+        String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, seriesDataType));
   }
 
   private int compareExtreme(int left, int right) {
