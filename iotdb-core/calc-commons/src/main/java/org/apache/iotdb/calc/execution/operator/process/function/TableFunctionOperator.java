@@ -304,9 +304,7 @@ public class TableFunctionOperator implements ProcessOperator {
       long estimatedPositionSizeInBytes =
           getEstimatedPositionSizeInBytes(variableWidthColumns, position);
       if (regionPositionCount > 0
-          && (regionPositionCount >= maxTsBlockLineNumber
-              || estimatedRegionSizeInBytes + estimatedPositionSizeInBytes
-                  > maxTsBlockSizeInBytes)) {
+          && estimatedRegionSizeInBytes + estimatedPositionSizeInBytes > maxTsBlockSizeInBytes) {
         result.add(source.getRegion(regionOffset, regionPositionCount));
         regionOffset = position;
         regionPositionCount = 0;
