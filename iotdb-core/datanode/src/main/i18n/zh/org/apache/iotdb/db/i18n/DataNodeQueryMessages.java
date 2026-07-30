@@ -4556,5 +4556,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "无权执行 %s，因为只有超级用户可以修改其自身。";
 
 }

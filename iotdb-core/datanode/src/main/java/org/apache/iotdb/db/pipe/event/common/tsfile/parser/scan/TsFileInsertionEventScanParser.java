@@ -165,6 +165,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
+      if (Objects.isNull(chunkReader)) {
+        close();
+      }
     } catch (final Exception e) {
       close();
       throw e;
@@ -440,7 +443,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       } while (Objects.nonNull(chunkReader) && !chunkReader.hasNextSatisfiedPage());
 
       if (Objects.isNull(chunkReader)) {
-        close();
+        // Let the caller release the last tablet's memory before closing the parser.
         break;
       }
 
