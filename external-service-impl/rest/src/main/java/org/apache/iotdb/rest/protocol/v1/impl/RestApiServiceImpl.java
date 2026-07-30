@@ -125,7 +125,8 @@ public class RestApiServiceImpl extends RestApiService {
                 config.getQueryTimeoutThreshold(),
                 false);
       } else {
-        Response response = authorizationHandler.checkAuthority(securityContext, statement);
+        Response response =
+            authorizationHandler.checkAuthority(securityContext, statement, sql.getSql());
         if (response != null) {
           return response;
         }

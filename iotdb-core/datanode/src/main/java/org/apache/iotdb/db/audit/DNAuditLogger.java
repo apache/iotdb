@@ -60,11 +60,15 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.timecho.iotdb.utils.AsyncBatchUtils;
@@ -76,6 +80,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.validation.constraints.NotNull;
+
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -923,6 +929,125 @@ public class DNAuditLogger extends AbstractAuditLogger {
       return new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode())
           .setMessage("Failed to write ConfigNode audit log to DataNode: " + e.getMessage());
     }
+  }
+
+  public void logRevokeFailure(
+      Statement statement, IAuditEntity auditEntity, @Nullable TSStatus status) {
+    logRevokeFailure(
+        getTargetName(statement),
+        auditEntity.getUserId(),
+        auditEntity.getUsername(),
+        auditEntity.getCliHostname(),
+        auditEntity.getDatabase(),
+        auditEntity.getSqlString(),
+        status);
+  }
+
+  public void logRevokeFailure(
+      Statement statement,
+      SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    logRevokeFailure(getTargetName(statement), sessionInfo, sql, status);
+  }
+
+  public void logRevokeFailure(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    logRevokeFailure(getTargetName(statement), sessionInfo, sql, status);
+  }
+
+  private void logRevokeFailure(
+      @Nullable String targetName,
+      @Nullable SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    if (targetName == null || isSuccessful(status) || sessionInfo == null) {
+      return;
+    }
+    logRevokeFailure(
+        targetName,
+        sessionInfo.getUserId(),
+        sessionInfo.getUserName(),
+        sessionInfo.getCliHostname(),
+        sessionInfo.getDatabaseName().orElse(null),
+        sql,
+        status);
+  }
+
+  private void logRevokeFailure(
+      @Nullable String targetName,
+      long userId,
+      String username,
+      String clientAddress,
+      @Nullable String database,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    if (targetName == null || isSuccessful(status)) {
+      return;
+    }
+    log(
+        new AuditLogFields(
+            userId,
+            username,
+            clientAddress,
+            AuditEventType.REVOKE_FAILED,
+            AuditLogOperation.CONTROL,
+            PrivilegeType.SECURITY,
+            false,
+            database,
+            sql),
+        () -> targetName);
+  }
+
+  @Nullable
+  private static String getTargetName(Statement statement) {
+    if (!(statement instanceof AuthorStatement)) {
+      return null;
+    }
+    AuthorStatement authorStatement = (AuthorStatement) statement;
+    if (authorStatement.getAuthorType() == AuthorType.REVOKE_USER
+        || authorStatement.getAuthorType() == AuthorType.REVOKE_USER_ROLE) {
+      return authorStatement.getUserName();
+    }
+    if (authorStatement.getAuthorType() == AuthorType.REVOKE_ROLE) {
+      return authorStatement.getRoleName();
+    }
+    return null;
+  }
+
+  @Nullable
+  private static String getTargetName(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement) {
+    if (!(statement instanceof RelationalAuthorStatement)) {
+      return null;
+    }
+    RelationalAuthorStatement authorStatement = (RelationalAuthorStatement) statement;
+    AuthorRType type = authorStatement.getAuthorType();
+    if (type == AuthorRType.REVOKE_USER_ANY
+        || type == AuthorRType.REVOKE_USER_ALL
+        || type == AuthorRType.REVOKE_USER_DB
+        || type == AuthorRType.REVOKE_USER_TB
+        || type == AuthorRType.REVOKE_USER_SYS
+        || type == AuthorRType.REVOKE_USER_ROLE) {
+      return authorStatement.getUserName();
+    }
+    if (type == AuthorRType.REVOKE_ROLE_ANY
+        || type == AuthorRType.REVOKE_ROLE_ALL
+        || type == AuthorRType.REVOKE_ROLE_DB
+        || type == AuthorRType.REVOKE_ROLE_TB
+        || type == AuthorRType.REVOKE_ROLE_SYS) {
+      return authorStatement.getRoleName();
+    }
+    return null;
+  }
+
+  private static boolean isSuccessful(@Nullable TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
   }
 
   private static class DNAuditLoggerHolder {
