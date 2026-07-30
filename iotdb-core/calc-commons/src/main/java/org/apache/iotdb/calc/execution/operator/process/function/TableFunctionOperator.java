@@ -71,7 +71,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TsBlockBuilder properBlockBuilder;
   private final int maxTsBlockSizeInBytes;
   private final int maxTsBlockLineNumber;
-  private final long estimatedFixedSizePerPositionInBytes;
+  private final long estimatedBaseSizePerPositionInBytes;
   private final int[] variableWidthColumnIndexes;
   private final int properChannelCount;
   private final boolean needPassThrough;
@@ -117,8 +117,8 @@ public class TableFunctionOperator implements ProcessOperator {
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     this.maxTsBlockLineNumber =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    this.estimatedFixedSizePerPositionInBytes =
-        getEstimatedFixedSizePerPositionInBytes(resultDataTypes);
+    this.estimatedBaseSizePerPositionInBytes =
+        getEstimatedBaseSizePerPositionInBytes(resultDataTypes);
     this.variableWidthColumnIndexes = getVariableWidthColumnIndexes(resultDataTypes);
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
@@ -276,10 +276,20 @@ public class TableFunctionOperator implements ProcessOperator {
    * in-memory TsBlock size rather than its serialized size because the two representations are not
    * equivalent. The resulting regions are views over the original columns and do not copy their
    * values.
+   *
+   * <p>For a block containing only fixed-width columns, the number of positions in each region is
+   * calculated directly, so no per-position scan is required. If the block contains variable-width
+   * columns, every position in those columns must be inspected once because their payload sizes can
+   * differ by row. This costs {@code O(positionCount * variableWidthColumnCount)}, but each
+   * inspection only reads the null state, the {@link org.apache.tsfile.utils.Binary} reference, and
+   * its allocated size. It does not traverse the payload bytes, serialize values, or copy column
+   * data. A shared {@code Binary} referenced by multiple positions is deliberately counted once per
+   * position, which may produce smaller regions but keeps the estimate conservative.
    */
   private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) {
     if (variableWidthColumnIndexes.length == 0) {
-      addFixedWidthTsBlocks(result, source);
+      // This fast path is used only when every column has a fixed per-position size.
+      addFixedWidthOnlyTsBlocks(result, source);
       return;
     }
 
@@ -318,14 +328,14 @@ public class TableFunctionOperator implements ProcessOperator {
     }
   }
 
-  private void addFixedWidthTsBlocks(List<TsBlock> result, TsBlock source) {
+  private void addFixedWidthOnlyTsBlocks(List<TsBlock> result, TsBlock source) {
     int maxPositionCountBySize =
         (int)
             Math.max(
                 1,
                 Math.min(
                     Integer.MAX_VALUE,
-                    maxTsBlockSizeInBytes / estimatedFixedSizePerPositionInBytes));
+                    maxTsBlockSizeInBytes / estimatedBaseSizePerPositionInBytes));
     int maxPositionCount = Math.min(maxTsBlockLineNumber, maxPositionCountBySize);
     for (int offset = 0; offset < source.getPositionCount(); offset += maxPositionCount) {
       result.add(
@@ -334,7 +344,8 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private long getEstimatedPositionSizeInBytes(Column[] variableWidthColumns, int position) {
-    long sizeInBytes = estimatedFixedSizePerPositionInBytes;
+    // Fixed-width values and variable-width payloads consume the same block-size budget.
+    long sizeInBytes = estimatedBaseSizePerPositionInBytes;
     for (Column column : variableWidthColumns) {
       if (!column.isNull(position)) {
         sizeInBytes += column.getBinary(position).ramBytesUsed();
@@ -343,7 +354,7 @@ public class TableFunctionOperator implements ProcessOperator {
     return sizeInBytes;
   }
 
-  private static long getEstimatedFixedSizePerPositionInBytes(List<TSDataType> outputDataTypes) {
+  private static long getEstimatedBaseSizePerPositionInBytes(List<TSDataType> outputDataTypes) {
     long sizeInBytes = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     for (TSDataType dataType : outputDataTypes) {
       sizeInBytes +=

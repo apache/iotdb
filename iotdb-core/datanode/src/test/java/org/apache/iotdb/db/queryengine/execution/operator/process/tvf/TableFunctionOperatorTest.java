@@ -304,9 +304,49 @@ public class TableFunctionOperatorTest {
     assertVariableWidthResultsAreSplitByEstimatedMemorySize(true);
   }
 
+  @Test
+  public void testFixedAndVariableWidthColumnsShareSizeBudget() throws Exception {
+    int originalMaxBlockSize =
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    Binary wideValue = new Binary(new byte[64]);
+    long variableWidthSizePerPosition =
+        BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION + wideValue.ramBytesUsed();
+    long fixedWidthSizePerPosition =
+        TimeColumn.SIZE_IN_BYTES_PER_POSITION + LongColumn.SIZE_IN_BYTES_PER_POSITION;
+    int combinedMaxBlockSize =
+        Math.toIntExact(2 * Math.max(variableWidthSizePerPosition, fixedWidthSizePerPosition));
+
+    // Two rows of either part fit independently, but two complete rows do not.
+    Assert.assertTrue(2 * variableWidthSizePerPosition <= combinedMaxBlockSize);
+    Assert.assertTrue(2 * fixedWidthSizePerPosition <= combinedMaxBlockSize);
+    Assert.assertTrue(
+        2 * (variableWidthSizePerPosition + fixedWidthSizePerPosition) > combinedMaxBlockSize);
+    try {
+      assertVariableWidthResultsAreSplitByEstimatedMemorySize(
+          true, 3, wideValue, 1, combinedMaxBlockSize);
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(originalMaxBlockSize);
+    }
+  }
+
   private void assertVariableWidthResultsAreSplitByEstimatedMemorySize(boolean withPassThrough)
       throws Exception {
-    QueryId queryId = new QueryId("large_finish_result_" + withPassThrough);
+    int maxLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    int maxWideRowsPerBlock = 8;
+    Binary wideValue = new Binary(new byte[maxBlockSize / maxWideRowsPerBlock + 1]);
+    assertVariableWidthResultsAreSplitByEstimatedMemorySize(
+        withPassThrough, maxLineNumber + 1, wideValue, maxWideRowsPerBlock, null);
+  }
+
+  private void assertVariableWidthResultsAreSplitByEstimatedMemorySize(
+      boolean withPassThrough,
+      int wideRowCount,
+      Binary wideValue,
+      int maxWideRowsPerBlock,
+      Integer maxBlockSizeOverride)
+      throws Exception {
+    QueryId queryId = new QueryId("large_finish_result_" + withPassThrough + "_" + wideRowCount);
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
     FragmentInstanceStateMachine stateMachine =
@@ -318,13 +358,9 @@ public class TableFunctionOperatorTest {
         driverContext.addOperatorContext(
             0, new PlanNodeId("tvf"), TableFunctionOperator.class.getSimpleName());
     int maxLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     Assert.assertTrue(maxLineNumber >= 3);
-    int wideRowCount = maxLineNumber + 1;
-    int maxWideRowsPerBlock = 8;
-    int wideValueLength = maxBlockSize / maxWideRowsPerBlock + 1;
+    int wideValueLength = wideValue.getLength();
     Binary narrowValue = new Binary("narrow", TSFileConfig.STRING_CHARSET);
-    Binary wideValue = new Binary(new byte[wideValueLength]);
     TableFunctionProcessorProvider provider =
         new TableFunctionProcessorProvider() {
           @Override
@@ -414,6 +450,13 @@ public class TableFunctionOperatorTest {
 
     int returnedRows = 0;
     int returnedBlocks = 0;
+    if (maxBlockSizeOverride != null) {
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxBlockSizeOverride);
+    }
+    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    if (maxBlockSizeOverride != null) {
+      assertEquals(maxBlockSizeOverride.intValue(), maxBlockSize);
+    }
     try (TableFunctionOperator operator =
         new TableFunctionOperator(
             operatorContext,
@@ -440,7 +483,14 @@ public class TableFunctionOperatorTest {
         returnedRows += block.getPositionCount();
         Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
         if (block.getColumn(0).getBinary(0).getLength() == wideValueLength) {
-          Assert.assertTrue(block.getPositionCount() <= maxWideRowsPerBlock);
+          Assert.assertTrue(
+              "wide block position count: "
+                  + block.getPositionCount()
+                  + ", expected at most: "
+                  + maxWideRowsPerBlock
+                  + ", configured size: "
+                  + maxBlockSize,
+              block.getPositionCount() <= maxWideRowsPerBlock);
         }
         long estimatedBlockSize = 0;
         for (int i = 0; i < block.getPositionCount(); i++) {
