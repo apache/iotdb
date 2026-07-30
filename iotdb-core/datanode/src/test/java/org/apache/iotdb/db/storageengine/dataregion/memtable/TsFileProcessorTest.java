@@ -589,9 +589,7 @@ public class TsFileProcessorTest {
 
     Assert.assertEquals(
         expectedProcessor.getWorkMemTable().getTVListsRamCost()
-            - AlignedTVList.valueListArrayMemCost(dataType)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+            - AlignedTVList.valueListArrayMemCost(dataType),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
@@ -620,10 +618,7 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost
-            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -649,10 +644,7 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost
-            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -700,9 +692,11 @@ public class TsFileProcessorTest {
         alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(0));
     Assert.assertNull(
         alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(1));
-    for (BitMap bitMap : alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex)) {
-      Assert.assertNotNull(bitMap);
-    }
+    List<BitMap> extendedColumnBitMaps =
+        alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex);
+    Assert.assertNull(extendedColumnBitMaps.get(0));
+    Assert.assertNull(extendedColumnBitMaps.get(1));
+    Assert.assertNotNull(extendedColumnBitMaps.get(2));
     assertAlignedTvListRamCostMatchesActual(deviceId);
   }
 
@@ -771,7 +765,8 @@ public class TsFileProcessorTest {
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(5269104, memTable.getTVListsRamCost());
+    Assert.assertEquals(
+        5269104 - 3000L * AlignedTVList.bitmapRamCost(), memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
@@ -1069,9 +1064,7 @@ public class TsFileProcessorTest {
     long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
 
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(dataType)
-            - 2 * AlignedTVList.bitmapReferenceRamCost()
-            - AlignedTVList.bitmapRamCost(),
+        AlignedTVList.valueListArrayMemCost(dataType),
         denseRowRamIncrement - sparseRowRamIncrement);
   }
 

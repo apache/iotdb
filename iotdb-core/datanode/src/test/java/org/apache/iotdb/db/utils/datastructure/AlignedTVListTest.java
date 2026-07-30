@@ -306,20 +306,26 @@ public class AlignedTVListTest {
 
     Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertNull(tvList.getValues().get(2).get(1));
-    Assert.assertEquals(
-        2L * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost()),
-        tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtension);
+    Assert.assertNull(tvList.getBitMaps().get(2));
+    Assert.assertEquals(ramSizeBeforeExtension, tvList.calculateRamSize().getRamSize());
 
     long ramSizeBeforeExtendedColumnMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, null, 2});
 
     Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertNotNull(tvList.getValues().get(2).get(1));
+    Assert.assertNull(tvList.getBitMaps().get(2).get(0));
+    Assert.assertNotNull(tvList.getBitMaps().get(2).get(1));
+    Assert.assertTrue(tvList.getBitMaps().get(2).get(1).isMarked(0));
+    Assert.assertTrue(tvList.getBitMaps().get(2).get(1).isMarked(1));
+    Assert.assertFalse(tvList.getBitMaps().get(2).get(1).isMarked(2));
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
+            + 2L * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
   }
 
@@ -335,7 +341,9 @@ public class AlignedTVListTest {
     tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
 
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(TSDataType.INT64),
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
+            + 2L * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
 
     Assert.assertEquals(
@@ -351,7 +359,8 @@ public class AlignedTVListTest {
                 * projectedTvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
             + AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
             + (long) projectedTvList.getBitMaps().get(0).size()
-                * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost()),
+                * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         projectedTvList.calculateRamSize().getRamSize());
 
     tvList.clear();
@@ -369,12 +378,10 @@ public class AlignedTVListTest {
     int blockCount = tvList.getValues().get(0).size();
     long denseRamSize = blockCount * tvList.alignedTvListArrayMemCost();
     long expectedRamSize =
-        denseRamSize
-            - blockCount * AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
-            + (long) blockCount
-                * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost());
+        denseRamSize - blockCount * AlignedTVList.valueListArrayMemCost(TSDataType.INT64);
 
     Assert.assertEquals(expectedRamSize, tvList.calculateRamSize().getRamSize());
+    Assert.assertNull(tvList.getBitMaps());
   }
 
   @Test
@@ -395,7 +402,89 @@ public class AlignedTVListTest {
 
     Assert.assertNotNull(tvList.getValues().get(0).get(0));
     Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertNull(tvList.getBitMaps());
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE - 1, 1));
+  }
+
+  @Test
+  public void testImplicitNullBlocksAndAllValueDeletedMap() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {null, null});
+    }
+
+    Assert.assertNull(tvList.getBitMaps());
+    Assert.assertNull(tvList.getValues().get(0).get(0));
+    Assert.assertNull(tvList.getValues().get(0).get(1));
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertNull(tvList.getValues().get(1).get(1));
+    BitMap allValueDeletedMap = tvList.getAllValueColDeletedMap();
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      Assert.assertTrue(allValueDeletedMap.isMarked(i));
+    }
+
+    tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, null});
+    tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, 2L});
+
+    Assert.assertNull(tvList.getBitMaps().get(0).get(0));
+    Assert.assertNull(tvList.getBitMaps().get(1).get(0));
+    Assert.assertNotNull(tvList.getBitMaps().get(0).get(1));
+    Assert.assertNotNull(tvList.getBitMaps().get(1).get(1));
+    allValueDeletedMap = tvList.getAllValueColDeletedMap();
+    for (int i = 0; i <= ARRAY_SIZE; i++) {
+      Assert.assertTrue(allValueDeletedMap.isMarked(i));
+    }
+    Assert.assertFalse(allValueDeletedMap.isMarked(ARRAY_SIZE + 1));
+    Assert.assertFalse(allValueDeletedMap.isMarked(ARRAY_SIZE + 2));
+  }
+
+  @Test
+  public void testDeletingImplicitNullColumnDoesNotMaterializeBitmaps() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, null});
+    }
+
+    Assert.assertEquals(0, (int) tvList.delete(0, ARRAY_SIZE - 1L, 1).left);
+    Assert.assertNull(tvList.getBitMaps());
+    tvList.deleteColumn(1);
+    Assert.assertNull(tvList.getBitMaps());
+
+    tvList.deleteColumn(0);
+    Assert.assertNotNull(tvList.getBitMaps().get(0).get(0));
+    Assert.assertNull(tvList.getBitMaps().get(1));
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      Assert.assertTrue(tvList.isNullValue(i, 0));
+      Assert.assertTrue(tvList.isNullValue(i, 1));
+    }
+  }
+
+  @Test
+  public void testAllValueDeletedMapMatchesPerColumnNullState() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64));
+    int rowCount = ARRAY_SIZE * 2 + 7;
+    for (int row = 0; row < rowCount; row++) {
+      tvList.putAlignedValue(
+          row,
+          new Object[] {
+            row % 3 == 0 ? null : (long) row,
+            row % 5 == 0 ? null : (long) row,
+            row < ARRAY_SIZE || row % 7 == 0 ? null : (long) row
+          });
+    }
+
+    BitMap allValueDeletedMap = tvList.getAllValueColDeletedMap();
+    for (int row = 0; row < rowCount; row++) {
+      boolean allNull = true;
+      for (int column = 0; column < 3; column++) {
+        allNull &= tvList.isNullValue(row, column);
+      }
+      Assert.assertEquals(allNull, allValueDeletedMap != null && allValueDeletedMap.isMarked(row));
+    }
   }
 
   @Test
