@@ -29,10 +29,12 @@ import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -51,6 +53,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  @Context private HttpServletRequest servletRequest;
 
   public AuthorizationFilter() throws AuthException {
     // do nothing
@@ -97,7 +101,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
 
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
-      RestClientSession restClientSession = new RestClientSession(sessionid);
+      String clientAddress = servletRequest == null ? sessionid : servletRequest.getRemoteAddr();
+      RestClientSession restClientSession = new RestClientSession(sessionid, clientAddress);
       restClientSession.setUsername(user.getUsername());
       SESSION_MANAGER.registerSession(restClientSession);
       SESSION_MANAGER.supplySession(
