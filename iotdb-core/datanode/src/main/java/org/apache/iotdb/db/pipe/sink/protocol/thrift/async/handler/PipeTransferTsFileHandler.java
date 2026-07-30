@@ -173,11 +173,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (sink.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
-    }
-    final int readLength = reader.read(readBuffer);
+    final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
       if (currentFile == modFile) {
@@ -248,6 +244,22 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     position += readLength;
+  }
+
+  protected int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
+      throws IOException {
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
+  }
+
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
+    }
   }
 
   @Override

@@ -450,11 +450,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payload =
             readLength == readFileBufferSize
