@@ -145,6 +145,13 @@ public class NodeManager {
   private static final String CONSENSUS_WRITE_ERROR =
       ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
+  private static final String ROLLBACK_STATUS_LOG_FORMAT =
+      "versionUpdateStatus: {}, rollbackStatus: {}";
+  private static final String REGISTRATION_ROLLBACK_FAILED_FORMAT =
+      "The registration rollback also failed: %s";
+  private static final String MANUAL_REGISTRATION_CLEANUP_MESSAGE =
+      "Manual cleanup may be required before retrying the registration.";
+
   public static final int APPLY_CONFIG_LOCALLY = -2;
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
@@ -564,7 +571,7 @@ public class NodeManager {
       AINodeRegisterResp resp = new AINodeRegisterResp();
       resp.setConfigNodeList(getRegisteredConfigNodes());
       resp.setStatus(
-          rollbackAINodeRegistration(
+          rollbackAiNodeRegistration(
               registerAINodePlan.getAINodeConfiguration().getLocation(), updateVersionStatus));
       return resp;
     }
@@ -917,6 +924,7 @@ public class NodeManager {
    *
    * @param configNodeLocation The new ConfigNode.
    * @param versionInfo The new ConfigNode's versionInfo.
+   * @throws IllegalStateException if the ConfigNode information cannot be persisted atomically
    */
   public void applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
@@ -1002,6 +1010,7 @@ public class NodeManager {
         .setMessage(ManagerMessages.SUCCESSFULLY_REMOVE_CONFIGNODE);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private TSStatus transferLeader(
       RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
     final TConfigNodeLocation removedConfigNode = removeConfigNodePlan.getConfigNodeLocation();
@@ -1009,7 +1018,7 @@ public class NodeManager {
         filterConfigNodeThroughStatus(NodeStatus.Running).stream()
             .filter(configNode -> !configNode.equals(removedConfigNode))
             .sorted(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId))
-            .collect(Collectors.toList());
+            .toList();
     if (newLeaderCandidates.isEmpty()) {
       return new TSStatus(TSStatusCode.TRANSFER_LEADER_ERROR.getStatusCode())
           .setMessage(
@@ -1416,18 +1425,18 @@ public class NodeManager {
 
     LOGGER.error(
         "Failed to roll back DataNode registration {} after version info persistence failure. "
-            + "versionUpdateStatus: {}, rollbackStatus: {}",
+            + ROLLBACK_STATUS_LOG_FORMAT,
         dataNodeLocation,
         versionUpdateStatus,
         rollbackStatus);
     return buildStatus(
         rollbackStatus.getCode(),
         failureMessage,
-        String.format("The registration rollback also failed: %s", describeStatus(rollbackStatus)),
-        "Manual cleanup may be required before retrying the registration.");
+        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
+        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
   }
 
-  private TSStatus rollbackAINodeRegistration(
+  private TSStatus rollbackAiNodeRegistration(
       TAINodeLocation aiNodeLocation, TSStatus versionUpdateStatus) {
     final TSStatus rollbackStatus = writeConfigPhysicalPlan(new RemoveAINodePlan(aiNodeLocation));
     final String failureMessage =
@@ -1443,15 +1452,15 @@ public class NodeManager {
 
     LOGGER.error(
         "Failed to roll back AINode registration {} after version info persistence failure. "
-            + "versionUpdateStatus: {}, rollbackStatus: {}",
+            + ROLLBACK_STATUS_LOG_FORMAT,
         aiNodeLocation,
         versionUpdateStatus,
         rollbackStatus);
     return buildStatus(
         rollbackStatus.getCode(),
         failureMessage,
-        String.format("The registration rollback also failed: %s", describeStatus(rollbackStatus)),
-        "Manual cleanup may be required before retrying the registration.");
+        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
+        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
   }
 
   private TSStatus rollbackConfigNodeRegistration(
@@ -1471,15 +1480,15 @@ public class NodeManager {
 
     LOGGER.error(
         "Failed to roll back ConfigNode registration {} after version info persistence failure. "
-            + "versionUpdateStatus: {}, rollbackStatus: {}",
+            + ROLLBACK_STATUS_LOG_FORMAT,
         configNodeLocation,
         versionUpdateStatus,
         rollbackStatus);
     return buildStatus(
         rollbackStatus.getCode(),
         failureMessage,
-        String.format("The registration rollback also failed: %s", describeStatus(rollbackStatus)),
-        "Manual cleanup may be required before retrying the registration.");
+        String.format(REGISTRATION_ROLLBACK_FAILED_FORMAT, describeStatus(rollbackStatus)),
+        MANUAL_REGISTRATION_CLEANUP_MESSAGE);
   }
 
   private TSStatus buildStatus(int statusCode, String... messages) {
@@ -1489,12 +1498,12 @@ public class NodeManager {
       if (message == null || message.isEmpty()) {
         continue;
       }
-      if (builder.length() > 0) {
+      if (!builder.isEmpty()) {
         builder.append(' ');
       }
       builder.append(message);
     }
-    if (builder.length() > 0) {
+    if (!builder.isEmpty()) {
       status.setMessage(builder.toString());
     }
     return status;
