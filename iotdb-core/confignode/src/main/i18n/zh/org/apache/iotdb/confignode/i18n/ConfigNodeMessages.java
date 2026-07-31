@@ -480,15 +480,23 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_SET_PIPE_STATUS_BECAUSE = "设置 pipe 状态失败，原因：";
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "删除 pipe 失败，原因：";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "修改 pipe 失败，原因：";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_DOES_NOT_EXIST_29E0DCEB =
+      "修改 Pipe %s 失败，该 Pipe 不存在";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B =
+      "修改 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "批量创建 pipe 失败，原因：";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "启动 pipe %s 失败，pipe 不存在";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "启动 pipe %s 失败，pipe 已被删除";
+  public static final String EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638 =
+      "启动 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "停止 pipe %s 失败，pipe 不存在";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "停止 pipe %s 失败，pipe 已被删除";
+  public static final String EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B =
+      "停止 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "处理 leader 变更失败，原因：";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "处理元数据变更失败，原因：";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "获取 PipePlugin Jar 失败，原因：";
@@ -707,4 +715,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
           "procedure_completed_evict_ttl 应大于 0，但当前值为 ";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
+          "创建或修改 topic 失败，mode=consensus 不支持 topic 属性 %s";
 }

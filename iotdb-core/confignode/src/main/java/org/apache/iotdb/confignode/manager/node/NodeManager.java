@@ -104,6 +104,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -303,6 +304,8 @@ public class NodeManager {
           runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
           runtimeConfiguration.setAuditConfig(getAuditConfig());
           runtimeConfiguration.setSuperUserName(getPermissionManager().getUserName(0));
+          runtimeConfiguration.setFenceThresholdMs(
+              ConfigNodeDescriptor.getInstance().getConf().getMetadataLeaseFenceMs());
           return runtimeConfiguration;
         } catch (AuthException e) {
           // This will never reach, definitely
@@ -983,30 +986,74 @@ public class NodeManager {
 
   private TSStatus transferLeader(
       RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
-    Optional<TConfigNodeLocation> optional =
+    final TConfigNodeLocation removedConfigNode = removeConfigNodePlan.getConfigNodeLocation();
+    final List<TConfigNodeLocation> newLeaderCandidates =
         filterConfigNodeThroughStatus(NodeStatus.Running).stream()
-            .filter(e -> !e.equals(removeConfigNodePlan.getConfigNodeLocation()))
-            .findAny();
-    TConfigNodeLocation newLeader = null;
-    if (optional.isPresent()) {
-      newLeader = optional.get();
-    } else {
+            .filter(configNode -> !configNode.equals(removedConfigNode))
+            .sorted(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId))
+            .collect(Collectors.toList());
+    if (newLeaderCandidates.isEmpty()) {
       return new TSStatus(TSStatusCode.TRANSFER_LEADER_ERROR.getStatusCode())
           .setMessage(
               ManagerMessages
                   .MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D);
     }
-    try {
-      getConsensusManager()
-          .getConsensusImpl()
-          .transferLeader(
-              groupId,
-              new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
-    } catch (ConsensusException e) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-          .setMessage(
-              ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
+
+    final long retryDeadline =
+        System.nanoTime()
+            + TimeUnit.MILLISECONDS.toNanos(COMMON_CONFIG.getCnConnectionTimeoutInMS());
+    final long transferLeaderTimeout =
+        TimeUnit.MILLISECONDS.toNanos(CONF.getRatisTransferLeaderTimeoutMs());
+
+    for (int i = 0; i < newLeaderCandidates.size(); i++) {
+      if (i > 0 && retryDeadline - System.nanoTime() <= transferLeaderTimeout) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C);
+        break;
+      }
+
+      final TConfigNodeLocation newLeaderCandidate = newLeaderCandidates.get(i);
+      try {
+        getConsensusManager()
+            .getConsensusImpl()
+            .transferLeader(
+                groupId,
+                new Peer(
+                    groupId,
+                    newLeaderCandidate.getConfigNodeId(),
+                    newLeaderCandidate.getConsensusEndPoint()));
+      } catch (RatisRequestFailedException e) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92,
+            removedConfigNode.getConfigNodeId(),
+            newLeaderCandidate.getConfigNodeId(),
+            e);
+      } catch (ConsensusException e) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            .setMessage(
+                ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
+      }
+
+      final TConfigNodeLocation actualLeader = getConsensusManager().getLeaderLocation();
+      if (actualLeader != null && !actualLeader.equals(removedConfigNode)) {
+        return buildConfigNodeLeaderTransferredStatus(actualLeader);
+      }
+
+      LOGGER.warn(
+          ManagerMessages
+              .LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1,
+          removedConfigNode.getConfigNodeId(),
+          newLeaderCandidate.getConfigNodeId());
     }
+
+    return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+        .setMessage(
+            ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
+  }
+
+  private TSStatus buildConfigNodeLeaderTransferredStatus(TConfigNodeLocation newLeader) {
     return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
         .setMessage(

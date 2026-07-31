@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -193,21 +194,27 @@ public class AuthorityChecker {
 
   public static TSStatus checkAuthority(Statement statement, IAuditEntity auditEntity) {
     long startTime = System.nanoTime();
+    TSStatus status = null;
     try {
       if (auditEntity instanceof TreeAccessCheckContext) {
-        return accessControl.checkPermissionBeforeProcess(
-            statement, (TreeAccessCheckContext) auditEntity);
+        status =
+            accessControl.checkPermissionBeforeProcess(
+                statement, (TreeAccessCheckContext) auditEntity);
+      } else {
+        status =
+            accessControl.checkPermissionBeforeProcess(
+                statement,
+                (TreeAccessCheckContext)
+                    new TreeAccessCheckContext(
+                            auditEntity.getUserId(),
+                            auditEntity.getUsername(),
+                            auditEntity.getCliHostname())
+                        .setSqlString(auditEntity.getSqlString()));
       }
-      return accessControl.checkPermissionBeforeProcess(
-          statement,
-          (TreeAccessCheckContext)
-              new TreeAccessCheckContext(
-                      auditEntity.getUserId(),
-                      auditEntity.getUsername(),
-                      auditEntity.getCliHostname())
-                  .setSqlString(auditEntity.getSqlString()));
+      return status;
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+      DNAuditLogger.getInstance().logRevokeFailure(statement, auditEntity, status);
     }
   }
 

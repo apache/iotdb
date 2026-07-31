@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
@@ -108,9 +110,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
@@ -1152,6 +1156,91 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testInsertRowsTypeRetryKeepsSuccessfulFragments() throws Exception {
+    assertInsertRowsTypeRetryKeepsSuccessfulFragments(false);
+  }
+
+  @Test
+  public void testInsertRowsOfOneDeviceTypeRetryKeepsSuccessfulFragments() throws Exception {
+    assertInsertRowsTypeRetryKeepsSuccessfulFragments(true);
+  }
+
+  private void assertInsertRowsTypeRetryKeepsSuccessfulFragments(final boolean oneDevice)
+      throws Exception {
+    final boolean originalEnableSeparateData = config.isEnableSeparateData();
+    config.setEnableSeparateData(true);
+    final String devicePath = oneDevice ? "root.retry_rows_one_device" : "root.retry_rows";
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, devicePath);
+    try {
+      final TSRecord existingRecord = new TSRecord(devicePath, 5);
+      existingRecord.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(5)));
+      dataRegion1.insert(buildInsertRowNodeByTSRecord(existingRecord));
+      final TsFileProcessor initialProcessor =
+          dataRegion1.getWorkSequenceTsFileProcessors().iterator().next();
+
+      final TsFileProcessor successfulRetryProcessor = Mockito.mock(TsFileProcessor.class);
+      final TsFileProcessor failedRetryProcessor = Mockito.mock(TsFileProcessor.class);
+      Mockito.when(successfulRetryProcessor.shouldFlush()).thenReturn(false);
+      Mockito.doThrow(new WriteProcessException("mock retry fragment failure"))
+          .when(failedRetryProcessor)
+          .insertRows(any(InsertRowsNode.class), any(long[].class));
+
+      final AtomicInteger processorLookupCount = new AtomicInteger();
+      dataRegion1.setTsFileProcessorSupplier(
+          (timePartitionId, sequence) -> {
+            if (processorLookupCount.getAndIncrement() < 2) {
+              return initialProcessor;
+            }
+            return sequence ? failedRetryProcessor : successfulRetryProcessor;
+          });
+
+      final List<Integer> indexList = Arrays.asList(0, 1);
+      final List<InsertRowNode> rows = new ArrayList<>();
+      for (long time : new long[] {3, 7}) {
+        final TSRecord record = new TSRecord(devicePath, time);
+        record.addTuple(
+            DataPoint.getDataPoint(TSDataType.INT64, measurementId, String.valueOf(time)));
+        rows.add(buildInsertRowNodeByTSRecord(record));
+      }
+
+      if (oneDevice) {
+        final InsertRowsOfOneDeviceNode insertRowsNode =
+            new InsertRowsOfOneDeviceNode(new PlanNodeId(""), indexList, rows);
+        insertRowsNode.setTargetPath(new PartialPath(devicePath));
+        try {
+          dataRegion1.insert(insertRowsNode);
+          Assert.fail("Expected BatchProcessException");
+        } catch (BatchProcessException e) {
+          assertOnlySecondRetryFragmentFailed(insertRowsNode.getResults());
+        }
+      } else {
+        final InsertRowsNode insertRowsNode =
+            new InsertRowsNode(new PlanNodeId(""), indexList, rows);
+        try {
+          dataRegion1.insert(insertRowsNode);
+          Assert.fail("Expected BatchProcessException");
+        } catch (BatchProcessException e) {
+          assertOnlySecondRetryFragmentFailed(insertRowsNode.getResults());
+        }
+      }
+
+      Mockito.verify(successfulRetryProcessor)
+          .insertRows(any(InsertRowsNode.class), any(long[].class));
+      Mockito.verify(failedRetryProcessor).insertRows(any(InsertRowsNode.class), any(long[].class));
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+      config.setEnableSeparateData(originalEnableSeparateData);
+    }
+  }
+
+  private void assertOnlySecondRetryFragmentFailed(final Map<Integer, TSStatus> results) {
+    Assert.assertEquals(1, results.size());
+    Assert.assertFalse(results.containsKey(0));
+    Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), results.get(1).getCode());
+  }
+
+  @Test
   public void testInsertRowsLastCacheSkipsFailedRows() throws Exception {
     final boolean originalLastCacheEnable = COMMON_CONFIG.isLastCacheEnable();
     COMMON_CONFIG.setLastCacheEnable(true);
@@ -1276,6 +1365,107 @@ public class DataRegionTest {
     } finally {
       dataRegion1.syncDeleteDataFiles();
       COMMON_CONFIG.setLastCacheEnable(originalLastCacheEnable);
+    }
+  }
+
+  @Test
+  public void testInsertTabletRejectMarksAllRowsFailed() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.reject_tablet");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.doThrow(new WriteProcessRejectException("mock tablet rejection"))
+        .when(processor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.reject_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {1L, 2L},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (final BatchProcessException e) {
+      for (final TSStatus status : e.getFailingStatus()) {
+        Assert.assertEquals(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), status.getCode());
+      }
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
+  public void testInsertTabletTypeRetryDoesNotReplaySuccessfulFragments() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.retry_tablet");
+    final TsFileProcessor firstProcessor = Mockito.mock(TsFileProcessor.class);
+    final TsFileProcessor secondProcessor = Mockito.mock(TsFileProcessor.class);
+    final AtomicInteger insertionCount = new AtomicInteger();
+    final org.mockito.stubbing.Answer<Void> insertionAnswer =
+        invocation -> {
+          if (insertionCount.incrementAndGet() == 2) {
+            throw new DataTypeInconsistentException(TSDataType.INT32, TSDataType.INT64);
+          }
+          return null;
+        };
+    Mockito.doAnswer(insertionAnswer)
+        .when(firstProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    Mockito.doAnswer(insertionAnswer)
+        .when(secondProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+
+    final long firstTime = 1L;
+    final long secondTime = firstTime + TimePartitionUtils.getTimePartitionInterval();
+    final long firstPartitionId = TimePartitionUtils.getTimePartitionId(firstTime);
+    Assert.assertNotEquals(firstPartitionId, TimePartitionUtils.getTimePartitionId(secondTime));
+    dataRegion1.setTsFileProcessorSupplier(
+        (timePartitionId, sequence) ->
+            timePartitionId == firstPartitionId ? firstProcessor : secondProcessor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.retry_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {firstTime, secondTime},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.assertEquals(3, insertionCount.get());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
     }
   }
 

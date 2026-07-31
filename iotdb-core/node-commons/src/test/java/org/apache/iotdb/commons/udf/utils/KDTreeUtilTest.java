@@ -17,21 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.commons.udf.utils;
 
-import org.apache.ratis.conf.Parameters;
-import org.apache.ratis.rpc.RpcFactory;
-import org.apache.ratis.rpc.RpcType;
+import org.junit.Assert;
+import org.junit.Test;
 
-public class RateLimitedGrpcRpcType implements RpcType {
+import java.util.ArrayList;
+import java.util.Arrays;
 
-  @Override
-  public String name() {
-    return RateLimitedGrpcRpcType.class.getName();
+public class KDTreeUtilTest {
+
+  @Test
+  public void testQueryUsesCompleteNodeBounds() {
+    ArrayList<ArrayList<Double>> data = new ArrayList<>();
+    data.add(point(4, 0));
+    data.add(point(-2, -2));
+    data.add(point(-5, 5));
+    data.add(point(1, -1));
+    data.add(point(-4, 5));
+    data.add(point(5, -5));
+    data.add(point(-5, 0));
+
+    KDTreeUtil tree = KDTreeUtil.build(data, 2);
+
+    Assert.assertEquals(point(5, -5), tree.query(point(0.25, -8.75), new double[] {1, 1}));
   }
 
-  @Override
-  public RpcFactory newFactory(Parameters parameters) {
-    return new RateLimitedGrpcFactory(parameters);
+  private ArrayList<Double> point(double first, double second) {
+    return new ArrayList<>(Arrays.asList(first, second));
   }
 }

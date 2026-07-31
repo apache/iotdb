@@ -351,18 +351,23 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
-      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(dbTsFile.right);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+    try {
+      for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+        doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
+      }
+    } finally {
+      for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(dbTsFile.right);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info(DataNodePipeMessages.THE_FILE_IS_NOT_FOUND_MAY_ALREADY, dbTsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, dbTsFile);
+        }
       }
     }
   }
@@ -548,7 +553,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName));
+                    dataBaseName,
+                    shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -578,7 +584,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName));
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName,
+                    shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -630,7 +639,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
       int readLength;
-      while ((readLength = readNextFilePiece(reader, readBuffer, readFileBufferSize)) != -1) {
+      while ((readLength = readNextFilePiece(reader, readBuffer)) != -1) {
         position =
             transferFilePiece(
                 pipe2WeightMap,
@@ -645,11 +654,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     }
   }
 
-  private int readNextFilePiece(
-      final RandomAccessFile reader, final byte[] readBuffer, final int readFileBufferSize)
+  private int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
       throws IOException {
-    mayLimitRateAndRecordIO(readFileBufferSize);
-    return reader.read(readBuffer);
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
   }
 
   private long transferFilePiece(

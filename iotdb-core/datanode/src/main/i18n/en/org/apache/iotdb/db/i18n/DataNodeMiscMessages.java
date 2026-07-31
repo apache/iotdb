@@ -371,8 +371,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "Setting up IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "Recover the schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode failed to set up.";
-  public static final String WAIT_DATABASES_READY =
-      "Wait for all databases ready, which takes {} ms.";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "Wait for local DataRegion recovery tasks to finish, which takes {} ms.";
   public static final String PREPARE_PIPE_RESOURCES =
       "Prepare pipe resources successfully, which takes {} ms.";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =
@@ -1392,6 +1393,15 @@ public final class DataNodeMiscMessages {
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion "
           + "should be an integer, which is %s";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941 =
+          "Query memory proportions must contain 8 or 9 colon-separated values, but found %d";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75 =
+          "Query memory proportion at position %d must be non-negative, but found %d";
+  public static final String
+      EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6 =
+          "The sum of query memory proportions must be positive, but was %d";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2 =
       "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion "
           + "should be an integer, which is %s";

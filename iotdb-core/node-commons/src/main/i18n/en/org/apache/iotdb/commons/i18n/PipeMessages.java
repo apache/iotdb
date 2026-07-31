@@ -48,6 +48,10 @@ public final class PipeMessages {
   public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
       "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
+      "PipeTsFileParserInFlightMaxNum: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
@@ -145,6 +149,10 @@ public final class PipeMessages {
           "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
+      "PipeAsyncSinkRetryMaxDurationMs: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS =
+      "PipeAsyncSinkRetryProbeIntervalMs: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER =
       "PipeAsyncSinkSelectorNumber: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_CLIENT_NUMBER =
@@ -428,11 +436,11 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "PipeConnectionException occurred, %s retries to handshake with the target system.";
+      "PipeConnectionException occurred, %s retries to handshake with the target system. Root cause: %s.";
   public static final String HANDSHAKE_SUCCESS = "{} handshakes with the target system successfully.";
   public static final String HANDSHAKE_FAILED_RETRYING =
       "{} failed to handshake with the target system for {} times, "
-          + "will retry at most {} times.";
+          + "will retry at most {} times. Root cause: {}.";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "Interrupted while sleeping, will retry to handshake with the target system.";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -507,9 +515,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.";
+      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it. Root cause: {}.";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "Handshake error with target server, socket: %s";
+      "Handshake error with target server, endpoint: %s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "Handshake success. Socket: {}";
   public static final String FAILED_TO_CLOSE_CLIENT = "Failed to close client {}.";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
@@ -908,6 +916,9 @@ public final class PipeMessages {
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "Unexpected EOF reading region progress key";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "Unexpected EOF reading region progress value length";
   public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "Unexpected EOF reading region progress value";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F = "Invalid region progress entry count: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 = "Invalid region progress key length: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "Invalid region progress value length: %d";
   public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 =
       "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer"
       + " group %s";
@@ -946,6 +957,8 @@ public final class PipeMessages {
   public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
   public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
+  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+      "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";

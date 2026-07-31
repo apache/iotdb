@@ -48,12 +48,14 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -327,7 +329,11 @@ public class ConsensusLogToTabletConverter {
 
     for (int i = 0; i < columnCount; i++) {
       final int originalColIdx = allColumnsMatch ? i : matchedColumnIndices.get(i);
-      newColumns[i] = columns[originalColIdx];
+      newColumns[i] =
+          convertColumnToTabletRepresentation(
+              dataTypes[originalColIdx],
+              columns[originalColIdx],
+              bitMaps != null ? bitMaps[originalColIdx] : null);
       if (bitMaps != null && bitMaps[originalColIdx] != null) {
         newBitMaps[i] = bitMaps[originalColIdx];
       }
@@ -535,7 +541,11 @@ public class ConsensusLogToTabletConverter {
       }
       schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
       columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), i));
-      validColumns.add(columns[i]);
+      validColumns.add(
+          convertColumnToTabletRepresentation(
+              dataTypes[i],
+              columns[i],
+              Objects.nonNull(bitMaps) && i < bitMaps.length ? bitMaps[i] : null));
       if (Objects.nonNull(validBitMaps)) {
         validBitMaps.add(i < bitMaps.length ? bitMaps[i] : null);
       }
@@ -709,8 +719,13 @@ public class ConsensusLogToTabletConverter {
         ((boolean[]) tablet.getValues()[columnIndex])[rowIndex] = (boolean) value;
         break;
       case INT32:
-      case DATE:
         ((int[]) tablet.getValues()[columnIndex])[rowIndex] = (int) value;
+        break;
+      case DATE:
+        ((LocalDate[]) tablet.getValues()[columnIndex])[rowIndex] =
+            value instanceof LocalDate
+                ? (LocalDate) value
+                : DateUtils.parseIntToLocalDate((int) value);
         break;
       case INT64:
       case TIMESTAMP:
@@ -753,9 +768,14 @@ public class ConsensusLogToTabletConverter {
             ((boolean[]) sourceColumn)[sourceRowIndex];
         break;
       case INT32:
-      case DATE:
         ((int[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
             ((int[]) sourceColumn)[sourceRowIndex];
+        break;
+      case DATE:
+        ((LocalDate[]) tablet.getValues()[targetColumnIndex])[targetRowIndex] =
+            sourceColumn instanceof LocalDate[]
+                ? ((LocalDate[]) sourceColumn)[sourceRowIndex]
+                : DateUtils.parseIntToLocalDate(((int[]) sourceColumn)[sourceRowIndex]);
         break;
       case INT64:
       case TIMESTAMP:
@@ -786,6 +806,22 @@ public class ConsensusLogToTabletConverter {
     if (bitMaps != null && bitMaps[targetColumnIndex] != null) {
       bitMaps[targetColumnIndex].unmark(targetRowIndex);
     }
+  }
+
+  private Object convertColumnToTabletRepresentation(
+      final TSDataType dataType, final Object column, final BitMap bitMap) {
+    if (dataType != TSDataType.DATE || !(column instanceof int[])) {
+      return column;
+    }
+
+    final int[] dateValues = (int[]) column;
+    final LocalDate[] localDateValues = new LocalDate[dateValues.length];
+    for (int i = 0; i < dateValues.length; i++) {
+      if (Objects.isNull(bitMap) || !bitMap.isMarked(i)) {
+        localDateValues[i] = DateUtils.parseIntToLocalDate(dateValues[i]);
+      }
+    }
+    return localDateValues;
   }
 
   private static final class MatchedTreeRow {

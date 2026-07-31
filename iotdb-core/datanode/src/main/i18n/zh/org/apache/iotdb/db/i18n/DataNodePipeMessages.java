@@ -412,6 +412,8 @@ public final class DataNodePipeMessages {
       "发送 request {}（watermark = {}）到 {} 失败";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "触发合并失败。watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "无法从进度索引 %s 初始化 StateProgressIndex。";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "尝试提交进度索引时发生失败。timestamp={}, count={}, "
           + "progressIndex={}";
@@ -892,6 +894,9 @@ public final class DataNodePipeMessages {
       "网络接收 TsFile %s 失败，状态：%s";
   public static final String SECURITY_DIR = "security 目录：{}";
   public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "已选择 OPC UA endpoint：configured={}，advertised={}，effective={}，allowEndpointRedirect={}。";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
@@ -1234,8 +1239,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: 执行 statement {} 时遇到失败状态：{}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: 执行 statement {} 时遇到异常：";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}，statement = {}，exception = {}，message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "未知 PipeRequestType %s。";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "遇到异常 %s，处理请求 %s 时。";
@@ -1439,6 +1442,13 @@ public final class DataNodePipeMessages {
       "安全目录：{}";
   public static final String OPC_UA_SECURITY_PKI_DIR =
       "安全 PKI 目录：{}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "advertised host 必须是不带 scheme、port 或 path 的 hostname 或 IP 地址。";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "advertised host {} 不在已加载的 OPC UA server 证书 subject alternative names 中。安全客户端可能拒绝该证书；"
+              + "请替换或重新生成证书并重新建立信任。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -2370,8 +2380,10 @@ public final class DataNodePipeMessages {
       "当前 tablet 格式反序列化中列值不完整。";
   public static final String EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461 =
       "当前 tablet 格式反序列化中时间戳不完整。";
-  public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
-      "Receiver {} 暂时不可用，对请求限流 {} ms。状态：{}";
+  public static final String MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6 =
+      "Receiver {} 要求重试，对请求限流 {} ms。状态：{}";
+  public static final String EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2 =
+      "Receiver %s 要求重试已超过 %d ms，暂停常规重试，改为每 %d ms 探测一次。";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "成功传输批量的 schema 事件，batch 大小 {}。";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =
@@ -2395,4 +2407,12 @@ public final class DataNodePipeMessages {
 
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver 需要已登录的 session。";
+  public static final String EXCEPTION_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_ARG_IN_CONSUMER_GROUP_ARG_ARG_A7FA88F3 =
+      "为主题 %s、消费者组 %s 设置共识订阅失败：%s";
+  public static final String EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20 =
+      "共识订阅设置期间 topic %s 的元数据不可用";
+  public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
+      "共识订阅设置期间 topic %s 的配置不可用";
+  public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
+      "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
 }

@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -66,6 +67,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -367,6 +369,8 @@ public class ConfigManager implements IManager {
   private final CNAuditLogger auditLogger;
 
   private static final String DATABASE = "\tDatabase=";
+  private static final List<String> WAL_THROTTLE_THRESHOLD_KEYS =
+      Arrays.asList("iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte");
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -1789,6 +1793,17 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
+    for (String key : WAL_THROTTLE_THRESHOLD_KEYS) {
+      String value = req.getConfigs().get(key);
+      if (value == null) {
+        continue;
+      }
+      try {
+        Long.parseLong(value.trim());
+      } catch (NumberFormatException e) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.toString());
+      }
+    }
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int currentNodeId = CONF.getConfigNodeId();
     TSStatus consistentClusterConfigStatus =
@@ -2679,19 +2694,93 @@ public class ConfigManager implements IManager {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TGetCommitProgressResp(status);
     }
-    final String keyPrefix =
-        req.getConsumerGroupId() + "##" + req.getTopicName() + "##" + req.getRegionId() + "##";
-    final org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper keeper =
+    final CommitProgressKeeper keeper =
         subscriptionManager
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
             .getCommitProgressKeeper();
-    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+    return buildCommitProgressResponse(
+        keeper.getAllRegionProgress(),
+        req.getConsumerGroupId(),
+        req.getTopicName(),
+        req.getRegionId());
+  }
 
-    for (final Map.Entry<String, ByteBuffer> entry : keeper.getAllRegionProgress().entrySet()) {
-      if (!entry.getKey().startsWith(keyPrefix)) {
+  static TGetCommitProgressResp buildCommitProgressResponse(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String consumerGroupId,
+      final String topicName,
+      final int regionId) {
+    final CommitProgressMergeResult mergeResult =
+        mergeCommitProgressWithPresence(allRegionProgress, consumerGroupId, topicName, regionId);
+    final TGetCommitProgressResp resp =
+        new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    if (mergeResult.hasMatchingProgress) {
+      resp.setCommittedRegionProgress(serializeRegionProgress(mergeResult.regionProgress));
+    }
+    return resp;
+  }
+
+  static RegionProgress mergeCommitProgress(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String consumerGroupId,
+      final String topicName,
+      final int regionId) {
+    return mergeCommitProgressWithPresence(allRegionProgress, consumerGroupId, topicName, regionId)
+        .regionProgress;
+  }
+
+  private static CommitProgressMergeResult mergeCommitProgressWithPresence(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String consumerGroupId,
+      final String topicName,
+      final int regionId) {
+    final String regionIdString = new DataRegionId(regionId).toString();
+    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+    final boolean hasVersionedProgress =
+        mergeCommitProgressForPrefix(
+            allRegionProgress,
+            CommitProgressKeeper.generateRegionKeyPrefix(
+                consumerGroupId, topicName, regionIdString),
+            mergedWriterPositions);
+    boolean hasMatchingProgress = hasVersionedProgress;
+    if (!hasVersionedProgress
+        || CommitProgressKeeper.isLegacyKeyUnambiguous(
+            consumerGroupId, topicName, regionIdString)) {
+      final boolean hasLegacyProgress =
+          mergeCommitProgressForPrefix(
+              allRegionProgress,
+              CommitProgressKeeper.generateLegacyRegionKeyPrefix(
+                  consumerGroupId, topicName, regionIdString),
+              mergedWriterPositions);
+      hasMatchingProgress = hasMatchingProgress || hasLegacyProgress;
+    }
+    return new CommitProgressMergeResult(
+        new RegionProgress(mergedWriterPositions), hasMatchingProgress);
+  }
+
+  private static final class CommitProgressMergeResult {
+
+    private final RegionProgress regionProgress;
+    private final boolean hasMatchingProgress;
+
+    private CommitProgressMergeResult(
+        final RegionProgress regionProgress, final boolean hasMatchingProgress) {
+      this.regionProgress = regionProgress;
+      this.hasMatchingProgress = hasMatchingProgress;
+    }
+  }
+
+  private static boolean mergeCommitProgressForPrefix(
+      final Map<String, ByteBuffer> allRegionProgress,
+      final String keyPrefix,
+      final Map<WriterId, WriterProgress> mergedWriterPositions) {
+    boolean hasMatchingProgress = false;
+    for (final Map.Entry<String, ByteBuffer> entry : allRegionProgress.entrySet()) {
+      if (!CommitProgressKeeper.isValidDataNodeProgressKey(entry.getKey(), keyPrefix)) {
         continue;
       }
+      hasMatchingProgress = true;
       final RegionProgress regionProgress = deserializeRegionProgress(entry.getValue());
       if (Objects.isNull(regionProgress)) {
         continue;
@@ -2705,13 +2794,7 @@ public class ConfigManager implements IManager {
                 compareWriterProgress(newProgress, oldProgress) > 0 ? newProgress : oldProgress);
       }
     }
-    final TGetCommitProgressResp resp =
-        new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    if (!mergedWriterPositions.isEmpty()) {
-      resp.setCommittedRegionProgress(
-          serializeRegionProgress(new RegionProgress(mergedWriterPositions)));
-    }
-    return resp;
+    return hasMatchingProgress;
   }
 
   private static RegionProgress deserializeRegionProgress(final ByteBuffer buffer) {
@@ -2727,7 +2810,7 @@ public class ConfigManager implements IManager {
     try (final PublicBAOS baos = new PublicBAOS();
         final DataOutputStream dos = new DataOutputStream(baos)) {
       regionProgress.serialize(dos);
-      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size()).asReadOnlyBuffer();
+      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     } catch (final IOException e) {
       throw new RuntimeException(
           ManagerMessages.EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 + regionProgress, e);

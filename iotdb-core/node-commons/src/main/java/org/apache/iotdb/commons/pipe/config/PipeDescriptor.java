@@ -238,6 +238,16 @@ public class PipeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "pipe_tsfile_parser_memory", String.valueOf(config.getPipeTsFileParserMemory()))));
+    config.setPipeTsFileParserInFlightMaxNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNum()))));
+    config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num_per_pipe_region",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNumPerPipeRegion()))));
     config.setPipeSinkBatchMemoryInsertNode(
         Long.parseLong(
             properties.getProperty(
@@ -403,6 +413,20 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
                         String.valueOf(config.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall())))));
+    config.setPipeAsyncSinkRetryMaxDurationMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_async_sink_retry_max_duration_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_retry_max_duration_ms",
+                        String.valueOf(config.getPipeAsyncSinkRetryMaxDurationMs())))));
+    config.setPipeAsyncSinkRetryProbeIntervalMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_async_sink_retry_probe_interval_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_retry_probe_interval_ms",
+                        String.valueOf(config.getPipeAsyncSinkRetryProbeIntervalMs())))));
     config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(

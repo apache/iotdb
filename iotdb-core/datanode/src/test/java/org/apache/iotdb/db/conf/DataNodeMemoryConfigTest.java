@@ -19,22 +19,118 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
-import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
 public class DataNodeMemoryConfigTest {
+
+  @Test
+  public void testResolveSubscriptionQueryMemoryProportions() {
+    final int[] defaultProportions = DataNodeMemoryConfig.resolveQueryMemoryProportions(null, true);
+    assertArrayEquals(new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250}, defaultProportions);
+    assertEquals(
+        0.2, (double) defaultProportions[8] / Arrays.stream(defaultProportions).sum(), 0.001);
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50", true));
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions(
+            "1:100:200:50:200:200:200:50:1000", false));
+  }
+
+  @Test
+  public void testRejectInvalidSubscriptionQueryMemoryProportions() {
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                DataNodeMemoryConfig.resolveQueryMemoryProportions(
+                    "1:100:200:50:200:200:200", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941,
+            7),
+        exception.getMessage());
+  }
+
+  @Test
+  public void testRejectNegativeSubscriptionQueryMemoryProportion() {
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                DataNodeMemoryConfig.resolveQueryMemoryProportions(
+                    "1:100:200:50:200:200:200:50:-1", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75,
+            9,
+            -1),
+        exception.getMessage());
+  }
+
+  @Test
+  public void testRejectNonPositiveSubscriptionQueryMemoryProportionSum() {
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> DataNodeMemoryConfig.resolveQueryMemoryProportions("0:0:0:0:0:0:0:0:0", true));
+    assertEquals(
+        String.format(
+            DataNodeMiscMessages
+                .EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6,
+            0),
+        exception.getMessage());
+  }
 
   @Test
   public void testRpcMemoryControlIsActivatedOnlyExplicitly() {
     DataNodeMemoryConfig memoryConfig = IoTDBDescriptor.getInstance().getMemoryConfig();
 
-    Assert.assertEquals(
-        0, MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes());
+    assertEquals(0, MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes());
 
     memoryConfig.activateAutoResizingBufferMemoryControl();
 
-    Assert.assertTrue(MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes() > 0);
+    assertTrue(MemoryConfig.getInstance().getAutoResizingBufferMemoryTotalSizeInBytes() > 0);
+  }
+
+  @Test
+  public void testDefaultAutoResizingBufferMemorySize() {
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 20,
+        DataNodeMemoryConfig.getDefaultAutoResizingBufferMemorySizeInBytes());
+  }
+
+  @Test
+  public void testCalculateAutoResizingBufferMemorySizeWithDataNodeMemoryProportion() {
+    TrimProperties properties = new TrimProperties();
+    properties.setProperty("datanode_memory_proportion", "1:1:1:1:1:5");
+
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 4,
+        DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
+  }
+
+  @Test
+  public void testCalculateAutoResizingBufferMemorySizeWithDeprecatedMemoryProportion() {
+    TrimProperties properties = new TrimProperties();
+    properties.setProperty("storage_query_schema_consensus_free_memory_proportion", "1:1:1:1:1:2");
+
+    assertEquals(
+        Runtime.getRuntime().maxMemory() / 7,
+        DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
   }
 }

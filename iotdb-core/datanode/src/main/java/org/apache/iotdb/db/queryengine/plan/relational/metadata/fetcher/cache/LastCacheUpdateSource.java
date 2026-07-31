@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,24 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.ratis.conf.Parameters;
-import org.apache.ratis.grpc.GrpcFactory;
-import org.apache.ratis.server.RaftServer;
-import org.apache.ratis.server.leader.FollowerInfo;
-import org.apache.ratis.server.leader.LeaderState;
-import org.apache.ratis.server.leader.LogAppender;
+import org.apache.tsfile.read.TimeValuePair;
 
-class RateLimitedGrpcFactory extends GrpcFactory {
+/**
+ * Provides row values lazily when updating last cache on the write path.
+ *
+ * <p>{@link #getLastCacheValue(int)} is called only when the corresponding cache entry exists and
+ * its timestamp is eligible for update.
+ */
+public interface LastCacheUpdateSource {
 
-  RateLimitedGrpcFactory(Parameters parameters) {
-    super(parameters);
-  }
+  long getLastCacheTimestamp();
 
-  @Override
-  public LogAppender newLogAppender(
-      RaftServer.Division server, LeaderState leaderState, FollowerInfo follower) {
-    return new RateLimitedGrpcLogAppender(server, leaderState, follower);
-  }
+  boolean hasLastCacheValue(int index);
+
+  TimeValuePair getLastCacheValue(int index);
 }
