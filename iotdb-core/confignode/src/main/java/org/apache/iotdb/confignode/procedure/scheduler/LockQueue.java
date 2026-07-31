@@ -22,35 +22,39 @@ package org.apache.iotdb.confignode.procedure.scheduler;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Lock Queue for procedure of the same type */
 public class LockQueue {
   private final ArrayDeque<Procedure<?>> deque = new ArrayDeque<>();
 
-  private volatile Procedure<?> lockOwnerProcedure = null;
+  private final AtomicReference<Procedure<?>> lockOwnerProcedure = new AtomicReference<>();
 
   public boolean tryLock(Procedure<?> procedure) {
-    if (lockOwnerProcedure == null) {
-      lockOwnerProcedure = procedure;
+    final Procedure<?> currentLockOwnerProcedure = lockOwnerProcedure.get();
+    if (currentLockOwnerProcedure == null) {
+      lockOwnerProcedure.set(procedure);
       return true;
     }
-    return procedure.getProcId() == lockOwnerProcedure.getProcId();
+    return procedure.getProcId() == currentLockOwnerProcedure.getProcId();
   }
 
   public boolean releaseLock(Procedure<?> procedure) {
-    if (lockOwnerProcedure == null || lockOwnerProcedure.getProcId() != procedure.getProcId()) {
+    final Procedure<?> currentLockOwnerProcedure = lockOwnerProcedure.get();
+    if (currentLockOwnerProcedure == null
+        || currentLockOwnerProcedure.getProcId() != procedure.getProcId()) {
       return false;
     }
-    lockOwnerProcedure = null;
+    lockOwnerProcedure.set(null);
     return true;
   }
 
   public Procedure<?> getLockOwnerProcedure() {
-    return lockOwnerProcedure;
+    return lockOwnerProcedure.get();
   }
 
   public void waitProcedure(Procedure<?> procedure, ProcedureScheduler procedureScheduler) {
-    if (lockOwnerProcedure == null) {
+    if (lockOwnerProcedure.get() == null) {
       procedureScheduler.addFront(procedure);
       return;
     }
