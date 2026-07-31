@@ -1215,6 +1215,10 @@ REPAIR
     : R E P A I R
     ;
 
+PROGRESS
+    : P R O G R E S S
+    ;
+
 SCHEMA_REPLICATION_FACTOR
     : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
     ;
@@ -1237,6 +1241,14 @@ SCHEMA_REGION_GROUP_NUM
 
 DATA_REGION_GROUP_NUM
     : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+MAX_SCHEMA_REGION_GROUP_NUM
+    : M A X '_' S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+MAX_DATA_REGION_GROUP_NUM
+    : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
 CURRENT_TIMESTAMP

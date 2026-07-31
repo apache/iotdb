@@ -160,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -1670,7 +1671,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
               .setMessage(
                   String.format(
-                      "'AUDIT' permission is needed to alter the encoding and compressor of database %s",
+                      DataNodeQueryMessages
+                          .MESSAGE_AUDIT_PERMISSION_NEEDED_ALTER_ENCODING_COMPRESSOR_DATABASE_ARG_CC06994D,
                       TREE_MODEL_AUDIT_DATABASE));
         }
       }
@@ -1806,6 +1808,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       RepairDataPartitionTable repairDataPartitionTable, TreeAccessCheckContext context) {
     return checkGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
+        PrivilegeType.SYSTEM,
+        AuditEventType.INTEGRITY_CHECK);
+  }
+
+  @Override
+  public TSStatus visitShowRepairDataPartitionTableProgress(
+      ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
+      TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.DDL),
         PrivilegeType.SYSTEM,
         AuditEventType.INTEGRITY_CHECK);
   }

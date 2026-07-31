@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -48,7 +50,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
 
   public PruneTableScanColumns(Metadata metadata) {
     super(tableScan());
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -157,6 +160,26 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.containsNonAlignedDevice(),
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+      } else if (node instanceof ExternalTsFileScanNode externalTsFileScanNode) {
+        ExternalTsFileScanNode prunedNode =
+            new ExternalTsFileScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
+                externalTsFileScanNode.getExternalTsFileQueryResource(),
+                externalTsFileScanNode.getDeviceEntryIndexes(),
+                externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+                externalTsFileScanNode.getSchemaFilter());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(prunedNode);
       } else {
         DeviceTableScanNode prunedNode =
             new DeviceTableScanNode(
@@ -183,7 +206,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
       return Optional.empty();
     } else {
       throw new UnsupportedOperationException(
-          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNKNOWN_TABLESCANNODE_TYPE_S_6246EF1E,
+              node.getClass().getSimpleName()));
     }
   }
 }

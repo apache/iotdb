@@ -79,21 +79,24 @@ public class DriverTask implements IDIndexedAccessible {
     this.driver = driver;
     this.setStatus(status);
 
-    long currentTime = System.currentTimeMillis();
-    long ddlTmp = currentTime + timeoutMs;
-    // avoid infinite timeout check loop, schema fetch query for write operation may pass a very
-    // large timeout here which may causing currentTime + timeoutMs be negative
-    if (ddlTmp < currentTime) {
-      this.ddl = Long.MAX_VALUE;
-    } else {
-      this.ddl = ddlTmp;
-    }
+    this.ddl = computeDeadlineTimeInMs(timeoutMs);
 
     this.lock = new ReentrantLock();
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
     this.estimatedMemorySize = estimatedMemorySize;
     this.isHighestPriority = isHighestPriority;
+  }
+
+  public static long computeDeadlineTimeInMs(long timeoutMs) {
+    long currentTime = System.currentTimeMillis();
+    long deadlineMs = currentTime + timeoutMs;
+    // avoid infinite timeout check loop, schema fetch query for write operation may pass a very
+    // large timeout here which may causing currentTime + timeoutMs be negative
+    if (deadlineMs < currentTime) {
+      return Long.MAX_VALUE;
+    }
+    return deadlineMs;
   }
 
   @Override

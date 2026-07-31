@@ -36,19 +36,20 @@ import java.util.Objects;
 public class MigrateRegion extends Statement {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MigrateRegion.class);
-  private final int regionId;
+  private final List<Integer> regionIds;
 
   private final int fromId;
 
   private final int toId;
 
-  public MigrateRegion(int regionId, int fromId, int toId) {
-    this(null, regionId, fromId, toId);
+  public MigrateRegion(List<Integer> regionIds, int fromId, int toId) {
+    this(null, regionIds, fromId, toId);
   }
 
-  public MigrateRegion(@Nullable NodeLocation location, int regionId, int fromId, int toId) {
+  public MigrateRegion(
+      @Nullable NodeLocation location, List<Integer> regionIds, int fromId, int toId) {
     super(location);
-    this.regionId = regionId;
+    this.regionIds = regionIds;
     this.fromId = fromId;
     this.toId = toId;
   }
@@ -60,7 +61,7 @@ public class MigrateRegion extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(MigrateRegion.class, regionId, fromId, toId);
+    return Objects.hash(MigrateRegion.class, regionIds, fromId, toId);
   }
 
   @Override
@@ -72,12 +73,12 @@ public class MigrateRegion extends Statement {
       return false;
     }
     MigrateRegion another = (MigrateRegion) obj;
-    return regionId == another.regionId && fromId == another.fromId && toId == another.toId;
+    return regionIds.equals(another.regionIds) && fromId == another.fromId && toId == another.toId;
   }
 
   @Override
   public String toString() {
-    return String.format("migrate region %d from %d to %d", regionId, fromId, toId);
+    return String.format("migrate region %s from %d to %d", regionIds, fromId, toId);
   }
 
   @Override
@@ -85,8 +86,8 @@ public class MigrateRegion extends Statement {
     return ((AstVisitor<R, C>) visitor).visitMigrateRegion(this, context);
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getFromId() {
@@ -101,6 +102,7 @@ public class MigrateRegion extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(regionIds);
     return size;
   }
 }

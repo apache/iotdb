@@ -20,10 +20,12 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuditConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,6 +231,31 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    long minFolderOccupiedSpaceCacheRefreshIntervalMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_interval_ms",
+                    String.valueOf(config.getMinFolderOccupiedSpaceCacheRefreshIntervalMs()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshIntervalMs > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshIntervalMs(
+          minFolderOccupiedSpaceCacheRefreshIntervalMs);
+    }
+
+    int minFolderOccupiedSpaceCacheRefreshSelectionThreshold =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "min_folder_occupied_space_cache_refresh_selection_threshold",
+                    String.valueOf(
+                        config.getMinFolderOccupiedSpaceCacheRefreshSelectionThreshold()))
+                .trim());
+    if (minFolderOccupiedSpaceCacheRefreshSelectionThreshold > 0) {
+      config.setMinFolderOccupiedSpaceCacheRefreshSelectionThreshold(
+          minFolderOccupiedSpaceCacheRefreshSelectionThreshold);
+    }
+
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
@@ -309,7 +336,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
-
     config.setPathLogMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -559,6 +585,29 @@ public class CommonDescriptor {
   }
 
   /**
+   * Parse, validate and apply {@code disk_space_warning_threshold} for a runtime hot reload, then
+   * return the applied value. Shared by the ConfigNode and DataNode hot-reload paths so both use
+   * the same parsing / bounds rules. Callers on the DataNode must additionally refresh the {@code
+   * JVMCommonUtils} static copy that the ReadOnly disk guard actually consumes.
+   */
+  public double loadHotModifiedDiskSpaceWarningThreshold(final TrimProperties properties)
+      throws IOException {
+    double diskSpaceWarningThreshold =
+        Double.parseDouble(
+            properties.getProperty(
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold())));
+    if (diskSpaceWarningThreshold < 0 || diskSpaceWarningThreshold >= 1) {
+      throw new IOException(
+          CommonMessages.EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766
+              + diskSpaceWarningThreshold
+              + ".");
+    }
+    config.setDiskSpaceWarningThreshold(diskSpaceWarningThreshold);
+    return diskSpaceWarningThreshold;
+  }
+
+  /**
    * Reload only the subscription consensus properties that are intended to take effect on hot
    * configuration reload.
    *
@@ -653,10 +702,22 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_thrift_ssl", Boolean.toString(config.isEnableThriftClientSSL()))));
+    config.setThriftSSLClientAuth(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "thrift_ssl_client_auth", Boolean.toString(config.isThriftSSLClientAuth()))));
     config.setKeyStorePath(properties.getProperty("key_store_path", config.getKeyStorePath()));
     config.setKeyStorePwd(properties.getProperty("key_store_pwd", config.getKeyStorePwd()));
     config.setTrustStorePath(
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
+    configureRpcSsl();
+  }
+
+  public void configureRpcSsl() {
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }

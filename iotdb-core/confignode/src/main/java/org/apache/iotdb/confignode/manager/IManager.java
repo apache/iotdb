@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -154,6 +155,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -482,6 +484,8 @@ public interface IManager {
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   TSStatus dataPartitionTableIntegrityCheck();
+
+  TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress();
 
   /**
    * Get AuditLogger.
@@ -920,7 +924,8 @@ public interface IManager {
 
   TDescTable4InformationSchemaResp describeTable4InformationSchema();
 
-  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+  TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, TableNodeStatus tableNodeStatus);
 
   TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp);
 }

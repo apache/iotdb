@@ -120,6 +120,10 @@ public abstract class MppBaseConfig {
     }
   }
 
+  public final String getProperty(@NotNull String key, String defaultValue) {
+    return properties.getProperty(key, defaultValue);
+  }
+
   /** Create an instance but with empty properties. */
   public abstract MppBaseConfig emptyClone();
 }

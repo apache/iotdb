@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -46,6 +47,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(StopPipeProcedureV2.class);
 
   private String pipeName;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
   private boolean isStoppedByRuntimeExceptionBeforeStop;
 
   public StopPipeProcedureV2() {
@@ -57,6 +60,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     this.pipeName = pipeName;
   }
 
+  public StopPipeProcedureV2(String pipeName, boolean isTableModel) throws PipeException {
+    super();
+    this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.STOP_PIPE;
@@ -66,8 +76,12 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMVALIDATETASK, pipeName);
 
-    pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
+    if (isTableModelSet) {
+      pipeTaskInfo.get().checkBeforeStopPipe(pipeName, isTableModel);
+      return !pipeTaskInfo.get().isPipeStoppedByUser(pipeName, isTableModel);
+    }
 
+    pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
     return !pipeTaskInfo.get().isPipeStoppedByUser(pipeName);
   }
 
@@ -75,7 +89,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK, pipeName);
     isStoppedByRuntimeExceptionBeforeStop =
-        pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
+        isTableModelSet
+            ? pipeTaskInfo.get().isStoppedByRuntimeException(pipeName, isTableModel)
+            : pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override
@@ -89,8 +105,11 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(
-                  new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
-                      pipeName, PipeStatus.STOPPED, false));
+                  isTableModelSet
+                      ? new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                          pipeName, PipeStatus.STOPPED, false, isTableModel)
+                      : new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                          pipeName, PipeStatus.STOPPED, false));
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -105,8 +124,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
+    final PipeStaticMeta pipeStaticMeta =
+        (isTableModelSet
+                ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
+                : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName))
+            .getStaticMeta();
     final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+        parsePushPipeMetaExceptionForPipe(
+            pipeName, pushSinglePipeMetaToDataNodes(pipeStaticMeta, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_STOP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
@@ -137,8 +162,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(
-                  new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
-                      pipeName, PipeStatus.RUNNING, isStoppedByRuntimeExceptionBeforeStop));
+                  isTableModelSet
+                      ? new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                          pipeName,
+                          PipeStatus.RUNNING,
+                          isStoppedByRuntimeExceptionBeforeStop,
+                          isTableModel)
+                      : new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                          pipeName, PipeStatus.RUNNING, isStoppedByRuntimeExceptionBeforeStop));
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -170,6 +201,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
     ReadWriteIOUtils.write(isStoppedByRuntimeExceptionBeforeStop, stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
@@ -179,6 +213,10 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     // Legacy persisted procedures do not carry this field.
     isStoppedByRuntimeExceptionBeforeStop =
         byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer);
+    isTableModelSet = byteBuffer.hasRemaining();
+    if (isTableModelSet) {
+      isTableModel = ReadWriteIOUtils.readBool(byteBuffer);
+    }
   }
 
   @Override
@@ -193,6 +231,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return getProcId() == that.getProcId()
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
+        && isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
         && isStoppedByRuntimeExceptionBeforeStop == that.isStoppedByRuntimeExceptionBeforeStop
         && pipeName.equals(that.pipeName);
   }
@@ -204,6 +244,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         getCurrentState(),
         getCycles(),
         pipeName,
+        isTableModel,
+        isTableModelSet,
         isStoppedByRuntimeExceptionBeforeStop);
   }
 }

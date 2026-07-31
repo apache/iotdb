@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -85,7 +86,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         } else {
           throw new UnsupportedOperationException(
               String.format(
-                  "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_UNKNOWN_INSERTBASESTATEMENT_S_CONSTRUCTED_FROM_PIPETRANSFERTABLETBINARYREQV2_06D274D2,
                   insertNodeReq));
         }
         continue;
@@ -109,7 +111,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReqV2.",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_UNKNOWN_INSERTBASESTATEMENT_S_CONSTRUCTED_FROM_PIPETRANSFERTABLETINSERTNODEREQV2_16F399B6,
                 statement));
       }
     }
@@ -212,21 +215,22 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
       final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
-    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Binary req, for rolling upgrade
     ReadWriteIOUtils.readInt(transferReq.body);
 
-    int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int insertNodeCount = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < insertNodeCount; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
-              tabletStringInternPool.intern(ReadWriteIOUtils.readString(transferReq.body))));
+              ReadWriteIOUtils.readString(transferReq.body)));
     }
 
-    size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
+    final int rawTabletCount = ReadWriteIOUtils.readInt(transferReq.body);
+    final TabletStringInternPool tabletStringInternPool =
+        rawTabletCount > 1 ? new TabletStringInternPool() : null;
+    for (int i = 0; i < rawTabletCount; ++i) {
       batchReq.tabletReqs.add(
           PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
               transferReq.body, tabletStringInternPool));

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -129,7 +128,13 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
     context.setNeedSetHighestPriority(analysis.needSetHighestPriority());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -167,6 +172,15 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void start() {
+    try {
+      startInternal();
+    } catch (RuntimeException | Error e) {
+      finishAnalysisAttemptForCurrentState();
+      throw e;
+    }
+  }
+
+  private void startInternal() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE);
@@ -176,6 +190,7 @@ public class QueryExecution implements IQueryExecution {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
       }
+      finishAnalysisAttemptForCurrentState();
       return;
     }
 
@@ -192,6 +207,7 @@ public class QueryExecution implements IQueryExecution {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
       }
+      finishAnalysisAttemptForCurrentState();
       return;
     }
 
@@ -217,29 +233,33 @@ public class QueryExecution implements IQueryExecution {
     if (!context.isQuery() && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
+    finishAnalysisAttemptForCurrentState();
   }
 
   private void checkTimeOutForQuery() {
     // only check query operation's timeout because we will never limit write operation's execution
     // time
     if (isQuery()) {
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - context.getStartTime() >= context.getTimeOut()) {
-        throw new QueryTimeoutRuntimeException(
-            context.getStartTime(), currentTime, context.getTimeOut());
-      }
+      context.checkTimeOut();
     }
   }
 
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
       LOGGER.warn(DataNodeQueryMessages.REACHMAXRETRYCOUNT);
+      // Keep the same ownership order as an ordinary retry: plans and scheduler stop using the
+      // analysis working state before the journal restores parser-owned objects.
+      this.stopAndCleanup(stateMachine.getFailureException());
+      planner.rollbackAnalysisAttempt();
       stateMachine.transitionToFailed();
       return getStatus();
     }
     LOGGER.warn(DataNodeQueryMessages.ERROR_WHEN_EXECUTING_QUERY, stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
+    // The generated plans no longer read the statement after cleanup. Restore the parser-owned
+    // state before the next analysis attempt so retry observes the same SQL as the first attempt.
+    planner.rollbackAnalysisAttempt();
     LOGGER.info(DataNodeQueryMessages.WAITBEFORERETRY_WAIT_MS, RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
@@ -258,10 +278,28 @@ public class QueryExecution implements IQueryExecution {
     this.stopped.compareAndSet(true, false);
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
-    this.analysis = analyze(context);
+    planner.beginAnalysisAttempt();
+    try {
+      this.analysis = analyze(context);
+    } catch (RuntimeException | Error e) {
+      planner.rollbackAnalysisAttempt();
+      throw e;
+    }
     // re-start the QueryExecution
     this.start();
     return getStatus();
+  }
+
+  private void finishAnalysisAttemptForCurrentState() {
+    QueryState state = stateMachine.getState();
+    if (state == QueryState.PENDING_RETRY) {
+      return;
+    }
+    if (state == QueryState.RUNNING || state == QueryState.FINISHED) {
+      planner.commitAnalysisAttempt();
+    } else {
+      planner.rollbackAnalysisAttempt();
+    }
   }
 
   private boolean skipExecute() {
@@ -289,7 +327,8 @@ public class QueryExecution implements IQueryExecution {
     this.logicalPlan = planner.doLogicalPlan(analysis, context);
     if (isQuery() && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+          DataNodeQueryMessages.LOGICAL_PLAN_IS_ARG,
+          PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
     checkTimeOutForQuery();
@@ -307,7 +346,8 @@ public class QueryExecution implements IQueryExecution {
 
     if (LOGGER.isDebugEnabled() && isQuery()) {
       LOGGER.debug(
-          "distribution plan done. Fragment instance count is {}, details is: \n {}",
+          DataNodeQueryMessages
+              .DISTRIBUTION_PLAN_DONE_FRAGMENT_INSTANCE_COUNT_IS_ARG_DETAILS_IS_ARG,
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
@@ -392,6 +432,7 @@ public class QueryExecution implements IQueryExecution {
       }
       cleanUpResultHandle();
     }
+    context.releaseExternalTsFileQueryResources();
   }
 
   /**
@@ -428,7 +469,10 @@ public class QueryExecution implements IQueryExecution {
    * implemented with DataStreamManager)
    */
   private <T> Optional<T> getResult(ISourceHandleSupplier<T> dataSupplier) throws IoTDBException {
-    checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
+    checkArgument(
+        resultHandle != null,
+        DataNodeQueryMessages
+            .EXCEPTION_RESULTHANDLE_IN_COORDINATOR_SHOULD_BE_INIT_FIRSTLY_DOT_0F44159B);
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
       try {

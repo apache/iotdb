@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.slf4j.Logger;
@@ -61,6 +62,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final boolean useSSL;
   private final String trustStore;
   private final String trustStorePwd;
+  private final String keyStore;
+  private final String keyStorePwd;
+  private final String sslProtocol;
   private final boolean enableRPCCompression;
   private final String userName;
 
@@ -95,6 +99,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       boolean enableRPCCompression,
       String version) {
 
@@ -110,6 +117,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             useSSL,
             trustStore,
             trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
             enableRPCCompression,
             version);
 
@@ -132,6 +142,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
       boolean enableRPCCompression,
       String version) {
     this.availableNodes.addAll(new HashSet<>(endPointList));
@@ -140,6 +153,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.keyStore = keyStore;
+    this.keyStorePwd = keyStorePwd;
+    this.sslProtocol = sslProtocol;
     this.enableRPCCompression = enableRPCCompression;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -188,6 +204,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           useSSL,
           trustStore,
           trustStorePwd,
+          keyStore,
+          keyStorePwd,
+          sslProtocol,
           userName,
           password,
           enableRPCCompression,
@@ -239,8 +258,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     List<TEndPoint> res = new ArrayList<>();
     while (iterator.next()) {
       String ip = iterator.getString(IP_COLUMN_NAME);
-      // ignore 0.0.0.0
-      if (!"0.0.0.0".equals(ip)) {
+      // ignore wildcard addresses
+      if (!UrlUtils.isWildcardAddress(ip)) {
         String port = iterator.getString(PORT_COLUMN_NAME);
         if (ip != null && port != null) {
           res.add(new TEndPoint(ip, Integer.parseInt(port)));

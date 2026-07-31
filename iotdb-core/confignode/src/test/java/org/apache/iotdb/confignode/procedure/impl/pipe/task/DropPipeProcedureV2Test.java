@@ -28,11 +28,32 @@ import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class DropPipeProcedureV2Test {
   @Test
   public void serializeDeserializeTest() {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    DropPipeProcedureV2 proc = new DropPipeProcedureV2("testPipe", true);
+
+    try {
+      proc.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      DropPipeProcedureV2 proc2 =
+          (DropPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+
+      assertEquals(proc, proc2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeLegacyFormatTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
@@ -46,6 +67,7 @@ public class DropPipeProcedureV2Test {
           (DropPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
+      assertFalse(proc2.isTableModelSet());
     } catch (Exception e) {
       fail();
     }

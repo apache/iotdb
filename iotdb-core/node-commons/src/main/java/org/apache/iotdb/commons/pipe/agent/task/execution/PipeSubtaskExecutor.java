@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +38,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
+
+  private static final long WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS = 60L;
 
   private static final ExecutorService globalSubtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -51,6 +56,7 @@ public abstract class PipeSubtaskExecutor {
 
   protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
+  protected final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
@@ -78,11 +84,18 @@ public abstract class PipeSubtaskExecutor {
             : ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName();
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, workingThreadName);
+            IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                corePoolSize,
+                WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS,
+                TimeUnit.SECONDS,
+                workingThreadName);
     if (disableLogInThreadPool) {
       underlyingThreadPool.disableErrorLog();
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+    final ScheduledExecutorService underlyingScheduledExecutor =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(workingThreadName + "-Scheduler");
+    subtaskWorkerScheduledExecutor = MoreExecutors.listeningDecorator(underlyingScheduledExecutor);
     subtaskCallbackListeningExecutor =
         Objects.nonNull(callbackThreadName)
             ? IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -105,7 +118,10 @@ public abstract class PipeSubtaskExecutor {
 
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
     subtask.bindExecutors(
-        subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor, schedulerSupplier(this));
+        subtaskWorkerThreadPoolExecutor,
+        subtaskWorkerScheduledExecutor,
+        subtaskCallbackListeningExecutor,
+        schedulerSupplier(this));
   }
 
   private static String getSafeSubtaskStr(final String subtaskID) {
@@ -184,6 +200,7 @@ public abstract class PipeSubtaskExecutor {
     }
 
     subtaskWorkerThreadPoolExecutor.shutdown();
+    subtaskWorkerScheduledExecutor.shutdown();
     if (subtaskCallbackListeningExecutor != globalSubtaskCallbackListeningExecutor) {
       subtaskCallbackListeningExecutor.shutdown();
     }

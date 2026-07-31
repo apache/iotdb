@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -30,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -185,6 +187,23 @@ public class TopicConfig extends PipeParameters {
     return attributes;
   }
 
+  public Map<String, String> getAttributesWithSourceColumnFilter() {
+    return Collections.singletonMap(TopicConstant.COLUMN_FILTER_KEY, getColumnFilter());
+  }
+
+  public String getColumnFilter() {
+    return getStringIgnoreCase(
+        TopicConstant.COLUMN_FILTER_KEY, TopicConstant.COLUMN_FILTER_DEFAULT_VALUE);
+  }
+
+  public boolean hasColumnFilter() {
+    return containsKeyIgnoreCase(TopicConstant.COLUMN_FILTER_KEY);
+  }
+
+  public boolean isColumnFilterTrivial() {
+    return TopicConstant.COLUMN_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getColumnFilter().trim());
+  }
+
   public Map<String, String> getAttributesWithSourceTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
@@ -206,7 +225,8 @@ public class TopicConfig extends PipeParameters {
   public Map<String, String> getAttributesWithSourceMode() {
     if (isConsensusMode()) {
       throw new IllegalArgumentException(
-          "Consensus mode topic should not generate pipe source attributes");
+          SubscriptionMessages
+              .EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732);
     }
     return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : LIVE_MODE_CONFIG;
   }
@@ -290,5 +310,18 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  private boolean containsKeyIgnoreCase(final String expectedKey) {
+    return attributes.keySet().stream().anyMatch(key -> expectedKey.equalsIgnoreCase(key));
+  }
+
+  private String getStringIgnoreCase(final String expectedKey, final String defaultValue) {
+    return attributes.entrySet().stream()
+        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(defaultValue);
   }
 }

@@ -135,7 +135,7 @@ public class IoTConsensusV2TabletBatchEventHandler
                 pipeNames,
                 exception),
         exception,
-        "IoTConsensusV2: Failed to transfer TabletInsertionEvent batch. Total failed events: %s, related pipe names: %s",
+        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH_TOTAL,
         events.size(),
         pipeNames);
 

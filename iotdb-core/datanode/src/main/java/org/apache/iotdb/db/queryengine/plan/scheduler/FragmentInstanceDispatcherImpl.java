@@ -531,7 +531,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               if (sendPlanNodeResp.getStatus().getCode()
                   != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
                 LOGGER.warn(
-                    "Dispatch write failed. status: {}, code: {}, message: {}, node {}",
+                    DataNodeQueryMessages
+                        .DISPATCH_WRITE_FAILED_STATUS_ARG_CODE_ARG_MESSAGE_ARG_NODE_ARG,
                     sendPlanNodeResp.status,
                     TSStatusCode.representOf(sendPlanNodeResp.status.code),
                     sendPlanNodeResp.message,
@@ -551,7 +552,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           throw new FragmentInstanceDispatchException(
               RpcUtils.getStatus(
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                  String.format("unknown read type [%s]", instance.getType())));
+                  String.format(DataNodeQueryMessages.UNKNOWN_READ_TYPE_FMT, instance.getType())));
       }
     } catch (TException e) {
       Throwable rootCause = ExceptionUtils.getRootCause(e);
@@ -568,7 +569,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchRemoteFailed(TEndPoint endPoint, Exception e)
       throws FragmentInstanceDispatchException {
     LOGGER.warn(
-        "can't execute request on node  {} in second try, error msg is {}.",
+        DataNodeQueryMessages.CAN_T_EXECUTE_REQUEST_ON_NODE_ARG_IN_SECOND_TRY_ERROR_MSG_IS_ARG,
         endPoint,
         ExceptionUtils.getRootCause(e).toString());
     TSStatus status = new TSStatus();
@@ -587,7 +588,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       LOGGER.warn(
-          "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
+          DataNodeQueryMessages
+              .CAN_T_EXECUTE_REQUEST_ON_NODE_ARG_ERROR_MSG_IS_ARG_AND_WE_TRY_TO_RECONNECT_THIS_NODE,
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
       // If the query has already timed out, do not retry. Re-dispatching the same FragmentInstance
@@ -632,7 +634,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                "Deserialize ConsensusGroupId failed: " + t.getMessage()));
+                String.format(
+                    DataNodeQueryMessages.DESERIALIZE_CONSENSUSGROUPID_FAILED_WITH_REASON_FMT,
+                    t.getMessage())));
       }
     }
 
@@ -685,7 +689,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             if (writeResult.getStatus().getCode()
                 != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
               LOGGER.warn(
-                  "write locally failed. TSStatus: {}, message: {}",
+                  DataNodeQueryMessages.WRITE_LOCALLY_FAILED_TSSTATUS_ARG_MESSAGE_ARG,
                   writeResult.getStatus(),
                   writeResult.getMessage());
             }
@@ -703,7 +707,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                String.format("unknown read type [%s]", instance.getType())));
+                String.format(DataNodeQueryMessages.UNKNOWN_READ_TYPE_FMT, instance.getType())));
     }
   }
 

@@ -49,7 +49,8 @@ public final class AstUtil {
   public static Stream<Node> preOrder(Node node) {
     return stream(
         Traverser.forTree((SuccessorsFunction<Node>) Node::getChildren)
-            .depthFirstPreOrder(requireNonNull(node, "node is null")));
+            .depthFirstPreOrder(
+                requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A)));
   }
 
   /**
@@ -112,7 +113,9 @@ public final class AstUtil {
     }
     if (expression instanceof Identifier) {
       throw new SemanticException(
-          String.format("Cannot insert identifier %s, please use string literal", expression));
+          String.format(
+              DataNodeQueryMessages.CANNOT_INSERT_IDENTIFIER_S_PLEASE_USE_STRING_LITERAL,
+              expression));
     }
     throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
   }

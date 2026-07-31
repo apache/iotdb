@@ -36,11 +36,13 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 
 import org.slf4j.Logger;
@@ -53,7 +55,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
@@ -68,6 +71,8 @@ public class ConsensusSubscriptionSetupHandler {
       LoggerFactory.getLogger(ConsensusSubscriptionSetupHandler.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final long FIRST_CONSENSUS_SEARCH_INDEX = 1L;
 
   /** Last-known preferred writer node ID per region, used to detect routing changes. */
   private static final ConcurrentHashMap<TConsensusGroupId, Integer> lastKnownPreferredWriter =
@@ -90,13 +95,14 @@ public class ConsensusSubscriptionSetupHandler {
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId groupId) {
-    commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+    if (!commitManager.hasPersistedState(consumerGroupId, topicName, groupId)) {
+      return null;
+    }
     final RegionProgress committedRegionProgress =
         commitManager.getCommittedRegionProgress(consumerGroupId, topicName, groupId);
     return committedRegionProgress != null
-            && !committedRegionProgress.getWriterPositions().isEmpty()
         ? committedRegionProgress
-        : null;
+        : new RegionProgress(Collections.emptyMap());
   }
 
   private ConsensusSubscriptionSetupHandler() {
@@ -112,11 +118,14 @@ public class ConsensusSubscriptionSetupHandler {
     if (IoTConsensus.onNewPeerCreated == null) {
       IoTConsensus.onNewPeerCreated = ConsensusSubscriptionSetupHandler::onNewRegionCreated;
       LOGGER.info(
-          "Set IoTConsensus.onNewPeerCreated callback for consensus subscription auto-binding");
+          DataNodePipeMessages
+              .PIPE_LOG_SET_IOTCONSENSUS_ONNEWPEERCREATED_CALLBACK_FOR_CONSENSUS_0766CE68);
     }
     if (IoTConsensus.onPeerRemoved == null) {
       IoTConsensus.onPeerRemoved = ConsensusSubscriptionSetupHandler::onRegionRemoved;
-      LOGGER.info("Set IoTConsensus.onPeerRemoved callback for consensus subscription cleanup");
+      LOGGER.info(
+          DataNodePipeMessages
+              .PIPE_LOG_SET_IOTCONSENSUS_ONPEERREMOVED_CALLBACK_FOR_CONSENSUS_SUBSCRIPTION_21D4D6AC);
     }
   }
 
@@ -142,8 +151,8 @@ public class ConsensusSubscriptionSetupHandler {
         ConsensusSubscriptionCommitManager.getInstance();
 
     LOGGER.info(
-        "New DataRegion {} created, checking {} consumer group(s) for auto-binding, "
-            + "currentSearchIndex={}",
+        DataNodePipeMessages
+            .PIPE_LOG_NEW_DATAREGION_CREATED_CHECKING_CONSUMER_GROUP_S_FOR_AUTO_787C16E9,
         groupId,
         allSubscriptions.size(),
         serverImpl.getSearchIndex());
@@ -177,18 +186,25 @@ public class ConsensusSubscriptionSetupHandler {
           }
 
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-          final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+          final ConsensusLogToTabletConverter converter =
+              buildConverter(topicName, topicConfig, actualDbName);
           final SubscriptionWalRetentionPolicy retentionPolicy =
               buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
           // Recover from persisted per-writer region progress when available. The queue will
           // resolve a replay start from that progress on first poll via the region-level locator.
+          // A newly-created region starts from its first consensus index and never proposes its
+          // current local tail as an initial committed frontier.
+          commitManager.initializeStateWithoutTailProposal(consumerGroupId, topicName, groupId);
           final RegionProgress committedRegionProgress =
               resolveFallbackCommittedRegionProgress(
                   commitManager, consumerGroupId, topicName, groupId);
           final boolean hasLocalPersistedState =
               commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
+          // This region is created after the subscription already exists. Its first WAL entry may
+          // already be visible by the time this callback runs, so start from the beginning of this
+          // new region instead of tail+1 to avoid skipping the first write.
+          final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
           final long initialRuntimeVersion =
               regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
           final boolean initialActive =
@@ -208,9 +224,8 @@ public class ConsensusSubscriptionSetupHandler {
                   initialActiveWriterNodeIds);
 
           LOGGER.info(
-              "Auto-binding consensus queue for topic [{}] in group [{}] to new region {} "
-                  + "(database={}, tailStartSearchIndex={}, hasLocalPersistedState={}, "
-                  + "committedRegionProgress={}, initialRuntimeVersion={}, initialActive={})",
+              DataNodePipeMessages
+                  .PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649,
               topicName,
               consumerGroupId,
               groupId,
@@ -238,7 +253,8 @@ public class ConsensusSubscriptionSetupHandler {
           SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
         } catch (final Exception e) {
           LOGGER.error(
-              "Failed to auto-bind topic [{}] in group [{}] to new region {}",
+              DataNodePipeMessages
+                  .PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D,
               topicName,
               consumerGroupId,
               groupId,
@@ -261,12 +277,17 @@ public class ConsensusSubscriptionSetupHandler {
     regionRuntimeVersion.remove(groupId.convertToTConsensusGroupId());
     regionActiveWriterNodeIds.remove(groupId.convertToTConsensusGroupId());
     LOGGER.info(
-        "DataRegion {} being removed, unbinding all consensus subscription queues", groupId);
+        DataNodePipeMessages
+            .PIPE_LOG_DATAREGION_BEING_REMOVED_UNBINDING_ALL_CONSENSUS_SUBSCRIPTION_848A29F0,
+        groupId);
     try {
       SubscriptionAgent.broker().unbindByRegion(groupId);
     } catch (final Exception e) {
       LOGGER.error(
-          "Failed to unbind consensus subscription queues for removed region {}", groupId, e);
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_UNBIND_CONSENSUS_SUBSCRIPTION_QUEUES_FOR_REMOVED_7086F70A,
+          groupId,
+          e);
     }
   }
 
@@ -275,16 +296,31 @@ public class ConsensusSubscriptionSetupHandler {
       final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
       final boolean result = TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
-          "isConsensusBasedTopic check for topic [{}]: mode={}, result={}",
+          DataNodePipeMessages.PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9,
           topicName,
           topicMode,
           result);
       return result;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to check if topic [{}] is consensus-based, defaulting to false", topicName, e);
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509,
+          topicName,
+          e);
       return false;
     }
+  }
+
+  private static boolean isConsensusBasedTopicRequired(final String topicName) {
+    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
+    if (Objects.isNull(topicMode)) {
+      throw new SubscriptionException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20,
+              topicName));
+    }
+    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
   }
 
   public static void setupConsensusSubscriptions(
@@ -295,9 +331,8 @@ public class ConsensusSubscriptionSetupHandler {
       final String runtimeConsensusImplementation =
           Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
       LOGGER.warn(
-          "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
-              + "mode=consensus only supports data_region_consensus_protocol_class={}, but "
-              + "current configured value is {} (runtime consensus implementation: {})",
+          DataNodePipeMessages
+              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812,
           consumerGroupId,
           ConsensusFactory.IOT_CONSENSUS,
           configuredProtocol,
@@ -313,27 +348,98 @@ public class ConsensusSubscriptionSetupHandler {
         ConsensusSubscriptionCommitManager.getInstance();
 
     LOGGER.info(
-        "Setting up consensus subscriptions for consumer group [{}], topics={}, "
-            + "total consensus groups={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SETTING_UP_CONSENSUS_SUBSCRIPTIONS_FOR_CONSUMER_GROUP_TOPICS_204374A2,
         consumerGroupId,
         topicNames,
         ioTConsensus.getAllConsensusGroupIds().size());
 
-    for (final String topicName : topicNames) {
-      if (!isConsensusBasedTopic(topicName)) {
-        continue;
-      }
+    final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
+        commitManager.captureSetupSnapshot(consumerGroupId, topicNames);
+    setupConsensusTopics(
+        consumerGroupId,
+        topicNames,
+        ConsensusSubscriptionSetupHandler::isConsensusBasedTopicRequired,
+        topicName ->
+            setupConsensusQueueForTopic(consumerGroupId, topicName, ioTConsensus, commitManager),
+        attemptedTopicNames ->
+            rollbackConsensusSubscriptionSetup(
+                consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
+  }
 
+  private static void rollbackConsensusSubscriptionSetup(
+      final String consumerGroupId,
+      final Set<String> attemptedTopicNames,
+      final ConsensusSubscriptionCommitManager commitManager,
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot) {
+    RuntimeException rollbackFailure = null;
+    for (final String topicName : attemptedTopicNames) {
       try {
-        setupConsensusQueueForTopic(consumerGroupId, topicName, ioTConsensus, commitManager);
+        SubscriptionAgent.broker().unbindConsensusPrefetchingQueue(consumerGroupId, topicName);
+      } catch (final RuntimeException e) {
+        if (Objects.isNull(rollbackFailure)) {
+          rollbackFailure = e;
+        } else {
+          rollbackFailure.addSuppressed(e);
+        }
+      }
+    }
+    try {
+      commitManager.restoreSetupSnapshot(setupSnapshot, attemptedTopicNames);
+    } catch (final RuntimeException e) {
+      if (Objects.isNull(rollbackFailure)) {
+        rollbackFailure = e;
+      } else {
+        rollbackFailure.addSuppressed(e);
+      }
+    }
+    if (Objects.nonNull(rollbackFailure)) {
+      throw rollbackFailure;
+    }
+  }
+
+  static void setupConsensusTopics(
+      final String consumerGroupId,
+      final Set<String> topicNames,
+      final Predicate<String> consensusTopicPredicate,
+      final ConsensusTopicSetup topicSetup,
+      final Consumer<Set<String>> topicRollback) {
+    final Set<String> attemptedTopicNames = new LinkedHashSet<>();
+    for (final String topicName : topicNames) {
+      try {
+        if (!consensusTopicPredicate.test(topicName)) {
+          continue;
+        }
+        attemptedTopicNames.add(topicName);
+        topicSetup.setup(topicName);
       } catch (final Exception e) {
+        try {
+          topicRollback.accept(new LinkedHashSet<>(attemptedTopicNames));
+        } catch (final RuntimeException rollbackException) {
+          e.addSuppressed(rollbackException);
+        }
         LOGGER.error(
-            "Failed to set up consensus subscription for topic [{}] in consumer group [{}]",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_CONSUMER_1A30001B,
             topicName,
             consumerGroupId,
             e);
+        throw new SubscriptionException(
+            String.format(
+                DataNodePipeMessages
+                    .EXCEPTION_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_ARG_IN_CONSUMER_GROUP_ARG_ARG_A7FA88F3,
+                topicName,
+                consumerGroupId,
+                e.getMessage()),
+            e);
       }
     }
+  }
+
+  @FunctionalInterface
+  interface ConsensusTopicSetup {
+
+    void setup(String topicName) throws Exception;
   }
 
   /**
@@ -359,14 +465,17 @@ public class ConsensusSubscriptionSetupHandler {
         SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
     final TopicConfig topicConfig = topicConfigs.get(topicName);
     if (topicConfig == null) {
-      LOGGER.warn(
-          "Topic config not found for topic [{}], cannot set up consensus queue", topicName);
-      return;
+      throw new SubscriptionException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE,
+              topicName));
     }
 
     // Build the converter from the currently supported topic filters.
     LOGGER.info(
-        "Setting up consensus queue for topic [{}]: isTableTopic={}, orderMode={}, config={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SETTING_UP_CONSENSUS_QUEUE_FOR_TOPIC_ISTABLETOPIC_ORDERMODE_4F1CDC66,
         topicName,
         topicConfig.isTableTopic(),
         topicConfig.getOrderMode(),
@@ -374,7 +483,8 @@ public class ConsensusSubscriptionSetupHandler {
 
     final List<ConsensusGroupId> allGroupIds = ioTConsensus.getAllConsensusGroupIds();
     LOGGER.info(
-        "Discovered {} consensus group(s) for topic [{}] in consumer group [{}]: {}",
+        DataNodePipeMessages
+            .PIPE_LOG_DISCOVERED_CONSENSUS_GROUP_S_FOR_TOPIC_IN_CONSUMER_GROUP_012EE420,
         allGroupIds.size(),
         topicName,
         consumerGroupId,
@@ -402,7 +512,8 @@ public class ConsensusSubscriptionSetupHandler {
 
       if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
         LOGGER.info(
-            "Skipping region {} (database={}) for table topic [{}] (DATABASE_KEY={})",
+            DataNodePipeMessages
+                .PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84,
             groupId,
             dbTableModel,
             topicName,
@@ -412,7 +523,8 @@ public class ConsensusSubscriptionSetupHandler {
       }
 
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-      final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+      final ConsensusLogToTabletConverter converter =
+          buildConverter(topicName, topicConfig, actualDbName);
       final SubscriptionWalRetentionPolicy retentionPolicy =
           buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
@@ -443,10 +555,8 @@ public class ConsensusSubscriptionSetupHandler {
               initialActiveWriterNodeIds);
 
       LOGGER.info(
-          "Binding consensus prefetching queue for topic [{}] in consumer group [{}] "
-              + "to data region consensus group [{}] (database={}, tailStartSearchIndex={}, "
-              + "hasLocalPersistedState={}, committedRegionProgress={}, "
-              + "initialRuntimeVersion={}, initialActive={})",
+          DataNodePipeMessages
+              .PIPE_LOG_BINDING_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_IN_CONSUMER_45239EEA,
           topicName,
           consumerGroupId,
           groupId,
@@ -457,20 +567,23 @@ public class ConsensusSubscriptionSetupHandler {
           initialRuntimeVersion,
           initialActive);
 
-      SubscriptionAgent.broker()
-          .bindConsensusPrefetchingQueue(
-              consumerGroupId,
-              topicName,
-              topicConfig.getOrderMode(),
-              groupId,
-              serverImpl,
-              retentionPolicy,
-              converter,
-              commitManager,
-              committedRegionProgress,
-              tailStartSearchIndex,
-              initialRuntimeVersion,
-              initialActive);
+      final ConsensusPrefetchingQueue queue =
+          SubscriptionAgent.broker()
+              .bindConsensusPrefetchingQueue(
+                  consumerGroupId,
+                  topicName,
+                  topicConfig.getOrderMode(),
+                  groupId,
+                  serverImpl,
+                  retentionPolicy,
+                  converter,
+                  commitManager,
+                  committedRegionProgress,
+                  tailStartSearchIndex,
+                  initialRuntimeVersion,
+                  initialActive);
+      commitManager.initializeStateFromTailProposal(
+          consumerGroupId, topicName, groupId, queue.computeTailRegionProgress());
 
       SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
 
@@ -479,15 +592,15 @@ public class ConsensusSubscriptionSetupHandler {
 
     if (!bound) {
       LOGGER.warn(
-          "No local IoTConsensus data region found for topic [{}] in consumer group [{}]. "
-              + "Consensus subscription will be set up when a matching data region becomes available.",
+          DataNodePipeMessages
+              .PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E,
           topicName,
           consumerGroupId);
     }
   }
 
   private static ConsensusLogToTabletConverter buildConverter(
-      final TopicConfig topicConfig, final String actualDatabaseName) {
+      final String topicName, final TopicConfig topicConfig, final String actualDatabaseName) {
     // Determine tree or table model
     final boolean isTableTopic = topicConfig.isTableTopic();
 
@@ -495,15 +608,11 @@ public class ConsensusSubscriptionSetupHandler {
     TablePattern tablePattern = null;
 
     if (isTableTopic) {
+      SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
       // Table model: database + table name pattern
-      final String column =
-          topicConfig.getStringOrDefault(
-              TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
       tablePattern = buildTablePattern(topicConfig);
-      final Pattern columnPattern =
-          TopicConstant.COLUMN_DEFAULT_VALUE.equals(column) ? null : Pattern.compile(column);
       return new ConsensusLogToTabletConverter(
-          null, tablePattern, columnPattern, actualDatabaseName);
+          null, tablePattern, topicName, null, actualDatabaseName);
     } else {
       // Tree model: path or pattern
       if (topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)) {
@@ -558,7 +667,10 @@ public class ConsensusSubscriptionSetupHandler {
     final long parsedValue = Long.parseLong(topicConfig.getAttribute().get(key));
     if (parsedValue == 0 || parsedValue < SubscriptionWalRetentionPolicy.UNBOUNDED) {
       throw new IllegalArgumentException(
-          String.format("Illegal %s=%s", key, topicConfig.getAttribute().get(key)));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA,
+              key,
+              topicConfig.getAttribute().get(key)));
     }
     return normalizeRetentionValue(parsedValue);
   }
@@ -578,12 +690,14 @@ public class ConsensusSubscriptionSetupHandler {
             .removeAllStatesForTopic(consumerGroupId, topicName);
 
         LOGGER.info(
-            "Tore down consensus subscription for topic [{}] in consumer group [{}]",
+            DataNodePipeMessages
+                .PIPE_LOG_TORE_DOWN_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_CONSUMER_GROUP_80B84227,
             topicName,
             consumerGroupId);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to tear down consensus subscription for topic [{}] in consumer group [{}]",
+            DataNodePipeMessages
+                .PIPE_LOG_FAILED_TO_TEAR_DOWN_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_F59E8B7C,
             topicName,
             consumerGroupId,
             e);
@@ -598,7 +712,8 @@ public class ConsensusSubscriptionSetupHandler {
     }
 
     LOGGER.info(
-        "Checking new subscriptions in consumer group [{}] for consensus-based topics: {}",
+        DataNodePipeMessages
+            .PIPE_LOG_CHECKING_NEW_SUBSCRIPTIONS_IN_CONSUMER_GROUP_FOR_CONSENSUS_4A56D78A,
         consumerGroupId,
         newTopicNames);
 
@@ -614,7 +729,8 @@ public class ConsensusSubscriptionSetupHandler {
     final long oldRuntimeVersion = regionRuntimeVersion.getOrDefault(groupId, 0L);
     if (runtimeState.getRuntimeVersion() < oldRuntimeVersion) {
       LOGGER.info(
-          "ConsensusSubscriptionSetupHandler: ignore stale runtime state for region {}, incomingRuntimeVersion={}, currentRuntimeVersion={}, runtimeState={}",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_IGNORE_STALE_RUNTIME_STATE_6C36B250,
           regionId,
           runtimeState.getRuntimeVersion(),
           oldRuntimeVersion,
@@ -624,7 +740,8 @@ public class ConsensusSubscriptionSetupHandler {
     regionRuntimeVersion.put(groupId, runtimeState.getRuntimeVersion());
     regionActiveWriterNodeIds.put(groupId, runtimeState.getActiveWriterNodeIds());
     LOGGER.info(
-        "ConsensusSubscriptionSetupHandler: applying runtime state for region {}, preferred writer {} -> {}, runtimeVersion {} -> {}, runtimeState={}",
+        DataNodePipeMessages
+            .PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_APPLYING_RUNTIME_STATE_1FB8937E,
         regionId,
         oldPreferredNodeId,
         newPreferredNodeId,
@@ -672,7 +789,8 @@ public class ConsensusSubscriptionSetupHandler {
               runtimeActiveWriterNodeIds);
 
       LOGGER.info(
-          "ConsensusSubscriptionSetupHandler: region {} preferred writer changed {} -> {}, runtimeVersion {} -> {}, runtimeState={} (route hint)",
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_REGION_PREFERRED_WRITER_46C1A894,
           regionId,
           oldPreferredNodeId,
           newPreferredNodeId,

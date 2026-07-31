@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.util.Collections;
@@ -80,7 +81,11 @@ public class InternalClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds == null) {
       throw new IllegalStateException(
-          "StatementId: " + statementId + "doesn't exist in this session " + this);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733,
+              statementId,
+              this));
     }
     queryIds.add(queryId);
   }
@@ -93,19 +98,22 @@ public class InternalClientSession extends IClientSession {
   @Override
   public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
     throw new UnsupportedOperationException(
-        "InternalClientSession should never call PREPARE statement methods.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
   }
 
   @Override
   public PreparedStatementInfo removePreparedStatement(String statementName) {
     throw new UnsupportedOperationException(
-        "InternalClientSession should never call PREPARE statement methods.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
   }
 
   @Override
   public PreparedStatementInfo getPreparedStatement(String statementName) {
     throw new UnsupportedOperationException(
-        "InternalClientSession should never call PREPARE statement methods.");
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC);
   }
 
   @Override

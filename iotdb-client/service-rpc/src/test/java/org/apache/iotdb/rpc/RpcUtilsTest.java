@@ -99,4 +99,25 @@ public class RpcUtilsTest {
       Assert.assertTrue(e.getMessage().contains("failed"));
     }
   }
+
+  @Test
+  public void testSslProtocolNormalization() {
+    Assert.assertEquals("TLS", RpcSslUtils.normalizeProtocol(null));
+    Assert.assertEquals("TLSv1.3", RpcSslUtils.normalizeProtocol(" TLSv1.3 "));
+    Assert.assertEquals("ProviderProtocol", RpcSslUtils.normalizeProtocol(" ProviderProtocol "));
+  }
+
+  @Test
+  public void testSslProtocolResolution() {
+    String originProtocol = RpcSslUtils.getProtocol();
+    try {
+      RpcSslUtils.configure("ConfiguredProtocol");
+
+      Assert.assertEquals("ConfiguredProtocol", RpcSslUtils.resolveProtocol(null));
+      Assert.assertEquals("ConfiguredProtocol", RpcSslUtils.resolveProtocol(" "));
+      Assert.assertEquals("ExplicitProtocol", RpcSslUtils.resolveProtocol(" ExplicitProtocol "));
+    } finally {
+      RpcSslUtils.configure(originProtocol);
+    }
+  }
 }

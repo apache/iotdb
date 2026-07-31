@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -44,9 +46,10 @@ public class TableFunctionTableArgument extends Node {
       Optional<List<Expression>> partitionBy,
       Optional<OrderBy> orderBy) {
     super(location);
-    this.table = requireNonNull(table, "table is null");
-    this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+    this.table = requireNonNull(table, QueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+    this.partitionBy =
+        requireNonNull(partitionBy, QueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B);
+    this.orderBy = requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
   }
 
   public Relation getTable() {

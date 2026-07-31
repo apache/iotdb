@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -66,7 +68,9 @@ public class AnalyzeUtilsTest {
             new Identifier("ts"),
             new LongLiteral("100"));
 
-    List<TableDeletionEntry> entries = AnalyzeUtils.parseExpressions2ModEntries(expression, table);
+    List<TableDeletionEntry> entries =
+        AnalyzeUtils.parseExpressions2ModEntries(
+            expression, table, "db", new MPPQueryContext(new QueryId("1")));
 
     assertEquals(1, entries.size());
     assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
