@@ -178,12 +178,12 @@ public class UserRoleModificationAuditContextTest {
 
     List<IAuditEntity> entities = entityCaptor.getAllValues();
     List<Supplier<String>> logs = logCaptor.getAllValues();
-    assertAuditLog(entities.get(0), sql, AuditEventType.MODIFY_SECURITY_ATTRIBUTE);
+    assertAuditLog(entities.get(0), sql, AuditEventType.MODIFY_SECURITY_FUNCTION);
     assertAuditLog(entities.get(1), sql, AuditEventType.MODIFY_ROLE_MEMBERSHIP);
     assertEquals(
         String.format(
             DataNodeMiscMessages
-                .LOG_SECURITY_ATTRIBUTE_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_D6DC8233,
+                .LOG_SECURITY_FUNCTION_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_0D500C5D,
             "user1",
             "role1"),
         logs.get(0).get());
