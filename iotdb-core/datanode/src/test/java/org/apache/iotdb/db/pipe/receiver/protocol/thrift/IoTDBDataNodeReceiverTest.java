@@ -71,6 +71,36 @@ public class IoTDBDataNodeReceiverTest {
       Assert.assertEquals("root.test.sg_0", statement.getDatabase());
       Assert.assertEquals(2, statement.getDatabaseLevel());
       Assert.assertTrue(statement.isVerifySchema());
+      Assert.assertTrue(statement.isAutoCreateSchema());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
+
+  @Test
+  public void testLoadTsFileWaitsForSchemaInSyncAndAsyncModes() throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-wait-for-schema", ".tsfile");
+    try {
+      final LoadTsFileStatement syncStatement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), false, false, true);
+      Assert.assertTrue(syncStatement.isVerifySchema());
+      Assert.assertFalse(syncStatement.isAutoCreateSchema());
+
+      final Map<String, String> asyncAttributes =
+          IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
+              "root.test.sg_0", false, false, true, true);
+      Assert.assertEquals(
+          Boolean.TRUE.toString(), asyncAttributes.get(LoadTsFileConfigurator.VERIFY_KEY));
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          asyncAttributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY));
+
+      final LoadTsFileStatement asyncStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.toString());
+      ActiveLoadPathHelper.applyAttributesToStatement(asyncAttributes, asyncStatement, false);
+      Assert.assertTrue(asyncStatement.isVerifySchema());
+      Assert.assertFalse(asyncStatement.isAutoCreateSchema());
     } finally {
       Files.deleteIfExists(tsFile);
     }

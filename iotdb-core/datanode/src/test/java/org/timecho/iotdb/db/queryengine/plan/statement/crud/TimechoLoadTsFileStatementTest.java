@@ -85,7 +85,7 @@ public class TimechoLoadTsFileStatementTest {
 
     try {
       final Map<String, String> attributes =
-          ActiveLoadPathHelper.buildAttributes(null, 1, true, true, 1024L, false, true, null);
+          ActiveLoadPathHelper.buildAttributes(null, 1, true, true, null, 1024L, false, true, null);
 
       final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.toString());
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);

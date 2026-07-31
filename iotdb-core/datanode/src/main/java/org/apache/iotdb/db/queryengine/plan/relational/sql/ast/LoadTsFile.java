@@ -60,6 +60,7 @@ public class LoadTsFile extends Statement {
   private long tabletConversionThresholdBytes;
   private boolean autoCreateDatabase;
   private boolean verify;
+  private boolean autoCreateSchema;
   private boolean isAsyncLoad = false;
   private boolean tsFileIsPhysicalPath = false;
 
@@ -103,6 +104,7 @@ public class LoadTsFile extends Statement {
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.verify = true;
+    this.autoCreateSchema = true;
 
     this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
@@ -159,6 +161,10 @@ public class LoadTsFile extends Statement {
 
   public boolean isVerifySchema() {
     return verify;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
   }
 
   public int getDatabaseLevel() {
@@ -270,6 +276,8 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.autoCreateSchema =
+        LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
     this.tsFileIsPhysicalPath =
         LoadTsFileConfigurator.parseOrGetDefaultTsFileIsPhysicalPath(loadAttributes);
@@ -371,6 +379,7 @@ public class LoadTsFile extends Statement {
       subStatement.databaseLevel = this.databaseLevel;
       subStatement.database = this.database;
       subStatement.verify = this.verify;
+      subStatement.autoCreateSchema = this.autoCreateSchema;
       subStatement.deleteAfterLoad = this.deleteAfterLoad;
       subStatement.convertOnTypeMismatch = this.convertOnTypeMismatch;
       subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;

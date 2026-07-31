@@ -48,6 +48,8 @@ public class SystemConstant {
       "__system.source-authentication-injected";
   public static final String SINK_AUTHENTICATION_INJECTED_KEY =
       "__system.sink-authentication-injected";
+  public static final String SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY =
+      "__system.sink-wait-for-schema-before-load";
 
   /////////////////////////////////// Utility ///////////////////////////////////
 
@@ -59,6 +61,7 @@ public class SystemConstant {
     SYSTEM_KEYS.add(PIPE_VISIBILITY_KEY);
     SYSTEM_KEYS.add(SOURCE_AUTHENTICATION_INJECTED_KEY);
     SYSTEM_KEYS.add(SINK_AUTHENTICATION_INJECTED_KEY);
+    SYSTEM_KEYS.add(SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY);
   }
 
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {

@@ -40,7 +40,7 @@ public class ActiveLoadPathHelperTest {
           ActiveLoadPathHelper.resolveTargetDir(
               pendingDir,
               ActiveLoadPathHelper.buildAttributes(
-                  null, null, null, null, null, null, null, userName));
+                  null, null, null, null, null, null, null, null, userName));
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
 
       Assert.assertTrue(targetDir.getAbsolutePath().contains("user-v1-"));
@@ -122,6 +122,33 @@ public class ActiveLoadPathHelperTest {
           LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);
       Assert.assertTrue(statement.isVerifySchema());
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testAutoCreateSchemaAttributeShouldSurviveActiveLoadPath() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-schema").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(
+              null, null, null, true, false, null, true, null, "root");
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> parsedAttributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          parsedAttributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY));
+
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      ActiveLoadPathHelper.applyAttributesToStatement(parsedAttributes, statement, false);
+      Assert.assertTrue(statement.isVerifySchema());
+      Assert.assertFalse(statement.isAutoCreateSchema());
     } finally {
       deleteRecursively(pendingDir);
     }

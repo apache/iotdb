@@ -112,7 +112,7 @@ public class ActiveLoadDirScannerTest {
     // internal directories, not table database names inferred from a user-created subdirectory.
     final Map<String, String> attributes =
         ActiveLoadPathHelper.buildAttributes(
-            null, 2, false, false, null, false, false, "test-user");
+            null, 2, false, false, null, null, false, false, "test-user");
     final File attributeDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
     final File transferDir = new File(attributeDir, "transfer-id");
     Assert.assertTrue(transferDir.mkdirs());
