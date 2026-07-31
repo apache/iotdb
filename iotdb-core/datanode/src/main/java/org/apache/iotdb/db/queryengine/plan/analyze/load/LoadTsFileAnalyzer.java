@@ -154,6 +154,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final int databaseLevel;
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
+  private final boolean isAutoCreateSchemaRequested;
+  private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
@@ -180,10 +182,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
+  }
+
+  protected boolean isAutoCreateSchemaEnabled() {
+    return isAutoCreateSchemaEnabled;
+  }
+
+  protected boolean isAutoCreateSchemaRequested() {
+    return isAutoCreateSchemaRequested;
   }
 
   public Analysis analyzeFileByFile(Analysis analysis) {
@@ -255,6 +269,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
+              isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe);
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
@@ -435,7 +450,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
 
     final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema;
+        isAutoCreateSchemaEnabled || isVerifySchema;
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
@@ -574,9 +589,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
-    if (!isGeneratedByPipe
-        || !isVerifySchema
-        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchemaEnabled) {
       return false;
     }
 
@@ -961,6 +974,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           encodingsList,
           compressionTypesList,
           isAlignedList,
+          isAutoCreateSchemaRequested,
           context);
     }
 
