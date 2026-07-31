@@ -1480,13 +1480,14 @@ public class ConsensusPrefetchingQueue {
     final long currentWalAcceptedEntries = walPathAcceptedEntries.get();
     LOGGER.info(
         DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0,
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608,
         this,
         getLag(),
         currentPendingAcceptedEntries - lastPendingAcceptedEntries,
         currentWalAcceptedEntries - lastWalAcceptedEntries,
         currentPendingAcceptedEntries,
         currentWalAcceptedEntries,
+        walGapSkippedEntries.get(),
         pendingEntries.size(),
         prefetchingQueue.size(),
         inFlightEvents.size(),
@@ -1835,11 +1836,11 @@ public class ConsensusPrefetchingQueue {
           continue;
         }
         if (shouldSkipForRecoveryProgress(walEntry)) {
-          advanceLocalCursorIfPresent(walEntry);
+          advanceWalReplayCursorIfPresent(walEntry);
           continue;
         }
         if (shouldSkipForMaterializedProgress(walEntry)) {
-          advanceLocalCursorIfPresent(walEntry);
+          advanceWalReplayCursorIfPresent(walEntry);
           continue;
         }
 
@@ -1853,7 +1854,7 @@ public class ConsensusPrefetchingQueue {
           return appendResult;
         }
         markMaterializedProgress(walEntry);
-        advanceLocalCursorIfPresent(walEntry);
+        advanceWalReplayCursorIfPresent(walEntry);
       } catch (final Exception e) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -1873,6 +1874,28 @@ public class ConsensusPrefetchingQueue {
           nextExpectedSearchIndex.get());
     }
     return MaterializationResult.SUCCESS;
+  }
+
+  private void advanceWalReplayCursorIfPresent(final IndexedConsensusRequest request) {
+    if (!hasLocalSearchIndex(request)) {
+      return;
+    }
+
+    final long actualSearchIndex = request.getSearchIndex();
+    final long expectedSearchIndex = nextExpectedSearchIndex.get();
+    if (actualSearchIndex > expectedSearchIndex) {
+      final long skippedEntries = actualSearchIndex - expectedSearchIndex;
+      final long totalSkippedEntries = walGapSkippedEntries.addAndGet(skippedEntries);
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64,
+          this,
+          expectedSearchIndex,
+          actualSearchIndex,
+          skippedEntries,
+          totalSkippedEntries);
+    }
+    nextExpectedSearchIndex.set(actualSearchIndex + 1);
   }
 
   private void ensureSubscriptionWalReadable() {
