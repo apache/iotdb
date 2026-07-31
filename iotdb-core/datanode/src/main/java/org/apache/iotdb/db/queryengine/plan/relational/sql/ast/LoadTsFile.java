@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -110,10 +111,8 @@ public class LoadTsFile extends Statement {
     try {
       this.tsFiles =
           validateInternalDataDir
-              ? org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement
-                  .processTsFile(new File(filePath), validateSourcePath)
-              : org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement
-                  .processTsFileForPipe(new File(filePath));
+              ? LoadTsFileStatement.processTsFile(new File(filePath), validateSourcePath)
+              : LoadTsFileStatement.processTsFileForPipe(new File(filePath));
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
