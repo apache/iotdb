@@ -107,7 +107,7 @@ public class DNAuditLoggerUserRoleModificationTest {
   }
 
   @Test
-  public void testRedirectIsSuccessfulModification() {
+  public void testRedirectedModificationIsIgnored() {
     DNAuditLogger auditLogger = mock(DNAuditLogger.class, CALLS_REAL_METHODS);
     AuthorStatement statement = new AuthorStatement(AuthorType.REVOKE_USER_ROLE);
     statement.setUserName("user1");
@@ -119,7 +119,7 @@ public class DNAuditLoggerUserRoleModificationTest {
         "revoke role",
         RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND));
 
-    assertAuditLog(auditLogger, true, "revoke role");
+    verify(auditLogger, never()).log(any(), any());
   }
 
   @Test

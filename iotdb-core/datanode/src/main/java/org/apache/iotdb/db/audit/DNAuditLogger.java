@@ -338,6 +338,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
       @Nullable String database,
       @Nullable String sql,
       @Nullable TSStatus status) {
+    if (status != null && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      return;
+    }
     log(
         new AuditLogFields(
             userId,
