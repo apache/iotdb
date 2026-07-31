@@ -61,9 +61,9 @@ import java.util.function.Predicate;
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
- * <p>For each consensus-mode topic subscribed by a consumer group, this handler discovers matching
- * local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and binds one
- * queue per region to the consensus subscription broker.
+ * <p>For each incremental-mode topic subscribed by a consumer group, this handler discovers
+ * matching local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and
+ * binds one queue per region to the consensus subscription broker.
  */
 public class ConsensusSubscriptionSetupHandler {
 
@@ -294,7 +294,7 @@ public class ConsensusSubscriptionSetupHandler {
   public static boolean isConsensusBasedTopic(final String topicName) {
     try {
       final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
-      final boolean result = TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+      final boolean result = TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
           DataNodePipeMessages.PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9,
           topicName,
@@ -320,7 +320,7 @@ public class ConsensusSubscriptionSetupHandler {
                   .EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20,
               topicName));
     }
-    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+    return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
   }
 
   public static void setupConsensusSubscriptions(
@@ -332,7 +332,7 @@ public class ConsensusSubscriptionSetupHandler {
           Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
       LOGGER.warn(
           DataNodePipeMessages
-              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812,
+              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4,
           consumerGroupId,
           ConsensusFactory.IOT_CONSENSUS,
           configuredProtocol,
