@@ -434,6 +434,8 @@ public final class DataNodePipeMessages {
       "Failed to send request {} (watermark = {}) to {}";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "Failed to trigger combine. watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "Failed to initialize StateProgressIndex from progress index %s.";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "Failure occurred when trying to commit progress index. timestamp={}, count={}, "
           + "progressIndex={}";
