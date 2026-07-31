@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
@@ -191,6 +192,41 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
 
     Assert.assertTrue(
         (Boolean) getPrivateField(source, "shouldOrderHistoricalTsFileByQueryPriority"));
+  }
+
+  @Test
+  public void testGlobalTimeRangeRespectsHistoryEnable() throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.SOURCE_START_TIME_KEY, "1000");
+    attributes.put(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY, Boolean.FALSE.toString());
+
+    final PipeHistoricalDataRegionTsFileAndDeletionSource realtimeOnlySource =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    realtimeOnlySource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertFalse((Boolean) getPrivateField(realtimeOnlySource, "isHistoricalSourceEnabled"));
+    Assert.assertEquals(
+        1000L,
+        ((Long) getPrivateField(realtimeOnlySource, "historicalDataExtractionStartTime"))
+            .longValue());
+
+    final PipeHistoricalDataRegionTsFileAndDeletionSource defaultSource =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    attributes.remove(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY);
+    defaultSource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertTrue((Boolean) getPrivateField(defaultSource, "isHistoricalSourceEnabled"));
+
+    final PipeHistoricalDataRegionTsFileAndDeletionSource restartedSource =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    attributes.put(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY, Boolean.FALSE.toString());
+    attributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    restartedSource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertTrue((Boolean) getPrivateField(restartedSource, "isHistoricalSourceEnabled"));
   }
 
   @Test
