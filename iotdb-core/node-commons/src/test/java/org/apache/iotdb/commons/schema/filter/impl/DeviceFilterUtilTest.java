@@ -1,0 +1,160 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.schema.filter.impl;
+
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IPatternFA;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class DeviceFilterUtilTest {
+
+  private static final String[] PREFIX = new String[] {"root", "db", "table"};
+  private static final int TAG_COLUMN_NUM = 3;
+
+  @Test
+  public void testCompactExpandedInOrOnNonLeadingTag() {
+    final List<PartialPath> patterns =
+        convert(branch(precise(1, "card1")), branch(precise(1, "card2")));
+
+    Assert.assertEquals(1, patterns.size());
+    final ExtendedPartialPath pattern = (ExtendedPartialPath) patterns.get(0);
+    Assert.assertEquals("root.db.table.*.*.*", pattern.getFullPath());
+    Assert.assertTrue(pattern.match(PREFIX.length + 1, "card1"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 1, "card2"));
+    Assert.assertFalse(pattern.match(PREFIX.length + 1, "card3"));
+    assertPreciseTransitionsAfterFirstTag(pattern, "card1", "card2");
+  }
+
+  @Test
+  public void testKeepLeadingTagBranchesSeparated() {
+    final List<PartialPath> patterns =
+        convert(branch(precise(0, "meter1")), branch(precise(0, "meter2")));
+
+    Assert.assertEquals(2, patterns.size());
+    Assert.assertEquals("root.db.table.meter1.*.*", patterns.get(0).getFullPath());
+    Assert.assertEquals("root.db.table.meter2.*.*", patterns.get(1).getFullPath());
+  }
+
+  @Test
+  public void testKeepBranchesSeparatedWithCompletePrefix() {
+    final List<PartialPath> patterns =
+        convert(
+            branch(precise(0, "meter1"), precise(1, "card1")),
+            branch(precise(0, "meter1"), precise(1, "card2")));
+
+    Assert.assertEquals(2, patterns.size());
+    Assert.assertEquals("root.db.table.meter1.card1.*", patterns.get(0).getFullPath());
+    Assert.assertEquals("root.db.table.meter1.card2.*", patterns.get(1).getFullPath());
+  }
+
+  @Test
+  public void testCompactCartesianProductBehindWildcard() {
+    final List<PartialPath> patterns =
+        convert(
+            branch(precise(1, "card1"), precise(2, "device1")),
+            branch(precise(1, "card1"), precise(2, "device2")),
+            branch(precise(1, "card2"), precise(2, "device1")),
+            branch(precise(1, "card2"), precise(2, "device2")));
+
+    Assert.assertEquals(1, patterns.size());
+    final ExtendedPartialPath pattern = (ExtendedPartialPath) patterns.get(0);
+    Assert.assertTrue(pattern.match(PREFIX.length + 1, "card1"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 1, "card2"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 2, "device1"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 2, "device2"));
+  }
+
+  @Test
+  public void testDoNotCompactCorrelatedOrBranches() {
+    final List<PartialPath> patterns =
+        convert(
+            branch(precise(1, "card1"), precise(2, "device1")),
+            branch(precise(1, "card2"), precise(2, "device2")));
+
+    Assert.assertEquals(2, patterns.size());
+  }
+
+  @Test
+  public void testDoNotCompactNullPreciseValue() {
+    final List<PartialPath> patterns =
+        convert(branch(precise(1, null)), branch(precise(1, "card1")));
+
+    Assert.assertEquals(2, patterns.size());
+  }
+
+  @Test
+  public void testCombineMultiExactAndOtherFilters() {
+    final List<PartialPath> patterns =
+        convert(
+            branch(
+                new TagFilter(new InFilter(new HashSet<>(Arrays.asList("card1", "card2"))), 1),
+                new TagFilter(new NotFilter(new PreciseFilter("card2")), 1)));
+
+    Assert.assertEquals(1, patterns.size());
+    assertPreciseTransitionsAfterFirstTag(patterns.get(0), "card1");
+  }
+
+  @SafeVarargs
+  private static List<PartialPath> convert(final List<SchemaFilter>... branches) {
+    return DeviceFilterUtil.convertToDevicePattern(
+        PREFIX, TAG_COLUMN_NUM, Arrays.asList(branches), false);
+  }
+
+  private static List<SchemaFilter> branch(final SchemaFilter... filters) {
+    return Arrays.asList(filters);
+  }
+
+  private static TagFilter precise(final int index, final String value) {
+    return new TagFilter(new PreciseFilter(value), index);
+  }
+
+  private static void assertPreciseTransitionsAfterFirstTag(
+      final PartialPath pattern, final String... expectedTransitions) {
+    final IPatternFA patternFA = new IPatternFA.Builder().pattern(pattern).buildNFA();
+    IFAState state = patternFA.getInitialState();
+    for (final String prefixNode : PREFIX) {
+      final IFATransition transition = patternFA.getPreciseMatchTransition(state).get(prefixNode);
+      Assert.assertNotNull(transition);
+      state = patternFA.getNextState(state, transition);
+    }
+    final IFATransition wildcardTransition =
+        patternFA.getFuzzyMatchTransitionIterator(state).next();
+    state = patternFA.getNextState(state, wildcardTransition);
+
+    final Set<String> expected = new HashSet<>(Arrays.asList(expectedTransitions));
+    Assert.assertEquals(expected, patternFA.getPreciseMatchTransition(state).keySet());
+    Assert.assertEquals(0, patternFA.getFuzzyMatchTransitionSize(state));
+  }
+}
