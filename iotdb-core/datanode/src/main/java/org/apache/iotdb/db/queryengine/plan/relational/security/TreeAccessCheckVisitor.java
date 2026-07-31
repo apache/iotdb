@@ -693,6 +693,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
     if (Objects.equals(statement.getUserName(), context.getUsername())) {

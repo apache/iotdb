@@ -69,7 +69,10 @@ public final class PasswordChangeAuditTask implements IConfigTask {
           },
           MoreExecutors.directExecutor());
       return future;
-    } catch (InterruptedException | RuntimeException | Error e) {
+    } catch (InterruptedException e) {
+      auditContext.log(null);
+      throw e;
+    } catch (RuntimeException e) {
       auditContext.log(null);
       throw e;
     }
