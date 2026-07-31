@@ -3749,7 +3749,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
@@ -3831,7 +3834,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }

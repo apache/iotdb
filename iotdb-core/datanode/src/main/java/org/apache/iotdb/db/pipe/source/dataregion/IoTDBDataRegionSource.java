@@ -257,27 +257,23 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   private void checkInvalidParameters(final PipeParameterValidator validator) {
     final PipeParameters parameters = validator.getParameters();
 
-    // Enable history and realtime if specifying start-time or end-time
+    // A global time range takes precedence over a history-specific time range.
     if (parameters.hasAnyAttributes(
             SOURCE_START_TIME_KEY,
             EXTRACTOR_START_TIME_KEY,
             SOURCE_END_TIME_KEY,
             EXTRACTOR_END_TIME_KEY)
         && parameters.hasAnyAttributes(
-            EXTRACTOR_HISTORY_ENABLE_KEY,
-            SOURCE_HISTORY_ENABLE_KEY,
             SOURCE_HISTORY_START_TIME_KEY,
             EXTRACTOR_HISTORY_START_TIME_KEY,
             SOURCE_HISTORY_END_TIME_KEY,
             EXTRACTOR_HISTORY_END_TIME_KEY)) {
       LOGGER.warn(
-          DataNodePipeMessages.WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS,
+          DataNodePipeMessages.WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID,
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_ENABLE_KEY,
-          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,
