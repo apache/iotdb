@@ -184,7 +184,7 @@ public abstract class AlignedTVList extends TVList {
         int materializedArrayCount = materializedValueArrayCounts[columnIndex];
         alignedTvList.materializedValueArrayCounts[i] = materializedArrayCount;
         alignedTvList.materializedValueArrayMemCost +=
-            (long) materializedArrayCount * valueListArrayMemCost(dataTypeList.get(i));
+            materializedArrayCount * valueListArrayMemCost(dataTypeList.get(i));
       }
     }
 
@@ -435,7 +435,7 @@ public abstract class AlignedTVList extends TVList {
       columnBitMaps.add(bitMap);
     }
     materializedBitmapMemoryCost +=
-        (long) timestamps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
+        timestamps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
     this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
@@ -736,7 +736,7 @@ public abstract class AlignedTVList extends TVList {
       }
       bitMaps.set(columnIndex, columnBitMaps);
       materializedBitmapMemoryCost +=
-          (long) columnBitMaps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
+          columnBitMaps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
     }
     for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
       if (bitMaps.get(columnIndex).get(i) == null) {
@@ -1125,7 +1125,7 @@ public abstract class AlignedTVList extends TVList {
         columnBitMaps.add(null);
       }
       bitMaps.set(columnIndex, columnBitMaps);
-      materializedBitmapMemoryCost += (long) columnBitMaps.size() * bitmapReferenceRamCost();
+      materializedBitmapMemoryCost += columnBitMaps.size() * bitmapReferenceRamCost();
     }
 
     // if the bitmap in arrayIndex is null, init the bitmap
@@ -1164,7 +1164,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public synchronized long getRamSize() {
-    return (long) timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
+    return timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
         + materializedValueArrayMemCost
         + materializedBitmapMemoryCost;
   }
@@ -1178,7 +1178,7 @@ public abstract class AlignedTVList extends TVList {
       if (columnBitMaps == null) {
         continue;
       }
-      size += (long) columnBitMaps.size() * bitmapReferenceRamCost();
+      size += columnBitMaps.size() * bitmapReferenceRamCost();
       for (BitMap bitMap : columnBitMaps) {
         if (bitMap != null) {
           size += bitMap.ramBytesUsed();
@@ -1255,19 +1255,6 @@ public abstract class AlignedTVList extends TVList {
         + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0);
   }
 
-  private void refreshArrayMemCostWithoutPrimitiveArrays() {
-    long size = alignedTvListArrayMemCost();
-    if (indices != null) {
-      size -= (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES;
-    }
-    for (TSDataType dataType : dataTypes) {
-      if (dataType != null) {
-        size -= valueListArrayMemCost(dataType);
-      }
-    }
-    arrayMemCostWithoutPrimitiveArraysAndIndex = size;
-  }
-
   public static long alignedTvListArrayMemCostWithoutPrimitiveArrays(
       TSDataType[] types, TsTableColumnCategory[] columnCategories) {
     long size = alignedTvListArrayMemCost(types, columnCategories);
@@ -1279,6 +1266,19 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     return size;
+  }
+
+  private void refreshArrayMemCostWithoutPrimitiveArrays() {
+    long size = alignedTvListArrayMemCost();
+    if (indices != null) {
+      size -= (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES;
+    }
+    for (TSDataType dataType : dataTypes) {
+      if (dataType != null) {
+        size -= valueListArrayMemCost(dataType);
+      }
+    }
+    arrayMemCostWithoutPrimitiveArraysAndIndex = size;
   }
 
   /**
@@ -2222,6 +2222,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541") // The scan passes share hot-path cursor state.
     public TsBlock nextBatch() {
       int maxRowCountOfCurrentBatch = Math.min(rows - index, maxNumberOfPointsInPage);
       TsBlockBuilder builder = new TsBlockBuilder(maxRowCountOfCurrentBatch, dataTypeList);

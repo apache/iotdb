@@ -132,8 +132,8 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static void runReconciliation(AccountingTarget target, int iterations) {
     long correction = 0;
     for (int i = 0; i < iterations; i++) {
-      TsFileProcessor.AlignedTVListRamCostSnapshot snapshot =
-          new TsFileProcessor.AlignedTVListRamCostSnapshot(target.memTable, target.deviceId);
+      TsFileProcessor.AlignedTvListRamCostSnapshot snapshot =
+          new TsFileProcessor.AlignedTvListRamCostSnapshot(target.memTable, target.deviceId);
       correction += snapshot.getMemoryCorrection(0);
     }
     benchmarkBlackhole = correction + iterations;
