@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.entity.NoopProcedure;
 import org.apache.iotdb.confignode.procedure.entity.SimpleLockProcedure;
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
@@ -49,7 +50,7 @@ public class TestLockRegime extends TestProcedureBase {
 
   @Test
   public void testLockQueueDoesNotWakeDuplicateProcedure() {
-    LockQueue lockQueue = new LockQueue();
+    LockQueue<TestProcEnv> lockQueue = new LockQueue<>();
     SimpleProcedureScheduler scheduler = new SimpleProcedureScheduler();
     scheduler.start();
 

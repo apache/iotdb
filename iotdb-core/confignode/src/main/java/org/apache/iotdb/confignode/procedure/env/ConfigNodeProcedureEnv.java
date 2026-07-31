@@ -113,10 +113,13 @@ public class ConfigNodeProcedureEnv {
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
   private static final int RUNTIME_META_PUSH_RETRY_NUM = 1;
-  private static final Consumer<Set<Integer>> NO_OP_PENDING_DATA_NODE_TRACKER = ignored -> {};
+  private static final Consumer<Set<Integer>> NO_OP_PENDING_DATA_NODE_TRACKER =
+      ignored -> {
+        // No-op.
+      };
 
   /** Add or remove node lock. */
-  private final LockQueue nodeLock = new LockQueue();
+  private final LockQueue<ConfigNodeProcedureEnv> nodeLock = new LockQueue<>();
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
@@ -1167,7 +1170,7 @@ public class ConfigNodeProcedureEnv {
         / 3;
   }
 
-  public LockQueue getNodeLock() {
+  public LockQueue<ConfigNodeProcedureEnv> getNodeLock() {
     return nodeLock;
   }
 

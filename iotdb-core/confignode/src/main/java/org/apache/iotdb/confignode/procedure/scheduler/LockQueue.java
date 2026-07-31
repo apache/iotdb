@@ -25,13 +25,13 @@ import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Lock Queue for procedure of the same type */
-public class LockQueue {
-  private final ArrayDeque<Procedure<?>> deque = new ArrayDeque<>();
+public class LockQueue<Env> {
+  private final ArrayDeque<Procedure<Env>> deque = new ArrayDeque<>();
 
-  private final AtomicReference<Procedure<?>> lockOwnerProcedure = new AtomicReference<>();
+  private final AtomicReference<Procedure<Env>> lockOwnerProcedure = new AtomicReference<>();
 
-  public boolean tryLock(Procedure<?> procedure) {
-    final Procedure<?> currentLockOwnerProcedure = lockOwnerProcedure.get();
+  public boolean tryLock(Procedure<Env> procedure) {
+    final Procedure<Env> currentLockOwnerProcedure = lockOwnerProcedure.get();
     if (currentLockOwnerProcedure == null) {
       lockOwnerProcedure.set(procedure);
       return true;
@@ -39,8 +39,8 @@ public class LockQueue {
     return procedure.getProcId() == currentLockOwnerProcedure.getProcId();
   }
 
-  public boolean releaseLock(Procedure<?> procedure) {
-    final Procedure<?> currentLockOwnerProcedure = lockOwnerProcedure.get();
+  public boolean releaseLock(Procedure<Env> procedure) {
+    final Procedure<Env> currentLockOwnerProcedure = lockOwnerProcedure.get();
     if (currentLockOwnerProcedure == null
         || currentLockOwnerProcedure.getProcId() != procedure.getProcId()) {
       return false;
@@ -49,11 +49,11 @@ public class LockQueue {
     return true;
   }
 
-  public Procedure<?> getLockOwnerProcedure() {
+  public Procedure<Env> getLockOwnerProcedure() {
     return lockOwnerProcedure.get();
   }
 
-  public void waitProcedure(Procedure<?> procedure, ProcedureScheduler procedureScheduler) {
+  public void waitProcedure(Procedure<Env> procedure, ProcedureScheduler procedureScheduler) {
     if (lockOwnerProcedure.get() == null) {
       procedureScheduler.addFront(procedure);
       return;

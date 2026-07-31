@@ -112,7 +112,8 @@ public abstract class AbstractOperatePipeProcedureV2
   private volatile PipeProcedureExecutionStage executionStage =
       PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
   private volatile String lastExecutionExceptionMessage;
-  private final AtomicReference<Procedure<?>> nodeLockOwnerProcedure = new AtomicReference<>();
+  private final AtomicReference<Procedure<ConfigNodeProcedureEnv>> nodeLockOwnerProcedure =
+      new AtomicReference<>();
   private final AtomicReference<Set<Integer>> pendingDataNodeIds =
       new AtomicReference<>(Collections.emptySet());
 
@@ -441,6 +442,7 @@ public abstract class AbstractOperatePipeProcedureV2
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   public final String getTimeoutDiagnosticMessage() {
     final PipeProcedureExecutionStage currentExecutionStage = executionStage;
     return String.format(
@@ -452,6 +454,7 @@ public abstract class AbstractOperatePipeProcedureV2
         getTimeoutReason(currentExecutionStage));
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private String getTimeoutReason(final PipeProcedureExecutionStage currentExecutionStage) {
     final String failureMessage = getFailureMessage();
     if (currentExecutionStage.isRollback()) {
@@ -502,15 +505,16 @@ public abstract class AbstractOperatePipeProcedureV2
             ProcedureMessages.MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456, failureMessage);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private String getNodeLockTimeoutReason() {
-    final Procedure<?> lockOwnerProcedure = nodeLockOwnerProcedure.get();
+    final Procedure<ConfigNodeProcedureEnv> lockOwnerProcedure = nodeLockOwnerProcedure.get();
     if (lockOwnerProcedure == null) {
       return ProcedureMessages
           .MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86;
     }
     final String operation =
-        lockOwnerProcedure instanceof AbstractOperatePipeProcedureV2
-            ? ((AbstractOperatePipeProcedureV2) lockOwnerProcedure).getOperation().name()
+        lockOwnerProcedure instanceof AbstractOperatePipeProcedureV2 pipeProcedure
+            ? pipeProcedure.getOperation().name()
             : lockOwnerProcedure.getClass().getSimpleName();
     return String.format(
         ProcedureMessages
@@ -519,6 +523,7 @@ public abstract class AbstractOperatePipeProcedureV2
         lockOwnerProcedure.getProcId());
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private String getDataNodeTimeoutReason() {
     final Set<Integer> currentPendingDataNodeIds = new TreeSet<>(pendingDataNodeIds.get());
     return currentPendingDataNodeIds.isEmpty()
@@ -549,25 +554,32 @@ public abstract class AbstractOperatePipeProcedureV2
       executionStage = PipeProcedureExecutionStage.WAITING_FOR_PROCEDURE_WORKER;
       return;
     }
-    executionStage =
-        switch (state) {
-          case VALIDATE_TASK ->
-              isRollback
-                  ? PipeProcedureExecutionStage.ROLLBACK_VALIDATE_TASK
-                  : PipeProcedureExecutionStage.VALIDATE_TASK;
-          case CALCULATE_INFO_FOR_TASK ->
-              isRollback
-                  ? PipeProcedureExecutionStage.ROLLBACK_CALCULATE_INFO_FOR_TASK
-                  : PipeProcedureExecutionStage.CALCULATE_INFO_FOR_TASK;
-          case WRITE_CONFIG_NODE_CONSENSUS ->
-              isRollback
-                  ? PipeProcedureExecutionStage.ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS
-                  : PipeProcedureExecutionStage.WRITE_CONFIG_NODE_CONSENSUS;
-          case OPERATE_ON_DATA_NODES ->
-              isRollback
-                  ? PipeProcedureExecutionStage.ROLLBACK_OPERATE_ON_DATA_NODES
-                  : PipeProcedureExecutionStage.OPERATE_ON_DATA_NODES;
-        };
+    switch (state) {
+      case VALIDATE_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_VALIDATE_TASK
+                : PipeProcedureExecutionStage.VALIDATE_TASK;
+        break;
+      case CALCULATE_INFO_FOR_TASK:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_CALCULATE_INFO_FOR_TASK
+                : PipeProcedureExecutionStage.CALCULATE_INFO_FOR_TASK;
+        break;
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_WRITE_CONFIG_NODE_CONSENSUS
+                : PipeProcedureExecutionStage.WRITE_CONFIG_NODE_CONSENSUS;
+        break;
+      case OPERATE_ON_DATA_NODES:
+        executionStage =
+            isRollback
+                ? PipeProcedureExecutionStage.ROLLBACK_OPERATE_ON_DATA_NODES
+                : PipeProcedureExecutionStage.OPERATE_ON_DATA_NODES;
+        break;
+    }
   }
 
   protected final void setPendingDataNodeIds(final Set<Integer> pendingDataNodeIds) {
