@@ -95,11 +95,11 @@ public class UserRoleModificationAuditContext {
       return;
     }
     logEvent(
-        AuditEventType.MODIFY_SECURITY_FUNCTION,
+        AuditEventType.MODIFY_SECURITY_ATTRIBUTE,
         () ->
             String.format(
                 DataNodeMiscMessages
-                    .LOG_SECURITY_FUNCTION_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_0D500C5D,
+                    .LOG_SECURITY_ATTRIBUTE_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_D6DC8233,
                 targetUsername,
                 targetRoleName));
     logEvent(

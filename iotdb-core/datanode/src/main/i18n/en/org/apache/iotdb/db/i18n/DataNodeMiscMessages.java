@@ -123,8 +123,8 @@ public final class DataNodeMiscMessages {
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
   public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "user: %s, role: %s";
   public static final String
-      LOG_SECURITY_FUNCTION_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_0D500C5D =
-          "security function: user-role membership, user: %s, role: %s";
+      LOG_SECURITY_ATTRIBUTE_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_D6DC8233 =
+          "security attribute: user-role membership, user: %s, role: %s";
 
   private DataNodeMiscMessages() {}
 
