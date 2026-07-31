@@ -122,23 +122,28 @@ public class PipeTsFileResourceManager {
 
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(source, hardlinkOrCopiedFile);
-
-      // If the file is not a hardlink or copied file, and there is no related hardlink or copied
-      // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
-      // the hardlink or copied file, and return the hardlink or copied file.
-      if (Objects.nonNull(pipeName)) {
-        pipeNameToPipeTsFileDirPathMap.putIfAbsent(
-            pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
-        hardlinkOrCopiedFileToPipeTsFileResourceMap
-            .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-            .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+      final PipeTsFileResource existingResource =
+          getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath());
+      if (existingResource != null) {
+        existingResource.increaseReferenceCount();
+        resultFile = existingResource.getFile();
       } else {
-        hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
-            resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        resultFile =
+            isTsFile
+                ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
+                : FileUtils.copyFile(source, hardlinkOrCopiedFile);
+
+        // Create the hardlink or copy and its reference-counted resource only when none exists.
+        if (Objects.nonNull(pipeName)) {
+          pipeNameToPipeTsFileDirPathMap.putIfAbsent(
+              pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap
+              .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+              .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+        } else {
+          hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
+              resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        }
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
