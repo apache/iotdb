@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimpleProgressIndex extends ProgressIndex {
@@ -177,6 +178,14 @@ public class SimpleProgressIndex extends ProgressIndex {
 
   public ProgressIndexType getType() {
     return ProgressIndexType.SIMPLE_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : Optional.empty();
   }
 
   @Override

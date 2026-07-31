@@ -52,6 +52,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -182,10 +183,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         }
 
         final ProgressIndex progressIndex = groupId2TaskMetaMap.get(regionId).getProgressIndex();
-        if (progressIndex instanceof MetaProgressIndex) {
-          if (((MetaProgressIndex) progressIndex).getIndex() + 1
-              < listeningQueueNewFirstIndex.get()) {
-            listeningQueueNewFirstIndex.set(((MetaProgressIndex) progressIndex).getIndex() + 1);
+        final Optional<MetaProgressIndex> metaProgressIndex =
+            Objects.isNull(progressIndex)
+                ? Optional.empty()
+                : progressIndex.getProgressIndexByType(MetaProgressIndex.class);
+        if (metaProgressIndex.isPresent()) {
+          if (metaProgressIndex.get().getIndex() + 1 < listeningQueueNewFirstIndex.get()) {
+            listeningQueueNewFirstIndex.set(metaProgressIndex.get().getIndex() + 1);
           }
         } else {
           // Do not clear "minimumProgressIndex"s related queues to avoid clearing

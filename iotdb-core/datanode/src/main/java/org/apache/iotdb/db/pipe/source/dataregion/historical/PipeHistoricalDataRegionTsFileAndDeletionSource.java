@@ -699,7 +699,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     resourceList.sort(
         (o1, o2) ->
-            startIndex instanceof TimeWindowStateProgressIndex
+            Objects.nonNull(getTimeWindowStateProgressIndex(startIndex))
                 ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                 : comparePersistentResourcesByProgressIndex(o1, o2));
   }
@@ -901,11 +901,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
-    final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
-    if (innerStartIndex instanceof TimeWindowStateProgressIndex) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) innerStartIndex).getMinTime()
-          <= resource.getFileEndTime();
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
@@ -942,6 +942,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     return progressIndex instanceof StateProgressIndex
         ? ((StateProgressIndex) progressIndex).getInnerProgressIndex()
         : Objects.isNull(progressIndex) ? MinimumProgressIndex.INSTANCE : progressIndex;
+  }
+
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
   }
 
   private boolean isProgressIndexCoveredByTimePartitionProgressIndex(

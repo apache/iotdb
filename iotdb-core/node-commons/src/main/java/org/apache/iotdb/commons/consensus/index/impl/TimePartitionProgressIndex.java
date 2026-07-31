@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -231,6 +232,14 @@ public class TimePartitionProgressIndex extends ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.TIME_PARTITION_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : Optional.empty();
   }
 
   @Override
