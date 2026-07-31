@@ -477,6 +477,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
+  @SuppressWarnings("java:S6541") // Keep aligned and scalar type dispatch together.
   private boolean putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
     boolean isNeedFillTime = false;
     if (data.getDataType() == TSDataType.VECTOR) {
@@ -614,6 +615,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return isNeedFillTime;
   }
 
+  @SuppressWarnings("java:S6541") // Keep marker transitions in one parser state machine.
   private void moveToNextChunkReader()
       throws IOException, IllegalStateException, IllegalPathException {
     ChunkHeader chunkHeader;
