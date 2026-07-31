@@ -489,13 +489,16 @@ public final class CalcMessages {
           "聚合函数 [%s] 要求同一聚合分组内的窗口边界一致：期望 [%d, %d)，实际为 [%d, %d)";
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9 =
-          "聚合函数 [%s] 要求 time_col 严格升序，但在 %d 之后得到了 %d";
+          "聚合函数 [%s] 要求 time_col 严格升序，但得到了 %d，前一个值为 %d";
   public static final String
       EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B =
           "有序聚合函数 [%s] 不支持 Intermediate State";
   public static final String
       EXCEPTION_INVALID_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_2999C30B =
           "聚合函数 [%s] 的 Intermediate State 非法";
+  public static final String
+      EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546 =
+          "聚合函数 %s 的 Intermediate State 超过 TsBlock 最大大小 %d 字节";
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D =
           "聚合函数 [%s] 不支持值类型 %s";

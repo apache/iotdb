@@ -520,6 +520,9 @@ public final class CalcMessages {
       EXCEPTION_INVALID_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_2999C30B =
           "Invalid intermediate state for aggregate function [%s]";
   public static final String
+      EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546 =
+          "Intermediate state for aggregate function %s exceeds the maximum TsBlock size of %d bytes";
+  public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D =
           "Aggregate function [%s] does not support value type %s";
   public static final String

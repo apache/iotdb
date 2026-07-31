@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionType;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionValidation;
-import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -42,14 +41,9 @@ public final class GroupedOrderedIrateAccumulator extends AbstractGroupedIrateAc
   private final DoubleBigArray previousValues = new DoubleBigArray();
   private final LongBigArray lastTimes = new LongBigArray();
   private final DoubleBigArray lastValues = new DoubleBigArray();
-  private final MemoryReservationManager memoryReservationManager;
-  private long previousSize;
 
-  public GroupedOrderedIrateAccumulator(
-      TSDataType valueDataType, MemoryReservationManager memoryReservationManager) {
+  public GroupedOrderedIrateAccumulator(TSDataType valueDataType) {
     super(valueDataType);
-    this.memoryReservationManager = memoryReservationManager;
-    updateMemoryReservation();
   }
 
   @Override
@@ -69,7 +63,6 @@ public final class GroupedOrderedIrateAccumulator extends AbstractGroupedIrateAc
     previousValues.ensureCapacity(groupCount);
     lastTimes.ensureCapacity(groupCount);
     lastValues.ensureCapacity(groupCount);
-    updateMemoryReservation();
   }
 
   @Override
@@ -124,7 +117,6 @@ public final class GroupedOrderedIrateAccumulator extends AbstractGroupedIrateAc
     previousValues.reset();
     lastTimes.reset();
     lastValues.reset();
-    updateMemoryReservation();
   }
 
   private void update(int groupId, long time, double value) {
@@ -147,16 +139,5 @@ public final class GroupedOrderedIrateAccumulator extends AbstractGroupedIrateAc
     lastTimes.set(groupId, time);
     lastValues.set(groupId, value);
     sampleCounts.set(groupId, Math.incrementExact(sampleCount));
-  }
-
-  private void updateMemoryReservation() {
-    long currentSize = getEstimatedSize();
-    long delta = currentSize - previousSize;
-    if (delta > 0) {
-      memoryReservationManager.reserveMemoryCumulatively(delta);
-    } else if (delta < 0) {
-      memoryReservationManager.releaseMemoryCumulatively(-delta);
-    }
-    previousSize = currentSize;
   }
 }

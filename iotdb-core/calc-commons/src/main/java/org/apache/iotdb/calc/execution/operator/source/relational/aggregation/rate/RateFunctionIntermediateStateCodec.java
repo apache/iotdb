@@ -20,9 +20,11 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
@@ -41,7 +43,8 @@ public final class RateFunctionIntermediateStateCodec {
       long windowStart,
       long windowEnd,
       TimeValueBuffer samples,
-      ColumnBuilder output) {
+      ColumnBuilder output,
+      MemoryReservationManager memoryReservationManager) {
     if (samples == null || samples.isEmpty()) {
       output.appendNull();
       return;
@@ -50,20 +53,34 @@ public final class RateFunctionIntermediateStateCodec {
     long headerSize = functionType.isWindowed() ? WINDOWED_HEADER_SIZE : IRATE_HEADER_SIZE;
     long serializedSize =
         Math.addExact(headerSize, Math.multiplyExact((long) samples.size(), SAMPLE_SIZE));
-    ByteBuffer target = ByteBuffer.allocate(Math.toIntExact(serializedSize));
-    target.putInt(STATE_VERSION);
-    if (functionType.isWindowed()) {
-      target.putLong(windowStart);
-      target.putLong(windowEnd);
+    validateSerializedSize(functionType, serializedSize);
+
+    memoryReservationManager.reserveMemoryImmediately(serializedSize);
+    try {
+      ByteBuffer target = ByteBuffer.allocate(Math.toIntExact(serializedSize));
+      target.putInt(STATE_VERSION);
+      if (functionType.isWindowed()) {
+        target.putLong(windowStart);
+        target.putLong(windowEnd);
+      }
+      target.putInt(samples.size());
+      samples.writePayload(target);
+      output.writeBinary(new Binary(target.array()));
+    } finally {
+      // The output builder owns the serialized bytes after writeBinary returns.
+      memoryReservationManager.releaseMemoryCumulatively(serializedSize);
     }
-    target.putInt(samples.size());
-    samples.writePayload(target);
-    output.writeBinary(new Binary(target.array()));
   }
 
-  public static DecodedState decode(RateFunctionType functionType, Binary binary) {
+  public static DecodedState decode(
+      RateFunctionType functionType,
+      Binary binary,
+      MemoryReservationManager memoryReservationManager) {
     try {
       byte[] bytes = binary.getValues();
+      if (bytes.length > TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()) {
+        throw invalidState(functionType);
+      }
       int headerSize = functionType.isWindowed() ? WINDOWED_HEADER_SIZE : IRATE_HEADER_SIZE;
       if (bytes.length < headerSize) {
         throw invalidState(functionType);
@@ -90,23 +107,46 @@ public final class RateFunctionIntermediateStateCodec {
         throw invalidState(functionType);
       }
 
-      TimeValueBuffer samples = new TimeValueBuffer();
-      for (int index = 0; index < sampleCount; index++) {
-        long time = source.getLong();
-        double value = source.getDouble();
-        if (!Double.isFinite(value)
-            || (functionType.isCounter() && value < 0.0)
-            || (functionType.isWindowed() && (time < windowStart || time >= windowEnd))) {
+      long temporarySize = TimeValueBuffer.estimatedSizeForSampleCount(sampleCount);
+      memoryReservationManager.reserveMemoryImmediately(temporarySize);
+      boolean decoded = false;
+      try {
+        TimeValueBuffer samples = new TimeValueBuffer();
+        for (int index = 0; index < sampleCount; index++) {
+          long time = source.getLong();
+          double value = source.getDouble();
+          if (!Double.isFinite(value)
+              || (functionType.isCounter() && value < 0.0)
+              || (functionType.isWindowed() && (time < windowStart || time >= windowEnd))) {
+            throw invalidState(functionType);
+          }
+          samples.add(time, value);
+        }
+        if (source.hasRemaining()) {
           throw invalidState(functionType);
         }
-        samples.add(time, value);
+        decoded = true;
+        return new DecodedState(
+            windowStart, windowEnd, samples, memoryReservationManager, temporarySize);
+      } finally {
+        if (!decoded) {
+          memoryReservationManager.releaseMemoryCumulatively(temporarySize);
+        }
       }
-      if (source.hasRemaining()) {
-        throw invalidState(functionType);
-      }
-      return new DecodedState(windowStart, windowEnd, samples);
     } catch (ArithmeticException | IndexOutOfBoundsException exception) {
       throw invalidState(functionType);
+    }
+  }
+
+  private static void validateSerializedSize(RateFunctionType functionType, long serializedSize) {
+    int maxTsBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    if (serializedSize > maxTsBlockSize) {
+      throw new SemanticException(
+          String.format(
+              CalcMessages
+                  .EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546,
+              functionType.getFunctionName(),
+              maxTsBlockSize));
     }
   }
 
@@ -117,15 +157,25 @@ public final class RateFunctionIntermediateStateCodec {
             functionType.getFunctionName()));
   }
 
-  public static final class DecodedState {
+  public static final class DecodedState implements AutoCloseable {
     private final long windowStart;
     private final long windowEnd;
     private final TimeValueBuffer samples;
+    private final MemoryReservationManager memoryReservationManager;
+    private final long reservedBytes;
+    private boolean closed;
 
-    private DecodedState(long windowStart, long windowEnd, TimeValueBuffer samples) {
+    private DecodedState(
+        long windowStart,
+        long windowEnd,
+        TimeValueBuffer samples,
+        MemoryReservationManager memoryReservationManager,
+        long reservedBytes) {
       this.windowStart = windowStart;
       this.windowEnd = windowEnd;
       this.samples = samples;
+      this.memoryReservationManager = memoryReservationManager;
+      this.reservedBytes = reservedBytes;
     }
 
     public long getWindowStart() {
@@ -138,6 +188,14 @@ public final class RateFunctionIntermediateStateCodec {
 
     public TimeValueBuffer getSamples() {
       return samples;
+    }
+
+    @Override
+    public void close() {
+      if (!closed) {
+        memoryReservationManager.releaseMemoryCumulatively(reservedBytes);
+        closed = true;
+      }
     }
   }
 }

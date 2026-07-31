@@ -82,17 +82,20 @@ public final class NaiveIrateAccumulator extends AbstractIrateTableAccumulator {
       if (argument.isNull(position)) {
         continue;
       }
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.IRATE, argument.getBinary(position));
-      samples.merge(decoded.getSamples());
+              RateFunctionType.IRATE, argument.getBinary(position), memoryReservationManager)) {
+        samples.merge(decoded.getSamples());
+        updateMemoryReservation();
+      }
     }
     updateMemoryReservation();
   }
 
   @Override
   public void evaluateIntermediate(ColumnBuilder output) {
-    RateFunctionIntermediateStateCodec.encode(RateFunctionType.IRATE, 0, 0, samples, output);
+    RateFunctionIntermediateStateCodec.encode(
+        RateFunctionType.IRATE, 0, 0, samples, output, memoryReservationManager);
   }
 
   @Override

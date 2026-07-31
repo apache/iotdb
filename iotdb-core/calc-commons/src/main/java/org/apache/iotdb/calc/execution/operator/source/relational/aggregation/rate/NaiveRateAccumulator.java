@@ -88,11 +88,13 @@ public final class NaiveRateAccumulator extends AbstractRateTableAccumulator {
       if (argument.isNull(position)) {
         continue;
       }
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.RATE, argument.getBinary(position));
-      initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
-      samples.merge(decoded.getSamples());
+              RateFunctionType.RATE, argument.getBinary(position), memoryReservationManager)) {
+        initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
+        samples.merge(decoded.getSamples());
+        updateMemoryReservation();
+      }
     }
     updateMemoryReservation();
   }
@@ -100,7 +102,7 @@ public final class NaiveRateAccumulator extends AbstractRateTableAccumulator {
   @Override
   public void evaluateIntermediate(ColumnBuilder output) {
     RateFunctionIntermediateStateCodec.encode(
-        RateFunctionType.RATE, windowStart, windowEnd, samples, output);
+        RateFunctionType.RATE, windowStart, windowEnd, samples, output, memoryReservationManager);
   }
 
   @Override

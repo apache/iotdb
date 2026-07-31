@@ -38,13 +38,11 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
 
   private final TimeValueBufferBigArray samples = new TimeValueBufferBigArray();
   private final MemoryReservationManager memoryReservationManager;
-  private long previousSize;
 
   public GroupedNaiveIncreaseAccumulator(
       TSDataType valueDataType, MemoryReservationManager memoryReservationManager) {
     super(valueDataType);
     this.memoryReservationManager = memoryReservationManager;
-    updateMemoryReservation();
   }
 
   @Override
@@ -56,7 +54,6 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
   public void setGroupCount(long groupCount) {
     ensureWindowCapacity(groupCount);
     samples.ensureCapacity(groupCount);
-    updateMemoryReservation();
   }
 
   @Override
@@ -87,7 +84,6 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
       initializeOrValidateWindow(groupId, currentWindowStart, currentWindowEnd);
       samples.add(groupId, time, value);
     }
-    updateMemoryReservation();
   }
 
   @Override
@@ -97,13 +93,13 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
         continue;
       }
       int groupId = groupIds[position];
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.INCREASE, argument.getBinary(position));
-      initializeOrValidateWindow(groupId, decoded.getWindowStart(), decoded.getWindowEnd());
-      samples.merge(groupId, decoded.getSamples());
+              RateFunctionType.INCREASE, argument.getBinary(position), memoryReservationManager)) {
+        initializeOrValidateWindow(groupId, decoded.getWindowStart(), decoded.getWindowEnd());
+        samples.merge(groupId, decoded.getSamples());
+      }
     }
-    updateMemoryReservation();
   }
 
   @Override
@@ -113,7 +109,8 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
         windowStart(groupId),
         windowEnd(groupId),
         samples.get(groupId),
-        output);
+        output,
+        memoryReservationManager);
   }
 
   @Override
@@ -140,7 +137,6 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
   public void reset() {
     resetWindows();
     samples.reset();
-    updateMemoryReservation();
   }
 
   private double calculateCorrectedIncrease(TimeValueBuffer buffer) {
@@ -151,16 +147,5 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
       result = validateFinite(result + (current >= previous ? current - previous : current));
     }
     return result;
-  }
-
-  private void updateMemoryReservation() {
-    long currentSize = getEstimatedSize();
-    long delta = currentSize - previousSize;
-    if (delta > 0) {
-      memoryReservationManager.reserveMemoryCumulatively(delta);
-    } else if (delta < 0) {
-      memoryReservationManager.releaseMemoryCumulatively(-delta);
-    }
-    previousSize = currentSize;
   }
 }

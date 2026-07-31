@@ -38,13 +38,11 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
 
   private final TimeValueBufferBigArray samples = new TimeValueBufferBigArray();
   private final MemoryReservationManager memoryReservationManager;
-  private long previousSize;
 
   public GroupedNaiveDeltaAccumulator(
       TSDataType valueDataType, MemoryReservationManager memoryReservationManager) {
     super(valueDataType);
     this.memoryReservationManager = memoryReservationManager;
-    updateMemoryReservation();
   }
 
   @Override
@@ -56,7 +54,6 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
   public void setGroupCount(long groupCount) {
     ensureWindowCapacity(groupCount);
     samples.ensureCapacity(groupCount);
-    updateMemoryReservation();
   }
 
   @Override
@@ -87,7 +84,6 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
       initializeOrValidateWindow(groupId, currentWindowStart, currentWindowEnd);
       samples.add(groupId, time, value);
     }
-    updateMemoryReservation();
   }
 
   @Override
@@ -97,13 +93,13 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
         continue;
       }
       int groupId = groupIds[position];
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.DELTA, argument.getBinary(position));
-      initializeOrValidateWindow(groupId, decoded.getWindowStart(), decoded.getWindowEnd());
-      samples.merge(groupId, decoded.getSamples());
+              RateFunctionType.DELTA, argument.getBinary(position), memoryReservationManager)) {
+        initializeOrValidateWindow(groupId, decoded.getWindowStart(), decoded.getWindowEnd());
+        samples.merge(groupId, decoded.getSamples());
+      }
     }
-    updateMemoryReservation();
   }
 
   @Override
@@ -113,7 +109,8 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
         windowStart(groupId),
         windowEnd(groupId),
         samples.get(groupId),
-        output);
+        output,
+        memoryReservationManager);
   }
 
   @Override
@@ -140,17 +137,5 @@ public final class GroupedNaiveDeltaAccumulator extends AbstractGroupedDeltaAccu
   public void reset() {
     resetWindows();
     samples.reset();
-    updateMemoryReservation();
-  }
-
-  private void updateMemoryReservation() {
-    long currentSize = getEstimatedSize();
-    long delta = currentSize - previousSize;
-    if (delta > 0) {
-      memoryReservationManager.reserveMemoryCumulatively(delta);
-    } else if (delta < 0) {
-      memoryReservationManager.releaseMemoryCumulatively(-delta);
-    }
-    previousSize = currentSize;
   }
 }

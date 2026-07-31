@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 public final class ExtrapolationUtil {
 
-  private static final double EXTRAPOLATION_THRESHOLD_FACTOR = 1.1;
+  private static final BigInteger ELEVEN = BigInteger.valueOf(11);
 
   private ExtrapolationUtil() {}
 
@@ -43,9 +43,12 @@ public final class ExtrapolationUtil {
       boolean applyCounterZeroProtection) {
     validateBoundaries(sampleCount, firstTime, lastTime, windowStart, windowEnd);
 
-    double sampledInterval = timestampDiffToSeconds(lastTime, firstTime);
-    double durationToStart = timestampDiffToSeconds(firstTime, windowStart);
-    double durationToEnd = timestampDiffToSeconds(windowEnd, lastTime);
+    BigInteger sampledTicks = timestampDiff(lastTime, firstTime);
+    BigInteger durationToStartTicks = timestampDiff(firstTime, windowStart);
+    BigInteger durationToEndTicks = timestampDiff(windowEnd, lastTime);
+    double sampledInterval = ticksToSeconds(sampledTicks);
+    double durationToStart = ticksToSeconds(durationToStartTicks);
+    double durationToEnd = ticksToSeconds(durationToEndTicks);
 
     if (!Double.isFinite(increase)) {
       throw new SemanticException(
@@ -57,9 +60,8 @@ public final class ExtrapolationUtil {
     }
 
     double averageInterval = sampledInterval / (sampleCount - 1);
-    double threshold = averageInterval * EXTRAPOLATION_THRESHOLD_FACTOR;
 
-    if (durationToStart >= threshold) {
+    if (isExtrapolationThresholdReached(durationToStartTicks, sampledTicks, sampleCount)) {
       durationToStart = averageInterval / 2.0;
     }
 
@@ -70,7 +72,7 @@ public final class ExtrapolationUtil {
       }
     }
 
-    if (durationToEnd >= threshold) {
+    if (isExtrapolationThresholdReached(durationToEndTicks, sampledTicks, sampleCount)) {
       durationToEnd = averageInterval / 2.0;
     }
 
@@ -85,7 +87,23 @@ public final class ExtrapolationUtil {
   }
 
   public static double timestampDiffToSeconds(long later, long earlier) {
-    BigInteger ticks = BigInteger.valueOf(later).subtract(BigInteger.valueOf(earlier));
+    return ticksToSeconds(timestampDiff(later, earlier));
+  }
+
+  static boolean isExtrapolationThresholdReached(
+      BigInteger gapTicks, BigInteger sampledTicks, int sampleCount) {
+    return gapTicks
+            .multiply(BigInteger.valueOf(sampleCount - 1L))
+            .multiply(BigInteger.TEN)
+            .compareTo(sampledTicks.multiply(ELEVEN))
+        >= 0;
+  }
+
+  private static BigInteger timestampDiff(long later, long earlier) {
+    return BigInteger.valueOf(later).subtract(BigInteger.valueOf(earlier));
+  }
+
+  private static double ticksToSeconds(BigInteger ticks) {
     double ticksPerSecond = TimestampPrecisionUtils.currPrecision.convert(1, TimeUnit.SECONDS);
     double seconds = ticks.doubleValue() / ticksPerSecond;
     if (!Double.isFinite(seconds)) {

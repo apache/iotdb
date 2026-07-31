@@ -38,13 +38,11 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
 
   private final TimeValueBufferBigArray samples = new TimeValueBufferBigArray();
   private final MemoryReservationManager memoryReservationManager;
-  private long previousSize;
 
   public GroupedNaiveIrateAccumulator(
       TSDataType valueDataType, MemoryReservationManager memoryReservationManager) {
     super(valueDataType);
     this.memoryReservationManager = memoryReservationManager;
-    updateMemoryReservation();
   }
 
   @Override
@@ -55,7 +53,6 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
   @Override
   public void setGroupCount(long groupCount) {
     samples.ensureCapacity(groupCount);
-    updateMemoryReservation();
   }
 
   @Override
@@ -77,7 +74,6 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
               arguments[1], position, RateFunctionType.IRATE, 2);
       samples.add(groupId, time, value);
     }
-    updateMemoryReservation();
   }
 
   @Override
@@ -86,18 +82,18 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
       if (argument.isNull(position)) {
         continue;
       }
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.IRATE, argument.getBinary(position));
-      samples.merge(groupIds[position], decoded.getSamples());
+              RateFunctionType.IRATE, argument.getBinary(position), memoryReservationManager)) {
+        samples.merge(groupIds[position], decoded.getSamples());
+      }
     }
-    updateMemoryReservation();
   }
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder output) {
     RateFunctionIntermediateStateCodec.encode(
-        RateFunctionType.IRATE, 0, 0, samples.get(groupId), output);
+        RateFunctionType.IRATE, 0, 0, samples.get(groupId), output, memoryReservationManager);
   }
 
   @Override
@@ -120,17 +116,5 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
   @Override
   public void reset() {
     samples.reset();
-    updateMemoryReservation();
-  }
-
-  private void updateMemoryReservation() {
-    long currentSize = getEstimatedSize();
-    long delta = currentSize - previousSize;
-    if (delta > 0) {
-      memoryReservationManager.reserveMemoryCumulatively(delta);
-    } else if (delta < 0) {
-      memoryReservationManager.releaseMemoryCumulatively(-delta);
-    }
-    previousSize = currentSize;
   }
 }

@@ -76,9 +76,15 @@ public final class TimeValueBuffer {
   }
 
   public long getEstimatedSize() {
-    return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfLongArray(times.length)
-        + RamUsageEstimator.sizeOfDoubleArray(values.length);
+    return estimatedSizeForCapacity(times.length);
+  }
+
+  static long estimatedSizeForSampleCount(int sampleCount) {
+    int capacity = INITIAL_CAPACITY;
+    while (capacity < sampleCount) {
+      capacity = Math.multiplyExact(capacity, 2);
+    }
+    return estimatedSizeForCapacity(capacity);
   }
 
   public void reset() {
@@ -212,5 +218,11 @@ public final class TimeValueBuffer {
 
   private static int floorLog2(int value) {
     return Integer.SIZE - 1 - Integer.numberOfLeadingZeros(value);
+  }
+
+  private static long estimatedSizeForCapacity(int capacity) {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfLongArray(capacity)
+        + RamUsageEstimator.sizeOfDoubleArray(capacity);
   }
 }

@@ -91,11 +91,13 @@ public final class NaiveIncreaseAccumulator extends AbstractIncreaseTableAccumul
       if (argument.isNull(position)) {
         continue;
       }
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.INCREASE, argument.getBinary(position));
-      initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
-      samples.merge(decoded.getSamples());
+              RateFunctionType.INCREASE, argument.getBinary(position), memoryReservationManager)) {
+        initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
+        samples.merge(decoded.getSamples());
+        updateMemoryReservation();
+      }
     }
     updateMemoryReservation();
   }
@@ -103,7 +105,12 @@ public final class NaiveIncreaseAccumulator extends AbstractIncreaseTableAccumul
   @Override
   public void evaluateIntermediate(ColumnBuilder output) {
     RateFunctionIntermediateStateCodec.encode(
-        RateFunctionType.INCREASE, windowStart, windowEnd, samples, output);
+        RateFunctionType.INCREASE,
+        windowStart,
+        windowEnd,
+        samples,
+        output,
+        memoryReservationManager);
   }
 
   @Override

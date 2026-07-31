@@ -91,11 +91,13 @@ public final class NaiveDeltaAccumulator extends AbstractDeltaTableAccumulator {
       if (argument.isNull(position)) {
         continue;
       }
-      RateFunctionIntermediateStateCodec.DecodedState decoded =
+      try (RateFunctionIntermediateStateCodec.DecodedState decoded =
           RateFunctionIntermediateStateCodec.decode(
-              RateFunctionType.DELTA, argument.getBinary(position));
-      initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
-      samples.merge(decoded.getSamples());
+              RateFunctionType.DELTA, argument.getBinary(position), memoryReservationManager)) {
+        initializeOrValidateWindow(decoded.getWindowStart(), decoded.getWindowEnd());
+        samples.merge(decoded.getSamples());
+        updateMemoryReservation();
+      }
     }
     updateMemoryReservation();
   }
@@ -103,7 +105,7 @@ public final class NaiveDeltaAccumulator extends AbstractDeltaTableAccumulator {
   @Override
   public void evaluateIntermediate(ColumnBuilder output) {
     RateFunctionIntermediateStateCodec.encode(
-        RateFunctionType.DELTA, windowStart, windowEnd, samples, output);
+        RateFunctionType.DELTA, windowStart, windowEnd, samples, output, memoryReservationManager);
   }
 
   @Override

@@ -23,13 +23,19 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
@@ -137,6 +143,7 @@ public class IoTDBTableAggregationIT {
         "CREATE TABLE rate_test(scenario STRING TAG, value_i32 INT32 FIELD, value_i64 INT64 FIELD, value_float FLOAT FIELD, value_double DOUBLE FIELD, gauge DOUBLE FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD, text_value STRING FIELD, bool_value BOOLEAN FIELD)",
         "CREATE TABLE rate_int32_extreme(scenario STRING TAG, value_col INT32 FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD)",
         "CREATE TABLE rate_int64_extreme(scenario STRING TAG, value_col INT64 FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD)",
+        "CREATE TABLE rate_merge_test(device STRING TAG, value_double DOUBLE FIELD, gauge DOUBLE FIELD, sample_time INT64 FIELD, window_start INT64 FIELD, window_end INT64 FIELD)",
         "INSERT INTO rate_test(time,scenario,value_i32,value_i64,value_float,value_double,gauge,sample_time,window_start,window_end,text_value,bool_value) VALUES (0,'timestamp_normal',100,100,100.0,100.0,100.0,0,0,5000,'x',true),(1,'timestamp_normal',160,160,160.0,160.0,160.0,1000,0,5000,'x',true)",
         "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (100,'reset',500.0,500.0,0,0,5000),(101,'reset',580.0,580.0,1000,0,5000)",
         "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (1000,'distributed',500.0,100.0,1000,1000,5000),(2000,'distributed',580.0,60.0,2000,1000,5000)",
@@ -165,14 +172,20 @@ public class IoTDBTableAggregationIT {
         "INSERT INTO rate_test(time,scenario,value_double,gauge,sample_time,window_start,window_end) VALUES (440,'counter_a',100.0,100.0,0,0,2000),(441,'counter_a',120.0,120.0,1000,0,2000),(450,'counter_b',1000.0,1000.0,0,0,2000),(451,'counter_b',1030.0,1030.0,1000,0,2000)",
         "INSERT INTO rate_int32_extreme(time,scenario,value_col,sample_time,window_start,window_end) VALUES (0,'extreme',-2147483648,0,0,2000),(1,'extreme',2147483647,1000,0,2000)",
         "INSERT INTO rate_int64_extreme(time,scenario,value_col,sample_time,window_start,window_end) VALUES (0,'extreme',-9223372036854775808,0,0,2000),(1,'extreme',9223372036854775807,1000,0,2000)",
+        "INSERT INTO rate_merge_test(time,device,value_double,gauge,sample_time,window_start,window_end) VALUES (0,'d0',0.0,0.0,0,0,8000),(1,'d1',10.0,10.0,1000,0,8000),(2,'d2',20.0,20.0,2000,0,8000),(3,'d3',30.0,30.0,3000,0,8000),(4,'d4',40.0,40.0,4000,0,8000),(5,'d5',50.0,50.0,5000,0,8000),(6,'d6',60.0,60.0,6000,0,8000),(7,'d7',70.0,70.0,7000,0,8000)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSortBufferSize(128 * 1024)
+        .setMaxTsBlockSizeInByte(4 * 1024)
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionPerDataNode(2);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -5806,8 +5819,7 @@ public class IoTDBTableAggregationIT {
         new String[] {"reset,65.0,325.0,80.0,-400.0,", "timestamp_normal,60.0,300.0,60.0,300.0,"},
         DATABASE_NAME);
 
-    // The rows span two flushed files and two physical time partitions. In cluster mode this also
-    // exercises partial/intermediate/final aggregation.
+    // The rows span two flushed files and two physical time partitions.
     tableResultSetEqualTest(
         "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
             + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
@@ -5817,6 +5829,22 @@ public class IoTDBTableAggregationIT {
         new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
         new String[] {"60.0,240.0,80.0,-40.0,"},
         DATABASE_NAME);
+
+    // Each row belongs to a different table device. The test environment creates multiple
+    // DataRegions, so the ungrouped aggregate combines partial states from different regions into
+    // one final SQL aggregation group.
+    String multiRegionSql =
+        "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,sample_time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,sample_time) AS irate_value,"
+            + "delta(gauge,sample_time,window_start,window_end) AS delta_value "
+            + "FROM rate_merge_test";
+    tableResultSetEqualTest(
+        multiRegionSql,
+        new String[] {"rate_value", "increase_value", "irate_value", "delta_value"},
+        new String[] {"10.0,80.0,10.0,80.0,"},
+        DATABASE_NAME);
+    assertRateQueryUsesIntermediateAggregation(multiRegionSql);
 
     tableResultSetEqualTest(
         "SELECT rate(value_double,sample_time,window_start,window_end) AS rate_value,"
@@ -5847,13 +5875,39 @@ public class IoTDBTableAggregationIT {
 
     tableResultSetEqualTest(
         "SELECT window_start,window_end,"
-            + "rate(value_double,time,window_start,window_end) AS rate_value "
+            + "rate(value_double,time,window_start,window_end) AS rate_value,"
+            + "increase(value_double,time,window_start,window_end) AS increase_value,"
+            + "irate(value_double,time) AS irate_value,"
+            + "delta(value_double,time,window_start,window_end) AS delta_value "
             + "FROM HOP(DATA => (SELECT time,value_double FROM rate_test "
-            + "WHERE scenario='timestamp_normal'),TIMECOL => 'time',SLIDE => 5ms,SIZE => 5ms) "
-            + "GROUP BY window_start,window_end",
-        new String[] {"window_start", "window_end", "rate_value"},
-        new String[] {"1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,60000.0,"},
+            + "WHERE scenario='timestamp_normal' AND time < 4),"
+            + "TIMECOL => 'time',SLIDE => 2ms,SIZE => 4ms) "
+            + "GROUP BY window_start,window_end ORDER BY window_start",
+        new String[] {
+          "window_start", "window_end", "rate_value", "increase_value", "irate_value", "delta_value"
+        },
+        new String[] {
+          "1969-12-31T23:59:59.998Z,1970-01-01T00:00:00.002Z,null,null,null,null,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.004Z,60000.0,240.0,60000.0,240.0,",
+          "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.006Z,22500.0,90.0,60000.0,90.0,"
+        },
         DATABASE_NAME);
+  }
+
+  private void assertRateQueryUsesIntermediateAggregation(String query) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
+        Assert.assertTrue(resultSet.next());
+        String plan = resultSet.getString(1);
+        Assert.assertTrue(
+            "Expected a PARTIAL aggregation in plan: " + plan, plan.contains("PARTIAL"));
+        Assert.assertTrue("Expected a FINAL aggregation in plan: " + plan, plan.contains("FINAL"));
+      }
+    } catch (Exception exception) {
+      throw new AssertionError(exception);
+    }
   }
 
   @Test

@@ -492,19 +492,19 @@ public class AccumulatorFactory {
         return new GroupedPercentileAccumulator(inputDataTypes.get(0), memoryReservationManager);
       case RATE:
         return useOrderedImplementation
-            ? new GroupedOrderedRateAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            ? new GroupedOrderedRateAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveRateAccumulator(inputDataTypes.get(0), memoryReservationManager);
       case INCREASE:
         return useOrderedImplementation
-            ? new GroupedOrderedIncreaseAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            ? new GroupedOrderedIncreaseAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveIncreaseAccumulator(inputDataTypes.get(0), memoryReservationManager);
       case IRATE:
         return useOrderedImplementation
-            ? new GroupedOrderedIrateAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            ? new GroupedOrderedIrateAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveIrateAccumulator(inputDataTypes.get(0), memoryReservationManager);
       case DELTA:
         return useOrderedImplementation
-            ? new GroupedOrderedDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager)
+            ? new GroupedOrderedDeltaAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
