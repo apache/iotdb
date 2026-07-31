@@ -24,20 +24,36 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
@@ -46,6 +62,44 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class CreateRegionGroupsProcedureTest {
+
+  private static class TestCreateRegionGroupsProcedure extends CreateRegionGroupsProcedure {
+
+    private TestCreateRegionGroupsProcedure(
+        final TConsensusGroupType consensusGroupType,
+        final CreateRegionGroupsPlan createRegionGroupsPlan,
+        final CreateRegionGroupsPlan persistPlan,
+        final Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
+      super(consensusGroupType, createRegionGroupsPlan, persistPlan, failedRegionReplicaSets);
+    }
+
+    private void executeShunt(final ConfigNodeProcedureEnv env) {
+      executeFromState(env, CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
+    }
+
+    private ProcedureLockState acquireDatabaseLock(final ConfigNodeProcedureEnv env) {
+      return acquireLock(env);
+    }
+
+    private void releaseDatabaseLock(final ConfigNodeProcedureEnv env) {
+      releaseLock(env);
+    }
+  }
+
+  private static class TestDeleteDatabaseProcedure extends DeleteDatabaseProcedure {
+
+    private TestDeleteDatabaseProcedure(final TDatabaseSchema databaseSchema) {
+      super(databaseSchema, false);
+    }
+
+    private ProcedureLockState acquireDatabaseLock(final ConfigNodeProcedureEnv env) {
+      return acquireLock(env);
+    }
+
+    private void releaseDatabaseLock(final ConfigNodeProcedureEnv env) {
+      releaseLock(env);
+    }
+  }
 
   @Test
   public void serializeDeserializeTest() {
@@ -91,10 +145,14 @@ public class CreateRegionGroupsProcedureTest {
     assertEquals(failedRegions0, failedRegions1);
 
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.setDatabaseGeneration("root.sg0", 11);
+    createRegionGroupsPlan.setDatabaseGeneration("root.sg1", 12);
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.setDatabaseGeneration("root.sg0", 11);
+    persistPlan.setDatabaseGeneration("root.sg1", 12);
     persistPlan.addRegionGroup("root.sg0", dataRegionSet);
     persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
@@ -123,5 +181,76 @@ public class CreateRegionGroupsProcedureTest {
     } catch (IOException e) {
       fail();
     }
+  }
+
+  @Test
+  public void testPersistRejectionCleansCreatedRegionReplicas() {
+    final TDataNodeLocation createdDataNode =
+        new TDataNodeLocation().setDataNodeId(1).setInternalEndPoint(new TEndPoint("0.0.0.1", 1));
+    final TDataNodeLocation failedDataNode =
+        new TDataNodeLocation().setDataNodeId(2).setInternalEndPoint(new TEndPoint("0.0.0.2", 2));
+    final TConsensusGroupId regionId = new TConsensusGroupId(DataRegion, 10);
+    final TRegionReplicaSet allocatedReplicaSet =
+        new TRegionReplicaSet(regionId, List.of(createdDataNode, failedDataNode));
+    final TRegionReplicaSet failedReplicaSet =
+        new TRegionReplicaSet(regionId, Collections.singletonList(failedDataNode));
+
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.setDatabaseGeneration("root.sg", 1);
+    createPlan.addRegionGroup("root.sg", allocatedReplicaSet);
+    final Map<TConsensusGroupId, TRegionReplicaSet> failedReplicaSets = new HashMap<>();
+    failedReplicaSets.put(regionId, failedReplicaSet);
+    final TestCreateRegionGroupsProcedure procedure =
+        new TestCreateRegionGroupsProcedure(
+            DataRegion, createPlan, new CreateRegionGroupsPlan(), failedReplicaSets);
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
+    @SuppressWarnings("unchecked")
+    final ProcedureExecutor<ConfigNodeProcedureEnv> executor =
+        Mockito.mock(ProcedureExecutor.class);
+    Mockito.when(env.persistRegionGroup(Mockito.any()))
+        .thenReturn(new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    Mockito.when(procedureManager.getExecutor()).thenReturn(executor);
+
+    procedure.executeShunt(env);
+
+    final ArgumentCaptor<Procedure<ConfigNodeProcedureEnv>> cleanupCaptor =
+        ArgumentCaptor.forClass(Procedure.class);
+    Mockito.verify(executor).submitProcedure(cleanupCaptor.capture());
+    Assert.assertEquals(
+        new RemoveRegionGroupProcedure(
+            new TRegionReplicaSet(regionId, Collections.singletonList(createdDataNode))),
+        cleanupCaptor.getValue());
+  }
+
+  @Test
+  public void testCreateAndDeleteDatabaseLifecycleAreMutuallyExclusive() {
+    final String database = "root.sg";
+    final CreateRegionGroupsPlan createPlan = new CreateRegionGroupsPlan();
+    createPlan.addRegionGroup(
+        database,
+        new TRegionReplicaSet(new TConsensusGroupId(DataRegion, 1), Collections.emptyList()));
+    final TestCreateRegionGroupsProcedure createProcedure =
+        new TestCreateRegionGroupsProcedure(
+            DataRegion, createPlan, new CreateRegionGroupsPlan(), Collections.emptyMap());
+    createProcedure.setProcId(1);
+    final TestDeleteDatabaseProcedure deleteProcedure =
+        new TestDeleteDatabaseProcedure(new TDatabaseSchema(database));
+    deleteProcedure.setProcId(2);
+
+    final ConfigNodeProcedureEnv env =
+        new ConfigNodeProcedureEnv(
+            Mockito.mock(ConfigManager.class), Mockito.mock(ProcedureScheduler.class));
+    Assert.assertEquals(ProcedureLockState.LOCK_ACQUIRED, createProcedure.acquireDatabaseLock(env));
+    Assert.assertEquals(
+        ProcedureLockState.LOCK_EVENT_WAIT, deleteProcedure.acquireDatabaseLock(env));
+
+    createProcedure.releaseDatabaseLock(env);
+    Assert.assertEquals(ProcedureLockState.LOCK_ACQUIRED, deleteProcedure.acquireDatabaseLock(env));
+    deleteProcedure.releaseDatabaseLock(env);
   }
 }

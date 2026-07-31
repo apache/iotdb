@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.AbstractDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDatabaseState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -43,11 +43,12 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-public class DeleteDatabaseProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteDatabaseState> {
+public class DeleteDatabaseProcedure extends AbstractDatabaseProcedure<DeleteDatabaseState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteDatabaseProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
@@ -234,6 +235,13 @@ public class DeleteDatabaseProcedure
   @Override
   protected DeleteDatabaseState getInitialState() {
     return DeleteDatabaseState.PRE_DELETE_DATABASE;
+  }
+
+  @Override
+  protected Set<String> getDatabaseNames() {
+    return deleteDatabaseSchema == null
+        ? Collections.emptySet()
+        : Collections.singleton(deleteDatabaseSchema.getName());
   }
 
   public String getDatabase() {

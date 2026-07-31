@@ -274,6 +274,20 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void CreateRegionGroupsPlanTest() throws IOException {
+    final CreateRegionGroupsPlan plan = new CreateRegionGroupsPlan();
+    plan.setDatabaseGeneration("root.sg", 7);
+    plan.addRegionGroup(
+        "root.sg",
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), Collections.emptyList()));
+
+    final CreateRegionGroupsPlan deserializedPlan =
+        (CreateRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, deserializedPlan);
+  }
+
+  @Test
   public void AlterDatabasePlanTest() throws IOException {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
@@ -749,9 +763,13 @@ public class ConfigPhysicalPlanSerDeTest {
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.setDatabaseGeneration("root.sg0", 1);
+    createRegionGroupsPlan.setDatabaseGeneration("root.sg1", 2);
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.setDatabaseGeneration("root.sg0", 1);
+    persistPlan.setDatabaseGeneration("root.sg1", 2);
     persistPlan.addRegionGroup("root.sg0", dataRegionSet);
     persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =

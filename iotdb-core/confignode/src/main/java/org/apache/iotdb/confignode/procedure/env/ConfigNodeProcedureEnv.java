@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -103,6 +104,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -117,6 +119,9 @@ public class ConfigNodeProcedureEnv {
 
   /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
+
+  /** Serializes procedures that mutate the lifecycle of the same database. */
+  private final Map<String, LockQueue> databaseLockMap = new HashMap<>();
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
@@ -491,6 +496,10 @@ public class ConfigNodeProcedureEnv {
           .setMessage(
               "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
     }
+  }
+
+  public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan createRegionGroupsPlan) {
+    return getPartitionManager().validateCreateRegionGroups(createRegionGroupsPlan);
   }
 
   /**
@@ -1169,6 +1178,67 @@ public class ConfigNodeProcedureEnv {
 
   public LockQueue getNodeLock() {
     return nodeLock;
+  }
+
+  /**
+   * Atomically tries to lock all databases in lexical order.
+   *
+   * @return the first database whose lock is unavailable, or null when all locks are acquired
+   */
+  public String tryLockDatabases(final Procedure<?> procedure, final Set<String> databaseNames) {
+    schedulerLock.lock();
+    try {
+      final List<String> acquiredDatabases = new ArrayList<>();
+      for (final String database : new TreeSet<>(databaseNames)) {
+        final LockQueue lockQueue =
+            databaseLockMap.computeIfAbsent(database, key -> new LockQueue());
+        if (!lockQueue.tryLock(procedure)) {
+          acquiredDatabases.forEach(
+              acquiredDatabase -> {
+                final LockQueue acquiredLock = databaseLockMap.get(acquiredDatabase);
+                if (acquiredLock != null && acquiredLock.releaseLock(procedure)) {
+                  acquiredLock.wakeWaitingProcedures(scheduler);
+                  if (acquiredLock.isIdle()) {
+                    databaseLockMap.remove(acquiredDatabase, acquiredLock);
+                  }
+                }
+              });
+          return database;
+        }
+        acquiredDatabases.add(database);
+      }
+      return null;
+    } finally {
+      schedulerLock.unlock();
+    }
+  }
+
+  public void waitDatabaseLock(final Procedure<?> procedure, final String databaseName) {
+    schedulerLock.lock();
+    try {
+      databaseLockMap
+          .computeIfAbsent(databaseName, key -> new LockQueue())
+          .waitProcedure(procedure, scheduler);
+    } finally {
+      schedulerLock.unlock();
+    }
+  }
+
+  public void releaseDatabaseLocks(final Procedure<?> procedure, final Set<String> databaseNames) {
+    schedulerLock.lock();
+    try {
+      for (final String database : databaseNames) {
+        final LockQueue lockQueue = databaseLockMap.get(database);
+        if (lockQueue != null && lockQueue.releaseLock(procedure)) {
+          lockQueue.wakeWaitingProcedures(scheduler);
+          if (lockQueue.isIdle()) {
+            databaseLockMap.remove(database, lockQueue);
+          }
+        }
+      }
+    } finally {
+      schedulerLock.unlock();
+    }
   }
 
   public ProcedureScheduler getScheduler() {
