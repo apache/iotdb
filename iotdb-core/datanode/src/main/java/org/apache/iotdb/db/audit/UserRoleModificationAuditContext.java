@@ -24,21 +24,26 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-/** Tracks one user-role membership statement and logs a successful modification. */
+import java.util.function.Supplier;
+
+/** Tracks one user-role membership statement and logs its successful security changes. */
 public class UserRoleModificationAuditContext {
 
   private final DNAuditLogger auditLogger;
   private final String sqlString;
 
-  private IClientSession clientSession;
+  private Long userId;
+  private String username;
+  private String clientAddress;
+  private String database;
   private String targetUsername;
   private String targetRoleName;
 
@@ -51,8 +56,22 @@ public class UserRoleModificationAuditContext {
     this.sqlString = sqlString;
   }
 
-  public void setClientSession(IClientSession clientSession) {
-    this.clientSession = clientSession;
+  public void setSessionInfo(SessionInfo sessionInfo) {
+    if (sessionInfo == null) {
+      return;
+    }
+    setActor(
+        sessionInfo.getUserId(),
+        sessionInfo.getUserName(),
+        sessionInfo.getCliHostname(),
+        sessionInfo.getDatabaseName().orElse(null));
+  }
+
+  private void setActor(long userId, String username, String clientAddress, String database) {
+    this.userId = userId;
+    this.username = username;
+    this.clientAddress = clientAddress;
+    this.database = database;
   }
 
   public void track(AuthorStatement statement) {
@@ -72,25 +91,39 @@ public class UserRoleModificationAuditContext {
   }
 
   public void log(TSStatus status) {
-    if (targetUsername == null || clientSession == null || !isSuccessful(status)) {
+    if (targetUsername == null || userId == null || !isSuccessful(status)) {
       return;
     }
-    auditLogger.log(
-        new AuditLogFields(
-            clientSession.getUserId(),
-            clientSession.getUsername(),
-            clientSession.getClientAddress(),
-            AuditEventType.MODIFY_USER_ROLE,
-            AuditLogOperation.CONTROL,
-            PrivilegeType.SECURITY,
-            true,
-            clientSession.getDatabaseName(),
-            sqlString),
+    logEvent(
+        AuditEventType.MODIFY_SECURITY_FUNCTION,
+        () ->
+            String.format(
+                DataNodeMiscMessages
+                    .LOG_SECURITY_FUNCTION_USER_ROLE_MEMBERSHIP_USER_ARG_ROLE_ARG_0D500C5D,
+                targetUsername,
+                targetRoleName));
+    logEvent(
+        AuditEventType.MODIFY_ROLE_MEMBERSHIP,
         () ->
             String.format(
                 DataNodeMiscMessages.LOG_USER_ARG_ROLE_ARG_422D48D3,
                 targetUsername,
                 targetRoleName));
+  }
+
+  private void logEvent(AuditEventType eventType, Supplier<String> log) {
+    auditLogger.log(
+        new AuditLogFields(
+            userId,
+            username,
+            clientAddress,
+            eventType,
+            AuditLogOperation.CONTROL,
+            PrivilegeType.SECURITY,
+            true,
+            database,
+            sqlString),
+        log);
   }
 
   private static boolean isSuccessful(TSStatus status) {
