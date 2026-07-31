@@ -101,6 +101,7 @@ public class ExternalTsFileQueryResource {
   // deleting temporary run files while drivers are still reading them.
   private int fragmentInstanceUsageCount;
   private boolean closed;
+  private boolean queryExecutionWantsToClose;
 
   public ExternalTsFileQueryResource(
       MPPQueryContext queryContext,
@@ -233,12 +234,13 @@ public class ExternalTsFileQueryResource {
       throw new IllegalStateException(
           DataNodeQueryMessages.EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE);
     }
-    if (fragmentInstanceUsageCount == 0) {
+    if (fragmentInstanceUsageCount == 0 && queryExecutionWantsToClose) {
       close();
     }
   }
 
   public synchronized void closeByQueryExecution() {
+    queryExecutionWantsToClose = true;
     if (fragmentInstanceUsageCount == 0) {
       close();
     }

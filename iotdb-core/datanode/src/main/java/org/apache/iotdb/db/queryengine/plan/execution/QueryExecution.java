@@ -158,6 +158,10 @@ public class QueryExecution implements IQueryExecution {
 
               this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
+            // Signal all ExternalTsFileQueryResource instances that the query has ended.
+            // Each resource closes only when its fragmentInstanceUsageCount reaches zero,
+            // preventing a premature close raced with late-scheduled FragmentInstances.
+            context.releaseExternalTsFileQueryResources();
             this.stop(cause);
           }
         });
