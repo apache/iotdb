@@ -109,9 +109,9 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public void checkUserGlobalSysPrivilege(
-      IAuditEntity auditEntity,
-      AuditLogOperation auditLogOperation,
-      Supplier<String> auditObject) {}
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject) {
+    // Intentionally empty because this implementation permits every operation.
+  }
 
   @Override
   public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
