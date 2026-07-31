@@ -876,6 +876,66 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
+  public void testSourceTimeRangeRespectsHistoryDisable() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "insert into root.db.history (time, at1) values (2000, 2), (3000, 3)", "flush"),
+        null);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
+
+    sourceAttributes.put("source.inclusion", "data");
+    sourceAttributes.put("source.start-time", "2000");
+    sourceAttributes.put("source.history.enable", "false");
+    sourceAttributes.put("source.realtime.mode", "stream");
+    sourceAttributes.put("user", "root");
+
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", sinkAttributes).setExtractorAttributes(sourceAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.history.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Collections.singletonList(
+              "insert into root.db.realtime (time, at1)"
+                  + " values (1000, 1), (2000, 2), (3000, 3)"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(at1) from root.db.realtime",
+          "count(root.db.realtime.at1),",
+          Collections.singleton("2,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries root.db.history.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+    }
+  }
+
+  @Test
   public void testSourceStartTimeAndEndTimeWorkingWithOrWithoutPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
