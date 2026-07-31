@@ -243,13 +243,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       }
     }
 
+    // Historical data extraction is enabled in the following cases:
+    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
+    // enabled, the pipe will lose some historical data.
+    // 2. Historical extraction is enabled by the user or by default.
+    isHistoricalSourceEnabled =
+        parameters.getBooleanOrDefault(
+                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
+                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalSourceEnabled = true;
-
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
@@ -283,19 +293,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       // return here
       return;
     }
-
-    // Historical data extraction is enabled in the following cases:
-    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
-    // enabled, the pipe will lose some historical data.
-    // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalSourceEnabled =
-        parameters.getBooleanOrDefault(
-                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
-                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
-            || parameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
 
     try {
       historicalDataExtractionStartTime =

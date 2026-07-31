@@ -618,8 +618,8 @@ public final class DataNodePipeMessages {
       "当 '{}'（'{}'）设置为 false 时，指定 {} 和 {} 无效。";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "当 '{}'（'{}'、'{}'、'{}'）设置为 true 时，指定 {} 和 {} 无效。";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{}、{}、{} 和 {} 无效。";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{} 或 {} 无效。";
 
   // ===================== SINK =====================
 
