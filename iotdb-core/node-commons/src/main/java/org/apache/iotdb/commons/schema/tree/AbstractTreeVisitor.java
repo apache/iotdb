@@ -570,10 +570,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
       this.transitionIterator = preciseMatchTransitionMap.values().iterator();
       // Candidate counts are a rough cost estimate. Iterate the smaller side so this remains
-      // adaptive without relying on unstable wall-clock thresholds.
+      // adaptive without relying on unstable wall-clock thresholds. Prefer child iteration on a
+      // tie because it avoids a direct child lookup for every transition.
       this.iterateChildren =
           patternFA.hasMultiExactMatchTransitions(sourceState)
-              && getChildrenSize(parent) < preciseMatchTransitionMap.size();
+              && getChildrenSize(parent) <= preciseMatchTransitionMap.size();
     }
 
     @Override
