@@ -118,6 +118,11 @@ public class SimpleNFA implements IPatternFA {
   }
 
   @Override
+  public boolean hasMultiExactMatchTransitions(final IFAState state) {
+    return getNextNode((SinglePathPatternNode) state) instanceof MultiExactMatchNode;
+  }
+
+  @Override
   public IFAState getNextState(IFAState sourceState, IFATransition transition) {
     if (transition instanceof MultiExactTransition) {
       return ((MultiExactTransition) transition).targetNode;

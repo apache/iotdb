@@ -29,13 +29,20 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
+import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DeviceFilterUtilTest {
@@ -126,6 +133,59 @@ public class DeviceFilterUtilTest {
     assertPreciseTransitionsAfterFirstTag(patterns.get(0), "card1");
   }
 
+  @Test
+  public void testIterateMultiExactValuesWhenTheyAreFewer() {
+    final TestNode root = new TestNode("root");
+    final TestNode parent = new TestNode("meter");
+    root.addChild(parent);
+    parent.addChildren("card1", "card2", "card3", "card4");
+
+    final TestVisitor visitor =
+        new TestVisitor(root, createAdaptivePattern(Set.of("card1", "card2")), parent);
+
+    Assert.assertEquals(Arrays.asList("card1", "card2"), collect(visitor));
+    Assert.assertEquals(2, visitor.getTargetDirectLookupCount());
+    Assert.assertEquals(0, visitor.getTargetChildrenIterationCount());
+  }
+
+  @Test
+  public void testIterateChildKeysWhenTheyAreFewer() {
+    final TestNode root = new TestNode("root");
+    final TestNode parent = new TestNode("meter");
+    root.addChild(parent);
+    parent.addChildren("card1", "card2");
+
+    final TestVisitor visitor =
+        new TestVisitor(
+            root,
+            createAdaptivePattern(Set.of("card1", "card2", "card3", "card4", "card5")),
+            parent);
+
+    Assert.assertEquals(Arrays.asList("card1", "card2"), collect(visitor));
+    Assert.assertEquals(0, visitor.getTargetDirectLookupCount());
+    Assert.assertEquals(1, visitor.getTargetChildrenIterationCount());
+  }
+
+  private static ExtendedPartialPath createAdaptivePattern(final Set<String> values) {
+    final ExtendedPartialPath pattern =
+        new ExtendedPartialPath(new String[] {"root", "*", "*"}, true);
+    pattern.addMultiExactMatch(2, values);
+    return pattern;
+  }
+
+  private static List<String> collect(final TestVisitor visitor) {
+    final List<String> result = new ArrayList<>();
+    try {
+      while (visitor.hasNext()) {
+        result.add(visitor.next());
+      }
+    } finally {
+      visitor.close();
+    }
+    Collections.sort(result);
+    return result;
+  }
+
   @SafeVarargs
   private static List<PartialPath> convert(final List<SchemaFilter>... branches) {
     return DeviceFilterUtil.convertToDevicePattern(
@@ -156,5 +216,115 @@ public class DeviceFilterUtilTest {
     final Set<String> expected = new HashSet<>(Arrays.asList(expectedTransitions));
     Assert.assertEquals(expected, patternFA.getPreciseMatchTransition(state).keySet());
     Assert.assertEquals(0, patternFA.getFuzzyMatchTransitionSize(state));
+  }
+
+  private static class TestVisitor extends AbstractTreeVisitor<TestNode, String> {
+
+    private final TestNode targetParent;
+    private int targetDirectLookupCount;
+    private int targetChildrenIterationCount;
+
+    private TestVisitor(
+        final TestNode root, final ExtendedPartialPath pathPattern, final TestNode targetParent) {
+      super(root, pathPattern, false);
+      this.targetParent = targetParent;
+      initStack();
+    }
+
+    @Override
+    protected TestNode getChild(final TestNode parent, final String childName) {
+      if (parent == targetParent) {
+        targetDirectLookupCount++;
+      }
+      return parent.children.get(childName);
+    }
+
+    @Override
+    protected Iterator<TestNode> getChildrenIterator(final TestNode parent) {
+      if (parent == targetParent) {
+        targetChildrenIterationCount++;
+      }
+      return parent.children.values().iterator();
+    }
+
+    @Override
+    protected Iterator<TestNode> getChildrenIterator(
+        final TestNode parent, final Iterator<String> childrenName) {
+      final List<TestNode> children = new ArrayList<>();
+      childrenName.forEachRemaining(
+          name -> {
+            final TestNode child = parent.children.get(name);
+            if (child != null) {
+              children.add(child);
+            }
+          });
+      return children.iterator();
+    }
+
+    @Override
+    protected int getChildrenSize(final TestNode parent) {
+      return parent.children.keySet().size();
+    }
+
+    @Override
+    protected boolean shouldVisitSubtreeOfInternalMatchedNode(final TestNode node) {
+      return true;
+    }
+
+    @Override
+    protected boolean shouldVisitSubtreeOfFullMatchedNode(final TestNode node) {
+      return false;
+    }
+
+    @Override
+    protected boolean acceptInternalMatchedNode(final TestNode node) {
+      return false;
+    }
+
+    @Override
+    protected boolean acceptFullMatchedNode(final TestNode node) {
+      return true;
+    }
+
+    @Override
+    protected String generateResult(final TestNode nextMatchedNode) {
+      return nextMatchedNode.getName();
+    }
+
+    @Override
+    protected boolean mayTargetNodeType(final TestNode node) {
+      return true;
+    }
+
+    private int getTargetDirectLookupCount() {
+      return targetDirectLookupCount;
+    }
+
+    private int getTargetChildrenIterationCount() {
+      return targetChildrenIterationCount;
+    }
+  }
+
+  private static class TestNode implements ITreeNode {
+
+    private final String name;
+    private final Map<String, TestNode> children = new LinkedHashMap<>();
+
+    private TestNode(final String name) {
+      this.name = name;
+    }
+
+    private void addChild(final TestNode child) {
+      children.put(child.getName(), child);
+    }
+
+    private void addChildren(final String... childNames) {
+      Arrays.stream(childNames).map(TestNode::new).forEach(this::addChild);
+    }
+
+    @Override
+    public String getName() {
+      return name;
+    }
   }
 }
