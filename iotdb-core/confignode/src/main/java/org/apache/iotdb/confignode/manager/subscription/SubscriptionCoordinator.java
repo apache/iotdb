@@ -65,6 +65,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionCoordinator {
 
@@ -80,10 +81,22 @@ public class SubscriptionCoordinator {
 
   private final SubscriptionMetaSyncer subscriptionMetaSyncer;
   private final SubscriptionOwnerLeaseSyncer subscriptionOwnerLeaseSyncer;
+
+  // Serialize client ALTER TOPIC requests per topic. Besides preventing ordinary partial updates
+  // from being built from the same snapshot, this also ensures that only one owner-transfer
+  // request can own the renewal-block entry for a topic at a time.
+  private final Map<String, TopicAlterationLock> topicAlterationLocks = new HashMap<>();
+
   // topicName -> blockSinceMs (ConfigNode local clock when owner-lease renewal was stopped for an
   // in-flight owner transfer). Used to skip renewal and to bound the admission wait.
   private final Map<String, Long> blockedOwnerLeaseRenewalTopics =
       Collections.synchronizedMap(new HashMap<>());
+
+  private static class TopicAlterationLock {
+
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private int referenceCount;
+  }
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
@@ -132,6 +145,30 @@ public class SubscriptionCoordinator {
 
   public boolean isLocked() {
     return coordinatorLock.isLocked();
+  }
+
+  public void lockTopicAlteration(final String topicName) {
+    final TopicAlterationLock topicAlterationLock;
+    synchronized (topicAlterationLocks) {
+      topicAlterationLock =
+          topicAlterationLocks.computeIfAbsent(topicName, ignored -> new TopicAlterationLock());
+      topicAlterationLock.referenceCount++;
+    }
+    topicAlterationLock.lock.lock();
+  }
+
+  public void unlockTopicAlteration(final String topicName) {
+    final TopicAlterationLock topicAlterationLock;
+    synchronized (topicAlterationLocks) {
+      topicAlterationLock = topicAlterationLocks.get(topicName);
+    }
+
+    topicAlterationLock.lock.unlock();
+    synchronized (topicAlterationLocks) {
+      if (--topicAlterationLock.referenceCount == 0) {
+        topicAlterationLocks.remove(topicName, topicAlterationLock);
+      }
+    }
   }
 
   /////////////////////////////// Meta sync ///////////////////////////////
@@ -185,7 +222,10 @@ public class SubscriptionCoordinator {
 
   public boolean blockOwnerLeaseRenewalIfOwnerTransfer(TAlterTopicReq req) {
     final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
-    final TopicMeta updatedTopicMeta = buildAlteredTopicMeta(req);
+    final TopicMeta updatedTopicMeta =
+        Objects.isNull(currentTopicMeta)
+            ? null
+            : currentTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
     if (Objects.isNull(currentTopicMeta)
         || Objects.isNull(updatedTopicMeta)
         || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
@@ -211,7 +251,10 @@ public class SubscriptionCoordinator {
   public TopicMeta buildAlteredTopicMetaAfterOwnerLeaseExpired(TAlterTopicReq req)
       throws InterruptedException {
     final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
-    final TopicMeta updatedTopicMeta = buildAlteredTopicMeta(req);
+    final TopicMeta updatedTopicMeta =
+        Objects.isNull(currentTopicMeta)
+            ? null
+            : currentTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
     if (Objects.isNull(currentTopicMeta)
         || Objects.isNull(updatedTopicMeta)
         || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
@@ -220,11 +263,24 @@ public class SubscriptionCoordinator {
     }
 
     final Long leaseDurationMs = currentTopicMeta.getOwnerLeaseDurationMs();
-    final Long blockSinceMs = blockedOwnerLeaseRenewalTopics.get(req.getTopicName());
-    if (Objects.isNull(leaseDurationMs) || Objects.isNull(blockSinceMs)) {
-      // No lease configured (no drain to wait for) or renewal not blocked: epoch fencing applies on
-      // reachable DataNodes; nothing further to wait on here.
+    if (Objects.isNull(leaseDurationMs)) {
+      // No lease configured, so there is nothing to drain.
       return updatedTopicMeta;
+    }
+
+    waitForOwnerLeaseExpiration(req.getTopicName(), leaseDurationMs);
+
+    // Another alteration may have completed while this owner transfer was waiting for the old
+    // lease to drain. Rebuild from the latest TopicMeta so that this request only applies its own
+    // attributes instead of restoring the stale snapshot captured before the wait.
+    return buildAlteredTopicMeta(req);
+  }
+
+  void waitForOwnerLeaseExpiration(final String topicName, final long leaseDurationMs)
+      throws InterruptedException {
+    final Long blockSinceMs = blockedOwnerLeaseRenewalTopics.get(topicName);
+    if (Objects.isNull(blockSinceMs)) {
+      return;
     }
 
     final long drainDeadlineMs =
@@ -233,7 +289,6 @@ public class SubscriptionCoordinator {
     while ((remainingMs = drainDeadlineMs - System.currentTimeMillis()) > 0) {
       Thread.sleep(Math.min(remainingMs, 1000L));
     }
-    return updatedTopicMeta;
   }
 
   public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {

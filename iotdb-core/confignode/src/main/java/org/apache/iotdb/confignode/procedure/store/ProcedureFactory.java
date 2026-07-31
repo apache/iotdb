@@ -408,6 +408,9 @@ public class ProcedureFactory implements IProcedureFactory {
         case ALTER_TOPIC_PROCEDURE:
           procedure = new AlterTopicProcedure();
           break;
+        case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
+          procedure = new AlterTopicProcedure(true);
+          break;
         case TOPIC_META_SYNC_PROCEDURE:
           procedure = new TopicMetaSyncProcedure();
           break;
@@ -579,7 +582,9 @@ public class ProcedureFactory implements IProcedureFactory {
     } else if (procedure instanceof DropTopicProcedure) {
       return ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
-      return ProcedureType.ALTER_TOPIC_PROCEDURE;
+      return ((AlterTopicProcedure) procedure).shouldMergeUpdatedTopicAttributes()
+          ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE
+          : ProcedureType.ALTER_TOPIC_PROCEDURE;
     } else if (procedure instanceof TopicMetaSyncProcedure) {
       return ProcedureType.TOPIC_META_SYNC_PROCEDURE;
     } else if (procedure instanceof CreateSubscriptionProcedure) {
