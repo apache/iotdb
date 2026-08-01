@@ -66,6 +66,10 @@ public class Utils {
 
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+              if (exc != null) {
+                logger.info(ConsensusMessages.VISIT_FILE_FAILED, dir.toAbsolutePath(), exc);
+                return FileVisitResult.TERMINATE;
+              }
               return FileVisitResult.CONTINUE;
             }
           });
