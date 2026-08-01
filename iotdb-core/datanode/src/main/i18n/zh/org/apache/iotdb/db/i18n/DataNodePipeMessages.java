@@ -412,6 +412,8 @@ public final class DataNodePipeMessages {
       "发送 request {}（watermark = {}）到 {} 失败";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "触发合并失败。watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "无法从进度索引 %s 初始化 StateProgressIndex。";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "尝试提交进度索引时发生失败。timestamp={}, count={}, "
           + "progressIndex={}";
@@ -616,8 +618,8 @@ public final class DataNodePipeMessages {
       "当 '{}'（'{}'）设置为 false 时，指定 {} 和 {} 无效。";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "当 '{}'（'{}'、'{}'、'{}'）设置为 true 时，指定 {} 和 {} 无效。";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{}、{}、{} 和 {} 无效。";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{} 或 {} 无效。";
 
   // ===================== SINK =====================
 

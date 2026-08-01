@@ -1177,6 +1177,18 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqWaitsForSchema() throws IOException {
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            "1.tsfile.mod", 10, "1.tsfile", 100, "root.db", true);
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertTrue(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test
@@ -1201,6 +1213,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertTrue(deserializeReq.getParameters().isEmpty());
     Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test

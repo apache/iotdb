@@ -3799,5 +3799,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias is null";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references is null";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "Has no permission to execute %s, because only the superuser can alter him/herself.";
 
 }

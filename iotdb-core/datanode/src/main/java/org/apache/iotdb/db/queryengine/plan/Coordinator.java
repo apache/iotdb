@@ -414,8 +414,10 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
+      DNAuditLogger auditLogger = DNAuditLogger.getInstance();
       TSStatus status = result == null ? null : result.status;
-      DNAuditLogger.getInstance().logUserRoleModification(statement, session, sql, status);
+      auditLogger.logRevokeFailure(statement, session, sql, status);
+      auditLogger.logUserRoleModification(statement, session, sql, status);
     }
   }
 
@@ -562,8 +564,10 @@ public class Coordinator {
                       startTime)));
       return result;
     } finally {
+      DNAuditLogger auditLogger = DNAuditLogger.getInstance();
       TSStatus status = result == null ? null : result.status;
-      DNAuditLogger.getInstance().logUserRoleModification(statement, session, sql, status);
+      auditLogger.logRevokeFailure(statement, session, sql, status);
+      auditLogger.logUserRoleModification(statement, session, sql, status);
     }
   }
 

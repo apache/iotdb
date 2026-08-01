@@ -267,7 +267,8 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response =
+          authorizationHandler.checkAuthority(securityContext, statement, sql.getSql());
       if (response != null) {
         return response;
       }

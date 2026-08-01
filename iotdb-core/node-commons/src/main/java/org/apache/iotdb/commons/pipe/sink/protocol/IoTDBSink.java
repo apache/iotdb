@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
@@ -168,6 +169,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
 
   protected String loadTsFileStrategy;
   protected boolean loadTsFileValidation;
+  protected boolean shouldWaitForSchemaBeforeLoad;
 
   protected boolean shouldMarkAsPipeRequest;
   protected boolean skipIfNoPrivileges;
@@ -302,6 +304,8 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_LOAD_TSFILE_VALIDATION_KEY, SINK_LOAD_TSFILE_VALIDATION_KEY),
             CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE);
+    shouldWaitForSchemaBeforeLoad =
+        parameters.getBooleanOrDefault(SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY, false);
 
     final int zstdCompressionLevel =
         parameters.getIntOrDefault(
@@ -654,6 +658,10 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
 
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
+  }
+
+  public boolean shouldWaitForSchemaBeforeLoad() {
+    return shouldWaitForSchemaBeforeLoad;
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {

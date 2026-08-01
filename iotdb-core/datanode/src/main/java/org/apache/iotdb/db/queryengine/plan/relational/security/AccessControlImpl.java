@@ -288,6 +288,9 @@ public class AccessControlImpl implements AccessControl {
         return;
       case RENAME_USER:
       case UPDATE_USER:
+        if (type == AuthorRType.UPDATE_USER) {
+          auditEntity.setSqlString(null);
+        }
         auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
         if (statement.getUserName().equals(userName)) {
           // users can change the username and password of themselves
@@ -544,6 +547,17 @@ public class AccessControlImpl implements AccessControl {
       authChecker.checkGlobalPrivilege(
           auditEntity.getUsername(), TableModelPrivilege.SYSTEM, auditEntity);
     }
+  }
+
+  @Override
+  public void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject) {
+    authChecker.checkGlobalPrivilege(
+        auditEntity.getUsername(),
+        TableModelPrivilege.SYSTEM,
+        auditLogOperation,
+        auditEntity,
+        auditObject);
   }
 
   @Override

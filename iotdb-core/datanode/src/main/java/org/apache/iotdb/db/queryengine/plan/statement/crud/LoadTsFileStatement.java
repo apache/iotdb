@@ -49,6 +49,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
@@ -64,6 +65,7 @@ public class LoadTsFileStatement extends Statement {
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
   private boolean verifySchema = true;
+  private boolean autoCreateSchema = true;
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private long tabletConversionThresholdBytes = -1;
@@ -90,6 +92,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
+    this.autoCreateSchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThresholdBytes =
@@ -134,6 +137,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = null;
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
+    this.autoCreateSchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThresholdBytes =
@@ -245,6 +249,14 @@ public class LoadTsFileStatement extends Statement {
     return verifySchema;
   }
 
+  public void setAutoCreateSchema(final boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
+  }
+
   public LoadTsFileStatement setDeleteAfterLoad(boolean deleteAfterLoad) {
     this.deleteAfterLoad = deleteAfterLoad;
     return this;
@@ -340,6 +352,8 @@ public class LoadTsFileStatement extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.autoCreateSchema =
+        LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
@@ -436,6 +450,7 @@ public class LoadTsFileStatement extends Statement {
       statement.databaseLevel = this.databaseLevel;
       statement.database = this.database;
       statement.verifySchema = this.verifySchema;
+      statement.autoCreateSchema = this.autoCreateSchema;
       statement.deleteAfterLoad = this.deleteAfterLoad;
       statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
       statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
@@ -478,6 +493,7 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
+    loadAttributes.put(AUTO_CREATE_SCHEMA_KEY, String.valueOf(autoCreateSchema));
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }
@@ -501,6 +517,8 @@ public class LoadTsFileStatement extends Statement {
         + databaseLevel
         + ", verify-schema="
         + verifySchema
+        + ", auto-create-schema="
+        + autoCreateSchema
         + ", convert-on-type-mismatch="
         + convertOnTypeMismatch
         + ", tablet-conversion-threshold="

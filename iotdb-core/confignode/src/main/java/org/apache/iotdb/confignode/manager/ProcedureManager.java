@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -1915,21 +1916,18 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTopic(TAlterTopicReq req) {
+    final SubscriptionCoordinator subscriptionCoordinator =
+        configManager.getSubscriptionManager().getSubscriptionCoordinator();
+    subscriptionCoordinator.lockTopicAlteration(req.getTopicName());
     boolean isOwnerLeaseRenewalBlocked = false;
     try {
       isOwnerLeaseRenewalBlocked =
-          configManager
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .blockOwnerLeaseRenewalIfOwnerTransfer(req);
+          subscriptionCoordinator.blockOwnerLeaseRenewalIfOwnerTransfer(req);
       // Owner transfers wait for the previous owner's lease to drain (lease duration + one
       // heartbeat interval, measured on the ConfigNode clock) inside the call below before the
       // updated meta is built; epoch fencing on DataNodes guarantees correctness in the meantime.
       final TopicMeta updatedTopicMeta =
-          configManager
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+          subscriptionCoordinator.buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
       if (updatedTopicMeta == null) {
         return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
             .setMessage(
@@ -1938,9 +1936,27 @@ public class ProcedureManager {
                     req.getTopicName()));
       }
 
+      final Map<String, String> attributesBeforeInjection =
+          new HashMap<>(updatedTopicMeta.getConfig().getAttribute());
       injectTreeViewSourceAttributes(updatedTopicMeta.getConfig().getAttribute());
 
-      AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
+      final Map<String, String> updatedTopicAttributes = new HashMap<>();
+      if (Objects.nonNull(req.getTopicAttributes())) {
+        updatedTopicAttributes.putAll(req.getTopicAttributes());
+      }
+      updatedTopicMeta
+          .getConfig()
+          .getAttribute()
+          .forEach(
+              (key, value) -> {
+                if (!attributesBeforeInjection.containsKey(key)
+                    || !Objects.equals(attributesBeforeInjection.get(key), value)) {
+                  updatedTopicAttributes.put(key, value);
+                }
+              });
+
+      AlterTopicProcedure procedure =
+          new AlterTopicProcedure(updatedTopicMeta, updatedTopicAttributes);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1953,11 +1969,9 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     } finally {
       if (isOwnerLeaseRenewalBlocked) {
-        configManager
-            .getSubscriptionManager()
-            .getSubscriptionCoordinator()
-            .unblockOwnerLeaseRenewal(req.getTopicName());
+        subscriptionCoordinator.unblockOwnerLeaseRenewal(req.getTopicName());
       }
+      subscriptionCoordinator.unlockTopicAlteration(req.getTopicName());
     }
   }
 
