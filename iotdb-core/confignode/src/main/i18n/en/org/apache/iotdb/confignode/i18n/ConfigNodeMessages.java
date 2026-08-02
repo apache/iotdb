@@ -673,4 +673,16 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
           "Failed to create or alter topic, mode=consensus does not support topic attributes %s";
+  public static final String
+      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_616E0CDE =
+          "Reject CreateRegionGroupsPlan because database {} does not exist";
+  public static final String
+      LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01 =
+          "Reject CreateRegionGroupsPlan because database {} is being deleted";
+  public static final String
+      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440 =
+          "Create RegionGroups failed because database %s does not exist";
+  public static final String
+      MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780 =
+          "Create RegionGroups failed because database %s is being deleted";
 }

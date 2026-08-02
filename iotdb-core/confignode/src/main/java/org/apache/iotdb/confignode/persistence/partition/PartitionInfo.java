@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.BatchRemoveRegionCreateTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -63,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManage
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
@@ -104,6 +106,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.confignode.i18n.ConfigNodeMessages.MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440;
+import static org.apache.iotdb.confignode.i18n.ConfigNodeMessages.MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780;
 
 /**
  * The {@link PartitionInfo} stores cluster PartitionTable.
@@ -192,37 +197,68 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus createRegionGroups(CreateRegionGroupsPlan plan) {
-    TSStatus result;
-    AtomicInteger maxRegionId = new AtomicInteger(Integer.MIN_VALUE);
+    updateNextRegionGroupId(plan);
+
+    final TSStatus validationStatus = validateCreateRegionGroups(plan);
+    if (validationStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return validationStatus;
+    }
 
     plan.getRegionGroupMap()
         .forEach(
-            (database, regionReplicaSets) -> {
-              if (isDatabasePreDeleted(database)) {
-                LOGGER.warn(
-                    ConfigNodeMessages
-                        .CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS,
-                    database);
-                return;
-              }
-              databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
-              regionReplicaSets.forEach(
-                  regionReplicaSet ->
-                      maxRegionId.set(
-                          Math.max(maxRegionId.get(), regionReplicaSet.getRegionId().getId())));
-            });
+            (database, regionReplicaSets) ->
+                databasePartitionTables.get(database).createRegionGroups(regionReplicaSets));
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /** Validates all databases before any RegionGroup in a potentially batched plan is persisted. */
+  public TSStatus validateCreateRegionGroups(final CreateRegionGroupsPlan plan) {
+    for (final String database : plan.getRegionGroupMap().keySet()) {
+      final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+      if (databasePartitionTable == null) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_616E0CDE,
+            database);
+        final String message =
+            String.format(
+                MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_AF0F2440,
+                database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(message);
+      }
+      if (!databasePartitionTable.isNotPreDeleted()) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_REJECT_CREATEREGIONGROUPSPLAN_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_C085AC01,
+            database);
+        final String message =
+            String.format(
+                MESSAGE_CREATE_REGIONGROUPS_FAILED_BECAUSE_DATABASE_ARG_IS_BEING_DELETED_651DB780,
+                database);
+        return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(message);
+      }
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private void updateNextRegionGroupId(final CreateRegionGroupsPlan plan) {
+    final int maxRegionId =
+        plan.getRegionGroupMap().values().stream()
+            .flatMap(List::stream)
+            .mapToInt(regionReplicaSet -> regionReplicaSet.getRegionId().getId())
+            .max()
+            .orElse(Integer.MIN_VALUE);
 
     // To ensure that the nextRegionGroupId is updated correctly when
     // the ConfigNode-followers concurrently processes CreateRegionsPlan,
     // we need to add a synchronization lock here
     synchronized (nextRegionGroupId) {
-      if (nextRegionGroupId.get() < maxRegionId.get()) {
-        nextRegionGroupId.set(maxRegionId.get());
+      if (nextRegionGroupId.get() < maxRegionId) {
+        nextRegionGroupId.set(maxRegionId);
       }
     }
-
-    result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    return result;
   }
 
   /**
@@ -233,19 +269,23 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
     synchronized (regionMaintainTaskList) {
+      final Set<RegionMaintainTask> existingTasks = new HashSet<>(regionMaintainTaskList);
       // The RegionMaintainer queue only recreates failed region replicas now; region deletion is
       // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task that an upgraded node may
       // replay from an old consensus log, so it cannot get stuck in the queue and block the
       // recreation of that region's other replicas.
-      for (RegionMaintainTask task : offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
+      for (final RegionMaintainTask task :
+          offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
         if (RegionMaintainType.DELETE.equals(task.getType())) {
           LOGGER.info(
               ConfigNodeMessages
                   .MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649,
               task.getRegionId());
-          continue;
+        } else if (task instanceof RegionCreateTask createTask
+            && isRegionCreateTaskOwnedByCurrentPartitionTable(createTask)
+            && existingTasks.add(task)) {
+          regionMaintainTaskList.add(task);
         }
-        regionMaintainTaskList.add(task);
       }
       return RpcUtils.SUCCESS_STATUS;
     }
@@ -288,6 +328,36 @@ public class PartitionInfo implements SnapshotProcessor {
       }
       return RpcUtils.SUCCESS_STATUS;
     }
+  }
+
+  /** Idempotently remove all RegionCreateTasks that belong to the specified database. */
+  public TSStatus batchRemoveRegionCreateTasks(BatchRemoveRegionCreateTasksPlan plan) {
+    synchronized (regionMaintainTaskList) {
+      final DatabasePartitionTable databasePartitionTable =
+          databasePartitionTables.get(plan.getDatabase());
+      if (databasePartitionTable == null || databasePartitionTable.isNotPreDeleted()) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
+      regionMaintainTaskList.removeIf(
+          task ->
+              task instanceof RegionCreateTask createTask
+                  && Objects.equals(plan.getDatabase(), createTask.getStorageGroup()));
+      return RpcUtils.SUCCESS_STATUS;
+    }
+  }
+
+  private boolean isRegionCreateTaskOwnedByCurrentPartitionTable(RegionCreateTask task) {
+    if (!isDatabaseExisted(task.getStorageGroup())) {
+      return false;
+    }
+    return getReplicaSets(task.getStorageGroup(), Collections.singletonList(task.getRegionId()))
+        .stream()
+        .anyMatch(
+            replicaSet ->
+                replicaSet.getDataNodeLocations().stream()
+                    .anyMatch(
+                        location ->
+                            location.getDataNodeId() == task.getTargetDataNode().getDataNodeId()));
   }
 
   /**
@@ -1024,10 +1094,13 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
-      // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
-        task.serialize(bufferedOutputStream, protocol);
+      // Serialize the queue under the same monitor used by every consensus mutation so the count
+      // and entries belong to one atomic snapshot.
+      synchronized (regionMaintainTaskList) {
+        ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
+        for (RegionMaintainTask task : regionMaintainTaskList) {
+          task.serialize(bufferedOutputStream, protocol);
+        }
       }
 
       // write to file

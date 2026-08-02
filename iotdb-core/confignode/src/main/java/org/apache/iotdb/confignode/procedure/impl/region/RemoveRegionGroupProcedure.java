@@ -60,16 +60,14 @@ import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
  * never finished forming. The DataNode runs the deletion asynchronously and this procedure polls
  * for the result, so a slow deletion is never wrongly reported as finished.
  *
- * <p>This procedure is submitted as an independent root procedure (not a child) by its callers,
- * which only enqueue the deletion and return immediately. It therefore owns the deletion end to
- * end: on any failure it retries the current replica forever (backing off between attempts) instead
- * of giving up, because there is no parent left to fall back to and the region's peer/data must not
- * be left on disk. Each genuine re-attempt uses a FRESH DataNode-side taskId (the DataNode dedups
- * by taskId and caches a terminal result forever, so reusing one taskId would make every retry a
- * no-op that never re-runs the delete); the in-flight taskId is persisted so a leader change
- * re-polls the same task rather than double-submitting. It carries its own {@link
- * TRegionReplicaSet} copy, so it can finish even after the caller has dropped the partition table,
- * and it survives ConfigNode leader change / restart.
+ * <p>Database lifecycle procedures run this procedure as a child while retaining the database lock.
+ * On any failure it retries the current replica forever (backing off between attempts) instead of
+ * giving up, because the region's peer/data must not be left on disk. Each genuine re-attempt uses
+ * a FRESH DataNode-side taskId (the DataNode dedups by taskId and caches a terminal result forever,
+ * so reusing one taskId would make every retry a no-op that never re-runs the delete); the
+ * in-flight taskId is persisted so a leader change re-polls the same task rather than
+ * double-submitting. It carries its own {@link TRegionReplicaSet} copy and survives ConfigNode
+ * leader change / restart.
  */
 public class RemoveRegionGroupProcedure extends RegionOperationProcedure<RemoveRegionGroupState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionGroupProcedure.class);

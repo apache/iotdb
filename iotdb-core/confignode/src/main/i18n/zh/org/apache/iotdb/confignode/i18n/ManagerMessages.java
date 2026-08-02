@@ -517,8 +517,6 @@ public final class ManagerMessages {
       "等待 configNode leader 就绪过程中发生意外中断。";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "等待获取 cluster id 过程中发生意外中断。";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "RegionMaintainer 队列中出现意外的非 create 任务；跳过处理（该队列目前仅用于重建 region 副本，region 删除由 RemoveRegionGroupProcedure 处理）。";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "waitingProcedureFinished 的 procedure 参数为空";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -582,6 +580,11 @@ public final class ManagerMessages {
   public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "schema_engine_mode";
   public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
+  public static final String
+      MESSAGE_DATABASE_ARG_STILL_HAS_UNFINISHED_LIFECYCLE_PROCEDURES_67573924 =
+          "数据库 %s 仍有未完成的生命周期流程";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "其他任务正在删除数据库 %s";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "设置数据库 %s 的空间配额时发生意外错误 ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "设置用户 %s 的限流配额时发生意外错误 ";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";

@@ -522,8 +522,6 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -590,6 +588,11 @@ public final class ManagerMessages {
   public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "schema_engine_mode";
   public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
+  public static final String
+      MESSAGE_DATABASE_ARG_STILL_HAS_UNFINISHED_LIFECYCLE_PROCEDURES_67573924 =
+          "Database %s still has unfinished lifecycle procedures";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "Some other task is deleting database %s";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "Unexpected error happened while setting space quota on database: %s ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "Unexpected error happened while setting throttle quota on user: %s ";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template need two files";

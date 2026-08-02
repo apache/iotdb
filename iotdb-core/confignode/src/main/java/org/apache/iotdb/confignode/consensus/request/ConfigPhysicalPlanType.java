@@ -72,6 +72,7 @@ public enum ConfigPhysicalPlanType {
   AddRegionLocation((short) 311),
   RemoveRegionLocation((short) 312),
   GetRegionGroupsByTime((short) 313),
+  BatchRemoveRegionCreateTasks((short) 314),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
