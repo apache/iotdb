@@ -52,6 +52,18 @@ public final class PipeObjectPathUtil {
         .getObjectFileHardlink(tsFileResource, relativePath, pipeName);
   }
 
+  public static long getLinkedObjectFileSizeInBytes(
+      final TsFileResource tsFileResource, final String pipeName, final String relativePath) {
+    Objects.requireNonNull(pipeName);
+
+    if (tsFileResource == null || relativePath == null || relativePath.trim().isEmpty()) {
+      return 0;
+    }
+
+    return PipeDataNodeResourceManager.object()
+        .getLinkedObjectFileSizeInBytes(tsFileResource, relativePath, pipeName);
+  }
+
   public static File resolveLinkedObjectDirectory(
       final TsFileResource tsFileResource, final String pipeName) {
     Objects.requireNonNull(pipeName, "pipeName must not be null");

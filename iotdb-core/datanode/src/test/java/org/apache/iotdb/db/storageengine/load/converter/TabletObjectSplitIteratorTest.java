@@ -38,8 +38,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+// Covers TabletObjectSplitIterator splitting behavior for Object columns.
+// Checks base-tablet emission, Object-chunk splitting (with/without id columns), value-content
+// binaries, per-tablet Object count limits, and copy-vs-mutate semantics.
 public class TabletObjectSplitIteratorTest {
 
+  // No Object column: iterator yields the original tablet once and finishes.
   @Test
   public void testOnlyIdColumnReturnsBaseOnly() throws Exception {
     final Tablet tablet =
@@ -60,6 +64,8 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // ID + Object columns: emits base tablet first, then Object content chunks for non-null Object
+  // rows, skipping null Object values.
   @Test
   public void testIdAndObjectColumnSplit() throws Exception {
     final Path tempDir = Files.createTempDirectory("tablet_object_split_iterator_test_");
@@ -116,6 +122,7 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // Object-only tablet (no ID/TAG): still splits Object file bytes into sequential chunks.
   @Test
   public void testOnlyObjectColumnWithoutIdSplit() throws Exception {
     final Path tempDir = Files.createTempDirectory("tablet_object_only_split_test_");
@@ -161,6 +168,8 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // Object value already carries inline content bytes and no object dir is provided: iterator still
+  // emits content chunks from the embedded binary.
   @Test
   public void testObjectValueContentBinarySplitWithoutObjectDir() throws Exception {
     final byte[] objectPayload = "object-payload-1".getBytes(StandardCharsets.UTF_8);
@@ -192,6 +201,31 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // Honors setMaxObjectValueCountPerTablet when packing Object values into tablets.
+  @Test
+  public void testLimitObjectValueCountPerTablet() throws Exception {
+    final Tablet tablet =
+        new Tablet(
+            "t_obj",
+            Arrays.asList("file"),
+            Arrays.asList(TSDataType.OBJECT),
+            Arrays.asList(ColumnCategory.FIELD),
+            2);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, true, 0L, new byte[] {1});
+    tablet.addTimestamp(1, 2L);
+    tablet.addValue(1, 0, true, 0L, new byte[] {2});
+    tablet.setRowSize(2);
+
+    try (TabletObjectSplitIterator iterator = new TabletObjectSplitIterator(tablet, null, null)) {
+      iterator.setMaxObjectValueCountPerTablet(1);
+      Assert.assertEquals(1, iterator.next().getRowSize());
+      Assert.assertEquals(1, iterator.next().getRowSize());
+      Assert.assertFalse(iterator.hasNext());
+    }
+  }
+
+  // ID + normal FIELD without Object: only the original tablet is emitted.
   @Test
   public void testIdAndNormalWithoutObjectReturnsBaseOnly() throws Exception {
     final Tablet tablet =
@@ -213,6 +247,7 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // ID + normal FIELD + Object: base tablet keeps non-Object columns, then Object chunks follow.
   @Test
   public void testIdNormalAndObjectReturnBaseThenSplit() throws Exception {
     final Path tempDir = Files.createTempDirectory("tablet_object_split_iterator_base_test_");
@@ -236,15 +271,20 @@ public class TabletObjectSplitIteratorTest {
 
       try (TabletObjectSplitIterator iterator =
           new TabletObjectSplitIterator(tablet, null, tempDir.toFile(), true)) {
+        iterator.setObjectChunkSizeLimitBytes(3);
         Assert.assertTrue(iterator.hasNext());
         final Tablet first = iterator.next();
         Assert.assertNotSame(tablet, first);
         Assert.assertSame(originalObjectBinary, ((Binary[]) tablet.getValues()[2])[0]);
 
+        final ObjectChunk firstChunk = decodeChunkBinary(((Binary[]) first.getValues()[2])[0]);
+        Assert.assertEquals(0, firstChunk.offset);
+        Assert.assertFalse(firstChunk.isEOF);
         Assert.assertTrue(iterator.hasNext());
-        long expectedOffset = 0;
-        int copied = 0;
+        long expectedOffset = firstChunk.content.length;
+        int copied = firstChunk.content.length;
         final byte[] actual = new byte[fileContent.length];
+        System.arraycopy(firstChunk.content, 0, actual, 0, copied);
         while (iterator.hasNext()) {
           final Tablet objectChunk = iterator.next();
           Assert.assertEquals(1, objectChunk.getRowSize());
@@ -269,6 +309,7 @@ public class TabletObjectSplitIteratorTest {
     }
   }
 
+  // With copy disabled, iterator mutates the original tablet in place for the base view.
   @Test
   public void testDisableCopyWillMutateOriginalTablet() throws Exception {
     final Path tempDir = Files.createTempDirectory("tablet_object_split_iterator_mutate_test_");
@@ -294,7 +335,11 @@ public class TabletObjectSplitIteratorTest {
         Assert.assertTrue(iterator.hasNext());
         final Tablet first = iterator.next();
         Assert.assertSame(tablet, first);
-        Assert.assertEquals(Binary.EMPTY_VALUE, ((Binary[]) tablet.getValues()[2])[0]);
+        final ObjectChunk objectChunk = decodeChunkBinary(((Binary[]) tablet.getValues()[2])[0]);
+        Assert.assertEquals(0, objectChunk.offset);
+        Assert.assertTrue(objectChunk.isEOF);
+        Assert.assertArrayEquals(fileContent, objectChunk.content);
+        Assert.assertFalse(iterator.hasNext());
       }
     } finally {
       deleteDirectory(tempDir);

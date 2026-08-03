@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceSegmentLock;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongConsumer;
 
 /**
  * Manages the lifecycle, physical directories, and reference counting of object resources
@@ -68,6 +70,8 @@ public class PipeObjectResourceManager {
   private static final String ERR_RESOURCE_MISSING =
       "Object resource missing for TsFile %s in pipe %s. Ensure linkObjectFiles is called prior "
           + "to referencing.";
+
+  private static final LongConsumer NOOP_LINKED_OBJECT_FILE_SIZE_CONSUMER = unused -> {};
 
   /**
    * Two-level concurrent mapping structure: PipeName -> TsFileKey -> PipeObjectResource. Used to
@@ -107,11 +111,79 @@ public class PipeObjectResourceManager {
     return linkObjectFiles(tsFileResource, pathIterator, pipeName, null);
   }
 
+  /**
+   * Hardlinks Object files and reports the sizes encoded in their Object values. This avoids a
+   * filesystem metadata lookup solely for size accounting after each link.
+   *
+   * @throws IOException if directory creation or hardlinking fails
+   */
+  public int linkObjectFilesWithSizes(
+      final TsFileResource tsFileResource,
+      final Iterator<Pair<Long, String>> pathAndSizeIterator,
+      final String pipeName,
+      final BooleanSupplier shouldStopLinking,
+      final LongConsumer linkedObjectFileSizeConsumer)
+      throws IOException {
+    validatePipeName(pipeName);
+    validateTsFileResource(tsFileResource);
+
+    if (pathAndSizeIterator == null || !pathAndSizeIterator.hasNext()) {
+      return 0;
+    }
+
+    final File tsFile = tsFileResource.getTsFile();
+    int linkedCount = 0;
+
+    segmentLock.lock(tsFile);
+    try {
+      final PipeObjectResource resource = getOrCreateObjectResource(tsFileResource, pipeName);
+      while (pathAndSizeIterator.hasNext()) {
+        if (shouldStopLinking != null && shouldStopLinking.getAsBoolean()) {
+          break;
+        }
+        final Pair<Long, String> pathAndSize = pathAndSizeIterator.next();
+        final String relativePath = pathAndSize == null ? null : pathAndSize.getRight();
+        if (relativePath != null && !relativePath.trim().isEmpty()) {
+          resource.linkObjectFile(relativePath, pathAndSize.getLeft());
+          linkedObjectFileSizeConsumer.accept(pathAndSize.getLeft());
+          linkedCount++;
+        }
+      }
+      if (linkedCount != 0) {
+        resource.increaseReferenceCount();
+      }
+      return linkedCount;
+    } finally {
+      segmentLock.unlock(tsFile);
+    }
+  }
+
   public int linkObjectFiles(
       final TsFileResource tsFileResource,
       final Iterator<String> pathIterator,
       final String pipeName,
       final BooleanSupplier shouldStopLinking)
+      throws IOException {
+    return linkObjectFiles(
+        tsFileResource,
+        pathIterator,
+        pipeName,
+        shouldStopLinking,
+        NOOP_LINKED_OBJECT_FILE_SIZE_CONSUMER);
+  }
+
+  /**
+   * Hardlinks Object files and reports the cached size of each successfully linked file.
+   *
+   * @param linkedObjectFileSizeConsumer receives one size for every successfully linked path
+   * @throws IOException if directory creation or hardlinking fails
+   */
+  public int linkObjectFiles(
+      final TsFileResource tsFileResource,
+      final Iterator<String> pathIterator,
+      final String pipeName,
+      final BooleanSupplier shouldStopLinking,
+      final LongConsumer linkedObjectFileSizeConsumer)
       throws IOException {
 
     validatePipeName(pipeName);
@@ -135,6 +207,8 @@ public class PipeObjectResourceManager {
         final String relativePath = pathIterator.next();
         if (relativePath != null && !relativePath.trim().isEmpty()) {
           resource.linkObjectFile(relativePath);
+          linkedObjectFileSizeConsumer.accept(
+              resource.getLinkedObjectFileSizeInBytes(relativePath));
           linkedCount++;
         }
       }
@@ -271,6 +345,31 @@ public class PipeObjectResourceManager {
     final PipeObjectResource resource =
         pipeResources.get(buildTsFileResourceKeySafely(tsFileResource.getTsFile()));
     return resource != null ? resource.getObjectFileHardlink(relativePath) : null;
+  }
+
+  /**
+   * Returns the Object file length recorded when the corresponding hardlink was established.
+   *
+   * @return the cached length, or {@code 0} if the resource or path is unavailable
+   */
+  public long getLinkedObjectFileSizeInBytes(
+      final TsFileResource tsFileResource, final String relativePath, final String pipeName) {
+    validatePipeName(pipeName);
+    if (tsFileResource == null
+        || tsFileResource.getTsFile() == null
+        || relativePath == null
+        || relativePath.trim().isEmpty()) {
+      return 0;
+    }
+
+    final Map<String, PipeObjectResource> pipeResources = pipeToTsFileResourceMap.get(pipeName);
+    if (pipeResources == null) {
+      return 0;
+    }
+
+    final PipeObjectResource resource =
+        pipeResources.get(buildTsFileResourceKeySafely(tsFileResource.getTsFile()));
+    return resource == null ? 0 : resource.getLinkedObjectFileSizeInBytes(relativePath);
   }
 
   /**

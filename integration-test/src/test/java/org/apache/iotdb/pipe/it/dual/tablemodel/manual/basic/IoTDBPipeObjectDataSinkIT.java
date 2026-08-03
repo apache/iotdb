@@ -103,6 +103,11 @@ public class IoTDBPipeObjectDataSinkIT extends AbstractPipeTableModelDualManualI
   }
 
   @Test
+  public void testThriftAsyncSinkObjectBatchWithMemoryControlMixTabletNoPattern() throws Exception {
+    doTestReceiverSinkScenario(PIPE_NAME, "iotdb-thrift-async-sink", false, "tablet", true, true);
+  }
+
+  @Test
   public void testThriftAsyncSinkMixTsFileBatchNoPattern() throws Exception {
     doTestReceiverSinkScenario(PIPE_NAME, "iotdb-thrift-async-sink", false, "tsfile", true);
   }
@@ -154,6 +159,17 @@ public class IoTDBPipeObjectDataSinkIT extends AbstractPipeTableModelDualManualI
       final String sinkFormat,
       final boolean batchEnabled)
       throws Exception {
+    doTestReceiverSinkScenario(pipeName, sinkName, useAirGapPort, sinkFormat, batchEnabled, false);
+  }
+
+  private void doTestReceiverSinkScenario(
+      final String pipeName,
+      final String sinkName,
+      final boolean useAirGapPort,
+      final String sinkFormat,
+      final boolean batchEnabled,
+      final boolean objectBatchEnabled)
+      throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort =
@@ -174,6 +190,12 @@ public class IoTDBPipeObjectDataSinkIT extends AbstractPipeTableModelDualManualI
       sinkAttributes.put("sink.ip", receiverIp);
       sinkAttributes.put("sink.port", String.valueOf(receiverPort));
       sinkAttributes.put("sink.batch.enable", String.valueOf(batchEnabled));
+      sinkAttributes.put("sink.object-batch.enable", String.valueOf(objectBatchEnabled));
+      if (objectBatchEnabled) {
+        sinkAttributes.put("sink.batch.size-bytes", String.valueOf(Long.MAX_VALUE));
+        sinkAttributes.put("sink.object-batch.max-object-size-bytes", "1");
+        sinkAttributes.put("sink.object-batch.buffer-size-bytes", "1");
+      }
       sinkAttributes.put("sink.format", sinkFormat);
       sinkAttributes.put("sink.realtime-first", "false");
 

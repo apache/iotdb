@@ -4398,7 +4398,6 @@ public class DataRegion implements IDataRegionForQuery {
                 objectNode.getFilePath().getDeviceID().getTableName(),
                 fileLength,
                 1);
-        PipeInsertionDataNodeListener.getInstance().listenToObjectNode(dataRegionId.getId());
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
@@ -4456,13 +4455,33 @@ public class DataRegion implements IDataRegionForQuery {
       final Optional<Map<String, Long>> tableSizeMap,
       final File objectFileDir)
       throws LoadFileException {
+    loadNewTsFileWithObject(
+        newTsFileResource,
+        deleteOriginFile,
+        isGeneratedByPipe,
+        isFromConsensus,
+        tableSizeMap,
+        objectFileDir,
+        null);
+  }
+
+  public void loadNewTsFileWithObject(
+      final TsFileResource newTsFileResource,
+      final boolean deleteOriginFile,
+      final boolean isGeneratedByPipe,
+      final boolean isFromConsensus,
+      final Optional<Map<String, Long>> tableSizeMap,
+      final File objectFileDir,
+      final Boolean hasObjectData)
+      throws LoadFileException {
     doLoadNewTsFileWithObject(
         newTsFileResource,
         deleteOriginFile,
         isGeneratedByPipe,
         isFromConsensus,
         tableSizeMap,
-        objectFileDir);
+        objectFileDir,
+        hasObjectData);
   }
 
   public void loadNewTsFile(
@@ -4478,6 +4497,7 @@ public class DataRegion implements IDataRegionForQuery {
         isGeneratedByPipe,
         isFromConsensus,
         tableSizeMap,
+        null,
         null);
   }
 
@@ -4487,7 +4507,8 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus,
       final Optional<Map<String, Long>> tableSizeMap,
-      final File objectFileDir)
+      final File objectFileDir,
+      final Boolean hasObjectData)
       throws LoadFileException {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       final IoTConsensusServerImpl impl =
@@ -4504,6 +4525,10 @@ public class DataRegion implements IDataRegionForQuery {
 
     final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
+    // Object files in the staging directory are moved into tiered storage before the TsFile event
+    // is created, so determine their presence before the installation.
+    final Boolean effectiveHasObjectData =
+        hasObjectData == null ? containsObjectFiles(objectFileDir) : hasObjectData;
 
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
@@ -4578,7 +4603,8 @@ public class DataRegion implements IDataRegionForQuery {
           newTsFileResource,
           newFilePartitionId,
           deleteOriginFile,
-          isGeneratedByPipe);
+          isGeneratedByPipe,
+          effectiveHasObjectData);
 
       tableSizeMap.ifPresent(
           stringLongMap ->
@@ -4895,7 +4921,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource tsFileResource,
       final long filePartitionId,
       final boolean deleteOriginFile,
-      boolean isGeneratedByPipe)
+      boolean isGeneratedByPipe,
+      final Boolean hasObjectData)
       throws LoadFileException, DiskSpaceInsufficientException {
     final int targetTierLevel = 0;
     final String fileName =
@@ -5009,11 +5036,25 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
+        .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true, hasObjectData);
 
     tsFileManager.add(tsFileResource, false);
 
     return true;
+  }
+
+  private static boolean containsObjectFiles(final File objectFileDir) {
+    if (objectFileDir == null || !objectFileDir.exists() || !objectFileDir.isDirectory()) {
+      return false;
+    }
+    try (Stream<Path> pathStream = Files.walk(objectFileDir.toPath())) {
+      return pathStream.anyMatch(
+          path ->
+              Files.isRegularFile(path)
+                  && path.getFileName().toString().endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX));
+    } catch (final IOException ignored) {
+      return false;
+    }
   }
 
   private void loadModFile(

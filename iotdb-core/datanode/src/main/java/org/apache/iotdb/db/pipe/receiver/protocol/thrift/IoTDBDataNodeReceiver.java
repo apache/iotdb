@@ -79,6 +79,8 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletObjectBatchReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletObjectBatchResp;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileObjectBatchReq;
@@ -203,6 +205,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
   private final Set<String> autoCreatedTreeDatabases = ConcurrentHashMap.newKeySet();
   private final Set<String> conflictedTreeDatabases = ConcurrentHashMap.newKeySet();
+  private final Map<Long, Integer> objectTabletBatchExpectedSequence = new ConcurrentHashMap<>();
 
   private enum TreeDatabaseCreationResult {
     SKIPPED,
@@ -388,6 +391,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTsFileObjectBatchTimer(System.nanoTime() - startTime);
               }
             }
+          case TRANSFER_TABLET_OBJECT_BATCH:
+            return handleTransferTabletObjectBatch(
+                PipeTransferTabletObjectBatchReq.fromTPipeTransferReq(req));
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
             {
               try {
@@ -527,6 +533,31 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatementAndClassifyExceptions(statement));
+  }
+
+  private TPipeTransferResp handleTransferTabletObjectBatch(
+      final PipeTransferTabletObjectBatchReq req) {
+    final int expectedSequence =
+        objectTabletBatchExpectedSequence.getOrDefault(req.getBatchId(), 0);
+    if (req.getSequenceId() != expectedSequence) {
+      return PipeTransferTabletObjectBatchResp.toSequenceResetTPipeTransferResp(expectedSequence);
+    }
+    final List<TSStatus> statuses = new ArrayList<>(req.getTabletRequests().size());
+    for (final PipeTransferTabletRawReqV2 tabletRequest : req.getTabletRequests()) {
+      final TPipeTransferResp response = handleTransferTabletRaw(tabletRequest);
+      statuses.add(response.getStatus());
+      final int code = response.getStatus().getCode();
+      if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return response;
+      }
+    }
+    if (req.isLast()) {
+      objectTabletBatchExpectedSequence.remove(req.getBatchId());
+    } else {
+      objectTabletBatchExpectedSequence.put(req.getBatchId(), expectedSequence + 1);
+    }
+    return new TPipeTransferResp(PipeReceiverStatusHandler.getPriorStatus(statuses));
   }
 
   private TPipeTransferResp handleTransferTsFileObjectBatch(
@@ -1655,6 +1686,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   public synchronized void handleExit() {
     clearSliceReqHandler();
+    objectTabletBatchExpectedSequence.clear();
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());

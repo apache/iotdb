@@ -1460,6 +1460,8 @@ public final class StorageEngineMessages {
   public static final String INVALID_OBJECT_CONTENT_LENGTH =
       "无效的对象内容长度，期望 %d 字节但得到 %d 字节，"
           + "relativePath=%s, offset=%d, declaredFileLength=%d。";
+  public static final String LOG_FAILED_TO_CLOSE_OBJECT_FILE_CHANNEL_1EEAE9F2 =
+      "关闭 Object 文件通道失败。";
 
   // 版本门禁：内部配置同步路径拒绝设置 IoTDB 版禁用的键。%s 为配置键名。
   public static final String MESSAGE_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =

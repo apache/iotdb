@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.object;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -41,6 +42,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
 
+// Covers Pipe Object hardlink lifecycle and encoded-size accounting.
+// Validates that linked Object files are cleaned up only after TsFile close plus last
+// dereference, and that linkObjectFilesWithSizes records the encoded Object value size
+// without relying on filesystem metadata for accounting.
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(TierManager.class)
@@ -75,6 +80,8 @@ public class PipeObjectResourceManagerTest {
     tsFileResource = new TsFileResource(tsFile);
   }
 
+  // Links Object files, keeps them alive across intermediate refcount changes, then cleans
+  // hardlinks only after TsFile is closed and the final reference is dropped.
   @Test
   public void testManagerLifecycleCleansUpHardlinksAfterCloseAndDereference() throws Exception {
     final PipeObjectResourceManager manager = new PipeObjectResourceManager();
@@ -93,6 +100,9 @@ public class PipeObjectResourceManagerTest {
     Assert.assertTrue(linkedDir.exists());
     Assert.assertNotNull(hardlink);
     Assert.assertTrue(hardlink.exists());
+    Assert.assertEquals(
+        hardlink.length(),
+        manager.getLinkedObjectFileSizeInBytes(tsFileResource, OBJECT_RELATIVE_PATH, PIPE_NAME));
 
     manager.increaseReference(tsFileResource, PIPE_NAME);
     manager.decreaseReference(tsFileResource, PIPE_NAME);
@@ -106,10 +116,34 @@ public class PipeObjectResourceManagerTest {
     Assert.assertNull(manager.getLinkedObjectDirectory(tsFileResource, PIPE_NAME));
     Assert.assertNull(
         manager.getObjectFileHardlink(tsFileResource, OBJECT_RELATIVE_PATH, PIPE_NAME));
+    Assert.assertEquals(
+        0, manager.getLinkedObjectFileSizeInBytes(tsFileResource, OBJECT_RELATIVE_PATH, PIPE_NAME));
     Assert.assertFalse(linkedDir.exists());
     Assert.assertFalse(hardlink.exists());
   }
 
+  // Prefer the size encoded in the Object value over File#length() when recording linked
+  // Object accounting metadata.
+  @Test
+  public void testLinkObjectFilesWithSizesUsesEncodedObjectSize() throws Exception {
+    final PipeObjectResourceManager manager = new PipeObjectResourceManager();
+    final long encodedObjectSizeInBytes = originalObjectFile.length() + 1;
+
+    Assert.assertEquals(
+        1,
+        manager.linkObjectFilesWithSizes(
+            tsFileResource,
+            Arrays.asList(new Pair<>(encodedObjectSizeInBytes, OBJECT_RELATIVE_PATH)).iterator(),
+            PIPE_NAME,
+            null,
+            ignored -> {}));
+    Assert.assertEquals(
+        encodedObjectSizeInBytes,
+        manager.getLinkedObjectFileSizeInBytes(tsFileResource, OBJECT_RELATIVE_PATH, PIPE_NAME));
+  }
+
+  // Ensures PipeObjectResource#cleanup() clears hardlinks/refcount state and rejects
+  // further linking after the resource is closed.
   @Test
   public void testResourceCleanupResetsHardlinkLifecycleState() throws Exception {
     final File resourceDir = new File(temporaryFolder.getRoot(), "resource-dir");

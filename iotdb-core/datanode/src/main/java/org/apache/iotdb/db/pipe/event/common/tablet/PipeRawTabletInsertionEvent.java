@@ -46,6 +46,7 @@ import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -283,6 +284,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     if (pipeName != null && Objects.equals(hasObjectData, Boolean.TRUE) && tsFileResource != null) {
       // Only increase reference count, do not link files
       PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
+      setObjectFileSizeInBytes(
+          objectValueContentEvent ? 0 : calculateLinkedObjectFileSizeInBytes());
     }
 
     if (Objects.nonNull(pipeName)) {
@@ -290,6 +293,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
+  }
+
+  private long calculateLinkedObjectFileSizeInBytes() {
+    long totalSizeInBytes = 0;
+    final Iterator<Pair<Long, String>> objectPathAndSizeIterator = objectPathAndSizeIterator();
+    while (objectPathAndSizeIterator.hasNext()) {
+      final long objectFileSizeInBytes = objectPathAndSizeIterator.next().getLeft();
+      totalSizeInBytes =
+          Long.MAX_VALUE - totalSizeInBytes < objectFileSizeInBytes
+              ? Long.MAX_VALUE
+              : totalSizeInBytes + objectFileSizeInBytes;
+    }
+    return totalSizeInBytes;
   }
 
   @Override
@@ -467,10 +483,30 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public Iterator<String> objectPathIterator() {
-    return objectPaths().iterator();
+    final Iterator<Pair<Long, String>> iterator = objectPathAndSizeIterator();
+    return new Iterator<String>() {
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public String next() {
+        return iterator.next().getRight();
+      }
+    };
+  }
+
+  @Override
+  public Iterator<Pair<Long, String>> objectPathAndSizeIterator() {
+    return objectPathsAndSizes().iterator();
   }
 
   public Iterable<String> objectPaths() {
+    return this::objectPathIterator;
+  }
+
+  public Iterable<Pair<Long, String>> objectPathsAndSizes() {
     final InsertNodeObjectPathIterator.ExtractContext context =
         new InsertNodeObjectPathIterator.ExtractContext(
             getTreePattern(),

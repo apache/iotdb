@@ -246,6 +246,105 @@ public class IoTDBFileReceiverTest {
     }
   }
 
+  @Test
+  public void testObjectFileWriterIsReusedForConsecutivePieces() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final String relativePath = "1-0-0-0/99/object.bin";
+
+      final TPipeTransferResp firstResponse =
+          receiver.writeObjectFilePiece(relativePath, 0, 7, new byte[] {1, 2, 3});
+      final RandomAccessFile firstWriter = receiver.getCurrentObjectFileWriter();
+      final TPipeTransferResp secondResponse =
+          receiver.writeObjectFilePiece(relativePath, 3, 7, new byte[] {4, 5, 6});
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), firstResponse.getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), secondResponse.getStatus().getCode());
+      Assert.assertNotNull(firstWriter);
+      Assert.assertSame(firstWriter, receiver.getCurrentObjectFileWriter());
+
+      receiver.closeObjectFileWriter();
+
+      Assert.assertNull(receiver.getCurrentObjectFileWriter());
+      Assert.assertArrayEquals(
+          new byte[] {1, 2, 3, 4, 5, 6},
+          Files.readAllBytes(receiver.getWritingFileInBaseDir(relativePath).toPath()));
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testObjectFileWriterIsClosedWhenSwitchingFiles() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.writeObjectFilePiece("1-0-0-0/99/object-1.bin", 0, 2, new byte[] {1});
+      final RandomAccessFile firstWriter = receiver.getCurrentObjectFileWriter();
+
+      receiver.writeObjectFilePiece("1-0-0-0/99/object-2.bin", 0, 2, new byte[] {2});
+
+      Assert.assertNotNull(firstWriter);
+      Assert.assertNotSame(firstWriter, receiver.getCurrentObjectFileWriter());
+      Assert.assertThrows(IOException.class, () -> firstWriter.write(3));
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeClosesObjectFileWriter() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.handshake();
+      receiver.writeObjectFilePiece("1-0-0-0/99/object.bin", 0, 2, new byte[] {1});
+      final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+
+      receiver.handshake();
+
+      Assert.assertNull(receiver.getCurrentObjectFileWriter());
+      Assert.assertThrows(IOException.class, () -> objectFileWriter.write(2));
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testSealClosesObjectFileWriter() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.createWritingFile("normal.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1});
+      receiver.writeObjectFilePiece("normal/99/object.bin", 0, 2, new byte[] {2});
+      final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+
+      receiver.sealFileV1("normal.tsfile", 1);
+
+      Assert.assertNull(receiver.getCurrentObjectFileWriter());
+      Assert.assertThrows(IOException.class, () -> objectFileWriter.write(3));
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandleExitClosesObjectFileWriter() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    receiver.writeObjectFilePiece("1-0-0-0/99/object.bin", 0, 2, new byte[] {1});
+    final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+
+    receiver.handleExit();
+
+    Assert.assertNull(receiver.getCurrentObjectFileWriter());
+    Assert.assertThrows(IOException.class, () -> objectFileWriter.write(2));
+  }
+
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
     private final File receiverFileBaseDir;
@@ -310,6 +409,20 @@ public class IoTDBFileReceiverTest {
           true);
     }
 
+    TPipeTransferResp writeObjectFilePiece(
+        final String relativePath,
+        final long startWritingOffset,
+        final long totalLength,
+        final byte[] objectPiece)
+        throws IOException {
+      return handleTransferObjectFilePiece(
+          relativePath, startWritingOffset, totalLength, objectPiece, false);
+    }
+
+    void closeObjectFileWriter() {
+      closeCurrentObjectFileWriter();
+    }
+
     TPipeTransferResp sealFileV1(final String fileName, final long fileLength) throws IOException {
       return handleTransferFileSealV1(DummyFileSealReqV1.toTPipeTransferReq(fileName, fileLength));
     }
@@ -334,6 +447,10 @@ public class IoTDBFileReceiverTest {
 
     RandomAccessFile getCurrentWritingFileWriter() throws Exception {
       return (RandomAccessFile) getField("writingFileWriter").get(this);
+    }
+
+    RandomAccessFile getCurrentObjectFileWriter() throws Exception {
+      return (RandomAccessFile) getField("writingObjectFileWriter").get(this);
     }
 
     private Field getField(final String fieldName) throws NoSuchFieldException {

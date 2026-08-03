@@ -56,6 +56,12 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   private final Map<String, Timer> compressionTimerMap = new ConcurrentHashMap<>();
 
+  private final Map<String, Timer> objectTabletRequestPrepareTimerMap = new ConcurrentHashMap<>();
+  private final Map<String, Timer> objectTabletRequestTimerMap = new ConcurrentHashMap<>();
+  private final Map<String, Timer> objectTabletHandlerTimerMap = new ConcurrentHashMap<>();
+  private final Map<String, Histogram> objectTabletHandlerCallbackCountHistogramMap =
+      new ConcurrentHashMap<>();
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
@@ -207,6 +213,42 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
             sink.getAttributeSortedString(),
             Tag.CREATION_TIME.toString(),
             String.valueOf(sink.getCreationTime())));
+    for (final String type : new String[] {"object_tablet", "object_tablet_batch"}) {
+      final String key = getObjectTabletMetricKey(taskID, type);
+      objectTabletRequestPrepareTimerMap.put(
+          key,
+          metricService.getOrCreateTimer(
+              Metric.PIPE_OBJECT_TABLET_REQUEST_PREPARE_TIME.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              sink.getAttributeSortedString(),
+              Tag.CREATION_TIME.toString(),
+              String.valueOf(sink.getCreationTime()),
+              Tag.TYPE.toString(),
+              type));
+      objectTabletRequestTimerMap.put(
+          key,
+          metricService.getOrCreateTimer(
+              Metric.PIPE_OBJECT_TABLET_REQUEST_TIME.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              sink.getAttributeSortedString(),
+              Tag.CREATION_TIME.toString(),
+              String.valueOf(sink.getCreationTime()),
+              Tag.TYPE.toString(),
+              type));
+      objectTabletHandlerTimerMap.put(
+          key,
+          metricService.getOrCreateTimer(
+              Metric.PIPE_OBJECT_TABLET_HANDLER_TIME.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              sink.getAttributeSortedString(),
+              Tag.CREATION_TIME.toString(),
+              String.valueOf(sink.getCreationTime()),
+              Tag.TYPE.toString(),
+              type));
+    }
   }
 
   private void createHistogram(final String taskID) {
@@ -259,6 +301,19 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
             Tag.NAME.toString(),
             sink.getAttributeSortedString());
     sink.setEventSizeHistogram(eventSizeHistogram);
+    for (final String type : new String[] {"object_tablet", "object_tablet_batch"}) {
+      objectTabletHandlerCallbackCountHistogramMap.put(
+          getObjectTabletMetricKey(taskID, type),
+          metricService.getOrCreateHistogram(
+              Metric.PIPE_OBJECT_TABLET_HANDLER_CALLBACK_COUNT.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              sink.getAttributeSortedString(),
+              Tag.CREATION_TIME.toString(),
+              String.valueOf(sink.getCreationTime()),
+              Tag.TYPE.toString(),
+              type));
+    }
   }
 
   @Override
@@ -394,6 +449,28 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         Tag.CREATION_TIME.toString(),
         String.valueOf(sink.getCreationTime()));
     compressionTimerMap.remove(taskID);
+    for (final String type : new String[] {"object_tablet", "object_tablet_batch"}) {
+      final String key = getObjectTabletMetricKey(taskID, type);
+      for (final Metric metric :
+          new Metric[] {
+            Metric.PIPE_OBJECT_TABLET_REQUEST_PREPARE_TIME,
+            Metric.PIPE_OBJECT_TABLET_REQUEST_TIME,
+            Metric.PIPE_OBJECT_TABLET_HANDLER_TIME
+          }) {
+        metricService.remove(
+            MetricType.TIMER,
+            metric.toString(),
+            Tag.NAME.toString(),
+            sink.getAttributeSortedString(),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(sink.getCreationTime()),
+            Tag.TYPE.toString(),
+            type);
+      }
+      objectTabletRequestPrepareTimerMap.remove(key);
+      objectTabletRequestTimerMap.remove(key);
+      objectTabletHandlerTimerMap.remove(key);
+    }
   }
 
   private void removeHistogram(final String taskID) {
@@ -432,6 +509,18 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
         Tag.NAME.toString(),
         sink.getAttributeSortedString());
+    for (final String type : new String[] {"object_tablet", "object_tablet_batch"}) {
+      metricService.remove(
+          MetricType.HISTOGRAM,
+          Metric.PIPE_OBJECT_TABLET_HANDLER_CALLBACK_COUNT.toString(),
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime()),
+          Tag.TYPE.toString(),
+          type);
+      objectTabletHandlerCallbackCountHistogramMap.remove(getObjectTabletMetricKey(taskID, type));
+    }
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -502,6 +591,50 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   public Timer getCompressionTimer(final String taskID) {
     return Objects.isNull(metricService) ? null : compressionTimerMap.get(taskID);
+  }
+
+  public void recordObjectTabletRequestPrepareTime(
+      final String taskID, final boolean isBatch, final long costTimeInNanos) {
+    final Timer timer =
+        objectTabletRequestPrepareTimerMap.get(
+            getObjectTabletMetricKey(taskID, getObjectTabletMetricType(isBatch)));
+    if (timer != null) {
+      timer.updateNanos(costTimeInNanos);
+    }
+  }
+
+  public void recordObjectTabletRequestTime(
+      final String taskID, final boolean isBatch, final long costTimeInNanos) {
+    final Timer timer =
+        objectTabletRequestTimerMap.get(
+            getObjectTabletMetricKey(taskID, getObjectTabletMetricType(isBatch)));
+    if (timer != null) {
+      timer.updateNanos(costTimeInNanos);
+    }
+  }
+
+  public void recordObjectTabletHandler(
+      final String taskID,
+      final boolean isBatch,
+      final long costTimeInNanos,
+      final long callbackCount) {
+    final String key = getObjectTabletMetricKey(taskID, getObjectTabletMetricType(isBatch));
+    final Timer timer = objectTabletHandlerTimerMap.get(key);
+    if (timer != null) {
+      timer.updateNanos(costTimeInNanos);
+    }
+    final Histogram histogram = objectTabletHandlerCallbackCountHistogramMap.get(key);
+    if (histogram != null) {
+      histogram.update(callbackCount);
+    }
+  }
+
+  private static String getObjectTabletMetricType(final boolean isBatch) {
+    return isBatch ? "object_tablet_batch" : "object_tablet";
+  }
+
+  private static String getObjectTabletMetricKey(final String taskID, final String type) {
+    return taskID + '_' + type;
   }
 
   //////////////////////////// singleton ////////////////////////////

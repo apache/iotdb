@@ -145,7 +145,7 @@ public abstract class PipeTransferTrackableHandler
     return true;
   }
 
-  private void returnClientToPool(final AsyncPipeDataTransferServiceClient client) {
+  protected final void returnClientToPool(final AsyncPipeDataTransferServiceClient client) {
     client.setShouldReturnSelf(true);
     client.returnSelf(
         e -> {

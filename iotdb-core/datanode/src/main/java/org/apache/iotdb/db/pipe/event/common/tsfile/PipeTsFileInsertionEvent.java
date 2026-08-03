@@ -59,6 +59,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -409,7 +410,23 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public Iterator<String> objectPathIterator() {
-    return objectPaths().iterator();
+    final Iterator<Pair<Long, String>> iterator = objectPathAndSizeIterator();
+    return new Iterator<String>() {
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public String next() {
+        return iterator.next().getRight();
+      }
+    };
+  }
+
+  @Override
+  public Iterator<Pair<Long, String>> objectPathAndSizeIterator() {
+    return objectPathsAndSizes().iterator();
   }
 
   /**
@@ -418,6 +435,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
    * full list.
    */
   public Iterable<String> objectPaths() {
+    return this::objectPathIterator;
+  }
+
+  public Iterable<Pair<Long, String>> objectPathsAndSizes() {
     if (Objects.equals(hasObjectData, Boolean.FALSE) || !getTsFileResource().isClosed()) {
       return Collections.emptyList();
     }
@@ -462,15 +483,26 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       if (Objects.nonNull(pipeName)) {
         final boolean shouldLinkObjectFiles = !Objects.equals(hasObjectData, Boolean.FALSE);
-        final Iterator<String> pathIterator =
+        final Iterator<Pair<Long, String>> pathAndSizeIterator =
             shouldLinkObjectFiles
                 ? new TsFileObjectPathIterator(this, linkedObjectColumnModEntries)
                 : Collections.emptyIterator();
+        final AtomicLong objectFileSizeInBytes = new AtomicLong();
         final int linked =
             PipeDataNodeResourceManager.object()
-                .linkObjectFiles(
-                    resource, pathIterator, pipeName, this::shouldSkipFurtherProcessing);
+                .linkObjectFilesWithSizes(
+                    resource,
+                    pathAndSizeIterator,
+                    pipeName,
+                    this::shouldSkipFurtherProcessing,
+                    sizeInBytes ->
+                        objectFileSizeInBytes.updateAndGet(
+                            currentSizeInBytes ->
+                                Long.MAX_VALUE - currentSizeInBytes < sizeInBytes
+                                    ? Long.MAX_VALUE
+                                    : currentSizeInBytes + sizeInBytes));
         hasObjectData = linked != 0;
+        setObjectFileSizeInBytes(objectFileSizeInBytes.get());
 
         PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
       }

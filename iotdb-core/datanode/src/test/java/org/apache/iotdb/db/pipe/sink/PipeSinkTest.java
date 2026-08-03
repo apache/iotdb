@@ -503,36 +503,6 @@ public class PipeSinkTest {
   }
 
   @Test
-  public void testAsyncSinkTransferObjectTabletSynchronouslyInTsFileFormat() throws Exception {
-    try (final TrackingIoTDBDataRegionAsyncSink sink = new TrackingIoTDBDataRegionAsyncSink()) {
-      final PipeParameters parameters = createAsyncSinkParameters(true);
-      sink.validate(new PipeParameterValidator(parameters));
-      sink.customize(parameters, createRuntimeConfiguration());
-
-      final PipeRawTabletInsertionEvent event =
-          new PipeRawTabletInsertionEvent(
-              true,
-              "root.db",
-              "db",
-              "root.db",
-              createTablet(),
-              false,
-              "pipe",
-              0L,
-              null,
-              null,
-              false);
-      event.setHasObject(true);
-      event.setTsFileResource(new TsFileResource(new File("1.tsfile")));
-
-      sink.transfer(event);
-
-      Assert.assertTrue(sink.hasSynchronouslyTransferredTablet);
-      Assert.assertFalse(sink.hasSynchronouslyTransferredTsFile);
-    }
-  }
-
-  @Test
   public void testWriteBackSinkTargetDatabaseValidation() throws Exception {
     assertWriteBackSinkTargetDatabaseValid("target");
     assertWriteBackSinkTargetDatabaseValid("root.target");

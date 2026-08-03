@@ -37,6 +37,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -49,7 +50,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @SuppressWarnings("java:S107")
-public class InsertNodeObjectPathIterator implements Iterator<String> {
+public class InsertNodeObjectPathIterator implements Iterator<Pair<Long, String>> {
 
   public static final class ExtractContext {
     private final TreePattern treePattern;
@@ -78,7 +79,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
     }
   }
 
-  private final Iterator<String> pathIterator;
+  private final Iterator<Pair<Long, String>> pathIterator;
 
   public InsertNodeObjectPathIterator(
       final InsertNode insertNode, final Boolean hasObjectData, final ExtractContext context) {
@@ -127,14 +128,14 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
   }
 
   @Override
-  public String next() {
+  public Pair<Long, String> next() {
     if (!hasNext()) {
       throw new NoSuchElementException("No more object paths available.");
     }
     return pathIterator.next();
   }
 
-  private Stream<String> extractPathsFromInsertNode(
+  private Stream<Pair<Long, String>> extractPathsFromInsertNode(
       final InsertNode insertNode,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -198,7 +199,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
     return Stream.empty();
   }
 
-  private static Stream<String> extractPathsFromTablet(
+  private static Stream<Pair<Long, String>> extractPathsFromTablet(
       final Tablet tablet,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -243,7 +244,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
         entity);
   }
 
-  private static Stream<String> extractPathsFromColumns(
+  private static Stream<Pair<Long, String>> extractPathsFromColumns(
       final long[] times,
       final int rowCount,
       final Object[] columns,
@@ -300,12 +301,11 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
                               times[rowIdx], startTime, endTime, colData[rowIdx], bitMap, rowIdx))
                   .mapToObj(
                       rowIdx ->
-                          ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair((colData[rowIdx]))
-                              .getRight());
+                          ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(colData[rowIdx]));
             });
   }
 
-  private static Stream<String> extractPathsFromRow(
+  private static Stream<Pair<Long, String>> extractPathsFromRow(
       final InsertRowNode node,
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -346,10 +346,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
                     treePattern,
                     isTableModelEvent,
                     entity))
-        .mapToObj(
-            i ->
-                ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(((Binary) values[i]))
-                    .getRight());
+        .mapToObj(i -> ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair((Binary) values[i]));
   }
 
   private static boolean isValidObjectColumnArray(

@@ -215,7 +215,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
             dataRegion.isTableModel()
                 ? TableDiskUsageStatisticUtil.calculateTableSizeMap(cloneTsFileResource)
                 : Optional.empty(),
-            objectFileSearchRoot);
+            objectFileSearchRoot,
+            ((LoadSingleTsFileNode) planNode).isTsFileContainsObjectColumn()
+                ? null
+                : Boolean.FALSE);
       } catch (LoadFileException e) {
         LOGGER.warn(DataNodeQueryMessages.LOAD_TSFILE_NODE_ERROR, planNode, e);
         TSStatus resultStatus = new TSStatus();

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-public final class TsFileObjectPathIterator implements Iterator<String> {
+public final class TsFileObjectPathIterator implements Iterator<Pair<Long, String>> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileObjectPathIterator.class);
 
@@ -43,10 +44,10 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
   private final PipeTsFileInsertionEvent tsfileEvent;
   @Nullable private final List<ModEntry> modEntriesSink;
 
-  private Iterator<String> currentPathIterator;
+  private Iterator<Pair<Long, String>> currentPathIterator;
 
   private boolean hasCachedNext = false;
-  private String nextPath = null;
+  private Pair<Long, String> nextPathAndSize = null;
   private boolean isClosed = false;
 
   public TsFileObjectPathIterator(@Nonnull final PipeTsFileInsertionEvent tsFileEvent) {
@@ -101,9 +102,11 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
       return false;
     }
     while (currentPathIterator.hasNext()) {
-      final String path = currentPathIterator.next();
-      if (path != null && !path.trim().isEmpty()) {
-        nextPath = path;
+      final Pair<Long, String> pathAndSize = currentPathIterator.next();
+      if (pathAndSize != null
+          && pathAndSize.getRight() != null
+          && !pathAndSize.getRight().trim().isEmpty()) {
+        nextPathAndSize = pathAndSize;
         hasCachedNext = true;
         return true;
       }
@@ -117,7 +120,8 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
     }
     final TabletInsertionEvent nextEvent = tabletEventIterator.next();
     if (nextEvent instanceof PipeInsertionEvent) {
-      final Iterator<String> it = ((PipeInsertionEvent) nextEvent).objectPathIterator();
+      final Iterator<Pair<Long, String>> it =
+          ((PipeInsertionEvent) nextEvent).objectPathAndSizeIterator();
       currentPathIterator = it != null ? it : Collections.emptyIterator();
       return true;
     }
@@ -132,13 +136,13 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
 
   @Override
   @Nonnull
-  public String next() {
+  public Pair<Long, String> next() {
     if (!hasNext()) {
       throw new NoSuchElementException("The TsFile path stream has been exhausted.");
     }
 
-    String result = nextPath;
-    nextPath = null;
+    final Pair<Long, String> result = nextPathAndSize;
+    nextPathAndSize = null;
     hasCachedNext = false;
     return result;
   }
@@ -146,7 +150,7 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
   public void close() {
     if (!isClosed) {
       isClosed = true;
-      nextPath = null;
+      nextPathAndSize = null;
       hasCachedNext = false;
       currentPathIterator = Collections.emptyIterator();
       if (tsfileEvent != null) {

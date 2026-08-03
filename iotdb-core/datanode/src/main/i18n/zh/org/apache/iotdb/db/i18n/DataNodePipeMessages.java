@@ -1498,6 +1498,10 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_CREATE_OBJECT_FILE_STREAM = "创建对象文件流失败";
   public static final String OBJECT_BATCH_TRANSFER_OFFSET_RESET_NOT_RESUMABLE =
       "对象批次传输偏移量重置不可恢复 (tsFile=%s)。";
+  public static final String EXCEPTION_OBJECT_TABLET_BATCH_OFFSET_RESET_NOT_RESUMABLE_ARG_07978FCE =
+      "对象 tablet 批次传输偏移量重置不可恢复 (batch=%s)。";
+  public static final String EXCEPTION_OBJECT_TABLET_BATCH_INVALID_SEQUENCE_RESET_BODY_FE990B3B =
+      "对象 tablet 批次 sequence 重置响应 body 非法。";
   public static final String FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_SYNCHRONOUSLY =
       "同步传输 tablet insertion event %s 失败，原因：%s。";
   public static final String FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_SYNCHRONOUSLY =

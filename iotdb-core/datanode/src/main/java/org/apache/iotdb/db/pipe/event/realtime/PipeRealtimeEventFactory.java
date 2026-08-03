@@ -37,8 +37,18 @@ public class PipeRealtimeEventFactory {
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded) {
+    return createRealtimeEvent(isTableModel, databaseNameFromDataRegion, resource, isLoaded, null);
+  }
+
+  public static PipeRealtimeEvent createRealtimeEvent(
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final boolean isLoaded,
+      final Boolean hasObjectData) {
     PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(isTableModel, databaseNameFromDataRegion, resource, isLoaded);
+    tsFileInsertionEvent.setHasObject(hasObjectData);
 
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileInsertionEvent, resource);
   }
@@ -51,6 +61,7 @@ public class PipeRealtimeEventFactory {
     final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
             isTableModel, databaseNameFromDataRegion, insertNode, resource);
+    insertionEvent.setHasObject(insertNode.mayContainObjectData());
 
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         insertionEvent, insertNode, resource);

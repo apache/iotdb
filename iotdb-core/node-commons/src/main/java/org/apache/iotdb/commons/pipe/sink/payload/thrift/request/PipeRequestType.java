@@ -69,6 +69,8 @@ public enum PipeRequestType {
   // ---------------------------------------------------------------------------
   /** Multiple object file pieces (path + offset + length + payload) in one request. */
   TRANSFER_TS_FILE_OBJECT_BATCH((short) -1),
+  /** One ordered table-model Tablet write containing base data and Object content chunks. */
+  TRANSFER_TABLET_OBJECT_BATCH((short) -2),
   ;
 
   private final short type;

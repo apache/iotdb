@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -51,11 +50,6 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  // Independent tracking for Object type write operations
-  // This map has independent lifecycle from assigner
-  private final ConcurrentMap<Integer, AtomicBoolean> dataRegionId2HasObjectWrite =
-      new ConcurrentHashMap<>();
-
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
@@ -68,15 +62,6 @@ public class PipeInsertionDataNodeListener {
           final PipeDataRegionAssigner actualAssigner =
               assigner == null ? new PipeDataRegionAssigner(dataRegionId) : assigner;
           actualAssigner.startAssignTo(source);
-
-          // Sync Object write flag from independent tracking to assigner.
-          final AtomicBoolean hasObjectWrite = dataRegionId2HasObjectWrite.get(dataRegionId);
-          // Two checks ensure that the initialization of this variable will not cause concurrency
-          // issues.
-          actualAssigner.hasObjectData.set(hasObjectWrite != null);
-          if (dataRegionId2HasObjectWrite.get(dataRegionId) != null) {
-            actualAssigner.hasObjectData.set(true);
-          }
 
           return actualAssigner;
         });
@@ -115,6 +100,15 @@ public class PipeInsertionDataNodeListener {
       final String databaseName,
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
+    listenToTsFile(dataRegionId, databaseName, tsFileResource, isLoaded, null);
+  }
+
+  public void listenToTsFile(
+      final int dataRegionId,
+      final String databaseName,
+      final TsFileResource tsFileResource,
+      final boolean isLoaded,
+      final Boolean hasObjectData) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region with tsfile listeners will be extracted
@@ -124,26 +118,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
-  }
-
-  /**
-   * Listen to Object type write operations. Mark that this data region has Object type write
-   * operations. Use independent map to track Object write even before assigner is created.
-   *
-   * @param dataRegionId the data region id
-   */
-  public void listenToObjectNode(final int dataRegionId) {
-    // Track Object write independently
-    dataRegionId2HasObjectWrite
-        .computeIfAbsent(dataRegionId, k -> new AtomicBoolean(false))
-        .set(true);
-
-    // Also mark assigner if it exists
-    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
-    if (assigner != null) {
-      assigner.hasObjectData.set(true);
-    }
+            assigner.isTableModel(), databaseName, tsFileResource, isLoaded, hasObjectData));
   }
 
   public void listenToInsertNode(

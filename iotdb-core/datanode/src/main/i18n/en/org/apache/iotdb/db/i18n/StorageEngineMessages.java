@@ -593,6 +593,8 @@ public final class StorageEngineMessages {
   public static final String INVALID_OBJECT_CONTENT_LENGTH =
       "Invalid object content length, expected %d bytes but got %d bytes, "
           + "relativePath=%s, offset=%d, declaredFileLength=%d.";
+  public static final String LOG_FAILED_TO_CLOSE_OBJECT_FILE_CHANNEL_1EEAE9F2 =
+      "Failed to close Object file channel.";
   // ---------------------------------------------------------------------------
   // Additional log messages
   // ---------------------------------------------------------------------------

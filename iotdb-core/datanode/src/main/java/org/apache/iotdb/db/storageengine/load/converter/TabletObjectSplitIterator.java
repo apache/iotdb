@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
@@ -35,9 +36,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -66,11 +71,22 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
   private final int chunkObjColIdx;
 
   private final boolean hasNonObjectField;
+  private int objectChunkSizeLimitBytes =
+      IoTDBDescriptor.getInstance().getConfig().getLoadTsFileObjectColumnChunkSizeLimitInBytes();
+  private int maxObjectValueCountPerTablet = Integer.MAX_VALUE;
   private boolean isBaseDataReturned = false;
 
   private int currentRow = 0;
   private int currentObjColIdx = 0;
   private long currentFileOffset = 0;
+
+  // Tracks where the most recently generated Object chunk belongs in the base tablet.
+  private int currentChunkOriginalObjectColumnIndex = -1;
+  private List<Integer> currentChunkOriginalRows = Collections.emptyList();
+
+  // A large Object value is emitted as several tablets. Keep its channel open across fragments.
+  private String openedObjectRelativePath;
+  private FileChannel openedObjectFileChannel;
 
   private Tablet nextTabletCache = null;
 
@@ -191,6 +207,40 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
     this.hasNonObjectField = nonObjectFieldFound || objectColIndices.isEmpty();
   }
 
+  public TabletObjectSplitIterator(
+      final Tablet tablet,
+      final File tsFile,
+      final File objectDir,
+      final boolean copyTablet,
+      final int objectChunkSizeLimitBytes) {
+    this(tablet, tsFile, objectDir, copyTablet);
+    this.objectChunkSizeLimitBytes = Math.max(1, objectChunkSizeLimitBytes);
+  }
+
+  /**
+   * Limits the serialized Object chunk size in each generated tablet.
+   *
+   * @throws IllegalStateException if iteration has already started
+   */
+  public void setObjectChunkSizeLimitBytes(final int objectChunkSizeLimitBytes) {
+    if (nextTabletCache != null) {
+      throw new IllegalStateException();
+    }
+    this.objectChunkSizeLimitBytes = Math.max(1, objectChunkSizeLimitBytes);
+  }
+
+  /**
+   * Limits the number of Object values in each generated tablet.
+   *
+   * @throws IllegalStateException if iteration has already started
+   */
+  public void setMaxObjectValueCountPerTablet(final int maxObjectValueCountPerTablet) {
+    if (nextTabletCache != null) {
+      throw new IllegalStateException();
+    }
+    this.maxObjectValueCountPerTablet = Math.max(1, maxObjectValueCountPerTablet);
+  }
+
   @Override
   public boolean hasNext() {
     if (nextTabletCache == null) {
@@ -213,6 +263,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
     if (!isBaseDataReturned) {
       isBaseDataReturned = true;
       if (hasNonObjectField) {
+        mergeFirstObjectChunkIntoBaseTablet();
         return originalTablet;
       }
     }
@@ -243,6 +294,8 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
       // Get the original index of the current Object column
       int origObjIdx = objectColIndices.get(currentObjColIdx);
+      currentChunkOriginalObjectColumnIndex = origObjIdx;
+      currentChunkOriginalRows = new ArrayList<>();
 
       // On-the-fly Assembly: Construct Schema List (Tags + Current Object)
       List<IMeasurementSchema> newSchemas = new ArrayList<>(tagColumnSchemas.size() + 1);
@@ -271,14 +324,11 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
       int currentChunkSize = 0;
       int chunkRowCount = 0;
 
-      final int chunkSizeLimitBytes =
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getLoadTsFileObjectColumnChunkSizeLimitInBytes();
+      final int chunkSizeLimitBytes = objectChunkSizeLimitBytes;
 
       while (currentRow < rowSize
           && currentChunkSize < chunkSizeLimitBytes
-          && chunkRowCount < rowSize) {
+          && chunkRowCount < maxObjectValueCountPerTablet) {
 
         Binary val = extractedObjectValues.get(currentObjColIdx)[currentRow];
         BitMap originalBm = extractedObjectBitMaps.get(currentObjColIdx);
@@ -305,6 +355,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
           currentChunkSize += objectChunk.content.length;
           chunkRowCount++;
+          currentChunkOriginalRows.add(currentRow);
           currentRow++;
           currentFileOffset = 0;
           continue;
@@ -325,9 +376,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
         if (bytesToRead > 0) {
           try {
-            ByteBuffer byteBuffer =
-                ObjectTypeUtils.readObjectContent(
-                    searchRoot, relativePath, currentFileOffset, bytesToRead);
+            ByteBuffer byteBuffer = readObjectContent(relativePath, currentFileOffset, bytesToRead);
             totalBytesRead = byteBuffer.remaining();
             if (byteBuffer.remaining() != bytesToRead) {
               throw new IllegalStateException(
@@ -362,6 +411,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
         currentFileOffset += totalBytesRead;
         currentChunkSize += totalBytesRead;
         chunkRowCount++;
+        currentChunkOriginalRows.add(currentRow);
 
         if (isEOF) {
           currentRow++;
@@ -378,9 +428,57 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
     return null;
   }
 
+  private void mergeFirstObjectChunkIntoBaseTablet() {
+    final Tablet firstObjectChunk = tryComputeNext();
+    if (firstObjectChunk == null || currentChunkOriginalObjectColumnIndex < 0) {
+      return;
+    }
+
+    final Binary[] objectValues =
+        (Binary[]) firstObjectChunk.getValues()[firstObjectChunk.getSchemas().size() - 1];
+    final BitMap objectBitMap = originalTablet.getBitMaps()[currentChunkOriginalObjectColumnIndex];
+    final Binary[] baseObjectValues =
+        (Binary[]) originalTablet.getValues()[currentChunkOriginalObjectColumnIndex];
+    for (int i = 0; i < currentChunkOriginalRows.size(); i++) {
+      final int originalRow = currentChunkOriginalRows.get(i);
+      baseObjectValues[originalRow] = objectValues[i];
+      objectBitMap.unmark(originalRow);
+    }
+  }
+
   @Override
   public void close() {
     nextTabletCache = null;
+    closeOpenedObjectFileChannel();
+  }
+
+  private ByteBuffer readObjectContent(
+      final String relativePath, final long offset, final int readSize) throws IOException {
+    if (!relativePath.equals(openedObjectRelativePath)) {
+      closeOpenedObjectFileChannel();
+      openedObjectFileChannel =
+          FileChannel.open(new File(searchRoot, relativePath).toPath(), StandardOpenOption.READ);
+      openedObjectRelativePath = relativePath;
+    }
+
+    final ByteBuffer buffer = ByteBuffer.allocate(readSize);
+    IOUtils.readFully(openedObjectFileChannel, buffer, offset);
+    buffer.flip();
+    return buffer;
+  }
+
+  private void closeOpenedObjectFileChannel() {
+    if (openedObjectFileChannel == null) {
+      return;
+    }
+    try {
+      openedObjectFileChannel.close();
+    } catch (final IOException e) {
+      LOGGER.warn(StorageEngineMessages.LOG_FAILED_TO_CLOSE_OBJECT_FILE_CHANNEL_1EEAE9F2, e);
+    } finally {
+      openedObjectFileChannel = null;
+      openedObjectRelativePath = null;
+    }
   }
 
   private static Tablet copyTabletIfNecessary(final Tablet tablet, final boolean copyTablet) {

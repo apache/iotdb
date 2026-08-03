@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -72,6 +74,9 @@ public class PipeObjectResource implements AutoCloseable {
    * directory.
    */
   private final AtomicInteger linkedFileCount = new AtomicInteger(0);
+
+  /** Caches Object file lengths when their hardlinks are established. */
+  private final ConcurrentMap<String, Long> linkedObjectFileSizeInBytes = new ConcurrentHashMap<>();
 
   /**
    * Records the number of active Pipe tasks or events currently holding and using this resource.
@@ -229,6 +234,19 @@ public class PipeObjectResource implements AutoCloseable {
    *     be found across any storage tiers, or the OS-level hardlink creation process fails.
    */
   public void linkObjectFile(final String relativePath) throws IOException {
+    linkObjectFile(relativePath, -1);
+  }
+
+  /**
+   * Links an Object file and records its encoded size when available. A size from the Object value
+   * avoids a filesystem metadata lookup after the file is linked.
+   *
+   * @param relativePath the relative Object file path to link
+   * @param sizeInBytes encoded Object size, or a negative value to fall back to {@link
+   *     File#length()}
+   * @throws IOException if linking fails or the resource/TsFile is already closed
+   */
+  public void linkObjectFile(final String relativePath, final long sizeInBytes) throws IOException {
     if (relativePath == null || relativePath.isEmpty()) {
       return;
     }
@@ -274,6 +292,21 @@ public class PipeObjectResource implements AutoCloseable {
             "Created hardlink for object file: {} -> {}", originalOpt.get(), hardlinkTargetFile);
       }
     }
+    linkedObjectFileSizeInBytes.put(
+        relativePath, sizeInBytes >= 0 ? sizeInBytes : originalOpt.get().length());
+  }
+
+  /**
+   * Returns the length recorded while linking the Object file, or {@code 0} if it is unknown.
+   *
+   * @param relativePath the relative Object file path
+   * @return recorded size in bytes, or {@code 0} when unknown
+   */
+  public long getLinkedObjectFileSizeInBytes(final String relativePath) {
+    if (relativePath == null || relativePath.isEmpty()) {
+      return 0;
+    }
+    return linkedObjectFileSizeInBytes.getOrDefault(relativePath, 0L);
   }
 
   /**
@@ -329,6 +362,7 @@ public class PipeObjectResource implements AutoCloseable {
     }
 
     linkedFileCount.set(0);
+    linkedObjectFileSizeInBytes.clear();
     referenceCount.set(0);
   }
 

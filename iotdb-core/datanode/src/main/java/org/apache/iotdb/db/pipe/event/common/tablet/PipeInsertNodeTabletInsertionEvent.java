@@ -64,6 +64,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -79,6 +80,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -229,10 +231,30 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public Iterator<String> objectPathIterator() {
-    return objectPaths().iterator();
+    final Iterator<Pair<Long, String>> iterator = objectPathAndSizeIterator();
+    return new Iterator<String>() {
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public String next() {
+        return iterator.next().getRight();
+      }
+    };
+  }
+
+  @Override
+  public Iterator<Pair<Long, String>> objectPathAndSizeIterator() {
+    return objectPathsAndSizes().iterator();
   }
 
   public Iterable<String> objectPaths() {
+    return this::objectPathIterator;
+  }
+
+  public Iterable<Pair<Long, String>> objectPathsAndSizes() {
     final UserEntity entity = buildEntityForPrivilege();
     final InsertNodeObjectPathIterator.ExtractContext context =
         new InsertNodeObjectPathIterator.ExtractContext(
@@ -259,12 +281,23 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       if (Objects.nonNull(pipeName)) {
         if (mayContainObjectData()) {
           hasObjectData = Boolean.TRUE;
-          final Iterator<String> pathIterator = objectPaths().iterator();
+          final Iterator<Pair<Long, String>> pathAndSizeIterator = objectPathAndSizeIterator();
+          final AtomicLong objectFileSizeInBytes = new AtomicLong();
           final int linked =
               PipeDataNodeResourceManager.object()
-                  .linkObjectFiles(
-                      tsFileResource, pathIterator, pipeName, this::shouldSkipFurtherProcessing);
+                  .linkObjectFilesWithSizes(
+                      tsFileResource,
+                      pathAndSizeIterator,
+                      pipeName,
+                      this::shouldSkipFurtherProcessing,
+                      sizeInBytes ->
+                          objectFileSizeInBytes.updateAndGet(
+                              currentSizeInBytes ->
+                                  Long.MAX_VALUE - currentSizeInBytes < sizeInBytes
+                                      ? Long.MAX_VALUE
+                                      : currentSizeInBytes + sizeInBytes));
           hasObjectData = linked > 0;
+          setObjectFileSizeInBytes(objectFileSizeInBytes.get());
         } else {
           hasObjectData = Boolean.FALSE;
         }

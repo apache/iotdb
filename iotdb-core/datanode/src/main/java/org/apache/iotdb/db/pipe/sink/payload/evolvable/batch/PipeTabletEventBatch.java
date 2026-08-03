@@ -161,8 +161,11 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   }
 
   public synchronized void onSuccess() {
-    events.clear();
+    clearEventsAndResetMemoryUsage();
+  }
 
+  protected void clearEventsAndResetMemoryUsage() {
+    events.clear();
     resetMemoryUsage();
   }
 

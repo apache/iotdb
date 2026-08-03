@@ -1599,6 +1599,10 @@ public final class DataNodePipeMessages {
       "Failed to create object file stream";
   public static final String OBJECT_BATCH_TRANSFER_OFFSET_RESET_NOT_RESUMABLE =
       "Object batch transfer offset reset is not resumable for tsFile %s.";
+  public static final String EXCEPTION_OBJECT_TABLET_BATCH_OFFSET_RESET_NOT_RESUMABLE_ARG_07978FCE =
+      "Object tablet batch transfer offset reset is not resumable for batch %s.";
+  public static final String EXCEPTION_OBJECT_TABLET_BATCH_INVALID_SEQUENCE_RESET_BODY_FE990B3B =
+      "Object tablet batch sequence reset response body is invalid.";
   public static final String FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_SYNCHRONOUSLY =
       "Failed to transfer tablet insertion event %s synchronously, because %s.";
   public static final String FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_SYNCHRONOUSLY =

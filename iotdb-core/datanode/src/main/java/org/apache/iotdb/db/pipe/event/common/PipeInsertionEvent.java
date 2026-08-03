@@ -28,6 +28,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.utils.Pair;
+
 import jakarta.validation.constraints.NotNull;
 
 import java.util.Collections;
@@ -62,6 +64,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   protected String treeModelDatabaseName; // lazy initialization
   protected String tableModelDatabaseName; // lazy initialization
   protected boolean shouldParse4Privilege = false;
+
+  // -1 means that this event has not linked or calculated its Object file size yet.
+  private volatile long objectFileSizeInBytes = -1;
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -195,6 +200,16 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   /**
+   * Returns an iterator over Object file sizes and paths encoded in each Object value. Each element
+   * is a {@code Pair<Long, String>} of {@code (sizeInBytes, relativePath)}, matching {@link
+   * org.apache.iotdb.calc.utils.ObjectTypeUtils#parseObjectBinaryToSizeStringPathPair}. The encoded
+   * size is suitable for accounting and does not require accessing the linked file.
+   */
+  public Iterator<Pair<Long, String>> objectPathAndSizeIterator() {
+    return Collections.emptyIterator();
+  }
+
+  /**
    * Set whether the event has Object-type data manually. This can be used to manually mark Object
    * data without scanning. Default implementation does nothing. Only events that may contain Object
    * types need to override this.
@@ -214,6 +229,14 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
    */
   public boolean hasObjectData() {
     return false;
+  }
+
+  public long getObjectFileSizeInBytes() {
+    return objectFileSizeInBytes;
+  }
+
+  public void setObjectFileSizeInBytes(final long objectFileSizeInBytes) {
+    this.objectFileSizeInBytes = Math.max(0, objectFileSizeInBytes);
   }
 
   /**

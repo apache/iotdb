@@ -128,6 +128,9 @@ import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORK
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
 
+  // Retained until this TsFile is sealed, then propagated to its Pipe event.
+  private final AtomicBoolean hasObjectData = new AtomicBoolean(false);
+
   /** Logger fot this class. */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
@@ -373,6 +376,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    if (insertRowNode.mayContainObjectData()) {
+      hasObjectData.set(true);
+    }
     if (!insertRowNode.isGeneratedByPipe()) {
       this.isTotallyGeneratedByPipe.set(false);
     }
@@ -496,6 +502,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    if (insertRowsNode.mayContainObjectData()) {
+      hasObjectData.set(true);
+    }
     if (!insertRowsNode.isGeneratedByPipe()) {
       this.isTotallyGeneratedByPipe.set(false);
     }
@@ -697,6 +706,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    if (insertTabletNode.mayContainObjectData()) {
+      hasObjectData.set(true);
+    }
     if (!insertTabletNode.isGeneratedByPipe()) {
       this.isTotallyGeneratedByPipe.set(false);
     }
@@ -2054,7 +2066,8 @@ public class TsFileProcessor {
             dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             tsFileResource,
-            false);
+            false,
+            hasObjectData.get());
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);

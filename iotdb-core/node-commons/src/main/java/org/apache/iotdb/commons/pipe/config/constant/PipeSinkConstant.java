@@ -105,6 +105,21 @@ public class PipeSinkConstant {
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_IOTDB_OBJECT_BATCH_MODE_ENABLE_KEY =
+      "connector.object-batch.enable";
+  public static final String SINK_IOTDB_OBJECT_BATCH_MODE_ENABLE_KEY = "sink.object-batch.enable";
+  public static final boolean CONNECTOR_IOTDB_OBJECT_BATCH_MODE_ENABLE_DEFAULT_VALUE = false;
+  public static final String CONNECTOR_IOTDB_OBJECT_BATCH_MAX_OBJECT_SIZE_KEY =
+      "connector.object-batch.max-object-size-bytes";
+  public static final String SINK_IOTDB_OBJECT_BATCH_MAX_OBJECT_SIZE_KEY =
+      "sink.object-batch.max-object-size-bytes";
+  public static final long CONNECTOR_IOTDB_OBJECT_BATCH_MAX_OBJECT_SIZE_DEFAULT_VALUE = MB;
+  public static final String CONNECTOR_IOTDB_OBJECT_BATCH_BUFFER_SIZE_KEY =
+      "connector.object-batch.buffer-size-bytes";
+  public static final String SINK_IOTDB_OBJECT_BATCH_BUFFER_SIZE_KEY =
+      "sink.object-batch.buffer-size-bytes";
+  public static final long CONNECTOR_IOTDB_OBJECT_BATCH_BUFFER_SIZE_DEFAULT_VALUE = 2L * MB;
+
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_SECONDS_KEY =
       "connector.batch.max-delay-seconds";
   public static final String SINK_IOTDB_BATCH_DELAY_SECONDS_KEY = "sink.batch.max-delay-seconds";
