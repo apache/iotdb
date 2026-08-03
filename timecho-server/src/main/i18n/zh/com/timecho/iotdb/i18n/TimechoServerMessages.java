@@ -68,6 +68,8 @@ public final class TimechoServerMessages {
   public static final String FAIL_TO_MIGRATE_RESOURCE_FROM_LOCAL_TO_REMOTE =
       "将资源从本地 {} 迁移到远端 {} 失败";
   public static final String FAIL_TO_DELETE_LOCAL_TSFILE = "删除本地 TsFile {} 失败";
+  public static final String LOG_FAILED_TO_DELETE_MIGRATION_FILE_ARG_24B85A35 =
+      "删除迁移文件 {} 失败";
   public static final String SUCCESSFULLY_DELETE_TSFILE_BY_SPACE_TL =
       "通过 SpaceTL 成功删除 TsFile {}。";
   public static final String MIGRATE_TASK_ERROR = "迁移任务发生错误";

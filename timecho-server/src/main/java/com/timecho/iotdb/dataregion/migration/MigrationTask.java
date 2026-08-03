@@ -132,6 +132,10 @@ public abstract class MigrationTask implements Runnable {
   }
 
   protected void deleteIfExist(File file) {
-    org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+    try {
+      fsFactory.deleteIfExists(file);
+    } catch (IOException e) {
+      logger.warn(TimechoServerMessages.LOG_FAILED_TO_DELETE_MIGRATION_FILE_ARG_24B85A35, file, e);
+    }
   }
 }
