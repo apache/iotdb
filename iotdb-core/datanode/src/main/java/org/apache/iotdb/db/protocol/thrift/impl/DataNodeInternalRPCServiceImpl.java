@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -2355,19 +2357,38 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());
     }
+    MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setRegionDeviceUsageMap(
-          schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setRegionSeriesUsageMap(
-          schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+      try {
+        resp.setRegionDeviceUsageMap(
+            schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+        resp.setRegionSeriesUsageMap(
+            schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+      } catch (final MetadataLeaseFencedException e) {
+        schemaUsageCollectionException = e;
+      }
     }
     if (req.getDataRegionIds() != null) {
       spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     // Update schema quota if necessary
-    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
+    try {
+      SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
+    } catch (final MetadataLeaseFencedException e) {
+      if (schemaUsageCollectionException == null) {
+        schemaUsageCollectionException = e;
+      }
+    }
+    if (schemaUsageCollectionException != null) {
+      resp.unsetRegionDeviceUsageMap();
+      resp.unsetRegionSeriesUsageMap();
+      LOGGER.warn(
+          DataNodeSchemaMessages
+              .LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975,
+          schemaUsageCollectionException);
+    }
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {
