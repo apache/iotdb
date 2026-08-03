@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManag
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,10 +113,11 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     } catch (final IOException e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC, pipeHardLinkDir, e);
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeHardLinkDir, true);
       LOGGER.info(
           DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT,
           pipeHardLinkDir,
-          FileUtils.deleteQuietly(pipeHardLinkDir));
+          !pipeHardLinkDir.exists());
     }
   }
 
