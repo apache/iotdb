@@ -53,7 +53,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -93,7 +96,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private File writingFile;
   private RandomAccessFile writingFileWriter;
   private File writingObjectFile;
-  private RandomAccessFile writingObjectFileWriter;
+  private FileChannel writingObjectFileWriter;
 
   protected boolean shouldConvertDataTypeOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
@@ -504,21 +507,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final File objectFile = resolveReceiverFilePath(receiverRelativePath).toFile();
       updateWritingObjectFileIfNeeded(objectFile);
 
-      if (startWritingOffset < writingObjectFileWriter.length()) {
-        org.apache.iotdb.commons.utils.FileUtils.truncateFile(objectFile, startWritingOffset);
-        writingObjectFileWriter.seek(startWritingOffset);
+      if (startWritingOffset < writingObjectFileWriter.size()) {
+        writingObjectFileWriter.truncate(startWritingOffset);
       }
 
-      if (writingObjectFileWriter.length() != startWritingOffset) {
+      if (writingObjectFileWriter.size() != startWritingOffset) {
         final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
                 String.format(
                     PipeMessages.REQUEST_SENDER_RESET_OBJECT_FILE_OFFSET,
                     startWritingOffset,
-                    writingObjectFileWriter.length()));
+                    writingObjectFileWriter.size()));
         return PipeTransferFilePieceResp.toTPipeTransferResp(
-            status, writingObjectFileWriter.length());
+            status, writingObjectFileWriter.size());
       }
 
       if (startWritingOffset + objectPiece.length > totalLength) {
@@ -533,8 +535,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             PipeTransferFilePieceResp.ERROR_END_OFFSET);
       }
 
-      writingObjectFileWriter.write(objectPiece);
-      final long endWritingOffset = writingObjectFileWriter.length();
+      writingObjectFileWriter.position(startWritingOffset);
+      final ByteBuffer objectPieceBuffer = ByteBuffer.wrap(objectPiece);
+      while (objectPieceBuffer.hasRemaining()) {
+        writingObjectFileWriter.write(objectPieceBuffer);
+      }
+      final long endWritingOffset = writingObjectFileWriter.size();
       if (endWritingOffset == totalLength) {
         closeCurrentObjectFileWriter();
       }
@@ -570,7 +576,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               PipeMessages.FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE, objectFile.getPath()));
     }
     writingObjectFile = objectFile;
-    writingObjectFileWriter = new RandomAccessFile(objectFile, "rw");
+    writingObjectFileWriter =
+        FileChannel.open(
+            objectFile.toPath(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.READ,
+            StandardOpenOption.WRITE);
   }
 
   protected final void closeCurrentObjectFileWriter() {

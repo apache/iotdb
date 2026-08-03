@@ -42,6 +42,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -255,7 +257,7 @@ public class IoTDBFileReceiverTest {
 
       final TPipeTransferResp firstResponse =
           receiver.writeObjectFilePiece(relativePath, 0, 7, new byte[] {1, 2, 3});
-      final RandomAccessFile firstWriter = receiver.getCurrentObjectFileWriter();
+      final FileChannel firstWriter = receiver.getCurrentObjectFileWriter();
       final TPipeTransferResp secondResponse =
           receiver.writeObjectFilePiece(relativePath, 3, 7, new byte[] {4, 5, 6});
 
@@ -283,13 +285,14 @@ public class IoTDBFileReceiverTest {
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
     try {
       receiver.writeObjectFilePiece("1-0-0-0/99/object-1.bin", 0, 2, new byte[] {1});
-      final RandomAccessFile firstWriter = receiver.getCurrentObjectFileWriter();
+      final FileChannel firstWriter = receiver.getCurrentObjectFileWriter();
 
       receiver.writeObjectFilePiece("1-0-0-0/99/object-2.bin", 0, 2, new byte[] {2});
 
       Assert.assertNotNull(firstWriter);
       Assert.assertNotSame(firstWriter, receiver.getCurrentObjectFileWriter());
-      Assert.assertThrows(IOException.class, () -> firstWriter.write(3));
+      Assert.assertThrows(
+          IOException.class, () -> firstWriter.write(ByteBuffer.wrap(new byte[] {3})));
     } finally {
       receiver.handleExit();
     }
@@ -302,12 +305,13 @@ public class IoTDBFileReceiverTest {
     try {
       receiver.handshake();
       receiver.writeObjectFilePiece("1-0-0-0/99/object.bin", 0, 2, new byte[] {1});
-      final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+      final FileChannel objectFileWriter = receiver.getCurrentObjectFileWriter();
 
       receiver.handshake();
 
       Assert.assertNull(receiver.getCurrentObjectFileWriter());
-      Assert.assertThrows(IOException.class, () -> objectFileWriter.write(2));
+      Assert.assertThrows(
+          IOException.class, () -> objectFileWriter.write(ByteBuffer.wrap(new byte[] {2})));
     } finally {
       receiver.handleExit();
     }
@@ -321,12 +325,13 @@ public class IoTDBFileReceiverTest {
       receiver.createWritingFile("normal.tsfile", true);
       receiver.writeToCurrentWritingFile(new byte[] {1});
       receiver.writeObjectFilePiece("normal/99/object.bin", 0, 2, new byte[] {2});
-      final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+      final FileChannel objectFileWriter = receiver.getCurrentObjectFileWriter();
 
       receiver.sealFileV1("normal.tsfile", 1);
 
       Assert.assertNull(receiver.getCurrentObjectFileWriter());
-      Assert.assertThrows(IOException.class, () -> objectFileWriter.write(3));
+      Assert.assertThrows(
+          IOException.class, () -> objectFileWriter.write(ByteBuffer.wrap(new byte[] {3})));
     } finally {
       receiver.handleExit();
     }
@@ -337,12 +342,13 @@ public class IoTDBFileReceiverTest {
     final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
     receiver.writeObjectFilePiece("1-0-0-0/99/object.bin", 0, 2, new byte[] {1});
-    final RandomAccessFile objectFileWriter = receiver.getCurrentObjectFileWriter();
+    final FileChannel objectFileWriter = receiver.getCurrentObjectFileWriter();
 
     receiver.handleExit();
 
     Assert.assertNull(receiver.getCurrentObjectFileWriter());
-    Assert.assertThrows(IOException.class, () -> objectFileWriter.write(2));
+    Assert.assertThrows(
+        IOException.class, () -> objectFileWriter.write(ByteBuffer.wrap(new byte[] {2})));
   }
 
   private static class DummyFileReceiver extends IoTDBFileReceiver {
@@ -449,8 +455,8 @@ public class IoTDBFileReceiverTest {
       return (RandomAccessFile) getField("writingFileWriter").get(this);
     }
 
-    RandomAccessFile getCurrentObjectFileWriter() throws Exception {
-      return (RandomAccessFile) getField("writingObjectFileWriter").get(this);
+    FileChannel getCurrentObjectFileWriter() throws Exception {
+      return (FileChannel) getField("writingObjectFileWriter").get(this);
     }
 
     private Field getField(final String fieldName) throws NoSuchFieldException {
