@@ -17,24 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.commons.udf.utils;
 
-import org.apache.ratis.conf.Parameters;
-import org.apache.ratis.grpc.GrpcFactory;
-import org.apache.ratis.server.RaftServer;
-import org.apache.ratis.server.leader.FollowerInfo;
-import org.apache.ratis.server.leader.LeaderState;
-import org.apache.ratis.server.leader.LogAppender;
+import org.junit.Assert;
+import org.junit.Test;
 
-class RateLimitedGrpcFactory extends GrpcFactory {
+import java.util.ArrayList;
+import java.util.Arrays;
 
-  RateLimitedGrpcFactory(Parameters parameters) {
-    super(parameters);
+public class KDTreeUtilTest {
+
+  @Test
+  public void testQueryUsesCompleteNodeBounds() {
+    ArrayList<ArrayList<Double>> data = new ArrayList<>();
+    data.add(point(4, 0));
+    data.add(point(-2, -2));
+    data.add(point(-5, 5));
+    data.add(point(1, -1));
+    data.add(point(-4, 5));
+    data.add(point(5, -5));
+    data.add(point(-5, 0));
+
+    KDTreeUtil tree = KDTreeUtil.build(data, 2);
+
+    Assert.assertEquals(point(5, -5), tree.query(point(0.25, -8.75), new double[] {1, 1}));
   }
 
-  @Override
-  public LogAppender newLogAppender(
-      RaftServer.Division server, LeaderState leaderState, FollowerInfo follower) {
-    return new RateLimitedGrpcLogAppender(server, leaderState, follower);
+  private ArrayList<Double> point(double first, double second) {
+    return new ArrayList<>(Arrays.asList(first, second));
   }
 }

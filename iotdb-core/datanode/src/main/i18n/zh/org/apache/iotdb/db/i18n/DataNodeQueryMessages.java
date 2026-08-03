@@ -205,6 +205,27 @@ public final class DataNodeQueryMessages {
       "扫描文件时发生错误";
   public static final String ERROR_HAPPENED_WHILE_SCANNING_THE_FILE =
       "扫描文件时发生错误";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "读取时间序列元数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "从 TsFile 读取时间序列元数据失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "读取 chunk 数据或加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "从 TsFile 读取 chunk 数据或加载 page reader 失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "解码 page 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "从 TsFile 解码 page 数据失败：%s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "从 TsFile 读取元数据索引节点失败：%s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "查询执行期间 TsFile 可能已损坏，文件：{}，阶段：{}";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "所有缓存的 chunk 应先被消费";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
@@ -3633,6 +3654,9 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
 
       "加载 TsFile 的源路径 %s 位于允许目录 %s 之外。";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "指定目录包含 IoTDB 数据，无法加载文件。";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "无法解析 load TsFile source %s 的 canonical path：%s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3683,9 +3707,10 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
 
       "AlterLogicalViewNode 的 getOutputColumnNames 尚未实现";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
 
-      "数据库 '%s' 为只读。";
+          "Apache IoTDB 不支持对数据库 '%s' 执行此操作。";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
 
       "数据库 '%s' 仅允许 AUDIT admin 查询。";
@@ -4534,5 +4559,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "无权执行 %s，因为只有超级用户可以修改其自身。";
 
 }

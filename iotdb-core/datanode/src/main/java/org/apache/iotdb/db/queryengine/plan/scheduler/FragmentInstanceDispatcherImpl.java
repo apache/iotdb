@@ -291,6 +291,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
 
     try {
+      shouldDispatch.forEach(instance -> instance.getFragment().clearUselessFieldsAfterRouting());
+
       // 2. try the dispatch
       final List<FailedFragmentInstanceWithStatus> failedInstances =
           dispatchWriteOnce(shouldDispatch);

@@ -1608,8 +1608,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
-    List<Integer> nodeIds =
-        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    List<Integer> nodeIds = Collections.singletonList(Integer.parseInt(ctx.dataNodeId.getText()));
     return new RemoveDataNode(nodeIds);
   }
 

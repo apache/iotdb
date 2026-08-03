@@ -218,6 +218,30 @@ public final class DataNodeQueryMessages {
       "Error happened while scanning the file";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "all cached chunks should be consumed first";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "Failed to read timeseries metadata. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "Failed to read timeseries metadata from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "Failed to read chunk data or load page reader from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "Failed to decode page data. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "Failed to decode page data from TsFile: %s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "Failed to read metadata index node from TsFile: %s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "TsFile may be corrupted during query execution, file: {}, stage: {}";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
       "overlapped data should be consumed first";
   public static final String NO_MORE_BATCH_DATA =
@@ -3013,6 +3037,9 @@ public final class DataNodeQueryMessages {
       "Can not find %s on this machine, notice that load can only handle files on this machine.";
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
       "Load TsFile source path %s is outside allowed directories %s.";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "Cannot load files because the specified directory contains IoTDB data.";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "Failed to resolve canonical path for Load TsFile source %s: %s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3050,8 +3077,9 @@ public final class DataNodeQueryMessages {
       "getOutputColumnNames of CreateMultiTimeSeriesNode is not implemented";
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
       "getOutputColumnNames of AlterLogicalViewNode is not implemented";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
-      "The database '%s' is read-only.";
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
+          "Apache IoTDB does not support this operation on database '%s'.";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
       "The database '%s' can only be queried by AUDIT admin.";
   public static final String QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8 =
@@ -3774,5 +3802,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias is null";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references is null";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "Has no permission to execute %s, because only the superuser can alter him/herself.";
 
 }

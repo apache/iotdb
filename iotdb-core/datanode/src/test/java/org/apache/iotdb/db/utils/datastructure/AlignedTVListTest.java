@@ -39,8 +39,20 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVListTest {
+
+  @Test
+  public void testValueListArrayMemCostExcludesLazyBitmapAndNullPlaceholder() {
+    long expected = (long) ARRAY_SIZE * Long.BYTES + NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF;
+
+    Assert.assertEquals(expected, AlignedTVList.valueListArrayMemCost(TSDataType.INT64));
+    Assert.assertEquals(
+        BitMap.createBitMapDynamically(ARRAY_SIZE).ramBytesUsed(), AlignedTVList.bitmapRamCost());
+    Assert.assertEquals(NUM_BYTES_OBJECT_REF, AlignedTVList.bitmapReferenceRamCost());
+  }
 
   @Test
   public void testAlignedTVList1() {
@@ -176,6 +188,9 @@ public class AlignedTVListTest {
         firstColumnBitMaps.get(2).ramBytesUsed() < new BitMap(ARRAY_SIZE).ramBytesUsed());
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
+    Assert.assertEquals(
+        3L * AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost(),
+        tvList.calculateRamSize().getRamSize() - 3L * tvList.alignedTvListArrayMemCost());
   }
 
   @Test
@@ -250,10 +265,14 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 1));
     Assert.assertEquals(1, tvList.getLongByValueIndex(ARRAY_SIZE + 1, 1));
 
+    long ramSizeBeforeExtension = tvList.calculateRamSize().getRamSize();
     tvList.extendColumn(TSDataType.INT32);
 
     Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertNull(tvList.getValues().get(2).get(1));
+    Assert.assertEquals(
+        2L * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost()),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtension);
 
     long ramSizeBeforeExtendedColumnMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, null, 2});
@@ -264,7 +283,7 @@ public class AlignedTVListTest {
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(
-        AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
   }
 
@@ -280,7 +299,7 @@ public class AlignedTVListTest {
     tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
 
     Assert.assertEquals(
-        AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT64),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
 
     Assert.assertEquals(
@@ -294,7 +313,9 @@ public class AlignedTVListTest {
     Assert.assertEquals(
         (long) projectedTvList.getValues().get(0).size()
                 * projectedTvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
-            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT64),
+            + AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
+            + (long) projectedTvList.getBitMaps().get(0).size()
+                * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost()),
         projectedTvList.calculateRamSize().getRamSize());
 
     tvList.clear();
@@ -312,7 +333,10 @@ public class AlignedTVListTest {
     int blockCount = tvList.getValues().get(0).size();
     long denseRamSize = blockCount * tvList.alignedTvListArrayMemCost();
     long expectedRamSize =
-        denseRamSize - blockCount * AlignedTVList.primitiveArrayMemCost(TSDataType.INT64);
+        denseRamSize
+            - blockCount * AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
+            + (long) blockCount
+                * (AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost());
 
     Assert.assertEquals(expectedRamSize, tvList.calculateRamSize().getRamSize());
   }

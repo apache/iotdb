@@ -196,10 +196,11 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         sys.exit(1)
     print(f"  Python version: {python_version_result.stdout.strip()}")
 
-    # Update lock file and install dependencies
+    # Regenerate the lock file without cached release metadata because a package's
+    # platform artifacts may still be uploading when Poetry first sees a release.
     print("Running poetry lock...")
     result = subprocess.run(
-        [str(poetry_exe), "lock"],
+        [str(poetry_exe), "lock", "--no-cache", "--regenerate"],
         cwd=str(script_dir),
         env=venv_env,
         check=False,

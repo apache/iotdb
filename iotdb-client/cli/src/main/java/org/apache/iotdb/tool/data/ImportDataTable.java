@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -134,7 +135,9 @@ public class ImportDataTable extends AbstractImportData {
               }
             }
           } else {
-            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+            ioTPrinter.println(
+                CliMessages
+                    .MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA);
             System.exit(1);
           }
         }

@@ -57,6 +57,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -152,6 +153,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
         }
         final TSStatus result = applicationStateMachine.write(deserializedRequest);
+        if (result.getCode() == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
+            && waitBeforeRetry()) {
+          continue;
+        }
         ret = new ResponseMessage(result);
         break;
       } catch (Throwable rte) {
@@ -160,13 +165,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                     .setMessage(RatisMessages.INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION + rte));
-        if (Utils.stallApply(consensusGroupType)) {
-          waitUntilSystemAllowApply();
-        } else {
+        if (!Utils.stallApply(consensusGroupType) || !waitUntilSystemAllowApply()) {
           break;
         }
       }
-    } while (Utils.stallApply(consensusGroupType));
+    } while (true);
 
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
@@ -182,16 +185,35 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     return CompletableFuture.completedFuture(ret);
   }
 
-  private void waitUntilSystemAllowApply() {
+  /**
+   * @return true if the wait completed normally, false if interrupted
+   */
+  private boolean waitUntilSystemAllowApply() {
     try {
       Retriable.attemptUntilTrue(
           () -> !Utils.stallApply(consensusGroupType),
           TimeDuration.ONE_MINUTE,
           "waitUntilSystemAllowApply",
           logger);
+      return true;
     } catch (InterruptedException e) {
       logger.warn(RatisMessages.INTERRUPTED_WAITING_SYSTEM_READY, this, e);
       Thread.currentThread().interrupt();
+      return false;
+    }
+  }
+
+  /**
+   * @return true if the sleep completed normally, false if interrupted
+   */
+  private boolean waitBeforeRetry() {
+    try {
+      TimeUnit.MINUTES.sleep(1);
+      return true;
+    } catch (InterruptedException e) {
+      logger.warn(RatisMessages.INTERRUPTED_WAITING_SYSTEM_READY, this, e);
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 

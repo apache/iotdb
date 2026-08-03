@@ -73,6 +73,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -129,15 +130,32 @@ public class IoTConsensusV2 implements IConsensus {
       throw new IOException(e);
     }
 
+    waitForRecovery(recoverFuture);
+  }
+
+  static void waitForRecovery(Future<Void> recoverFuture) throws IOException {
     try {
       recoverFuture.get();
-    } catch (CancellationException ce) {
-      LOGGER.info(IoTConsensusV2Messages.RECOVER_TASK_CANCELLED, ce);
-    } catch (ExecutionException ee) {
-      LOGGER.error(IoTConsensusV2Messages.RECOVER_FUTURE_EXCEPTION, ee);
-    } catch (InterruptedException ie) {
+    } catch (CancellationException e) {
+      throw new IOException(IoTConsensusV2Messages.RECOVER_TASK_CANCELLED, e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof CompletionException && cause.getCause() != null) {
+        cause = cause.getCause();
+      }
+      if (cause instanceof IOException) {
+        throw (IOException) cause;
+      }
+      if (cause instanceof RuntimeException) {
+        throw (RuntimeException) cause;
+      }
+      if (cause instanceof Error) {
+        throw (Error) cause;
+      }
+      throw new IOException(IoTConsensusV2Messages.RECOVER_FUTURE_EXCEPTION, cause);
+    } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn(IoTConsensusV2Messages.RECOVER_TASK_INTERRUPTED, ie);
+      throw new IOException(IoTConsensusV2Messages.RECOVER_TASK_INTERRUPTED, e);
     }
   }
 
@@ -153,39 +171,35 @@ public class IoTConsensusV2 implements IConsensus {
     } else {
       // asynchronously recover, retry logic is implemented at IoTConsensusV2Impl
       return CompletableFuture.runAsync(
-              () -> {
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-                  for (Path path : stream) {
-                    ConsensusGroupId consensusGroupId =
-                        parsePeerFileName(path.getFileName().toString());
-                    try {
-                      IoTConsensusV2ServerImpl consensus =
-                          new IoTConsensusV2ServerImpl(
-                              new Peer(consensusGroupId, thisNodeId, thisNode),
-                              registry.apply(consensusGroupId),
-                              new ArrayList<>(),
-                              config,
-                              syncClientManager);
-                      stateMachineMap.put(consensusGroupId, consensus);
-                      checkPeerListAndStartIfEligible(consensusGroupId, consensus);
-                    } catch (Exception e) {
-                      LOGGER.error(
-                          IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS,
-                          storageDir,
-                          consensusGroupId,
-                          e);
-                    }
-                  }
-                } catch (IOException e) {
+          () -> {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+              for (Path path : stream) {
+                ConsensusGroupId consensusGroupId =
+                    parsePeerFileName(path.getFileName().toString());
+                IStateMachine stateMachine = registry.apply(consensusGroupId);
+                try {
+                  IoTConsensusV2ServerImpl consensus =
+                      new IoTConsensusV2ServerImpl(
+                          new Peer(consensusGroupId, thisNodeId, thisNode),
+                          stateMachine,
+                          new ArrayList<>(),
+                          config,
+                          syncClientManager);
+                  stateMachineMap.put(consensusGroupId, consensus);
+                  checkPeerListAndStartIfEligible(consensusGroupId, consensus);
+                } catch (Exception e) {
                   LOGGER.error(
-                      IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS_READ_DIR, storageDir, e);
+                      IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS,
+                      storageDir,
+                      consensusGroupId,
+                      e);
                 }
-              })
-          .exceptionally(
-              e -> {
-                LOGGER.error(IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS_SHORT, storageDir, e);
-                return null;
-              });
+              }
+            } catch (IOException e) {
+              LOGGER.error(IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS_READ_DIR, storageDir, e);
+              throw new CompletionException(e);
+            }
+          });
     }
   }
 

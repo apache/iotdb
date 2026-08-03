@@ -68,6 +68,9 @@ public final class CliMessages {
   public static final String TIMESTAMP_CANNOT_CONVERT = "Timestamp 无法转换为 %s";
   public static final String BLOB_CANNOT_CONVERT = "Blob 无法转换为 %s";
   public static final String CANNOT_CONVERT = "%s 无法转换为 %s";
+  public static final String
+      MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
+          "参数无效：未提供 table 选项的必填值。";
 
   private CliMessages() {}
   // ---------------------------------------------------------------------------

@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -74,6 +75,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -1661,7 +1663,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (final Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1677,7 +1679,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (final Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1708,7 +1710,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1739,7 +1741,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1786,7 +1788,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1803,12 +1805,12 @@ public class ProcedureManager {
       return status;
     } else {
       // if time out, optimistically believe that this procedure will execute successfully.
-      if (status.getMessage().equals(PROCEDURE_TIMEOUT_MESSAGE)) {
+      if (isProcedureTimeout(status)) {
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
       // otherwise, some exceptions must have occurred, throw them.
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status));
     }
   }
 
@@ -1872,7 +1874,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1888,7 +1890,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1905,7 +1907,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
@@ -1914,21 +1916,18 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTopic(TAlterTopicReq req) {
+    final SubscriptionCoordinator subscriptionCoordinator =
+        configManager.getSubscriptionManager().getSubscriptionCoordinator();
+    subscriptionCoordinator.lockTopicAlteration(req.getTopicName());
     boolean isOwnerLeaseRenewalBlocked = false;
     try {
       isOwnerLeaseRenewalBlocked =
-          configManager
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .blockOwnerLeaseRenewalIfOwnerTransfer(req);
+          subscriptionCoordinator.blockOwnerLeaseRenewalIfOwnerTransfer(req);
       // Owner transfers wait for the previous owner's lease to drain (lease duration + one
       // heartbeat interval, measured on the ConfigNode clock) inside the call below before the
       // updated meta is built; epoch fencing on DataNodes guarantees correctness in the meantime.
       final TopicMeta updatedTopicMeta =
-          configManager
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+          subscriptionCoordinator.buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
       if (updatedTopicMeta == null) {
         return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
             .setMessage(
@@ -1937,26 +1936,42 @@ public class ProcedureManager {
                     req.getTopicName()));
       }
 
+      final Map<String, String> attributesBeforeInjection =
+          new HashMap<>(updatedTopicMeta.getConfig().getAttribute());
       injectTreeViewSourceAttributes(updatedTopicMeta.getConfig().getAttribute());
 
-      AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
+      final Map<String, String> updatedTopicAttributes = new HashMap<>();
+      if (Objects.nonNull(req.getTopicAttributes())) {
+        updatedTopicAttributes.putAll(req.getTopicAttributes());
+      }
+      updatedTopicMeta
+          .getConfig()
+          .getAttribute()
+          .forEach(
+              (key, value) -> {
+                if (!attributesBeforeInjection.containsKey(key)
+                    || !Objects.equals(attributesBeforeInjection.get(key), value)) {
+                  updatedTopicAttributes.put(key, value);
+                }
+              });
+
+      AlterTopicProcedure procedure =
+          new AlterTopicProcedure(updatedTopicMeta, updatedTopicAttributes);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
       return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status));
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     } finally {
       if (isOwnerLeaseRenewalBlocked) {
-        configManager
-            .getSubscriptionManager()
-            .getSubscriptionCoordinator()
-            .unblockOwnerLeaseRenewal(req.getTopicName());
+        subscriptionCoordinator.unblockOwnerLeaseRenewal(req.getTopicName());
       }
+      subscriptionCoordinator.unlockTopicAlteration(req.getTopicName());
     }
   }
 
@@ -2042,7 +2057,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -2058,7 +2073,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
@@ -2075,7 +2090,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
@@ -2092,7 +2107,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
@@ -2109,7 +2124,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -2126,7 +2141,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -2141,14 +2156,14 @@ public class ProcedureManager {
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
+      } else if (isProcedureTimeout(status)) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
@@ -2163,14 +2178,14 @@ public class ProcedureManager {
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
+      } else if (isProcedureTimeout(status)) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
@@ -2228,7 +2243,7 @@ public class ProcedureManager {
     if (!procedure.isFinished()) {
       // The procedure is still executing
       status =
-          RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE);
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, PROCEDURE_TIMEOUT_MESSAGE);
     } else {
       if (procedure.isSuccess()) {
         if (procedure.getResult() != null) {
@@ -2258,12 +2273,25 @@ public class ProcedureManager {
     return status;
   }
 
-  private static String wrapTimeoutMessageForPipeProcedure(String message) {
-    if (message.equals(PROCEDURE_TIMEOUT_MESSAGE)) {
-      return message
-          + " Please manually check later whether the procedure is executed successfully.";
+  private static boolean isProcedureTimeout(final TSStatus status) {
+    return status.getCode() == TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode();
+  }
+
+  private static String wrapTimeoutMessageForPipeProcedure(final TSStatus status) {
+    if (isProcedureTimeout(status)) {
+      return String.format(
+          ManagerMessages
+              .MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D,
+          status.getMessage());
     }
-    return message;
+    return status.getMessage();
+  }
+
+  private static String wrapTimeoutMessageForPipeProcedure(
+      final TSStatus status, final AbstractOperatePipeProcedureV2 procedure) {
+    return isProcedureTimeout(status)
+        ? procedure.getTimeoutDiagnosticMessage()
+        : status.getMessage();
   }
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {

@@ -80,7 +80,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -203,7 +202,7 @@ public class IoTConsensus implements IConsensus {
                   recvSnapshotDirs,
                   recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
@@ -318,7 +317,7 @@ public class IoTConsensus implements IConsensus {
                             recvSnapshotDirs,
                             recvFolderStrategyType,
                             new Peer(groupId, thisNodeId, thisNode),
-                            new TreeSet<>(peers),
+                            peers,
                             registry.apply(groupId),
                             backgroundTaskService,
                             clientManager,

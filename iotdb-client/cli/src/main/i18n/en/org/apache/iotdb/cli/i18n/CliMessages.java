@@ -68,6 +68,9 @@ public final class CliMessages {
   public static final String TIMESTAMP_CANNOT_CONVERT = "Timestamp can not convert to %s";
   public static final String BLOB_CANNOT_CONVERT = "Blob can not convert to %s";
   public static final String CANNOT_CONVERT = "%s can not convert to %s";
+  public static final String
+      MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
+          "Invalid args: Required values for option table not provided.";
 
   private CliMessages() {}
   // ---------------------------------------------------------------------------

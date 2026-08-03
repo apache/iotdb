@@ -20,25 +20,24 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Parsing tests for the table-model SQL that lets REMOVE DATANODE remove multiple DataNodes in a
- * single statement.
- */
-public class RemoveDataNodeMultiNodeStatementTest {
+/** Parsing tests for table-model REMOVE DATANODE and REMOVE CONFIGNODE statements. */
+public class RemoveNodeSingleNodeStatementTest {
 
   private SqlParser sqlParser;
   private IClientSession clientSession;
@@ -61,9 +60,15 @@ public class RemoveDataNodeMultiNodeStatementTest {
   }
 
   @Test
-  public void testRemoveMultipleDataNodes() {
-    Statement statement = parse("remove datanode 3, 4, 5");
-    assertTrue(statement instanceof RemoveDataNode);
-    assertEquals(Arrays.asList(3, 4, 5), ((RemoveDataNode) statement).getNodeIds());
+  public void testRemoveSingleConfigNode() {
+    Statement statement = parse("remove confignode 3");
+    assertTrue(statement instanceof RemoveConfigNode);
+    assertEquals(3, ((RemoveConfigNode) statement).getNodeId().intValue());
+  }
+
+  @Test
+  public void testRejectRemovingMultipleNodes() {
+    assertThrows(ParsingException.class, () -> parse("remove datanode 3, 4"));
+    assertThrows(ParsingException.class, () -> parse("remove confignode 3, 4"));
   }
 }

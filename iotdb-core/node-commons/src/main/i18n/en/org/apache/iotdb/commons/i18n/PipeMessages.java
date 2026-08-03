@@ -48,6 +48,10 @@ public final class PipeMessages {
   public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
       "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
+      "PipeTsFileParserInFlightMaxNum: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
@@ -953,6 +957,8 @@ public final class PipeMessages {
   public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
   public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
+  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+      "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";
