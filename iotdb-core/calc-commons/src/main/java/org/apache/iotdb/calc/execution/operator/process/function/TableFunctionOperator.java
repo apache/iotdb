@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.process.function;
 
+import org.apache.iotdb.calc.execution.operator.AbstractOperator;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
@@ -36,15 +36,12 @@ import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProc
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
@@ -59,20 +56,15 @@ import java.util.Queue;
 import static com.google.common.base.Preconditions.checkArgument;
 
 // only one input source is supported now
-public class TableFunctionOperator implements ProcessOperator {
+public class TableFunctionOperator extends AbstractOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableFunctionOperator.class);
 
-  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
   private final PartitionRecognizer partitionRecognizer;
   private final TsBlockBuilder properBlockBuilder;
-  private final int maxTsBlockSizeInBytes;
-  private final int maxTsBlockLineNumber;
-  private final long estimatedBaseSizePerPositionInBytes;
-  private final int[] variableWidthColumnIndexes;
   private final int properChannelCount;
   private final boolean needPassThrough;
   private final PartitionCache partitionCache;
@@ -113,22 +105,10 @@ public class TableFunctionOperator implements ProcessOperator {
     this.needPassThrough = properChannelCount != resultDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(resultDataTypes.subList(0, properChannelCount));
-    this.maxTsBlockSizeInBytes =
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    this.maxTsBlockLineNumber =
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    this.estimatedBaseSizePerPositionInBytes =
-        getEstimatedBaseSizePerPositionInBytes(resultDataTypes);
-    this.variableWidthColumnIndexes = getVariableWidthColumnIndexes(resultDataTypes);
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
     this.requireRecordSnapshot = requireRecordSnapshot;
     this.ioTDBLocal = ioTDBLocal;
-  }
-
-  @Override
-  public CommonOperatorContext getOperatorContext() {
-    return this.operatorContext;
   }
 
   @Override
@@ -159,8 +139,8 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (!resultTsBlocks.isEmpty()) {
-      return resultTsBlocks.poll();
+    if (retainedTsBlock != null || !resultTsBlocks.isEmpty()) {
+      return getNextResultTsBlock();
     }
     if (partitionState == null) {
       partitionState = partitionRecognizer.nextState();
@@ -183,7 +163,7 @@ public class TableFunctionOperator implements ProcessOperator {
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
         partitionCache.clear();
         consumeCurrentPartitionState();
-        return resultTsBlocks.poll();
+        return getNextResultTsBlock();
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
@@ -193,7 +173,7 @@ public class TableFunctionOperator implements ProcessOperator {
           partitionCache.clear();
           destroyProcessor(processor);
           processor = null;
-          return resultTsBlocks.poll();
+          return getNextResultTsBlock();
         } else {
           processor = processorProvider.getDataProcessor();
           processor.beforeStart(ioTDBLocal);
@@ -207,8 +187,16 @@ public class TableFunctionOperator implements ProcessOperator {
       }
       consumeCurrentPartitionState();
       resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-      return resultTsBlocks.poll();
+      return getNextResultTsBlock();
     }
+  }
+
+  private TsBlock getNextResultTsBlock() {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+    resultTsBlock = resultTsBlocks.poll();
+    return resultTsBlock == null ? null : checkTsBlockSizeAndGetResult();
   }
 
   private List<ColumnBuilder> getProperColumnBuilders() {
@@ -252,132 +240,13 @@ public class TableFunctionOperator implements ProcessOperator {
         int subBlockPositionCount = passThroughColumns[0].getPositionCount();
         TsBlock subProperBlock = properBlock.getRegion(builtCount, subBlockPositionCount);
         builtCount += subBlockPositionCount;
-        addSplitTsBlocks(result, subProperBlock.appendValueColumns(passThroughColumns));
+        result.add(subProperBlock.appendValueColumns(passThroughColumns));
       }
     } else {
-      addSplitTsBlocks(result, properBlock);
+      result.add(properBlock);
     }
     properBlockBuilder.reset();
     return result;
-  }
-
-  /**
-   * Splits the final result using the same logical in-memory size accounting as {@link
-   * TsBlockBuilder}.
-   *
-   * <p>Serializing candidate regions to find their exact sizes would write every value into
-   * temporary buffers, only for the exchange layer to serialize the selected regions again.
-   * Rebuilding the result with a size-tracking {@link TsBlockBuilder} would avoid that temporary
-   * serialization, but it would turn the UDF's batched column output into row-by-row,
-   * column-by-column copies.
-   *
-   * <p>Instead, fixed-width values are accounted for directly from their data types, while only the
-   * retained sizes of variable-width values are inspected. This deliberately estimates the
-   * in-memory TsBlock size rather than its serialized size because the two representations are not
-   * equivalent. The resulting regions are views over the original columns and do not copy their
-   * values.
-   *
-   * <p>For a block containing only fixed-width columns, the number of positions in each region is
-   * calculated directly, so no per-position scan is required. If the block contains variable-width
-   * columns, every position in those columns must be inspected once because their payload sizes can
-   * differ by row. This costs {@code O(positionCount * variableWidthColumnCount)}, but each
-   * inspection only reads the null state, the {@link org.apache.tsfile.utils.Binary} reference, and
-   * its allocated size. It does not traverse the payload bytes, serialize values, or copy column
-   * data. A shared {@code Binary} referenced by multiple positions is deliberately counted once per
-   * position, which may produce smaller regions but keeps the estimate conservative.
-   */
-  private void addSplitTsBlocks(List<TsBlock> result, TsBlock source) {
-    if (variableWidthColumnIndexes.length == 0) {
-      // This fast path is used only when every column has a fixed per-position size.
-      addFixedWidthOnlyTsBlocks(result, source);
-      return;
-    }
-
-    int regionOffset = 0;
-    int regionPositionCount = 0;
-    long estimatedRegionSizeInBytes = 0;
-    Column[] variableWidthColumns = new Column[variableWidthColumnIndexes.length];
-    for (int i = 0; i < variableWidthColumnIndexes.length; i++) {
-      variableWidthColumns[i] = source.getColumn(variableWidthColumnIndexes[i]);
-    }
-    for (int position = 0; position < source.getPositionCount(); position++) {
-      long estimatedPositionSizeInBytes =
-          getEstimatedPositionSizeInBytes(variableWidthColumns, position);
-      if (regionPositionCount > 0
-          && estimatedRegionSizeInBytes + estimatedPositionSizeInBytes > maxTsBlockSizeInBytes) {
-        result.add(source.getRegion(regionOffset, regionPositionCount));
-        regionOffset = position;
-        regionPositionCount = 0;
-        estimatedRegionSizeInBytes = 0;
-      }
-
-      estimatedRegionSizeInBytes += estimatedPositionSizeInBytes;
-      regionPositionCount++;
-      if (regionPositionCount >= maxTsBlockLineNumber
-          || estimatedRegionSizeInBytes >= maxTsBlockSizeInBytes) {
-        result.add(source.getRegion(regionOffset, regionPositionCount));
-        regionOffset = position + 1;
-        regionPositionCount = 0;
-        estimatedRegionSizeInBytes = 0;
-      }
-    }
-    if (regionPositionCount > 0) {
-      result.add(source.getRegion(regionOffset, regionPositionCount));
-    }
-  }
-
-  private void addFixedWidthOnlyTsBlocks(List<TsBlock> result, TsBlock source) {
-    int maxPositionCountBySize =
-        (int)
-            Math.max(
-                1,
-                Math.min(
-                    Integer.MAX_VALUE,
-                    maxTsBlockSizeInBytes / estimatedBaseSizePerPositionInBytes));
-    int maxPositionCount = Math.min(maxTsBlockLineNumber, maxPositionCountBySize);
-    for (int offset = 0; offset < source.getPositionCount(); offset += maxPositionCount) {
-      result.add(
-          source.getRegion(offset, Math.min(maxPositionCount, source.getPositionCount() - offset)));
-    }
-  }
-
-  private long getEstimatedPositionSizeInBytes(Column[] variableWidthColumns, int position) {
-    // Fixed-width values and variable-width payloads consume the same block-size budget.
-    long sizeInBytes = estimatedBaseSizePerPositionInBytes;
-    for (Column column : variableWidthColumns) {
-      if (!column.isNull(position)) {
-        sizeInBytes += column.getBinary(position).ramBytesUsed();
-      }
-    }
-    return sizeInBytes;
-  }
-
-  private static long getEstimatedBaseSizePerPositionInBytes(List<TSDataType> outputDataTypes) {
-    long sizeInBytes = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
-    for (TSDataType dataType : outputDataTypes) {
-      sizeInBytes +=
-          dataType.isBinary()
-              ? BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION
-              : dataType.getDataTypeSize() + Byte.BYTES;
-    }
-    return sizeInBytes;
-  }
-
-  private static int[] getVariableWidthColumnIndexes(List<TSDataType> outputDataTypes) {
-    int variableWidthColumnCount = 0;
-    for (TSDataType dataType : outputDataTypes) {
-      if (dataType.isBinary()) {
-        variableWidthColumnCount++;
-      }
-    }
-    int[] columnIndexes = new int[variableWidthColumnCount];
-    int index = 0;
-    for (int columnIndex = 0; columnIndex < outputDataTypes.size(); columnIndex++) {
-      if (outputDataTypes.get(columnIndex).isBinary()) {
-        columnIndexes[index++] = columnIndex;
-      }
-    }
-    return columnIndexes;
   }
 
   private void consumeCurrentPartitionState() {
@@ -394,7 +263,7 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !finished || !resultTsBlocks.isEmpty();
+    return !finished || retainedTsBlock != null || !resultTsBlocks.isEmpty();
   }
 
   @Override
@@ -402,6 +271,9 @@ public class TableFunctionOperator implements ProcessOperator {
     partitionCache.close();
     inputOperator.close();
     resultTsBlocks.clear();
+    resultTsBlock = null;
+    retainedTsBlock = null;
+    startOffset = 0;
     if (processor != null) {
       destroyProcessor(processor);
       processor = null;
@@ -411,18 +283,18 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished && resultTsBlocks.isEmpty();
+    return finished && retainedTsBlock == null && resultTsBlocks.isEmpty();
   }
 
   @Override
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemory()
-        + Math.max(maxTsBlockSizeInBytes, properBlockBuilder.getRetainedSizeInBytes());
+        + Math.max(maxReturnSize, properBlockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return maxTsBlockSizeInBytes;
+    return maxReturnSize;
   }
 
   @Override

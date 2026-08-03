@@ -44,10 +44,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -299,220 +296,150 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
-  public void testVariableWidthResultsAreSplitByEstimatedMemorySize() throws Exception {
-    assertVariableWidthResultsAreSplitByEstimatedMemorySize(false);
-    assertVariableWidthResultsAreSplitByEstimatedMemorySize(true);
+  public void testResultTsBlockUsesAbstractOperatorSplitting() throws Exception {
+    assertResultTsBlockUsesAbstractOperatorSplitting(false);
+    assertResultTsBlockUsesAbstractOperatorSplitting(true);
   }
 
-  @Test
-  public void testFixedAndVariableWidthColumnsShareSizeBudget() throws Exception {
+  private void assertResultTsBlockUsesAbstractOperatorSplitting(boolean withPassThrough)
+      throws Exception {
     int originalMaxBlockSize =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    Binary wideValue = new Binary(new byte[64]);
-    long variableWidthSizePerPosition =
-        BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION + wideValue.ramBytesUsed();
-    long fixedWidthSizePerPosition =
-        TimeColumn.SIZE_IN_BYTES_PER_POSITION + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-    int combinedMaxBlockSize =
-        Math.toIntExact(2 * Math.max(variableWidthSizePerPosition, fixedWidthSizePerPosition));
-
-    // Two rows of either part fit independently, but two complete rows do not.
-    Assert.assertTrue(2 * variableWidthSizePerPosition <= combinedMaxBlockSize);
-    Assert.assertTrue(2 * fixedWidthSizePerPosition <= combinedMaxBlockSize);
-    Assert.assertTrue(
-        2 * (variableWidthSizePerPosition + fixedWidthSizePerPosition) > combinedMaxBlockSize);
+    int maxBlockSize = 128;
+    // AbstractOperator uses at least one byte as the estimated size of each row, so producing more
+    // rows than the configured byte limit guarantees that the result must be split.
+    int outputRowCount = maxBlockSize * 2;
     try {
-      assertVariableWidthResultsAreSplitByEstimatedMemorySize(
-          true, 3, wideValue, 1, combinedMaxBlockSize);
+      QueryId queryId = new QueryId("abstract_operator_split_" + withPassThrough);
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(
+              0, new PlanNodeId("tvf"), TableFunctionOperator.class.getSimpleName());
+      TableFunctionProcessorProvider provider =
+          new TableFunctionProcessorProvider() {
+            @Override
+            public TableFunctionDataProcessor getDataProcessor() {
+              return new TableFunctionDataProcessor() {
+                @Override
+                public void process(
+                    Record input,
+                    List<ColumnBuilder> properColumnBuilders,
+                    ColumnBuilder passThroughIndexBuilder) {
+                  for (int i = 0; i < outputRowCount; i++) {
+                    properColumnBuilders.get(0).writeLong(i);
+                    if (passThroughIndexBuilder != null) {
+                      passThroughIndexBuilder.writeLong(0);
+                    }
+                  }
+                }
+              };
+            }
+          };
+
+      Operator singleRowChild =
+          new Operator() {
+            private boolean consumed;
+
+            @Override
+            public OperatorContext getOperatorContext() {
+              return operatorContext;
+            }
+
+            @Override
+            public TsBlock next() {
+              TsBlockBuilder builder =
+                  new TsBlockBuilder(1, Collections.singletonList(TSDataType.INT64));
+              builder.getColumnBuilder(0).writeLong(1);
+              builder.declarePosition();
+              consumed = true;
+              return builder.build(
+                  new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+            }
+
+            @Override
+            public boolean hasNext() {
+              return !consumed;
+            }
+
+            @Override
+            public void close() {}
+
+            @Override
+            public boolean isFinished() {
+              return consumed;
+            }
+
+            @Override
+            public long calculateMaxPeekMemory() {
+              return 0;
+            }
+
+            @Override
+            public long calculateMaxReturnSize() {
+              return 0;
+            }
+
+            @Override
+            public long calculateRetainedSizeAfterCallingNext() {
+              return 0;
+            }
+
+            @Override
+            public long ramBytesUsed() {
+              return 0;
+            }
+          };
+
+      // FragmentInstanceContext initialization reloads the TsFile configuration, so apply the test
+      // limit immediately before constructing the operator that captures it.
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxBlockSize);
+      int returnedRows = 0;
+      int returnedBlocks = 0;
+      try (TableFunctionOperator operator =
+          new TableFunctionOperator(
+              operatorContext,
+              provider,
+              singleRowChild,
+              Collections.singletonList(TSDataType.INT64),
+              withPassThrough
+                  ? Arrays.asList(TSDataType.INT64, TSDataType.INT64)
+                  : Collections.singletonList(TSDataType.INT64),
+              1,
+              Collections.singletonList(0),
+              withPassThrough ? Collections.singletonList(0) : Collections.emptyList(),
+              withPassThrough,
+              Collections.emptyList(),
+              false,
+              mock(IoTDBLocal.class))) {
+        assertEquals(maxBlockSize, operator.calculateMaxReturnSize());
+        while (!operator.isFinished()) {
+          operator.isBlocked();
+          TsBlock block = operator.next();
+          if (block == null) {
+            continue;
+          }
+          returnedBlocks++;
+          for (int i = 0; i < block.getPositionCount(); i++) {
+            assertEquals(returnedRows, block.getColumn(0).getLong(i));
+            if (withPassThrough) {
+              assertEquals(1, block.getColumn(1).getLong(i));
+            }
+            returnedRows++;
+          }
+        }
+      }
+
+      assertEquals(outputRowCount, returnedRows);
+      Assert.assertTrue("Returned block count: " + returnedBlocks, returnedBlocks > 1);
     } finally {
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(originalMaxBlockSize);
     }
-  }
-
-  private void assertVariableWidthResultsAreSplitByEstimatedMemorySize(boolean withPassThrough)
-      throws Exception {
-    int maxLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    int maxWideRowsPerBlock = 8;
-    Binary wideValue = new Binary(new byte[maxBlockSize / maxWideRowsPerBlock + 1]);
-    assertVariableWidthResultsAreSplitByEstimatedMemorySize(
-        withPassThrough, maxLineNumber + 1, wideValue, maxWideRowsPerBlock, null);
-  }
-
-  private void assertVariableWidthResultsAreSplitByEstimatedMemorySize(
-      boolean withPassThrough,
-      int wideRowCount,
-      Binary wideValue,
-      int maxWideRowsPerBlock,
-      Integer maxBlockSizeOverride)
-      throws Exception {
-    QueryId queryId = new QueryId("large_finish_result_" + withPassThrough + "_" + wideRowCount);
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-    FragmentInstanceStateMachine stateMachine =
-        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-    FragmentInstanceContext fragmentInstanceContext =
-        createFragmentInstanceContext(instanceId, stateMachine);
-    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
-    OperatorContext operatorContext =
-        driverContext.addOperatorContext(
-            0, new PlanNodeId("tvf"), TableFunctionOperator.class.getSimpleName());
-    int maxLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    Assert.assertTrue(maxLineNumber >= 3);
-    int wideValueLength = wideValue.getLength();
-    Binary narrowValue = new Binary("narrow", TSFileConfig.STRING_CHARSET);
-    TableFunctionProcessorProvider provider =
-        new TableFunctionProcessorProvider() {
-          @Override
-          public TableFunctionDataProcessor getDataProcessor() {
-            return new TableFunctionDataProcessor() {
-              @Override
-              public void process(
-                  Record input,
-                  List<ColumnBuilder> properColumnBuilders,
-                  ColumnBuilder passThroughIndexBuilder) {
-                // Produce a narrow block before the wide result returned by finish().
-                properColumnBuilders.get(0).writeBinary(narrowValue);
-                if (passThroughIndexBuilder != null) {
-                  passThroughIndexBuilder.writeLong(0);
-                }
-              }
-
-              @Override
-              public void finish(
-                  List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-                // The result must be sliced according to its estimated in-memory size after
-                // pass-through columns are appended, without rebuilding or serializing it.
-                for (int i = 0; i < wideRowCount; i++) {
-                  properColumnBuilders.get(0).writeBinary(wideValue);
-                  if (passThroughIndexBuilder != null) {
-                    passThroughIndexBuilder.writeLong(0);
-                  }
-                }
-              }
-            };
-          }
-        };
-
-    Operator singleRowChild =
-        new Operator() {
-          private boolean consumed;
-
-          @Override
-          public OperatorContext getOperatorContext() {
-            return operatorContext;
-          }
-
-          @Override
-          public TsBlock next() {
-            TsBlockBuilder builder =
-                new TsBlockBuilder(1, Collections.singletonList(TSDataType.INT64));
-            builder.getColumnBuilder(0).writeLong(1);
-            builder.declarePosition();
-            consumed = true;
-            return builder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
-          }
-
-          @Override
-          public boolean hasNext() {
-            return !consumed;
-          }
-
-          @Override
-          public void close() {}
-
-          @Override
-          public boolean isFinished() {
-            return consumed;
-          }
-
-          @Override
-          public long calculateMaxPeekMemory() {
-            return 0;
-          }
-
-          @Override
-          public long calculateMaxReturnSize() {
-            return 0;
-          }
-
-          @Override
-          public long calculateRetainedSizeAfterCallingNext() {
-            return 0;
-          }
-
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-        };
-
-    int returnedRows = 0;
-    int returnedBlocks = 0;
-    if (maxBlockSizeOverride != null) {
-      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxBlockSizeOverride);
-    }
-    int maxBlockSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    if (maxBlockSizeOverride != null) {
-      assertEquals(maxBlockSizeOverride.intValue(), maxBlockSize);
-    }
-    try (TableFunctionOperator operator =
-        new TableFunctionOperator(
-            operatorContext,
-            provider,
-            singleRowChild,
-            Collections.singletonList(TSDataType.INT64),
-            withPassThrough
-                ? Arrays.asList(TSDataType.TEXT, TSDataType.INT64)
-                : Collections.singletonList(TSDataType.TEXT),
-            1,
-            Collections.singletonList(0),
-            withPassThrough ? Collections.singletonList(0) : Collections.emptyList(),
-            withPassThrough,
-            Collections.emptyList(),
-            false,
-            mock(IoTDBLocal.class))) {
-      while (!operator.isFinished()) {
-        operator.isBlocked();
-        TsBlock block = operator.next();
-        if (block == null) {
-          continue;
-        }
-        returnedBlocks++;
-        returnedRows += block.getPositionCount();
-        Assert.assertTrue(block.getPositionCount() <= maxLineNumber);
-        if (block.getColumn(0).getBinary(0).getLength() == wideValueLength) {
-          Assert.assertTrue(
-              "wide block position count: "
-                  + block.getPositionCount()
-                  + ", expected at most: "
-                  + maxWideRowsPerBlock
-                  + ", configured size: "
-                  + maxBlockSize,
-              block.getPositionCount() <= maxWideRowsPerBlock);
-        }
-        long estimatedBlockSize = 0;
-        for (int i = 0; i < block.getPositionCount(); i++) {
-          Binary value = block.getColumn(0).getBinary(i);
-          estimatedBlockSize +=
-              TimeColumn.SIZE_IN_BYTES_PER_POSITION
-                  + BinaryColumn.SHALLOW_SIZE_IN_BYTES_PER_POSITION
-                  + value.ramBytesUsed()
-                  + (withPassThrough ? LongColumn.SIZE_IN_BYTES_PER_POSITION : 0);
-          int expectedLength =
-              returnedRows - block.getPositionCount() + i == 0 ? 6 : wideValueLength;
-          assertEquals(expectedLength, value.getLength());
-          if (withPassThrough) {
-            assertEquals(1, block.getColumn(1).getLong(i));
-          }
-        }
-        Assert.assertTrue(estimatedBlockSize <= maxBlockSize);
-      }
-    }
-
-    assertEquals(wideRowCount + 1, returnedRows);
-    Assert.assertTrue(returnedBlocks > maxWideRowsPerBlock);
   }
 
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
