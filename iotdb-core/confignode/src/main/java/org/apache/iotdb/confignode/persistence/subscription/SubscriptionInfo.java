@@ -110,7 +110,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.OWNER_EPOCH_KEY,
           TopicConstant.MAX_OWNER_EPOCH_KEY,
           TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
-  private static final Set<String> CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS =
+  private static final Set<String> INCREMENTAL_TOPIC_SUPPORTED_ATTRIBUTE_KEYS =
       Set.of(
           SystemConstant.SQL_DIALECT_KEY,
           TopicConstant.PATH_KEY,
@@ -340,21 +340,21 @@ public class SubscriptionInfo implements SnapshotProcessor {
               TopicConstant.MODE_KEY,
               mode,
               TopicConstant.MODE_SNAPSHOT_VALUE,
-              TopicConstant.MODE_LIVE_VALUE,
-              TopicConstant.MODE_CONSENSUS_VALUE);
+              TopicConstant.MODE_INITIAL_VALUE,
+              TopicConstant.MODE_INCREMENTAL_VALUE);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
-    validateConsensusTopicAttributes(topicConfig);
-    validateConsensusProtocolSupport(topicConfig);
+    validateIncrementalTopicAttributes(topicConfig);
+    validateIncrementalProtocolSupport(topicConfig);
 
-    if (topicConfig.isConsensusMode() && !topicConfig.isRecordFormat()) {
+    if (topicConfig.isIncrementalMode() && !topicConfig.isRecordFormat()) {
       final String exceptionMessage =
           String.format(
               "Failed to create or alter topic, %s=%s only supports %s=%s",
               TopicConstant.MODE_KEY,
-              TopicConstant.MODE_CONSENSUS_VALUE,
+              TopicConstant.MODE_INCREMENTAL_VALUE,
               TopicConstant.FORMAT_KEY,
               TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       LOGGER.warn(exceptionMessage);
@@ -376,7 +376,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
 
     validateColumnFilter(topicConfig);
-    validateConsensusTopicRetentionConfig(topicConfig);
+    validateIncrementalTopicRetentionConfig(topicConfig);
 
     final Long ownerLeaseDurationMs =
         topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
@@ -393,9 +393,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void validateConsensusTopicAttributes(final TopicConfig topicConfig)
+  private void validateIncrementalTopicAttributes(final TopicConfig topicConfig)
       throws SubscriptionException {
-    if (!topicConfig.isConsensusMode()) {
+    if (!topicConfig.isIncrementalMode()) {
       return;
     }
 
@@ -404,7 +404,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
             .filter(
                 key ->
                     Objects.isNull(key)
-                        || !CONSENSUS_TOPIC_SUPPORTED_ATTRIBUTE_KEYS.contains(
+                        || !INCREMENTAL_TOPIC_SUPPORTED_ATTRIBUTE_KEYS.contains(
                             key.trim().toLowerCase(Locale.ROOT)))
             .map(String::valueOf)
             .sorted()
@@ -416,15 +416,15 @@ public class SubscriptionInfo implements SnapshotProcessor {
     final String exceptionMessage =
         String.format(
             ConfigNodeMessages
-                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA,
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_INCREMENTAL_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_1A72326A,
             unsupportedAttributes);
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
   }
 
-  private void validateConsensusProtocolSupport(final TopicConfig topicConfig)
+  private void validateIncrementalProtocolSupport(final TopicConfig topicConfig)
       throws SubscriptionException {
-    if (!topicConfig.isConsensusMode()) {
+    if (!topicConfig.isIncrementalMode()) {
       return;
     }
 
@@ -437,7 +437,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
         String.format(
             "Failed to create or alter topic, %s=%s is only supported when %s=%s, but current value is %s",
             TopicConstant.MODE_KEY,
-            TopicConstant.MODE_CONSENSUS_VALUE,
+            TopicConstant.MODE_INCREMENTAL_VALUE,
             DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY,
             ConsensusFactory.IOT_CONSENSUS,
             actualProtocol);
@@ -491,22 +491,24 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private boolean isConsensusBasedTopicConfig(final TopicConfig topicConfig) {
-    return topicConfig.isConsensusMode();
+  private boolean isIncrementalTopicConfig(final TopicConfig topicConfig) {
+    return topicConfig.isIncrementalMode();
   }
 
-  private void validateConsensusTopicRetentionConfig(final TopicConfig topicConfig)
+  private void validateIncrementalTopicRetentionConfig(final TopicConfig topicConfig)
       throws SubscriptionException {
     if (!topicConfig.hasAttribute(TopicConstant.RETENTION_BYTES_KEY)
         && !topicConfig.hasAttribute(TopicConstant.RETENTION_MS_KEY)) {
       return;
     }
 
-    if (!isConsensusBasedTopicConfig(topicConfig)) {
+    if (!isIncrementalTopicConfig(topicConfig)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s and %s are only supported for consensus topics",
-              TopicConstant.RETENTION_BYTES_KEY, TopicConstant.RETENTION_MS_KEY);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E,
+              TopicConstant.RETENTION_BYTES_KEY,
+              TopicConstant.RETENTION_MS_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
