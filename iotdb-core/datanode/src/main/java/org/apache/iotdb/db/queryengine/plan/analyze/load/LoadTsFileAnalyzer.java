@@ -964,9 +964,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private LoadTsFileStatement createTreeConversionStatement(final File tsFile)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
-        LoadTsFileStatement.createUnchecked(tsFile.getPath())
+        (isGeneratedByPipe
+                ? LoadTsFileStatement.createForPipe(tsFile.getPath())
+                : LoadTsFileStatement.createUnchecked(tsFile.getPath()))
             .setDeleteAfterLoad(isDeleteAfterLoad)
             .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
     statement.setTsFileIsPhysicalPath(isTsFilePhysicalPath);
     return statement;
   }
@@ -974,12 +979,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private LoadTsFile createTableModelConversionStatement(final File tsFile)
       throws FileNotFoundException {
     final LoadTsFile statement =
-        LoadTsFile.createUnchecked(
-                null,
-                tsFile.getPath(),
-                isTableModelStatement
-                    ? loadTsFileTableStatement.getLoadAttributes()
-                    : Collections.emptyMap())
+        (isGeneratedByPipe
+                ? LoadTsFile.createForPipe(
+                    null,
+                    tsFile.getPath(),
+                    isTableModelStatement
+                        ? loadTsFileTableStatement.getLoadAttributes()
+                        : Collections.emptyMap())
+                : LoadTsFile.createUnchecked(
+                    null,
+                    tsFile.getPath(),
+                    isTableModelStatement
+                        ? loadTsFileTableStatement.getLoadAttributes()
+                        : Collections.emptyMap()))
             .setDatabase(databaseForTableData)
             .setDeleteAfterLoad(isDeleteAfterLoad)
             .setConvertOnTypeMismatch(isConvertOnTypeMismatch)

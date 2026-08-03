@@ -37,6 +37,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -181,6 +183,41 @@ public class TimechoLoadTsFileAnalyzerTest {
       }
     } finally {
       Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testPipeConversionAllowsTsFileUnderInternalDataDirectory() throws Exception {
+    final String[][] originalTierDataDirs =
+        IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    final Path dataDir = Files.createTempDirectory("load-pipe-internal-data");
+    final Path tsFile = Files.createFile(dataDir.resolve("pipe-receiver.tsfile"));
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setTierDataDirs(new String[][] {{dataDir.toString()}});
+
+      final LoadTsFileStatement treeStatement =
+          LoadTsFileStatement.createForPipe(tsFile.toString());
+      try (final LoadTsFileAnalyzer analyzer =
+          new LoadTsFileAnalyzer(treeStatement, true, new MPPQueryContext(new QueryId("test")))) {
+        final LoadTsFileStatement conversionStatement =
+            invokeCreateTreeConversionStatement(analyzer, tsFile.toFile());
+        Assert.assertTrue(conversionStatement.isGeneratedByPipe());
+      }
+
+      final LoadTsFile tableStatement =
+          LoadTsFile.createForPipe(null, tsFile.toString(), Collections.emptyMap());
+      try (final LoadTsFileAnalyzer analyzer =
+          new LoadTsFileAnalyzer(tableStatement, true, new MPPQueryContext(new QueryId("test")))) {
+        final LoadTsFile conversionStatement =
+            invokeCreateTableModelConversionStatement(analyzer, tsFile.toFile());
+        Assert.assertTrue(conversionStatement.isGeneratedByPipe());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originalTierDataDirs);
+      Assert.assertTrue(tsFile.toFile().delete());
+      Assert.assertTrue(dataDir.toFile().delete());
     }
   }
 
