@@ -507,15 +507,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      LoadTsFile.createUnchecked(
-                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      (isGeneratedByPipe
+                              ? LoadTsFile.createForPipe(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                              : LoadTsFile.createUnchecked(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                      (isGeneratedByPipe
+                              ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                              : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -800,15 +805,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(
-                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                        (isGeneratedByPipe
+                                ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                                : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);
