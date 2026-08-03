@@ -15,6 +15,7 @@
 
 @defaultMessage Use Files or FileChannel APIs so SecureFileSystemProvider can intercept the operation.
 java.io.File#delete()
+@ignoreMissingClasses
 org.apache.tsfile.external.commons.io.FileUtils#deleteQuietly(java.io.File)
 java.io.FileInputStream#getChannel()
 java.io.FileOutputStream#getChannel()
