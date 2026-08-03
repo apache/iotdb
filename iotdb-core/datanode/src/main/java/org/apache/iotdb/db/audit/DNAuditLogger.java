@@ -343,7 +343,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
             userId,
             username,
             clientAddress,
-            AuditEventType.MODIFY_USER_ROLE,
+            AuditEventType.MODIFY_ROLE_MEMBERSHIP,
             AuditLogOperation.CONTROL,
             PrivilegeType.SECURITY,
             isSuccessful(status),
