@@ -2009,10 +2009,15 @@ public final class DataNodePipeMessages {
           + "runtimeVersion {} -> {}, runtimeState={} (route hint)";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "Failed to check if topic [{}] is consensus-based, defaulting to false";
-  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
       "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
-          + "mode=consensus only supports data_region_consensus_protocol_class={}, but current "
+          + "mode=incremental only supports data_region_consensus_protocol_class={}, but current "
           + "configured value is {} (runtime consensus implementation: {})";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67 =
+          "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
+              + "mode=incremental only supports data_region_consensus_protocol_class=%s, but "
+              + "current configured value is %s (runtime consensus implementation: %s)";
   public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
       "Topic config not found for topic [{}], cannot set up consensus queue";
   public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =

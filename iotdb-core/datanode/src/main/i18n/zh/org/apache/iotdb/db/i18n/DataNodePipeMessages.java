@@ -1865,9 +1865,14 @@ public final class DataNodePipeMessages {
           + "{} -> {}，runtimeState={}（route hint）";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "检查 topic [{}] 是否为 consensus-based 失败，默认设为 false";
-  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
-      "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=consensus 仅支持 "
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
+      "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=incremental 仅支持 "
           + "data_region_consensus_protocol_class={}，但当前配置值为 {}（运行时 consensus 实现：{}）";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67 =
+          "Subscription：无法执行 %s，consensus-based topic 为 %s，consumer group 为 [%s]，因为 "
+              + "mode=incremental 仅支持 data_region_consensus_protocol_class=%s，但当前配置值为 %s"
+              + "（运行时 consensus 实现：%s）";
   public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
       "未找到 topic [{}] 的配置，无法设置 consensus queue";
   public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =

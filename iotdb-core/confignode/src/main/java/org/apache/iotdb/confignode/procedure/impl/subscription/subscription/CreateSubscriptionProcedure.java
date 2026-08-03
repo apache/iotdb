@@ -116,7 +116,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
 
       final String topicMode = topicMeta.getConfig().getMode();
-      final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+      final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
 
       if (isConsensusBasedTopic) {
         // skip pipe creation

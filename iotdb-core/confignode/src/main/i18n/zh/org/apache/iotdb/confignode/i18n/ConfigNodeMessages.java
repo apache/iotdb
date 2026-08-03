@@ -708,6 +708,9 @@ public final class ConfigNodeMessages {
       EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
           "procedure_completed_evict_ttl 应大于 0，但当前值为 ";
   public static final String
-      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
-          "创建或修改 topic 失败，mode=consensus 不支持 topic 属性 %s";
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_INCREMENTAL_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_1A72326A =
+          "创建或修改 topic 失败，mode=incremental 不支持 topic 属性 %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
+          "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
 }
