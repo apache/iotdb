@@ -15,7 +15,6 @@
 
 @defaultMessage Use Files or FileChannel APIs so SecureFileSystemProvider can intercept the operation.
 java.io.File#delete()
-java.io.File#deleteOnExit()
 java.io.FileInputStream#getChannel()
 java.io.FileOutputStream#getChannel()
 java.io.RandomAccessFile#getChannel()
