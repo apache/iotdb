@@ -33,7 +33,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
@@ -143,9 +142,14 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       }
       return pairList;
     } catch (final Exception e) {
-      pairList.forEach(pair -> FileUtils.deleteQuietly(pair.right.left));
+      pairList.forEach(
+          pair -> org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(pair.right.left));
       final boolean hasObjectDirectories = !dataBase2ObjectTempDir.isEmpty();
-      dataBase2ObjectTempDir.values().forEach(FileUtils::deleteQuietly);
+      dataBase2ObjectTempDir
+          .values()
+          .forEach(
+              directory ->
+                  org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(directory, true));
       dataBase2ObjectTempDir.clear();
       LOGGER.warn(
           DataNodePipeMessages
@@ -197,7 +201,9 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
         sealedFiles.add(new Pair<>(dataBase, new Pair<>(writer.getFile(), tempDir)));
       }
     } catch (final Exception e) {
-      FileUtils.deleteQuietly(file);
+      if (file != null) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+      }
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),

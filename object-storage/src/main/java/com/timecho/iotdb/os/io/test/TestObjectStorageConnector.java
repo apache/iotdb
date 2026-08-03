@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 
 public class TestObjectStorageConnector implements ObjectStorageConnector {
@@ -74,7 +75,11 @@ public class TestObjectStorageConnector implements ObjectStorageConnector {
   @Override
   public boolean delete(OSURI osUri) throws ObjectStorageException {
     File file = new File(getDstFilePath(osUri));
-    return file.delete();
+    try {
+      return Files.deleteIfExists(file.toPath());
+    } catch (IOException e) {
+      throw new ObjectStorageException(e);
+    }
   }
 
   @Override

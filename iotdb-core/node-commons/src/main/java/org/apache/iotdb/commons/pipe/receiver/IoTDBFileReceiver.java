@@ -436,7 +436,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        writingFileWriter.setLength(req.getStartWritingOffset());
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+            writingFile, req.getStartWritingOffset());
+        writingFileWriter.seek(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -444,7 +446,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          writingFileWriter.setLength(0);
+          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+          writingFileWriter.seek(0);
         }
 
         final TSStatus status =
@@ -502,7 +505,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       updateWritingObjectFileIfNeeded(objectFile);
 
       if (startWritingOffset < writingObjectFileWriter.length()) {
-        writingObjectFileWriter.setLength(startWritingOffset);
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(objectFile, startWritingOffset);
+        writingObjectFileWriter.seek(startWritingOffset);
       }
 
       if (writingObjectFileWriter.length() != startWritingOffset) {

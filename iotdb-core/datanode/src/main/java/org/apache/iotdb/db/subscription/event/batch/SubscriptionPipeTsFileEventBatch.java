@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -89,11 +88,14 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       for (final Pair<String, Pair<File, File>> sealedFilePair : sealedFilePairs) {
         final File tsFile = sealedFilePair.right.left;
         final File objectDir = sealedFilePair.right.right;
-        if (tsFile != null && tsFile.exists() && !FileUtils.deleteQuietly(tsFile)) {
+        if (tsFile != null && !org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile)) {
           LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFilePair);
         }
-        if (objectDir != null && objectDir.exists() && !FileUtils.deleteQuietly(objectDir)) {
-          LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFilePair);
+        if (objectDir != null) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectDir, true);
+          if (objectDir.exists()) {
+            LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFilePair);
+          }
         }
       }
       sealedFilePairs.clear();

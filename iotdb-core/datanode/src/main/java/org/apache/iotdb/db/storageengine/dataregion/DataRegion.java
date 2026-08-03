@@ -988,9 +988,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void deleteIfExist(File file) {
-    if (file.exists()) {
-      file.delete();
-    }
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
   }
 
   /** check if the tsfile's time is smaller than system current time. */
@@ -3329,7 +3327,7 @@ public class DataRegion implements IDataRegionForQuery {
               } catch (IOException e) {
                 logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
               }
-              FileUtils.deleteQuietly(objectTableDir);
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
             }
             FileMetrics.getInstance()
                 .decreaseObjectFileNum(databaseName, dataRegionIdString, count.get());
@@ -4420,14 +4418,14 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (OutOfTTLException e) {
       // Out-of-TTL records are expected to be ignored, but the installed object file must be
       // removed.
-      if (!objectFile.delete()) {
+      if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(objectFile)) {
         logger.warn(
             StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
             objectFile.getAbsolutePath());
       }
     } catch (WriteProcessException e) {
       logger.warn(StorageEngineMessages.CANNOT_INSERT_TSFILE_RECORD_FOR_OBJECT_FILE, objectFile, e);
-      if (!objectFile.delete()) {
+      if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(objectFile)) {
         logger.warn(
             StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
             objectFile.getAbsolutePath());

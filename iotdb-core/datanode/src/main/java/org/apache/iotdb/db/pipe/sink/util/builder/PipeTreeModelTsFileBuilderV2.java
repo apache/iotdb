@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
@@ -123,7 +122,8 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
           e.getMessage(),
           e);
       if (treeModelObjectTempDir != null) {
-        FileUtils.deleteQuietly(treeModelObjectTempDir);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
+            treeModelObjectTempDir, true);
         treeModelObjectTempDir = null;
         // The classic fallback may split a batch into multiple TsFiles and cannot safely
         // associate one Object directory with all generated files.
@@ -170,7 +170,9 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
         sealedFiles.add(new Pair<>(null, new Pair<>(writer.getFile(), treeModelObjectTempDir)));
       }
     } catch (final Exception e) {
-      FileUtils.deleteQuietly(file);
+      if (file != null) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+      }
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),

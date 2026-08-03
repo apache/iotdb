@@ -132,8 +132,6 @@ public abstract class MigrationTask implements Runnable {
   }
 
   protected void deleteIfExist(File file) {
-    if (file.exists()) {
-      file.delete();
-    }
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
   }
 }

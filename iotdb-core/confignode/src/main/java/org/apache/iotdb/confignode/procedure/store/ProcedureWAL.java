@@ -27,8 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -56,19 +54,17 @@ public class ProcedureWAL {
    */
   @TestOnly
   public void save(Procedure procedure) throws IOException {
-    File walTmp = new File(walFilePath + ".tmp");
-    Path walTmpPath = walTmp.toPath();
+    Path walTmpPath = Path.of(walFilePath + ".tmp");
     Files.deleteIfExists(walTmpPath);
     Files.createFile(walTmpPath);
-    try (FileOutputStream fos = new FileOutputStream(walTmp);
-        FileChannel channel = fos.getChannel();
+    try (FileChannel channel =
+            FileChannel.open(walTmpPath, java.nio.file.StandardOpenOption.WRITE);
         PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
       procedure.serialize(dataOutputStream);
       channel.write(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
 
       channel.force(true);
-      fos.getFD().sync();
     }
     Files.deleteIfExists(walFilePath);
     Files.move(walTmpPath, walFilePath);

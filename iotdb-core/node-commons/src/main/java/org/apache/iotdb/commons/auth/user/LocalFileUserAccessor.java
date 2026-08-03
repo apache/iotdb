@@ -353,10 +353,10 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     if (!uRoleProfile.exists() && !backProfile.exists() && !encryptedProfile.exists()) {
       return true;
     }
-    if ((uRoleProfile.exists() && !uRoleProfile.delete())
-        || (backProfile.exists() && !backProfile.delete())
-        || (encryptedProfile.exists() && !encryptedProfile.delete())) {
-      throw new IOException(String.format("Catch error when delete %s 's role", username));
+    if (!FileUtils.deleteFileIfExist(uRoleProfile)
+        || !FileUtils.deleteFileIfExist(backProfile)
+        || !FileUtils.deleteFileIfExist(encryptedProfile)) {
+      throw new IOException(String.format(AuthMessages.CATCH_ERROR_DELETE_USER_ROLE, username));
     }
     return true;
   }

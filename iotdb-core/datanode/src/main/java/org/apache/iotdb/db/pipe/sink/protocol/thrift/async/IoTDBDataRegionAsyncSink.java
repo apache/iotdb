@@ -78,7 +78,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -358,13 +357,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
           final Pair<String, Pair<File, File>> untransferredFile = dbTsFilePairs.get(i);
           final File tsFile = untransferredFile.right.left;
           final File objectDir = untransferredFile.right.right;
-          if (tsFile != null && tsFile.exists() && !FileUtils.deleteQuietly(tsFile)) {
+          if (tsFile != null
+              && !org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile)) {
             LOGGER.warn(
                 DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
           }
-          if (objectDir != null && objectDir.exists() && !FileUtils.deleteQuietly(objectDir)) {
-            LOGGER.warn(
-                DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
+          if (objectDir != null) {
+            org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectDir, true);
+            if (objectDir.exists()) {
+              LOGGER.warn(
+                  DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
+            }
           }
         }
         PipeLogger.log(

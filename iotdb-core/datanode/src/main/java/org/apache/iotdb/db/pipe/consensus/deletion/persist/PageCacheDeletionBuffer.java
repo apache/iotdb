@@ -36,11 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
@@ -93,7 +93,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private volatile ByteBuffer serializeBuffer;
   // Current Logging file.
   private volatile File logFile;
-  private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;
   // Max progressIndex among current .deletion file. Used by PersistTask for naming .deletion file.
   // Since deletions are written serially, DAL is also written serially. This ensures that the
@@ -121,8 +120,12 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
           new File(
               baseDirectory,
               String.format("_%d-%d%s", 0, 0, DeletionResourceManager.DELETION_FILE_SUFFIX));
-      this.logStream = new FileOutputStream(logFile, true);
-      this.logChannel = logStream.getChannel();
+      this.logChannel =
+          FileChannel.open(
+              logFile.toPath(),
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.APPEND);
       // Create file && write magic string
       if (!logFile.exists() || logFile.length() == 0) {
         this.logChannel.write(
@@ -186,9 +189,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private void closeCurrentLoggingFile(boolean notifySuccess) throws IOException {
     LOGGER.info(DataNodePipeMessages.DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED, dataRegionId);
     // Close old resource to fsync.
-    if (this.logStream != null) {
-      this.logStream.close();
-    }
     if (this.logChannel != null) {
       this.logChannel.close();
     }
@@ -243,8 +243,12 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   progressIndex.getRebootTimes(),
                   progressIndex.getMemTableFlushOrderId(),
                   DeletionResourceManager.DELETION_FILE_SUFFIX));
-      this.logStream = new FileOutputStream(logFile, true);
-      this.logChannel = logStream.getChannel();
+      this.logChannel =
+          FileChannel.open(
+              logFile.toPath(),
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.APPEND);
       // Create file && write magic string
       if (!logFile.exists() || logFile.length() == 0) {
         this.logChannel.write(

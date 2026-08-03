@@ -56,7 +56,7 @@ public class CacheRecoverTask implements Runnable {
           }
           String cacheFileName = cacheFile.getName();
           if (!cacheFileName.endsWith(CACHE_FILE_SUFFIX)) {
-            cacheFile.delete();
+            org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(cacheFile);
             continue;
           }
           // read meta and put it back to the cache
@@ -68,7 +68,7 @@ public class CacheRecoverTask implements Runnable {
               logger.debug(
                   "Cache file {}'s data size doesn't match the cache page size, so delete it.",
                   cacheFile);
-              cacheFile.delete();
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(cacheFile);
               continue;
             }
             OSFileCacheValue value =

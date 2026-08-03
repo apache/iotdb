@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -90,7 +91,7 @@ public class CacheFileManager {
       channel.write(ByteBuffer.wrap(data));
     } catch (IOException e) {
       logger.error("Fail to persist data to cache file {}.", tmpCacheFile, e);
-      tmpCacheFile.delete();
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpCacheFile);
       return null;
     }
     // rename tmp file to cache file
@@ -102,14 +103,18 @@ public class CacheFileManager {
       totalCacheFileSize.addAndGet(value.getLength());
       return value;
     } else {
-      tmpCacheFile.delete();
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpCacheFile);
       return null;
     }
   }
 
   public boolean delete(OSFileCacheValue value) {
     totalCacheFileSize.addAndGet(-value.getLength());
-    return value.getCacheFile().delete();
+    try {
+      return Files.deleteIfExists(value.getCacheFile().toPath());
+    } catch (IOException e) {
+      return false;
+    }
   }
 
   void setCacheFileId(long startId) {

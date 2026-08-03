@@ -79,6 +79,7 @@ import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -770,8 +771,12 @@ public abstract class AbstractEnv implements BaseEnv {
       nodeWrapper.stopForcibly();
       nodeWrapper.destroyDir();
       final String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
-      if (!new File(lockPath).delete()) {
-        logger.error("Delete lock file {} failed", lockPath);
+      try {
+        if (!Files.deleteIfExists(new File(lockPath).toPath())) {
+          logger.error("Delete lock file {} failed", lockPath);
+        }
+      } catch (IOException e) {
+        logger.error("Delete lock file {} failed", lockPath, e);
       }
     }
     if (clientManager != null) {

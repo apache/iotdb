@@ -165,7 +165,7 @@ public class SharedStorageCompactionUtils {
     } catch (Exception e) {
       LOGGER.error(TimechoServerMessages.FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT, endPoint, e);
       for (File newFile : newFiles) {
-        newFile.delete();
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(newFile);
       }
       return Collections.emptyList();
     }
