@@ -108,6 +108,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
@@ -194,6 +195,8 @@ public class Session implements ISession {
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
   protected boolean enableAutoFetch = true;
+
+  private BiConsumer<Throwable, TEndPoint> connectionFailureReporter = (failure, endPoint) -> {};
 
   // max retry count, if set to 0, means that we won't do any retry
   // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
@@ -482,6 +485,7 @@ public class Session implements ISession {
     this.keyStorePwd = builder.keyStorePwd;
     this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
+    this.connectionFailureReporter = Objects.requireNonNull(builder.connectionFailureReporter);
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
@@ -554,7 +558,8 @@ public class Session implements ISession {
               keyStorePwd,
               sslProtocol,
               enableRPCCompaction,
-              version.toString());
+              version.toString(),
+              connectionFailureReporter);
     } else {
       this.availableNodes = new DummyNodesSupplier(getNodeUrls());
     }
@@ -699,6 +704,16 @@ public class Session implements ISession {
         retryIntervalInMs,
         sqlDialect,
         database);
+  }
+
+  void reportConnectionFailure(final Throwable failure, final TEndPoint endPoint) {
+    try {
+      connectionFailureReporter.accept(failure, endPoint);
+    } catch (final RuntimeException reporterFailure) {
+      if (failure != reporterFailure) {
+        failure.addSuppressed(reporterFailure);
+      }
+    }
   }
 
   @Override
@@ -4463,6 +4478,12 @@ public class Session implements ISession {
 
     public Builder sslProtocol(String sslProtocol) {
       this.sslProtocol = sslProtocol;
+      return this;
+    }
+
+    public Builder connectionFailureReporter(
+        BiConsumer<Throwable, TEndPoint> connectionFailureReporter) {
+      this.connectionFailureReporter = Objects.requireNonNull(connectionFailureReporter);
       return this;
     }
 

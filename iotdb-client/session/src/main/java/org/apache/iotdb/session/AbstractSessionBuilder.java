@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
 
@@ -30,6 +31,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public abstract class AbstractSessionBuilder {
 
@@ -89,6 +91,8 @@ public abstract class AbstractSessionBuilder {
   public Map<TSDataType, TSEncoding> columnEncodersMap;
 
   public int tabletCompressionMinRowSize = 10;
+
+  public BiConsumer<Throwable, TEndPoint> connectionFailureReporter = (failure, endPoint) -> {};
 
   {
     columnEncodersMap = new HashMap<>();

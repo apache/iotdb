@@ -39,6 +39,10 @@ public class IoTConsensusV2RPCService extends ThriftService
   private final TrustedChannelFailureHandler trustedChannelFailureHandler;
   private IoTConsensusV2RPCServiceProcessor iotConsensusV2RPCServiceProcessor;
 
+  public IoTConsensusV2RPCService(TEndPoint thisNode, IoTConsensusV2Config config) {
+    this(thisNode, config, TrustedChannelFailureHandler.NO_OP);
+  }
+
   public IoTConsensusV2RPCService(
       TEndPoint thisNode,
       IoTConsensusV2Config config,

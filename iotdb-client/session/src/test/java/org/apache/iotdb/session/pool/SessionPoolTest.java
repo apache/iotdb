@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -74,6 +75,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.function.BiConsumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -165,6 +167,27 @@ public class SessionPoolTest {
     assertEquals(12345, pool.getQueryTimeout());
     pool.setVersion(Version.V_0_13);
     assertEquals(Version.V_0_13, pool.getVersion());
+  }
+
+  @Test
+  public void testConnectionFailureReporterPropagation() throws Exception {
+    BiConsumer<Throwable, TEndPoint> reporter = (failure, endPoint) -> {};
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .enableAutoFetch(false)
+            .connectionFailureReporter(reporter)
+            .build();
+    try {
+      Session constructedSession = Whitebox.invokeMethod(pool, "constructNewSession");
+
+      Assert.assertSame(reporter, Whitebox.getInternalState(pool, "connectionFailureReporter"));
+      Assert.assertSame(
+          reporter, Whitebox.getInternalState(constructedSession, "connectionFailureReporter"));
+    } finally {
+      pool.close();
+    }
   }
 
   @Before

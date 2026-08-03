@@ -80,6 +80,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private TTransport transport;
+  private TEndPoint connectedEndPoint;
 
   private final ThriftClientProperty property;
   private IAINodeRPCService.Client client;
@@ -178,9 +179,8 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
                 IOTDB_CONFIG.getAddressAndPort(),
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         LOGGER.warn(message, e);
-        final TAINodeLocation currentLocation = CURRENT_LOCATION.get();
-        recordTrustedChannelFailureAuditLogIfNecessary(
-            e, currentLocation == null ? null : currentLocation.getInternalEndPoint());
+        recordTrustedChannelFailureAuditLogIfNecessary(e, connectedEndPoint);
+        connectedEndPoint = null;
         CURRENT_LOCATION.set(null);
         if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
           throw e;
@@ -207,6 +207,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
       } catch (TException e) {
         LOGGER.warn(DataNodeMiscMessages.AINODE_MAY_DOWN, endpoint, e);
         recordTrustedChannelFailureAuditLogIfNecessary(e, endpoint);
+        connectedEndPoint = null;
         CURRENT_LOCATION.set(null);
       }
     } else {
@@ -215,9 +216,11 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
     if (transport != null) {
       transport.close();
     }
+    connectedEndPoint = null;
   }
 
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
+    connectedEndPoint = null;
     transport =
         COMMON_CONFIG.isEnableInternalSSL()
             ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -236,6 +239,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
       transport.open();
     }
     client = new IAINodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
+    connectedEndPoint = endpoint;
   }
 
   private void recordTrustedChannelFailureAuditLogIfNecessary(Throwable failure, TEndPoint target) {
@@ -287,6 +291,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
   @Override
   public void invalidate() {
     Optional.ofNullable(transport).ifPresent(TTransport::close);
+    connectedEndPoint = null;
   }
 
   @Override

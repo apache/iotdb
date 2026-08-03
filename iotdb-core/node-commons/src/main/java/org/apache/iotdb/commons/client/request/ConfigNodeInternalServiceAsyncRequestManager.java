@@ -39,7 +39,7 @@ public abstract class ConfigNodeInternalServiceAsyncRequestManager<RequestType>
         new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory(
-                    selectorNumOfAsyncClientManager));
+                    selectorNumOfAsyncClientManager, this::onRequestFailure));
   }
 
   @Override

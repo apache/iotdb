@@ -38,6 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Objects;
+import java.util.function.BiConsumer;
 
 public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.AsyncClient
     implements ThriftClient {
@@ -45,18 +47,33 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final BiConsumer<Exception, TEndPoint> NO_OP_FAILURE_REPORTER =
+      (failure, target) -> {
+        // Do nothing.
+      };
 
   private long originalTimeout = -1;
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager;
+  private final BiConsumer<Exception, TEndPoint> failureReporter;
 
   public AsyncConfigNodeInternalServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager)
+      throws IOException {
+    this(property, endpoint, tClientManager, clientManager, NO_OP_FAILURE_REPORTER);
+  }
+
+  public AsyncConfigNodeInternalServiceClient(
+      ThriftClientProperty property,
+      TEndPoint endpoint,
+      TAsyncClientManager tClientManager,
+      ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager,
+      BiConsumer<Exception, TEndPoint> failureReporter)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -76,6 +93,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
+    this.failureReporter = Objects.requireNonNull(failureReporter);
   }
 
   @Override
@@ -86,6 +104,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   @Override
   public void onError(Exception e) {
+    reportFailure(e, endpoint);
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
@@ -167,11 +186,22 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
+    private final BiConsumer<Exception, TEndPoint> failureReporter;
+
     public Factory(
         ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
+      this(clientManager, thriftClientProperty, threadName, NO_OP_FAILURE_REPORTER);
+    }
+
+    public Factory(
+        ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager,
+        ThriftClientProperty thriftClientProperty,
+        String threadName,
+        BiConsumer<Exception, TEndPoint> failureReporter) {
       super(clientManager, thriftClientProperty, threadName);
+      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -183,18 +213,41 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     @Override
     public PooledObject<AsyncConfigNodeInternalServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      return new DefaultPooledObject<>(
-          new AsyncConfigNodeInternalServiceClient(
-              thriftClientProperty,
-              endPoint,
-              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
-              clientManager));
+      try {
+        return new DefaultPooledObject<>(
+            new AsyncConfigNodeInternalServiceClient(
+                thriftClientProperty,
+                endPoint,
+                tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
+                clientManager,
+                failureReporter));
+      } catch (final Exception e) {
+        reportFailure(e, endPoint, failureReporter);
+        throw e;
+      }
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endPoint, PooledObject<AsyncConfigNodeInternalServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
+    }
+  }
+
+  private void reportFailure(final Exception failure, final TEndPoint target) {
+    reportFailure(failure, target, failureReporter);
+  }
+
+  private static void reportFailure(
+      final Exception failure,
+      final TEndPoint target,
+      final BiConsumer<Exception, TEndPoint> failureReporter) {
+    try {
+      failureReporter.accept(failure, target);
+    } catch (final RuntimeException reportingFailure) {
+      if (reportingFailure != failure) {
+        failure.addSuppressed(reportingFailure);
+      }
     }
   }
 }

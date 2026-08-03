@@ -38,9 +38,16 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.net.SocketException;
+import java.util.Objects;
+import java.util.function.BiConsumer;
 
 public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Client
     implements ThriftClient, AutoCloseable {
+
+  private static final BiConsumer<Throwable, TEndPoint> NO_OP_FAILURE_REPORTER =
+      (failure, target) -> {
+        // Do nothing.
+      };
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -127,10 +134,20 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
   public static class Factory
       extends ThriftClientFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 
+    private final BiConsumer<Throwable, TEndPoint> failureReporter;
+
     public Factory(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty) {
+      this(clientManager, thriftClientProperty, NO_OP_FAILURE_REPORTER);
+    }
+
+    public Factory(
+        ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
+        ThriftClientProperty thriftClientProperty,
+        BiConsumer<Throwable, TEndPoint> failureReporter) {
       super(clientManager, thriftClientProperty);
+      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -142,20 +159,39 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     @Override
     public PooledObject<SyncDataNodeInternalServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncDataNodeInternalServiceClient.class,
-              SyncDataNodeInternalServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty,
-              endpoint,
-              clientManager));
+      try {
+        return new DefaultPooledObject<>(
+            SyncThriftClientWithErrorHandler.newErrorHandlerWithFailureHandler(
+                SyncDataNodeInternalServiceClient.class,
+                SyncDataNodeInternalServiceClient.class.getConstructor(
+                    thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+                (failure, client) -> reportFailure(failure, endpoint, failureReporter),
+                thriftClientProperty,
+                endpoint,
+                clientManager));
+      } catch (final Exception e) {
+        reportFailure(e, endpoint, failureReporter);
+        throw e;
+      }
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeInternalServiceClient> pooledObject) {
       return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+    }
+  }
+
+  private static void reportFailure(
+      final Throwable failure,
+      final TEndPoint target,
+      final BiConsumer<Throwable, TEndPoint> failureReporter) {
+    try {
+      failureReporter.accept(failure, target);
+    } catch (final RuntimeException reportingFailure) {
+      if (reportingFailure != failure) {
+        failure.addSuppressed(reportingFailure);
+      }
     }
   }
 }

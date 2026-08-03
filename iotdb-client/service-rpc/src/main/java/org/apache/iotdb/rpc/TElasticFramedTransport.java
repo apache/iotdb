@@ -186,7 +186,8 @@ public class TElasticFramedTransport extends TTransport {
                 RpcMessages.NON_SSL_TO_SSL_PORT,
                 remoteAddress == null
                     ? RpcMessages.EMPTY_MESSAGE
-                    : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress));
+                    : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress),
+            e.getCause());
       }
       throw e;
     }

@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
+
+import javax.net.ssl.SSLException;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 public class TElasticFramedTransportTest {
@@ -85,6 +91,19 @@ public class TElasticFramedTransportTest {
     }
   }
 
+  @Test
+  public void testNonSslClientFailurePreservesSslCause() throws Exception {
+    SSLException sslFailure = new SSLException("Unsupported or unrecognized SSL message");
+    TTransport underlying = new FailingTransport(sslFailure);
+    TElasticFramedTransport transport = new TElasticFramedTransport(underlying, 1024, 1024, false);
+
+    TTransportException failure =
+        assertThrows(TTransportException.class, () -> transport.read(new byte[1], 0, 1));
+
+    assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+    assertSame(sslFailure, failure.getCause());
+  }
+
   private static byte[] getTypicalTLSClientHelloByteArray() {
     String clientHelloHex =
         "16030301B3010001AF0303CEC349A4962AFCE0390D4E33D24050D1BF6B1CA63B190A25"
@@ -104,5 +123,54 @@ public class TElasticFramedTransportTest {
       bytes[i / 2] = (byte) value;
     }
     return bytes;
+  }
+
+  private static class FailingTransport extends TTransport {
+
+    private final TTransportException failure;
+
+    private FailingTransport(SSLException failure) {
+      this.failure = new TTransportException(failure);
+    }
+
+    @Override
+    public boolean isOpen() {
+      return true;
+    }
+
+    @Override
+    public void open() {
+      // No-op.
+    }
+
+    @Override
+    public void close() {
+      // No-op.
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) throws TTransportException {
+      throw failure;
+    }
+
+    @Override
+    public void write(byte[] buffer, int offset, int length) {
+      // No-op.
+    }
+
+    @Override
+    public TConfiguration getConfiguration() {
+      return TConfiguration.DEFAULT;
+    }
+
+    @Override
+    public void updateKnownMessageSize(long size) {
+      // No-op.
+    }
+
+    @Override
+    public void checkReadBytesAvailable(long numBytes) {
+      // No-op.
+    }
   }
 }

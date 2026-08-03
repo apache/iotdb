@@ -34,14 +34,24 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class AsyncDataNodeHeartbeatClientPool {
 
-  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
+  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      heartbeatClientManager;
+  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> auditClientManager;
 
   private AsyncDataNodeHeartbeatClientPool() {
-    clientManager =
+    int selectorNumOfClientManager =
+        ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager();
+    heartbeatClientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory(
-                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
+                    selectorNumOfClientManager,
+                    this::recordTrustedChannelFailureAuditLogIfNecessary));
+    auditClientManager =
+        new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.AsyncDataNodeAuditServiceClientPoolFactory(
+                    selectorNumOfClientManager));
   }
 
   /**
@@ -54,14 +64,16 @@ public class AsyncDataNodeHeartbeatClientPool {
     AsyncDataNodeInternalServiceClient client = null;
     boolean dispatched = false;
     try {
-      client = clientManager.borrowClient(endPoint);
+      client = heartbeatClientManager.borrowClient(endPoint);
       client.getDataNodeHeartBeat(req, handler);
       dispatched = true;
     } catch (Exception e) {
-      recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
+      if (client != null) {
+        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
+      }
       handleError(handler, e);
     } finally {
-      returnClientIfNotDispatched(endPoint, client, dispatched);
+      returnClientIfNotDispatched(heartbeatClientManager, endPoint, client, dispatched);
     }
   }
 
@@ -70,13 +82,13 @@ public class AsyncDataNodeHeartbeatClientPool {
     AsyncDataNodeInternalServiceClient client = null;
     boolean dispatched = false;
     try {
-      client = clientManager.borrowClient(endPoint);
+      client = auditClientManager.borrowClient(endPoint);
       client.writeAuditLog(req, handler);
       dispatched = true;
     } catch (Exception e) {
       handleError(handler, e);
     } finally {
-      returnClientIfNotDispatched(endPoint, client, dispatched);
+      returnClientIfNotDispatched(auditClientManager, endPoint, client, dispatched);
     }
   }
 
@@ -84,9 +96,12 @@ public class AsyncDataNodeHeartbeatClientPool {
   // for returning the client. If the RPC was not dispatched (exception before/during the call),
   // the client must be returned here to prevent pool leakage.
   private void returnClientIfNotDispatched(
-      TEndPoint endPoint, AsyncDataNodeInternalServiceClient client, boolean dispatched) {
-    if (!dispatched && client != null && clientManager instanceof ClientManager) {
-      ((ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>) clientManager)
+      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> ownerClientManager,
+      TEndPoint endPoint,
+      AsyncDataNodeInternalServiceClient client,
+      boolean dispatched) {
+    if (!dispatched && client != null && ownerClientManager instanceof ClientManager) {
+      ((ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>) ownerClientManager)
           .returnClient(endPoint, client);
     }
   }

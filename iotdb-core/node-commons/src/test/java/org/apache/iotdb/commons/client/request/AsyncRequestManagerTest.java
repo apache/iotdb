@@ -122,7 +122,7 @@ public class AsyncRequestManagerTest {
     private boolean failOnDispatch;
     private boolean failOnError;
     private boolean failOnReporting;
-    private final AtomicReference<Exception> reportedFailure = new AtomicReference<>();
+    private final AtomicReference<Throwable> reportedFailure = new AtomicReference<>();
 
     private TestAsyncRequestManager() {
       this(true, false, false, false);
@@ -149,7 +149,7 @@ public class AsyncRequestManagerTest {
       return borrowAttempts.get();
     }
 
-    private Exception getReportedFailure() {
+    private Throwable getReportedFailure() {
       return reportedFailure.get();
     }
 

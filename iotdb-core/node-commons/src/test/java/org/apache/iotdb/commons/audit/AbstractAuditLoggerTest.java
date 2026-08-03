@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.audit;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.thrift.TException;
 import org.junit.Test;
@@ -64,7 +65,10 @@ public class AbstractAuditLoggerTest {
     assertFalse(auditLogger.auditEntity.getResult());
     assertEquals(0, identifierEvaluationCount.get());
     assertEquals(
-        "Trusted channel function failed: initiator=DataNode-1@10.0.0.1:10730, target=DataNode-2@10.0.0.2:10730",
+        String.format(
+            CommonMessages.LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443,
+            "DataNode-1@10.0.0.1:10730",
+            "DataNode-2@10.0.0.2:10730"),
         auditLogger.auditLog.get());
     assertEquals(2, identifierEvaluationCount.get());
   }
@@ -96,7 +100,10 @@ public class AbstractAuditLoggerTest {
         AuditEventType.TRUSTED_CHANNEL_FUNCTION_FAILURE,
         auditLogger.auditEntity.getAuditEventType());
     assertEquals(
-        "Trusted channel function failed: initiator=10.0.0.1:10730, target=10.0.0.2:10730",
+        String.format(
+            CommonMessages.LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443,
+            "10.0.0.1:10730",
+            "10.0.0.2:10730"),
         auditLogger.auditLog.get());
   }
 

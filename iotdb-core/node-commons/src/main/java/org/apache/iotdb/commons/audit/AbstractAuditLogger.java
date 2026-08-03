@@ -109,7 +109,7 @@ public abstract class AbstractAuditLogger {
 
   public void recordTrustedChannelFailureAuditLogIfNecessary(
       Throwable failure, TEndPoint initiator, TEndPoint target) {
-    if (RECORDING_TRUSTED_CHANNEL_FAILURE.get()
+    if (Boolean.TRUE.equals(RECORDING_TRUSTED_CHANNEL_FAILURE.get())
         || !isSslFailure(failure)
         || initiator == null
         || target == null) {

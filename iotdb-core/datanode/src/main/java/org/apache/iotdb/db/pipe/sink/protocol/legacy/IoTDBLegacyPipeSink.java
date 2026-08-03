@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -348,6 +349,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         throw new PipeRuntimeCriticalException(errorMsg);
       }
     } catch (final TException e) {
+      recordTrustedChannelFailureAuditLogIfNecessary(e);
       throw new PipeConnectionException(
           String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
@@ -362,6 +364,9 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
             .useSSL(useSSL)
             .trustStore(trustStore)
             .trustStorePwd(trustStorePwd);
+    if (useSSL) {
+      builder.connectionFailureReporter(this::recordTrustedChannelFailureAuditLogIfNecessary);
+    }
     if (keyStore != null) {
       builder.keyStore(keyStore).keyStorePwd(keyStorePwd);
     }
@@ -507,6 +512,9 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     }
     try {
       doTransfer(pipeTsFileInsertionEvent);
+    } catch (final PipeException | TException | IOException e) {
+      recordTrustedChannelFailureAuditLogIfNecessary(e);
+      throw e;
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(IoTDBLegacyPipeSink.class.getName(), false);
     }
@@ -575,6 +583,17 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         Math.min(
             (long) PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
             Math.max(file.length(), 1L));
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(final Throwable failure) {
+    recordTrustedChannelFailureAuditLogIfNecessary(failure, new TEndPoint(ipAddress, port));
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(
+      final Throwable failure, final TEndPoint target) {
+    if (useSSL) {
+      DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(failure, target);
+    }
   }
 
   @Override

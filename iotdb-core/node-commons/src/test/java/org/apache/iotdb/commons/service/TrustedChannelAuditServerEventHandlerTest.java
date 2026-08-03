@@ -110,6 +110,29 @@ public class TrustedChannelAuditServerEventHandlerTest {
   }
 
   @Test
+  public void testHandshakeFailurePrefersActualLocalEndpoint() throws Exception {
+    TServerEventHandler delegate = mock(TServerEventHandler.class);
+    TProtocol input = mock(TProtocol.class);
+    SSLSocket socket = mock(SSLSocket.class);
+    TProtocol output = createProtocol(socket);
+    SSLHandshakeException failure = new SSLHandshakeException("handshake failure");
+    AtomicReference<TEndPoint> reportedTarget = new AtomicReference<>();
+    when(socket.getRemoteSocketAddress()).thenReturn(new InetSocketAddress("192.0.2.10", 45123));
+    when(socket.getLocalSocketAddress()).thenReturn(new InetSocketAddress("10.0.0.9", 10730));
+    org.mockito.Mockito.doThrow(failure).when(socket).startHandshake();
+
+    TrustedChannelAuditServerEventHandler handler =
+        new TrustedChannelAuditServerEventHandler(
+            delegate,
+            new TEndPoint("0.0.0.0", 10730),
+            (throwable, initiator, endpoint) -> reportedTarget.set(endpoint));
+
+    assertThrows(UncheckedIOException.class, () -> handler.createContext(input, output));
+
+    assertEquals(new TEndPoint("10.0.0.9", 10730), reportedTarget.get());
+  }
+
+  @Test
   public void testCloseFailureDoesNotSelfSuppressHandshakeFailure() throws Exception {
     TServerEventHandler delegate = mock(TServerEventHandler.class);
     TProtocol input = mock(TProtocol.class);
@@ -130,6 +153,31 @@ public class TrustedChannelAuditServerEventHandlerTest {
     assertSame(failure, thrown.getCause());
     assertEquals(0, failure.getSuppressed().length);
     verify(delegate, never()).createContext(any(), any());
+  }
+
+  @Test
+  public void testDelegateContextFailureCleansUpExactlyOnce() {
+    TServerEventHandler delegate = mock(TServerEventHandler.class);
+    TProtocol input = mock(TProtocol.class);
+    TProtocol output = mock(TProtocol.class);
+    RuntimeException contextFailure = new RuntimeException("context failure");
+    org.mockito.Mockito.doThrow(contextFailure).when(delegate).createContext(input, output);
+
+    TrustedChannelAuditServerEventHandler handler =
+        new TrustedChannelAuditServerEventHandler(
+            delegate, new TEndPoint("10.0.0.2", 10730), TrustedChannelFailureHandler.NO_OP);
+
+    assertSame(
+        contextFailure,
+        assertThrows(RuntimeException.class, () -> handler.createContext(input, output)));
+
+    // TThreadPoolServer invokes deleteContext with the null context after createContext fails.
+    handler.deleteContext(null, input, output);
+
+    InOrder inOrder = inOrder(delegate);
+    inOrder.verify(delegate).createContext(input, output);
+    inOrder.verify(delegate).deleteContext(null, input, output);
+    verify(delegate).deleteContext(null, input, output);
   }
 
   private static TProtocol createProtocol(SSLSocket socket) {

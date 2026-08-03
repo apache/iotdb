@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClien
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 public class AsyncConfigNodeHeartbeatClientPool {
 
@@ -37,7 +38,8 @@ public class AsyncConfigNodeHeartbeatClientPool {
         new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory(
-                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
+                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager(),
+                    this::recordTrustedChannelFailureAuditLogIfNecessary));
   }
 
   /**
@@ -56,6 +58,9 @@ public class AsyncConfigNodeHeartbeatClientPool {
       client.getConfigNodeHeartBeat(heartbeatReq, handler);
       dispatched = true;
     } catch (Exception e) {
+      if (client != null) {
+        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
+      }
       handleError(handler, e);
     } finally {
       // After the async call is dispatched, the client's onComplete/onError callback is
@@ -74,6 +79,17 @@ public class AsyncConfigNodeHeartbeatClientPool {
     } catch (final Exception ignore) {
       // Ignore handler failures in heartbeat best-effort path.
     }
+  }
+
+  private void recordTrustedChannelFailureAuditLogIfNecessary(
+      Throwable failure, TEndPoint targetEndPoint) {
+    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
+      return;
+    }
+    ConfigNode.getInstance()
+        .getConfigManager()
+        .getAuditLogger()
+        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class AsyncConfigNodeHeartbeatClientPoolHolder {

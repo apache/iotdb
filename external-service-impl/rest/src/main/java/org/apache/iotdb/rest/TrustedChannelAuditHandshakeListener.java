@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.rest;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -42,7 +43,7 @@ final class TrustedChannelAuditHandshakeListener implements SslHandshakeListener
   }
 
   void recordHandshakeFailure(EndPoint endPoint, Throwable failure) {
-    if (endPoint == null) {
+    if (endPoint == null || failure == null) {
       return;
     }
 
@@ -62,10 +63,9 @@ final class TrustedChannelAuditHandshakeListener implements SslHandshakeListener
   }
 
   private static TEndPoint toEndPoint(SocketAddress socketAddress) {
-    if (!(socketAddress instanceof InetSocketAddress)) {
+    if (!(socketAddress instanceof InetSocketAddress inetSocketAddress)) {
       return null;
     }
-    InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
     String host =
         inetSocketAddress.getAddress() == null
             ? inetSocketAddress.getHostString()

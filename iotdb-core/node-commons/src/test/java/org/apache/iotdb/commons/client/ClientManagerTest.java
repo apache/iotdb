@@ -21,12 +21,14 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -36,6 +38,7 @@ import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.async.TAsyncClientManager;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -49,8 +52,11 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ClientManagerTest {
@@ -105,6 +111,12 @@ public class ClientManagerTest {
     invalidSyncClientReturnTest();
     invalidAsyncClientReturnTest();
     borrowNullTest();
+    asyncFailureReporterTest();
+    clientFactoryConstructionFailureReporterTest();
+    syncFailureReporterTest();
+    syncConfigNodeFailureReporterTest();
+    auditClientPoolShouldNotReuseHeartbeatFailureReporterTest();
+    legacyFailureReporterFactoryConstructorsTest();
     syncClientTimeoutTest();
     asyncClientTimeoutTest();
   }
@@ -606,6 +618,307 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
 
     asyncClusterManager.close();
+  }
+
+  public void asyncFailureReporterTest() throws Exception {
+    TAsyncClientManager thriftClientManager = new TAsyncClientManager();
+    try {
+      ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> dataNodeClientManager =
+          mock(ClientManager.class);
+      AtomicReference<Throwable> dataNodeFailure = new AtomicReference<>();
+      AtomicReference<TEndPoint> dataNodeTarget = new AtomicReference<>();
+      AsyncDataNodeInternalServiceClient dataNodeClient =
+          new AsyncDataNodeInternalServiceClient(
+              new ThriftClientProperty.Builder().build(),
+              endPoint,
+              thriftClientManager,
+              dataNodeClientManager,
+              (failure, target) -> {
+                dataNodeFailure.set(failure);
+                dataNodeTarget.set(target);
+              });
+      Exception dataNodeException = new IOException("DataNode async failure");
+
+      dataNodeClient.onError(dataNodeException);
+
+      Assert.assertSame(dataNodeException, dataNodeFailure.get());
+      Assert.assertSame(endPoint, dataNodeTarget.get());
+      verify(dataNodeClientManager).returnClient(endPoint, dataNodeClient);
+
+      ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> configNodeClientManager =
+          mock(ClientManager.class);
+      AtomicReference<Throwable> configNodeFailure = new AtomicReference<>();
+      AtomicReference<TEndPoint> configNodeTarget = new AtomicReference<>();
+      AsyncConfigNodeInternalServiceClient configNodeClient =
+          new AsyncConfigNodeInternalServiceClient(
+              new ThriftClientProperty.Builder().build(),
+              endPoint,
+              thriftClientManager,
+              configNodeClientManager,
+              (failure, target) -> {
+                configNodeFailure.set(failure);
+                configNodeTarget.set(target);
+              });
+      Exception configNodeException = new IOException("ConfigNode async failure");
+
+      configNodeClient.onError(configNodeException);
+
+      Assert.assertSame(configNodeException, configNodeFailure.get());
+      Assert.assertSame(endPoint, configNodeTarget.get());
+      verify(configNodeClientManager).returnClient(endPoint, configNodeClient);
+    } finally {
+      thriftClientManager.stop();
+    }
+  }
+
+  public void clientFactoryConstructionFailureReporterTest() throws Exception {
+    TEndPoint invalidEndpoint = new TEndPoint();
+    invalidEndpoint.setPort(endPoint.getPort());
+    ThriftClientProperty asyncProperty =
+        new ThriftClientProperty.Builder().setSelectorNumOfAsyncClientManager(1).build();
+
+    AtomicReference<Throwable> dataNodeFailure = new AtomicReference<>();
+    AtomicReference<TEndPoint> dataNodeTarget = new AtomicReference<>();
+    AsyncDataNodeInternalServiceClient.Factory dataNodeFactory =
+        new AsyncDataNodeInternalServiceClient.Factory(
+            mock(ClientManager.class),
+            asyncProperty,
+            "test-async-datanode-client",
+            (failure, target) -> {
+              dataNodeFailure.set(failure);
+              dataNodeTarget.set(target);
+            });
+    try {
+      Exception failure =
+          Assert.assertThrows(Exception.class, () -> dataNodeFactory.makeObject(invalidEndpoint));
+      Assert.assertSame(failure, dataNodeFailure.get());
+      Assert.assertSame(invalidEndpoint, dataNodeTarget.get());
+    } finally {
+      dataNodeFactory.close();
+    }
+
+    AtomicReference<Throwable> configNodeFailure = new AtomicReference<>();
+    AtomicReference<TEndPoint> configNodeTarget = new AtomicReference<>();
+    AsyncConfigNodeInternalServiceClient.Factory configNodeFactory =
+        new AsyncConfigNodeInternalServiceClient.Factory(
+            mock(ClientManager.class),
+            asyncProperty,
+            "test-async-confignode-client",
+            (failure, target) -> {
+              configNodeFailure.set(failure);
+              configNodeTarget.set(target);
+            });
+    try {
+      Exception failure =
+          Assert.assertThrows(Exception.class, () -> configNodeFactory.makeObject(invalidEndpoint));
+      Assert.assertSame(failure, configNodeFailure.get());
+      Assert.assertSame(invalidEndpoint, configNodeTarget.get());
+    } finally {
+      configNodeFactory.close();
+    }
+
+    ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClientManager =
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestSyncDataNodeInternalServiceClientPoolFactory());
+    AtomicReference<Throwable> syncFailure = new AtomicReference<>();
+    AtomicReference<TEndPoint> syncTarget = new AtomicReference<>();
+    try {
+      SyncDataNodeInternalServiceClient.Factory syncFactory =
+          new SyncDataNodeInternalServiceClient.Factory(
+              syncClientManager,
+              new ThriftClientProperty.Builder().build(),
+              (failure, target) -> {
+                syncFailure.set(failure);
+                syncTarget.set(target);
+              });
+      Exception failure =
+          Assert.assertThrows(Exception.class, () -> syncFactory.makeObject(invalidEndpoint));
+      Assert.assertSame(failure, syncFailure.get());
+      Assert.assertSame(invalidEndpoint, syncTarget.get());
+    } finally {
+      syncClientManager.close();
+    }
+  }
+
+  public void syncFailureReporterTest() throws Exception {
+    AtomicInteger failureCount = new AtomicInteger();
+    AtomicReference<TEndPoint> failureTarget = new AtomicReference<>();
+    ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClientManager =
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(
+                    manager ->
+                        new GenericKeyedObjectPool<>(
+                            new SyncDataNodeInternalServiceClient.Factory(
+                                manager,
+                                new ThriftClientProperty.Builder()
+                                    .setConnectionTimeoutMs(CONNECTION_TIMEOUT)
+                                    .build(),
+                                (failure, target) -> {
+                                  failureCount.incrementAndGet();
+                                  failureTarget.set(target);
+                                }),
+                            new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+                                .build()
+                                .getConfig()));
+
+    SyncDataNodeInternalServiceClient client = null;
+    try {
+      client = syncClientManager.borrowClient(endPoint);
+      client.invalidate();
+
+      Assert.assertThrows(TException.class, client::merge);
+
+      Assert.assertEquals(1, failureCount.get());
+      Assert.assertSame(endPoint, failureTarget.get());
+    } finally {
+      if (client != null) {
+        client.close();
+      }
+      syncClientManager.close();
+    }
+  }
+
+  public void syncConfigNodeFailureReporterTest() throws Exception {
+    AtomicInteger failureCount = new AtomicInteger();
+    AtomicReference<Throwable> reportedFailure = new AtomicReference<>();
+    AtomicReference<TEndPoint> failureTarget = new AtomicReference<>();
+    RuntimeException reportingFailure = new RuntimeException("reporting failure");
+    ClientManager<TEndPoint, SyncConfigNodeIServiceClient> syncClientManager =
+        (ClientManager<TEndPoint, SyncConfigNodeIServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
+                        (failure, target) -> {
+                          failureCount.incrementAndGet();
+                          reportedFailure.set(failure);
+                          failureTarget.set(target);
+                          throw reportingFailure;
+                        }));
+
+    SyncConfigNodeIServiceClient client = null;
+    try {
+      client = syncClientManager.borrowClient(endPoint);
+      client.invalidate();
+
+      TException failure = Assert.assertThrows(TException.class, client::testConnectionEmptyRPC);
+
+      Assert.assertEquals(1, failureCount.get());
+      Assert.assertSame(endPoint, failureTarget.get());
+      Assert.assertNotSame(reportingFailure, failure);
+      Assert.assertTrue(containsSuppressed(failure, reportingFailure));
+    } finally {
+      if (client != null) {
+        client.close();
+      }
+      syncClientManager.close();
+    }
+
+    TEndPoint invalidEndpoint = new TEndPoint();
+    invalidEndpoint.setPort(endPoint.getPort());
+    failureCount.set(0);
+    reportedFailure.set(null);
+    failureTarget.set(null);
+    ClientManager<TEndPoint, SyncConfigNodeIServiceClient> constructionClientManager =
+        (ClientManager<TEndPoint, SyncConfigNodeIServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
+                        (failure, target) -> {
+                          failureCount.incrementAndGet();
+                          reportedFailure.set(failure);
+                          failureTarget.set(target);
+                          throw reportingFailure;
+                        }));
+    try {
+      SyncConfigNodeIServiceClient.Factory factory =
+          (SyncConfigNodeIServiceClient.Factory) constructionClientManager.getPool().getFactory();
+      Exception failure =
+          Assert.assertThrows(Exception.class, () -> factory.makeObject(invalidEndpoint));
+
+      Assert.assertEquals(1, failureCount.get());
+      Assert.assertSame(failure, reportedFailure.get());
+      Assert.assertSame(invalidEndpoint, failureTarget.get());
+      Assert.assertEquals(1, failure.getSuppressed().length);
+      Assert.assertSame(reportingFailure, failure.getSuppressed()[0]);
+    } finally {
+      constructionClientManager.close();
+    }
+  }
+
+  private static boolean containsSuppressed(Throwable failure, Throwable expectedSuppressed) {
+    Throwable current = failure;
+    while (current != null) {
+      for (Throwable suppressed : current.getSuppressed()) {
+        if (suppressed == expectedSuppressed) {
+          return true;
+        }
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  public void auditClientPoolShouldNotReuseHeartbeatFailureReporterTest() {
+    AtomicInteger heartbeatFailureCount = new AtomicInteger();
+    ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory heartbeatPoolFactory =
+        new ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory(
+            1, (failure, target) -> heartbeatFailureCount.incrementAndGet());
+    ClientPoolFactory.AsyncDataNodeAuditServiceClientPoolFactory auditPoolFactory =
+        new ClientPoolFactory.AsyncDataNodeAuditServiceClientPoolFactory(1);
+    ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> heartbeatClientManager =
+        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(heartbeatPoolFactory);
+    ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> auditClientManager =
+        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(auditPoolFactory);
+    TEndPoint invalidEndpoint = new TEndPoint();
+    invalidEndpoint.setPort(endPoint.getPort());
+
+    try {
+      Assert.assertThrows(
+          ClientManagerException.class, () -> heartbeatClientManager.borrowClient(invalidEndpoint));
+      int heartbeatReports = heartbeatFailureCount.get();
+      Assert.assertTrue(heartbeatReports > 0);
+
+      Assert.assertThrows(
+          ClientManagerException.class, () -> auditClientManager.borrowClient(invalidEndpoint));
+
+      Assert.assertEquals(heartbeatReports, heartbeatFailureCount.get());
+      Assert.assertNotSame(heartbeatClientManager.getPool(), auditClientManager.getPool());
+      Assert.assertNotEquals(
+          heartbeatPoolFactory.getClass().getSimpleName(),
+          auditPoolFactory.getClass().getSimpleName());
+    } finally {
+      heartbeatClientManager.close();
+      auditClientManager.close();
+    }
+  }
+
+  public void legacyFailureReporterFactoryConstructorsTest() {
+    ThriftClientProperty asyncProperty =
+        new ThriftClientProperty.Builder().setSelectorNumOfAsyncClientManager(1).build();
+    AsyncDataNodeInternalServiceClient.Factory dataNodeFactory =
+        new AsyncDataNodeInternalServiceClient.Factory(
+            mock(ClientManager.class), asyncProperty, "legacy-async-datanode-client");
+    AsyncConfigNodeInternalServiceClient.Factory configNodeFactory =
+        new AsyncConfigNodeInternalServiceClient.Factory(
+            mock(ClientManager.class), asyncProperty, "legacy-async-confignode-client");
+    try {
+      Assert.assertNotNull(
+          new SyncDataNodeInternalServiceClient.Factory(
+              mock(ClientManager.class), new ThriftClientProperty.Builder().build()));
+      Assert.assertNotNull(
+          new SyncConfigNodeIServiceClient.Factory(
+              mock(ClientManager.class), new ThriftClientProperty.Builder().build()));
+      Assert.assertNotNull(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    } finally {
+      dataNodeFactory.close();
+      configNodeFactory.close();
+    }
   }
 
   public static class TestSyncDataNodeInternalServiceClientPoolFactory

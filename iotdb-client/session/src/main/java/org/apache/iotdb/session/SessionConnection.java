@@ -223,6 +223,7 @@ public class SessionConnection {
         transport.open();
       }
     } catch (TTransportException e) {
+      reportConnectionFailure(e, endPoint);
       throw new IoTDBConnectionException(e);
     }
 
@@ -275,6 +276,7 @@ public class SessionConnection {
       throw e;
     } catch (Exception e) {
       transport.close();
+      reportConnectionFailure(e, endPoint);
       throw new IoTDBConnectionException(e);
     }
   }
@@ -283,6 +285,7 @@ public class SessionConnection {
   private void initClusterConn() throws IoTDBConnectionException {
     for (TEndPoint tEndPoint : endPointList) {
       try {
+        this.endPoint = tEndPoint;
         session.defaultEndPoint = tEndPoint;
         init(
             tEndPoint,
@@ -313,6 +316,7 @@ public class SessionConnection {
     try {
       client.closeSession(req);
     } catch (TException e) {
+      reportConnectionFailure(e, endPoint);
       throw new IoTDBConnectionException(SessionMessages.CLOSE_SESSION_ERROR, e);
     } finally {
       if (transport != null) {
@@ -935,6 +939,7 @@ public class SessionConnection {
         break;
       } catch (TException e) {
         // all network exception need retry until reaching maxRetryCount
+        reportConnectionFailure(e, endPoint);
         lastTException = e;
       }
     }
@@ -976,6 +981,7 @@ public class SessionConnection {
         lastTException = null;
       } catch (TException e) {
         result = null;
+        reportConnectionFailure(e, endPoint);
         lastTException = e;
       }
 
@@ -1274,16 +1280,24 @@ public class SessionConnection {
       ret = supplier.run();
       return new RetryResult<>(ret, null, 0);
     } catch (TException e) {
+      reportConnectionFailure(e, endPoint);
       if (reconnect()) {
         try {
           ret = supplier.run();
           return new RetryResult<>(ret, null, 1);
         } catch (TException tException) {
+          reportConnectionFailure(tException, endPoint);
           throw new IoTDBConnectionException(tException);
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    }
+  }
+
+  private void reportConnectionFailure(final Throwable failure, final TEndPoint endPoint) {
+    if (session != null && session.useSSL) {
+      session.reportConnectionFailure(failure, endPoint);
     }
   }
 

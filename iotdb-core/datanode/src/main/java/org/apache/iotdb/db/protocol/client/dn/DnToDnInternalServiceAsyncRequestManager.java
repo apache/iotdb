@@ -55,7 +55,7 @@ public class DnToDnInternalServiceAsyncRequestManager
       final int requestId,
       final TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
-        requestContext, requestId, targetNode);
+        requestContext, requestId, targetNode, targetNode.getInternalEndPoint());
   }
 
   private static class ClientPoolHolder {

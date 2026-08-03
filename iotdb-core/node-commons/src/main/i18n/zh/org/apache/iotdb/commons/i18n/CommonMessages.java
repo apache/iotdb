@@ -216,6 +216,6 @@ public final class CommonMessages {
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
-      "可信信道功能失效：initiator=%s，target=%s";
+      "可信信道功能失效：发起者=%s，目标端=%s";
 
 }

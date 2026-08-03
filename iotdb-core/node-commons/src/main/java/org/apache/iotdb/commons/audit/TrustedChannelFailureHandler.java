@@ -24,7 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 @FunctionalInterface
 public interface TrustedChannelFailureHandler {
 
-  TrustedChannelFailureHandler NO_OP = (failure, initiator, target) -> {};
+  TrustedChannelFailureHandler NO_OP =
+      (failure, initiator, target) -> {
+        // Do nothing.
+      };
 
   void onFailure(Throwable failure, TEndPoint initiator, TEndPoint target);
 }

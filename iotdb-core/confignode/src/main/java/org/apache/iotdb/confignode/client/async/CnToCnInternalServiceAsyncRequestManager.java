@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequ
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +76,17 @@ public class CnToCnInternalServiceAsyncRequestManager
     if (CnToCnNodeRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(cnToCnNodeRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllCnMaxTime());
     }
+  }
+
+  @Override
+  protected void onRequestFailure(Exception failure, TEndPoint targetEndPoint) {
+    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
+      return;
+    }
+    ConfigNode.getInstance()
+        .getConfigManager()
+        .getAuditLogger()
+        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class ClientPoolHolder {

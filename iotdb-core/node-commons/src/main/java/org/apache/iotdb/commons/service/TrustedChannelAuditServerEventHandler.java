@@ -64,7 +64,21 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
     startHandshakeIfNecessary(output);
-    return delegate.createContext(input, output);
+    try {
+      return delegate.createContext(input, output);
+    } catch (RuntimeException | Error contextFailure) {
+      // A delegate may have already allocated connection state before createContext fails. The
+      // Thrift server subsequently invokes this wrapper with a null context, which is deliberately
+      // ignored by deleteContext below, so clean up the partially created delegate context here.
+      try {
+        delegate.deleteContext(null, input, output);
+      } catch (RuntimeException | Error cleanupFailure) {
+        if (cleanupFailure != contextFailure) {
+          contextFailure.addSuppressed(cleanupFailure);
+        }
+      }
+      throw contextFailure;
+    }
   }
 
   @Override
@@ -90,7 +104,7 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
       ((SSLSocket) socket).startHandshake();
     } catch (IOException e) {
       if (e instanceof SSLException) {
-        notifyFailure(e, socket.getRemoteSocketAddress());
+        notifyFailure(e, socket.getRemoteSocketAddress(), socket.getLocalSocketAddress());
       }
       try {
         socket.close();
@@ -103,13 +117,15 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
     }
   }
 
-  private void notifyFailure(Throwable failure, SocketAddress remoteAddress) {
+  private void notifyFailure(
+      Throwable failure, SocketAddress remoteAddress, SocketAddress localAddress) {
     TEndPoint initiator = toEndPoint(remoteAddress);
     if (initiator == null) {
       return;
     }
+    TEndPoint actualTarget = toEndPoint(localAddress);
     try {
-      failureHandler.onFailure(failure, initiator, target);
+      failureHandler.onFailure(failure, initiator, actualTarget == null ? target : actualTarget);
     } catch (RuntimeException auditFailure) {
       if (auditFailure != failure) {
         failure.addSuppressed(auditFailure);
@@ -118,18 +134,18 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
   }
 
   private static Socket getSocket(TProtocol protocol) {
-    if (protocol == null || !(protocol.getTransport() instanceof TElasticFramedTransport)) {
+    if (protocol == null
+        || !(protocol.getTransport() instanceof TElasticFramedTransport framedTransport)) {
       return null;
     }
-    TTransport socketTransport = ((TElasticFramedTransport) protocol.getTransport()).getSocket();
-    return socketTransport instanceof TSocket ? ((TSocket) socketTransport).getSocket() : null;
+    TTransport socketTransport = framedTransport.getSocket();
+    return socketTransport instanceof TSocket socket ? socket.getSocket() : null;
   }
 
   private static TEndPoint toEndPoint(SocketAddress socketAddress) {
-    if (!(socketAddress instanceof InetSocketAddress)) {
+    if (!(socketAddress instanceof InetSocketAddress inetSocketAddress)) {
       return null;
     }
-    InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
     String host =
         inetSocketAddress.getAddress() == null
             ? inetSocketAddress.getHostString()

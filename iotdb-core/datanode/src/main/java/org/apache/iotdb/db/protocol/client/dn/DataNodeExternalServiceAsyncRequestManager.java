@@ -70,7 +70,7 @@ public class DataNodeExternalServiceAsyncRequestManager
       int requestId,
       TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
-        requestContext, requestId, targetNode);
+        requestContext, requestId, targetNode, targetNode.getClientRpcEndPoint());
   }
 
   private static class ClientPoolHolder {

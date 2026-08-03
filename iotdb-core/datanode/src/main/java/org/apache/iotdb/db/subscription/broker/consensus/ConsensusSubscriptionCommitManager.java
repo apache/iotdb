@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -115,7 +116,8 @@ public class ConsensusSubscriptionCommitManager {
       SYNC_DN_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory(
+                      DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary));
 
   /** Minimum interval (ms) between broadcasts for the same (consumerGroup, topic, region). */
   private static final long MIN_BROADCAST_INTERVAL_MS = 5000;

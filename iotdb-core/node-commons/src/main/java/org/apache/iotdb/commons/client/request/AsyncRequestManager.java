@@ -210,11 +210,15 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           endPoint,
           e.getMessage(),
           retryCount);
-      try {
-        onRequestFailure(e, endPoint);
-      } catch (final RuntimeException reportingFailure) {
-        if (reportingFailure != e) {
-          e.addSuppressed(reportingFailure);
+      // A wrapped pool-creation failure has already been reported by the client factory with the
+      // original exception. Avoid emitting the same audit event again for its wrapper.
+      if (!(e instanceof ClientManagerException && e.getCause() != null)) {
+        try {
+          onRequestFailure(e, endPoint);
+        } catch (final RuntimeException reportingFailure) {
+          if (reportingFailure != e) {
+            e.addSuppressed(reportingFailure);
+          }
         }
       }
       if (handler != null) {

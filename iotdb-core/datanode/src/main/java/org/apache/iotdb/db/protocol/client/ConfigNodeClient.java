@@ -542,6 +542,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           configNodes = newConfigNodes;
         }
       } catch (TException e) {
+        recordTrustedChannelFailureAuditLogIfNecessary(e, configNode);
         String message =
             String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
