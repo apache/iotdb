@@ -321,6 +321,10 @@ enum TAggregationType {
   SKEWNESS,
   KURTOSIS
   PERCENTILE,
+  RATE,
+  INCREASE,
+  IRATE,
+  DELTA,
 }
 
 struct TShowConfigurationTemplateResp {

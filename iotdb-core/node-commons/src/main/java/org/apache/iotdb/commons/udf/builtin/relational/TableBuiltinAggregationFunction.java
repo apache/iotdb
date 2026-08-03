@@ -67,7 +67,11 @@ public enum TableBuiltinAggregationFunction {
   REGR_INTERCEPT("regr_intercept"),
   SKEWNESS("skewness"),
   KURTOSIS("kurtosis"),
-  PERCENTILE("percentile");
+  PERCENTILE("percentile"),
+  RATE("rate"),
+  INCREASE("increase"),
+  IRATE("irate"),
+  DELTA("delta");
 
   private final String functionName;
 
@@ -123,6 +127,11 @@ public enum TableBuiltinAggregationFunction {
       case "approx_percentile":
       case "percentile":
         return RowType.anonymous(Collections.emptyList());
+      case "rate":
+      case "increase":
+      case "irate":
+      case "delta":
+        return BLOB;
       case "extreme":
       case "max":
       case "min":

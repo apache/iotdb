@@ -49,6 +49,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode.combineAggregationAndTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
@@ -148,6 +152,9 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       boolean hasProject = projectNode != null;
       Map<Symbol, Expression> assignments =
           hasProject ? projectNode.getAssignments().getMap() : null;
+      if (containsRateFunction(values)) {
+        return PushDownLevel.NOOP;
+      }
       // calculate Function part
       for (AggregationNode.Aggregation aggregation : values) {
         if (aggregation.isDistinct()) {
@@ -261,6 +268,17 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
       return false;
     }
+  }
+
+  static boolean containsRateFunction(Collection<AggregationNode.Aggregation> aggregations) {
+    return aggregations.stream()
+        .map(aggregation -> aggregation.getResolvedFunction().getSignature().getName())
+        .anyMatch(
+            functionName ->
+                RATE.equalsIgnoreCase(functionName)
+                    || INCREASE.equalsIgnoreCase(functionName)
+                    || IRATE.equalsIgnoreCase(functionName)
+                    || DELTA.equalsIgnoreCase(functionName));
   }
 
   private enum PushDownLevel {
