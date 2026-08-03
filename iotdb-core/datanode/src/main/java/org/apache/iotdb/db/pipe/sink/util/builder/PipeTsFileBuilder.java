@@ -28,7 +28,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -92,17 +92,21 @@ public abstract class PipeTsFileBuilder {
                   folder -> {
                     File dir = new File(folder, Long.toString(currentBatchId.get()));
                     org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dir, true);
-                    if (dir.mkdirs()) {
+                    try {
+                      Files.createDirectories(dir.toPath().getParent());
+                      Files.createDirectory(dir.toPath());
                       LOGGER.info(
                           DataNodePipeMessages.BATCH_ID_CREATE_BATCH_DIR_SUCCESSFULLY_BATCH,
                           currentBatchId.get(),
                           dir.getPath());
                       return dir;
+                    } catch (final IOException e) {
+                      LOGGER.warn(
+                          DataNodePipeMessages.BATCH_ID_FAILED_TO_CREATE_BATCH_FILE,
+                          currentBatchId.get(),
+                          dir.getPath(),
+                          e);
                     }
-                    LOGGER.warn(
-                        DataNodePipeMessages.BATCH_ID_FAILED_TO_CREATE_BATCH_FILE,
-                        currentBatchId.get(),
-                        dir.getPath());
                     return null;
                   });
       if (baseDir != null) {
@@ -143,7 +147,7 @@ public abstract class PipeTsFileBuilder {
       }
 
       try {
-        FileUtils.delete(fileWriter.getIOWriter().getFile());
+        Files.deleteIfExists(fileWriter.getIOWriter().getFile().toPath());
       } catch (final Exception e) {
         LOGGER.info(
             DataNodePipeMessages.BATCH_ID_FAILED_TO_DELETE_THE_TSFILE,

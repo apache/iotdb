@@ -23,7 +23,6 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
@@ -151,7 +150,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         try {
           fileWriter = new TsFileWriter(file);
         } catch (final IOException | RuntimeException e) {
-          FileUtils.deleteQuietly(file);
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
           throw e;
         }
       }

@@ -25,7 +25,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.BitMap;
@@ -89,7 +88,8 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       }
       return pairList;
     } catch (final IOException | RuntimeException e) {
-      pairList.forEach(pair -> FileUtils.deleteQuietly(pair.right));
+      pairList.forEach(
+          pair -> org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(pair.right));
       throw e;
     }
   }
@@ -159,7 +159,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         try {
           fileWriter = new TsFileWriter(file);
         } catch (final IOException | RuntimeException e) {
-          FileUtils.deleteQuietly(file);
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
           throw e;
         }
       }
