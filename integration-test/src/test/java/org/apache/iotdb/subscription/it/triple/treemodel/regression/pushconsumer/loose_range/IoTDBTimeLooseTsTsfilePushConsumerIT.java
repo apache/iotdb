@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 /***
- * mode: live
+ * mode: initial
  * loose-range:path
  * format: tsfile
  */
@@ -83,7 +83,7 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionTr
         "2024-01-01T00:00:00+08:00",
         "2024-03-31T00:00:00+08:00",
         true,
-        TopicConstant.MODE_LIVE_VALUE,
+        TopicConstant.MODE_INITIAL_VALUE,
         TopicConstant.LOOSE_RANGE_TIME_VALUE);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);

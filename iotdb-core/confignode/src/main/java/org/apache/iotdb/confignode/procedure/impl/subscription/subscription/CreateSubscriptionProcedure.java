@@ -127,7 +127,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       validateWritableViewTopicCompatibility(env, topicMeta);
 
       final String topicMode = topicMeta.getConfig().getMode();
-      final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+      final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
 
       if (isConsensusBasedTopic) {
         // skip pipe creation
