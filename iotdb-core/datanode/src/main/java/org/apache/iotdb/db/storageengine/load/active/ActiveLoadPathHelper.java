@@ -51,6 +51,7 @@ public final class ActiveLoadPathHelper {
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
               LoadTsFileConfigurator.VERIFY_KEY,
+              LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY,
               LoadTsFileConfigurator.PIPE_GENERATED_KEY));
 
   private ActiveLoadPathHelper() {
@@ -61,6 +62,7 @@ public final class ActiveLoadPathHelper {
       final Integer databaseLevel,
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
+      final Boolean autoCreateSchema,
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated) {
     return buildAttributes(
@@ -68,6 +70,7 @@ public final class ActiveLoadPathHelper {
         databaseLevel,
         convertOnTypeMismatch,
         verify,
+        autoCreateSchema,
         tabletConversionThresholdBytes,
         pipeGenerated);
   }
@@ -77,6 +80,7 @@ public final class ActiveLoadPathHelper {
       final Integer databaseLevel,
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
+      final Boolean autoCreateSchema,
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated) {
     final Map<String, String> attributes = new LinkedHashMap<>();
@@ -103,6 +107,11 @@ public final class ActiveLoadPathHelper {
 
     if (Objects.nonNull(verify)) {
       attributes.put(LoadTsFileConfigurator.VERIFY_KEY, Boolean.toString(verify));
+    }
+
+    if (Objects.nonNull(autoCreateSchema)) {
+      attributes.put(
+          LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY, Boolean.toString(autoCreateSchema));
     }
 
     if (Objects.nonNull(pipeGenerated) && pipeGenerated) {
@@ -204,6 +213,9 @@ public final class ActiveLoadPathHelper {
       statement.setVerifySchema(defaultVerify);
     }
 
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY))
+        .ifPresent(value -> statement.setAutoCreateSchema(Boolean.parseBoolean(value)));
+
     if (attributes.containsKey(LoadTsFileConfigurator.PIPE_GENERATED_KEY)
         && Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.PIPE_GENERATED_KEY))) {
       statement.markIsGeneratedByPipe();
@@ -257,6 +269,9 @@ public final class ActiveLoadPathHelper {
         break;
       case LoadTsFileConfigurator.VERIFY_KEY:
         LoadTsFileConfigurator.validateVerifyParam(value);
+        break;
+      case LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY:
+        LoadTsFileConfigurator.validateAutoCreateSchemaParam(value);
         break;
       default:
         LoadTsFileConfigurator.validateParameters(key, value);
