@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
@@ -73,6 +74,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
   private final PipeEventCollector outputEventCollector;
+  private final PipeProcessorSubtaskExecutionGuard executionGuard =
+      new PipeProcessorSubtaskExecutionGuard();
+  private final AtomicBoolean isResumingFromYield = new AtomicBoolean(false);
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -93,6 +97,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    this.outputEventCollector.setProcessorExecutionGuard(executionGuard);
     this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
@@ -124,11 +129,22 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   }
 
   @Override
+  public Boolean call() throws Exception {
+    executionGuard.enter();
+    try {
+      return super.call();
+    } finally {
+      executionGuard.exit();
+    }
+  }
+
+  @Override
   protected boolean executeOnce() throws Exception {
     if (isClosed.get()) {
       return false;
     }
 
+    executionGuard.check();
     final Event event =
         lastEvent != null
             ? lastEvent
@@ -140,7 +156,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     }
 
-    outputEventCollector.resetFlags();
+    executionGuard.check();
+    if (!isResumingFromYield.getAndSet(false)) {
+      outputEventCollector.resetFlags();
+    }
     try {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).throwIfNoPrivilege();
@@ -177,13 +196,16 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                 event1 -> {
                   try {
                     pipeProcessor.process(event1, outputEventCollector);
+                  } catch (PipeProcessorSubtaskYieldException e) {
+                    throw e;
                   } catch (PipeRuntimeOutOfMemoryCriticalException e) {
                     throw e;
                   } catch (Exception e) {
                     throw new PipeException(e.getMessage(), e);
                   }
                 },
-                "PipeProcessorSubtask::executeOnce");
+                "PipeProcessorSubtask::executeOnce",
+                executionGuard);
             tsFileInsertionEvent.close();
             if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
               PipeTerminateEvent.markHistoricalTsFileSplit(
@@ -241,6 +263,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
+    } catch (final PipeProcessorSubtaskYieldException e) {
+      isResumingFromYield.set(true);
+      throw e;
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       PipeLogger.log(
           LOGGER::info,
@@ -248,6 +273,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           e.getMessage());
       return false;
     } catch (final Exception e) {
+      if (ExceptionUtils.getRootCause(e) instanceof PipeProcessorSubtaskYieldException) {
+        isResumingFromYield.set(true);
+        throw (PipeProcessorSubtaskYieldException) ExceptionUtils.getRootCause(e);
+      }
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(
             LOGGER::info,
@@ -282,6 +311,20 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  @Override
+  protected void onAllowSubmittingSelf() {
+    executionGuard.start();
+  }
+
+  @Override
+  protected void onDisallowSubmittingSelf() {
+    executionGuard.stop();
+    final Event event = lastEvent;
+    if (event instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) event).cancelTsFileParserMemoryReservationIfPending();
+    }
   }
 
   public boolean isStoppedByException() {

@@ -72,6 +72,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
           canSleepBeforeNextRound = false;
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
+      } catch (final PipeProcessorSubtaskYieldException ignored) {
+        // The subtask voluntarily yields this worker without succeeding, failing, or retrying.
       } catch (final Exception e) {
         if (subtask.isClosed()) {
           LOGGER.warn(DataNodePipeMessages.SUBTASK_IS_CLOSED_IGNORE_EXCEPTION, subtask, e);
