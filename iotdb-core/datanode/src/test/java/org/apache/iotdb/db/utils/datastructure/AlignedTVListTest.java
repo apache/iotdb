@@ -29,7 +29,9 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -333,5 +335,34 @@ public class AlignedTVListTest {
     tvList.clear();
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
+  }
+
+  @Test
+  public void testMovesUnclonedColumns() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    tvList.putAlignedValue(0, new Object[] {1L, 2L, null});
+
+    Set<Integer> columnsToClone = Collections.singleton(1);
+    AlignedTVList clonedTvList = tvList.clone(columnsToClone);
+
+    Assert.assertNotNull(tvList.getValues().get(0));
+    Assert.assertNotNull(tvList.getValues().get(2));
+    Assert.assertEquals(1L, tvList.getLongByValueIndex(0, 0));
+    Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
+
+    tvList.moveUnclonedColumnsTo(clonedTvList, columnsToClone);
+
+    Assert.assertNull(tvList.getValues().get(0));
+    Assert.assertNull(tvList.getValues().get(2));
+    Assert.assertTrue(tvList.isNullValue(0, 0));
+    Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertEquals(1L, clonedTvList.getLongByValueIndex(0, 0));
+    Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
+    Assert.assertTrue(clonedTvList.isNullValue(0, 2));
   }
 }
