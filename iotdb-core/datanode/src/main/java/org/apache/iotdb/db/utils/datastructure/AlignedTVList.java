@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -51,6 +53,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -201,6 +204,7 @@ public abstract class AlignedTVList extends TVList {
       }
       memoryBinaryChunkSize[i] = 0;
     }
+    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps);
     // Column ownership changed on both lists, so refresh their per-block memory cost.
     refreshArrayMemCostWithoutIndex();
     cloneList.refreshArrayMemCostWithoutIndex();
@@ -238,16 +242,11 @@ public abstract class AlignedTVList extends TVList {
 
       // Release bitmap memory for non-query columns
       if (bitMaps != null && bitMaps.get(i) != null) {
-        for (BitMap bitMap : bitMaps.get(i)) {
-          if (bitMap != null) {
-            materializedBitmapMemoryCost -= bitmapRamCost();
-          }
-        }
-        bitMaps.get(i).clear();
-        materializedBitmapMemoryCost -= (long) bitMaps.get(i).size() * bitmapReferenceRamCost();
+        bitMaps.set(i, null);
       }
     }
 
+    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps);
     // Refresh per-block memory cost after releasing columns
     refreshArrayMemCostWithoutIndex();
   }
@@ -609,6 +608,25 @@ public abstract class AlignedTVList extends TVList {
 
   public List<TSDataType> getTsDataTypes() {
     return dataTypes;
+  }
+
+  /**
+   * Get the union of all columns accessed by queries on this AlignedTVList. This method should be
+   * called with queryListLock held for thread safety.
+   *
+   * @return set of accessed column indices, or empty set if no columns are tracked or no queries
+   *     are present
+   */
+  @Override
+  public Set<Integer> getAccessedColumnsForQuery() {
+    Set<Integer> accessedColumns = new HashSet<>();
+    for (QueryContext queryContext : getQueryContextSet()) {
+      if (queryContext instanceof FragmentInstanceContext) {
+        accessedColumns.addAll(
+            ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(this));
+      }
+    }
+    return accessedColumns;
   }
 
   @Override

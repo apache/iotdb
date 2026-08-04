@@ -64,7 +64,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -272,7 +271,7 @@ public abstract class ResourceByPathUtils {
           // This is safe because the lock ordering - queryListLock must always be acquired before
           // the TVList intrinsic lock (via synchronized methods like calculateRamSize, clone). So
           // no AB-BA deadlock is possible.
-          Set<Integer> columnsToClone = getAccessedColumnsForQuery(candidate);
+          Set<Integer> columnsToClone = candidate.getAccessedColumnsForQuery();
           listRamInfo =
               (columnsToClone == null)
                   ? candidate.calculateRamSize()
@@ -324,10 +323,6 @@ public abstract class ResourceByPathUtils {
         candidate.unlockQueryList();
       }
     }
-  }
-
-  protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
-    return null;
   }
 }
 
@@ -492,26 +487,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     return new AlignedReadOnlyMemChunk(
         context, columnIndexList, getMeasurementSchema(), alignedTvListQueryMap, deletionList);
-  }
-
-  /**
-   * This method is called from prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring
-   * thread-safe access to queryContextSet.
-   *
-   * @param tvList the TVList to get accessed columns for
-   * @return set of accessed column indices, or empty set if no columns are tracked
-   */
-  @Override
-  protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
-    Set<Integer> accessedColumns = new HashSet<>();
-    for (QueryContext queryContext : tvList.getQueryContextSet()) {
-      if (!(queryContext instanceof FragmentInstanceContext)) {
-        return null;
-      }
-      accessedColumns.addAll(
-          ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
-    }
-    return accessedColumns;
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
