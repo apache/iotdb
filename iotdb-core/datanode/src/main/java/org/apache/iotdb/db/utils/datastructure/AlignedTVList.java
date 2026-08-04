@@ -206,6 +206,52 @@ public abstract class AlignedTVList extends TVList {
     cloneList.refreshArrayMemCostWithoutIndex();
   }
 
+  /**
+   * Release memory for non-query columns in this TVList. This is used during memory ownership
+   * transfer from write process to read process to reduce memory footprint. Only columns that are
+   * accessed by active queries are retained; all other columns are released.
+   *
+   * @param columnsToKeep set of column indices that are accessed by queries and should be kept
+   */
+  public synchronized void releaseNonQueryColumns(Set<Integer> columnsToKeep) {
+    if (columnsToKeep == null || columnsToKeep.isEmpty()) {
+      return;
+    }
+
+    for (int i = 0; i < values.size(); i++) {
+      // Skip columns that should be kept or are already null
+      if (columnsToKeep.contains(i)) {
+        continue;
+      }
+
+      List<Object> columnValues = values.get(i);
+      if (columnValues == null) {
+        continue;
+      }
+
+      // Release memory for non-query columns
+      for (Object dataArray : columnValues) {
+        PrimitiveArrayManager.release(dataArray);
+      }
+      columnValues.clear();
+      memoryBinaryChunkSize[i] = 0;
+
+      // Release bitmap memory for non-query columns
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        for (BitMap bitMap : bitMaps.get(i)) {
+          if (bitMap != null) {
+            materializedBitmapMemoryCost -= bitmapRamCost();
+          }
+        }
+        bitMaps.get(i).clear();
+        materializedBitmapMemoryCost -= (long) bitMaps.get(i).size() * bitmapReferenceRamCost();
+      }
+    }
+
+    // Refresh per-block memory cost after releasing columns
+    refreshArrayMemCostWithoutIndex();
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public synchronized void putAlignedValue(long timestamp, Object[] value) {

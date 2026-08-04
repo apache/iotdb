@@ -30,6 +30,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -364,5 +365,41 @@ public class AlignedTVListTest {
     Assert.assertEquals(1L, clonedTvList.getLongByValueIndex(0, 0));
     Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
     Assert.assertTrue(clonedTvList.isNullValue(0, 2));
+  }
+
+  @Test
+  public void testReleaseNonQueryColumnsWithBitmaps() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    for (int i = 0; i < 100; i++) {
+      Object[] values = new Object[3];
+      values[0] = (long) i;
+      values[1] = null; // This will create a bitmap
+      values[2] = (long) (i * 100);
+      tvList.putAlignedValue(i, values);
+    }
+
+    // Verify bitmaps were created for column 1
+    Assert.assertNotNull(tvList.getBitMaps());
+    Assert.assertNotNull(tvList.getBitMaps().get(1));
+
+    // Keep only column 0 and 2, release column 1
+    Set<Integer> columnsToKeep = new HashSet<>(Arrays.asList(0, 2));
+    tvList.releaseNonQueryColumns(columnsToKeep);
+
+    // Verify column 1 is released
+    Assert.assertTrue(tvList.getValues().get(1).isEmpty());
+    Assert.assertTrue(tvList.getBitMaps().get(1).isEmpty());
+
+    // Verify columns 0 and 2 are intact
+    Assert.assertFalse(tvList.getValues().get(0).isEmpty());
+    Assert.assertFalse(tvList.getValues().get(2).isEmpty());
+    for (int i = 0; i < 100; i++) {
+      Assert.assertEquals((long) i, tvList.getLongByValueIndex(i, 0));
+      Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
+    }
   }
 }
