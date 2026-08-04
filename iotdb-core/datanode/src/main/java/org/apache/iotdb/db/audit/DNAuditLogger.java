@@ -217,6 +217,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
   public void logUserRoleModificationAuthorizationFailure(
       Statement statement, IAuditEntity auditEntity, @Nullable TSStatus status) {
     if (isSuccessful(status)) {
+      // Successful authorization only allows the role modification to proceed. The actual
+      // modification result is audited by AuthorizerTask after execution.
       return;
     }
     logUserRoleModification(getUserRoleTarget(statement), auditEntity, status);

@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
 import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
-import org.apache.iotdb.db.audit.UserRoleModificationAuditTask;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -359,8 +358,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new AccessDeniedException(status.getMessage());
       }
-      IConfigTask task =
-          UserRoleModificationAuditTask.wrap(new AuthorizerTask(statement), auditContext);
+      IConfigTask task = new AuthorizerTask(statement, auditContext);
       executionDelegated = true;
       return task;
     } finally {

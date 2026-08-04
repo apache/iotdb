@@ -20,17 +20,29 @@
 package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+
+import jakarta.validation.constraints.NotNull;
 
 import javax.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /** Ensures one user-role modification attempt produces at most one execution audit record. */
 public final class UserRoleModificationAuditContext {
@@ -43,6 +55,10 @@ public final class UserRoleModificationAuditContext {
 
   private UserRoleModificationAuditContext(@Nullable AuditLogWriter auditLogWriter) {
     this.auditLogWriter = auditLogWriter;
+  }
+
+  public static UserRoleModificationAuditContext empty() {
+    return EMPTY;
   }
 
   public static UserRoleModificationAuditContext forTreeStatement(
@@ -90,8 +106,33 @@ public final class UserRoleModificationAuditContext {
     auditLogWriter.log(status);
   }
 
-  boolean isEnabled() {
-    return auditLogWriter != null;
+  /** Executes the actual role membership modification and audits its final success or failure. */
+  public ListenableFuture<ConfigTaskResult> executeAndAudit(
+      Supplier<ListenableFuture<ConfigTaskResult>> operation) {
+    try {
+      ListenableFuture<ConfigTaskResult> future = operation.get();
+      if (auditLogWriter == null) {
+        return future;
+      }
+      Futures.addCallback(
+          future,
+          new FutureCallback<ConfigTaskResult>() {
+            @Override
+            public void onSuccess(ConfigTaskResult result) {
+              log(toStatus(result));
+            }
+
+            @Override
+            public void onFailure(@NotNull Throwable throwable) {
+              log(toStatus(throwable));
+            }
+          },
+          MoreExecutors.directExecutor());
+      return future;
+    } catch (RuntimeException | Error e) {
+      log(toStatus(e));
+      throw e;
+    }
   }
 
   private static boolean isUserRoleModification(Statement statement) {
@@ -113,6 +154,26 @@ public final class UserRoleModificationAuditContext {
 
   private static boolean isRedirected(@Nullable TSStatus status) {
     return status != null && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private static TSStatus toStatus(@Nullable ConfigTaskResult result) {
+    if (result == null) {
+      return null;
+    }
+    if (result.getStatus() != null) {
+      return result.getStatus();
+    }
+    return result.getStatusCode() == null ? null : RpcUtils.getStatus(result.getStatusCode());
+  }
+
+  private static TSStatus toStatus(Throwable throwable) {
+    if (throwable instanceof IoTDBException) {
+      return ((IoTDBException) throwable).getStatus();
+    }
+    if (throwable instanceof IoTDBRuntimeException) {
+      return ((IoTDBRuntimeException) throwable).getStatus();
+    }
+    return null;
   }
 
   @FunctionalInterface

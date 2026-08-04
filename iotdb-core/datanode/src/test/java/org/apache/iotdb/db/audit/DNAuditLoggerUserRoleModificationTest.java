@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -48,6 +47,7 @@ import java.util.function.Supplier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -167,83 +167,100 @@ public class DNAuditLoggerUserRoleModificationTest {
   }
 
   @Test
-  public void testConcreteTreeConfigTaskRecordsSuccess() throws Exception {
+  public void testConcreteTreeRoleOperationRecordsSuccess() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTreeStatement(
             treeStatement(AuthorType.GRANT_USER_ROLE), sessionInfo(), auditLogWriter);
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IConfigTask task = UserRoleModificationAuditTask.wrap(ignored -> future, context);
 
-    assertSame(future, task.execute(null));
+    assertSame(future, context.executeAndAudit(() -> future));
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
 
     assertAuditStatus(auditLogWriter, TSStatusCode.SUCCESS_STATUS);
   }
 
   @Test
-  public void testConcreteTableConfigTaskRecordsFailure() throws Exception {
+  public void testConcreteTableRoleOperationRecordsFailure() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTableStatement(
             tableStatement(AuthorRType.REVOKE_USER_ROLE), sessionInfo(), auditLogWriter);
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IConfigTask task = UserRoleModificationAuditTask.wrap(ignored -> future, context);
 
-    task.execute(null);
+    context.executeAndAudit(() -> future);
     future.set(new ConfigTaskResult(RpcUtils.getStatus(TSStatusCode.USER_NOT_HAS_ROLE)));
 
     assertAuditStatus(auditLogWriter, TSStatusCode.USER_NOT_HAS_ROLE);
   }
 
   @Test
-  public void testConcreteConfigTaskRecordsUnexpectedFailure() throws Exception {
+  public void testConcreteRoleOperationRecordsUnexpectedFailure() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTreeStatement(
             treeStatement(AuthorType.GRANT_USER_ROLE), sessionInfo(), auditLogWriter);
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IConfigTask task = UserRoleModificationAuditTask.wrap(ignored -> future, context);
 
-    task.execute(null);
+    context.executeAndAudit(() -> future);
     future.setException(new RuntimeException());
 
     verify(auditLogWriter).log(null);
   }
 
   @Test
-  public void testConcreteConfigTaskIgnoresRedirectResult() throws Exception {
+  public void testConcreteRoleOperationIgnoresRedirectResult() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTreeStatement(
             treeStatement(AuthorType.GRANT_USER_ROLE), sessionInfo(), auditLogWriter);
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IConfigTask task = UserRoleModificationAuditTask.wrap(ignored -> future, context);
 
-    task.execute(null);
+    context.executeAndAudit(() -> future);
     future.set(new ConfigTaskResult(TSStatusCode.REDIRECTION_RECOMMEND));
 
     verify(auditLogWriter, never()).log(any());
   }
 
   @Test
-  public void testConcreteConfigTaskIgnoresRedirectException() throws Exception {
+  public void testConcreteRoleOperationIgnoresRedirectException() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTreeStatement(
             treeStatement(AuthorType.GRANT_USER_ROLE), sessionInfo(), auditLogWriter);
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IConfigTask task = UserRoleModificationAuditTask.wrap(ignored -> future, context);
 
-    task.execute(null);
+    context.executeAndAudit(() -> future);
     future.setException(new IoTDBException(RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)));
 
     verify(auditLogWriter, never()).log(any());
+  }
+
+  @Test
+  public void testConcreteRoleOperationRecordsSynchronousFailure() {
+    UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
+        mock(UserRoleModificationAuditContext.AuditLogWriter.class);
+    UserRoleModificationAuditContext context =
+        UserRoleModificationAuditContext.forTreeStatement(
+            treeStatement(AuthorType.GRANT_USER_ROLE), sessionInfo(), auditLogWriter);
+    RuntimeException exception = new RuntimeException();
+
+    RuntimeException actualException =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                context.executeAndAudit(
+                    () -> {
+                      throw exception;
+                    }));
+
+    assertSame(exception, actualException);
+    verify(auditLogWriter).log(null);
   }
 
   @Test
@@ -261,16 +278,16 @@ public class DNAuditLoggerUserRoleModificationTest {
   }
 
   @Test
-  public void testPrivilegeGrantDoesNotWrapConcreteTask() {
+  public void testPrivilegeGrantDoesNotAuditConcreteOperation() {
     UserRoleModificationAuditContext.AuditLogWriter auditLogWriter =
         mock(UserRoleModificationAuditContext.AuditLogWriter.class);
     UserRoleModificationAuditContext context =
         UserRoleModificationAuditContext.forTreeStatement(
             treeStatement(AuthorType.GRANT_USER), sessionInfo(), auditLogWriter);
-    IConfigTask delegate = ignored -> SettableFuture.create();
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    assertSame(delegate, UserRoleModificationAuditTask.wrap(delegate, context));
-    context.log(RpcUtils.SUCCESS_STATUS);
+    assertSame(future, context.executeAndAudit(() -> future));
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
 
     verify(auditLogWriter, never()).log(any());
   }

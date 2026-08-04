@@ -55,7 +55,6 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
 import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
-import org.apache.iotdb.db.audit.UserRoleModificationAuditTask;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -1650,9 +1649,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       }
       IConfigTask task =
           PasswordChangeAuditTask.wrap(
-              UserRoleModificationAuditTask.wrap(
-                  new RelationalAuthorizerTask(node), userRoleAuditContext),
-              passwordAuditContext);
+              new RelationalAuthorizerTask(node, userRoleAuditContext), passwordAuditContext);
       executionDelegated = true;
       return task;
     } finally {
