@@ -256,7 +256,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @Override
   protected int getChildrenSize(final N parent) {
     // Only the memory MTree exposes the complete child key set without an extra traversal.
-    return parent instanceof IMemMNode ? parent.getChildren().keySet().size() : Integer.MAX_VALUE;
+    return parent instanceof IMemMNode ? parent.getChildren().size() : Integer.MAX_VALUE;
   }
 
   @Override

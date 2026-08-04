@@ -87,6 +87,40 @@ public class DeviceFilterUtilTest {
   }
 
   @Test
+  public void testKeepFullyPreciseBranchesSeparatedWithManyTags() {
+    final int tagColumnNum = 32;
+    final List<SchemaFilter> firstBranch = new ArrayList<>(tagColumnNum);
+    final List<SchemaFilter> secondBranch = new ArrayList<>(tagColumnNum);
+    for (int i = 0; i < tagColumnNum; i++) {
+      firstBranch.add(precise(i, "value" + i));
+      secondBranch.add(precise(i, i == tagColumnNum - 1 ? "other" : "value" + i));
+    }
+
+    final List<PartialPath> patterns = convert(tagColumnNum, firstBranch, secondBranch);
+
+    Assert.assertEquals(2, patterns.size());
+    Assert.assertEquals("value31", patterns.get(0).getNodes()[PREFIX.length + 31]);
+    Assert.assertEquals("other", patterns.get(1).getNodes()[PREFIX.length + 31]);
+  }
+
+  @Test
+  public void testCompactPreciseBranchesAfterLongNonPrecisePrefix() {
+    final int tagColumnNum = 32;
+    final List<PartialPath> patterns =
+        convert(
+            tagColumnNum,
+            branch(precise(16, "common"), precise(31, "last1")),
+            branch(precise(16, "common"), precise(31, "last2")));
+
+    Assert.assertEquals(1, patterns.size());
+    final ExtendedPartialPath pattern = (ExtendedPartialPath) patterns.get(0);
+    Assert.assertTrue(pattern.match(PREFIX.length + 16, "common"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 31, "last1"));
+    Assert.assertTrue(pattern.match(PREFIX.length + 31, "last2"));
+    Assert.assertFalse(pattern.match(PREFIX.length + 31, "last3"));
+  }
+
+  @Test
   public void testCompactCartesianProductBehindWildcard() {
     final List<PartialPath> patterns =
         convert(
@@ -203,8 +237,14 @@ public class DeviceFilterUtilTest {
 
   @SafeVarargs
   private static List<PartialPath> convert(final List<SchemaFilter>... branches) {
+    return convert(TAG_COLUMN_NUM, branches);
+  }
+
+  @SafeVarargs
+  private static List<PartialPath> convert(
+      final int tagColumnNum, final List<SchemaFilter>... branches) {
     return DeviceFilterUtil.convertToDevicePattern(
-        PREFIX, TAG_COLUMN_NUM, Arrays.asList(branches), false);
+        PREFIX, tagColumnNum, Arrays.asList(branches), false);
   }
 
   private static List<SchemaFilter> branch(final SchemaFilter... filters) {
