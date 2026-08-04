@@ -455,20 +455,27 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
-    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
-      TSStatus status =
-          ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
-              databaseSchema, TConsensusGroupType.SchemaRegion);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        errorResp = status;
+    if (isSystemDatabase) {
+      // Keep the system database in a single RegionGroup regardless of extension policies and
+      // user-configured defaults.
+      databaseSchema.setMaxSchemaRegionGroupNum(1);
+      databaseSchema.setMaxDataRegionGroupNum(1);
+    } else {
+      if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+        TSStatus status =
+            ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+                databaseSchema, TConsensusGroupType.SchemaRegion);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          errorResp = status;
+        }
       }
-    }
-    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
-      TSStatus status =
-          ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
-              databaseSchema, TConsensusGroupType.DataRegion);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        errorResp = status;
+      if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+        TSStatus status =
+            ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
+                databaseSchema, TConsensusGroupType.DataRegion);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          errorResp = status;
+        }
       }
     }
 
