@@ -103,8 +103,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
-    this.properBlockBuilder =
-        new TsBlockBuilder(new ArrayList<>(outputDataTypes.subList(0, properChannelCount)));
+    this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
     this.requireRecordSnapshot = requireRecordSnapshot;
