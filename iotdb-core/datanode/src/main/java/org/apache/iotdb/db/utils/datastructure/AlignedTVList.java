@@ -145,7 +145,7 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.bitMaps = bitMaps;
     alignedTvList.rowCount = this.rowCount;
     alignedTvList.allValueColDeletedMap = getAllValueColDeletedMap();
-    alignedTvList.materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps);
+    alignedTvList.materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, null);
     return alignedTvList;
   }
 
@@ -1075,16 +1075,21 @@ public abstract class AlignedTVList extends TVList {
     return new RamInfo(
         timestamps.size(),
         alignedTvListArrayMemCost(columnsToClone),
-        getRamSize(),
+        getRamSize(columnsToClone),
         rowCount,
         new ArrayList<>(dataTypes));
   }
 
   public synchronized long getRamSize() {
-    return (long) timestamps.size()
+    return timestamps.size()
             * (arrayMemCostWithoutIndex
                 + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0))
         + materializedBitmapMemoryCost;
+  }
+
+  public synchronized long getRamSize(Set<Integer> columnsToClone) {
+    return timestamps.size() * alignedTvListArrayMemCost(columnsToClone)
+        + calculateBitmapRamCost(bitMaps, columnsToClone);
   }
 
   private void refreshArrayMemCostWithoutIndex() {
@@ -1094,16 +1099,21 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  private static long calculateBitmapRamCost(List<List<BitMap>> bitMaps) {
+  private static long calculateBitmapRamCost(
+      List<List<BitMap>> bitMaps, Set<Integer> columnsToClone) {
     if (bitMaps == null) {
       return 0;
     }
     long size = 0;
-    for (List<BitMap> columnBitMaps : bitMaps) {
+    for (int i = 0, length = bitMaps.size(); i < length; i++) {
+      if (columnsToClone != null && !columnsToClone.contains(i)) {
+        continue;
+      }
+      List<BitMap> columnBitMaps = bitMaps.get(i);
       if (columnBitMaps == null) {
         continue;
       }
-      size += (long) columnBitMaps.size() * bitmapReferenceRamCost();
+      size += columnBitMaps.size() * bitmapReferenceRamCost();
       for (BitMap bitMap : columnBitMaps) {
         if (bitMap != null) {
           size += bitmapRamCost();
