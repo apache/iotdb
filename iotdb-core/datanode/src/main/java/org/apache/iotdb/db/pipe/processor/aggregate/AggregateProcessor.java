@@ -331,17 +331,15 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
-    if (index == MinimumProgressIndex.INSTANCE) {
+    if (Objects.isNull(index) || index == MinimumProgressIndex.INSTANCE) {
       return;
     }
-    if (!(index instanceof TimeWindowStateProgressIndex)) {
-      throw new PipeException(
-          String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
-    }
-
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
-        (TimeWindowStateProgressIndex) index;
+        index.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+    // A pipe altered from another processor may not have window state yet.
+    if (Objects.isNull(timeWindowStateProgressIndex)) {
+      return;
+    }
     for (final Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =

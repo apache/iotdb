@@ -398,7 +398,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
         originalResourceList.sort(
             (o1, o2) ->
-                startIndex instanceof TimeWindowStateProgressIndex
+                Objects.nonNull(getTimeWindowStateProgressIndex(startIndex))
                     ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                     : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(originalResourceList);
@@ -466,9 +466,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
-    if (startIndex instanceof TimeWindowStateProgressIndex) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     if (startIndex instanceof StateProgressIndex) {
@@ -486,6 +488,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       return true;
     }
     return false;
+  }
+
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {

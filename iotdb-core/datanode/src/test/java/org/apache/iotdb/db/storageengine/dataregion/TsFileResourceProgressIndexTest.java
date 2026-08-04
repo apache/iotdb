@@ -54,6 +54,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.IntStream;
 
@@ -211,6 +212,14 @@ public class TsFileResourceProgressIndexTest {
     @Override
     public ProgressIndexType getType() {
       throw new UnsupportedOperationException("method not implemented.");
+    }
+
+    @Override
+    public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+        final Class<T> progressIndexClass) {
+      return progressIndexClass.isInstance(this)
+          ? Optional.of(progressIndexClass.cast(this))
+          : Optional.empty();
     }
 
     @Override
