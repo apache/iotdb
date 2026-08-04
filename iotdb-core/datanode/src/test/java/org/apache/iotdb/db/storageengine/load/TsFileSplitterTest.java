@@ -19,13 +19,24 @@
 
 package org.apache.iotdb.db.storageengine.load.splitter;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MeasurementMetadataIndexEntry;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -38,6 +49,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +58,76 @@ import java.util.List;
 import java.util.Objects;
 
 public class TsFileSplitterTest {
+
+  // Verify the splitter initializes the v3 deserialize configuration for a valid v3 TsFile.
+  @Test
+  public void testSplitV3TsFile() throws Exception {
+    final File sourceTsFile = constructV3TsFile();
+
+    try {
+      try (final TsFileSequenceReader reader =
+          new TsFileSequenceReader(sourceTsFile.getAbsolutePath())) {
+        Assert.assertEquals(2, reader.getAllTimeseriesMetadata(true).size());
+      }
+
+      // Verify the buffered reader initializes the v3 deserialize configuration before reading
+      // metadata.
+      new TsFileSplitter(sourceTsFile, tsFileData -> true).splitTsFileByDataPartition();
+    } finally {
+      Assert.assertTrue(sourceTsFile.delete());
+    }
+  }
+
+  private File constructV3TsFile() throws IOException {
+    final File tsFile = Files.createTempFile("v3-tsfile-splitter", ".tsfile").toFile();
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    outputStream.write(TSFileConfig.MAGIC_STRING.getBytes());
+    outputStream.write(TSFileConfig.VERSION_NUMBER_V3);
+
+    final long metaOffset = outputStream.size();
+    outputStream.write(MetaMarker.SEPARATOR);
+
+    final MetadataIndexNode deviceIndexNode =
+        new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+    for (final String device : Arrays.asList("root.sg.d1", "root.sg.d2")) {
+      final long timeseriesMetadataOffset = outputStream.size();
+      writeV3TimeseriesMetadata(outputStream);
+
+      final long measurementIndexOffset = outputStream.size();
+      final MetadataIndexNode measurementIndexNode =
+          new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+      measurementIndexNode.addEntry(
+          new MeasurementMetadataIndexEntry("s1", timeseriesMetadataOffset));
+      measurementIndexNode.setEndOffset(measurementIndexOffset);
+      measurementIndexNode.serializeTo(outputStream);
+
+      deviceIndexNode.addEntry(
+          new DeviceMetadataIndexEntry(new PlainDeviceID(device), measurementIndexOffset));
+    }
+    deviceIndexNode.setEndOffset(outputStream.size());
+
+    int metadataSize = deviceIndexNode.serializeTo(outputStream);
+    metadataSize += ReadWriteIOUtils.write(metaOffset, outputStream);
+    ReadWriteIOUtils.write(metadataSize, outputStream);
+    outputStream.write(TSFileConfig.MAGIC_STRING.getBytes());
+    Files.write(tsFile.toPath(), outputStream.toByteArray());
+    return tsFile;
+  }
+
+  private void writeV3TimeseriesMetadata(final ByteArrayOutputStream outputStream)
+      throws IOException {
+    final Statistics<?> statistics = Statistics.getStatsByType(TSDataType.INT32);
+    statistics.update(1, 1);
+
+    final TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata();
+    timeseriesMetadata.setTimeSeriesMetadataType((byte) 0);
+    timeseriesMetadata.setMeasurementId("s1");
+    timeseriesMetadata.setTsDataType(TSDataType.INT32);
+    timeseriesMetadata.setDataSizeOfChunkMetaDataList(0);
+    timeseriesMetadata.setStatistics(statistics);
+    timeseriesMetadata.setChunkMetadataListBuffer(new PublicBAOS());
+    timeseriesMetadata.serializeTo(outputStream);
+  }
 
   @Test
   public void testSplitTableTimeOnlyAlignedChunk() throws Exception {

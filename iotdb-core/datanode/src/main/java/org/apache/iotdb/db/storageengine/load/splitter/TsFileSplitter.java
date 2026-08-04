@@ -98,7 +98,7 @@ public class TsFileSplitter {
   public void splitTsFileByDataPartition()
       throws IOException, LoadFileException, IllegalStateException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()))) {
+        new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()), true, false, null)) {
       getAllModification(deletions);
 
       if (!checkMagic(reader)) {
