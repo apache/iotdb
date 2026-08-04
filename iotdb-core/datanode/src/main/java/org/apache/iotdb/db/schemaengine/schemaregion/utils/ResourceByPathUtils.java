@@ -160,16 +160,22 @@ public abstract class ResourceByPathUtils {
     // TVList intrinsic lock (via synchronized methods like calculateRamSize, clone). So no AB-BA
     // deadlock is possible.
     while (true) {
-      // The working TVList may be replaced by another query. Always lock the actual list being used
-      // and verify it is still the current working list before touching query-owned fields.
-      TVList list = memChunk.getWorkingTVList();
-      list.lockQueryList();
+      // The working TVList may be replaced by a concurrent query via clone-and-swap
+      // (memChunk.setWorkingTVList(clone)). A queryListLock held on a detached candidate does
+      // not protect the current working TVList, so after acquiring the lock, re-verify it is
+      // still the current working list under the memChunk lock. If it was replaced while
+      // waiting for candidate's queryListLock, retry with the current one.
+      final TVList candidate = memChunk.getWorkingTVList();
+      candidate.lockQueryList();
       try {
-        if (list != memChunk.getWorkingTVList()) {
-          continue;
+        synchronized (memChunk) {
+          if (memChunk.getWorkingTVList() != candidate) {
+            continue;
+          }
         }
+
         if (copyTimeFilter != null
-            && !copyTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+            && !copyTimeFilter.satisfyStartEndTime(candidate.getMinTime(), candidate.getMaxTime())) {
           return tvListQueryMap;
         }
 
@@ -188,15 +194,16 @@ public abstract class ResourceByPathUtils {
            * sorted or no active query is using it. Otherwise, Q2 should read from
            * workingListForFlush.
            */
-          boolean canUseListDirectly = list.isSorted() || list.getQueryContextSet().isEmpty();
+          boolean canUseListDirectly =
+              candidate.isSorted() || candidate.getQueryContextSet().isEmpty();
           LOGGER.debug(
               "Flushing MemTable - add current query context to mutable TVList's query list");
           if (canUseListDirectly) {
-            list.getQueryContextSet().add(context);
-            tvListQueryMap.put(list, list.rowCount());
+            candidate.getQueryContextSet().add(context);
+            tvListQueryMap.put(candidate, candidate.rowCount());
           } else {
             TVList workingListForFlushSort =
-                memChunk.initWorkingListForFlushIfNecessary(list, true);
+                memChunk.initWorkingListForFlushIfNecessary(candidate, true);
             /*
              * The query will read from workingListForFlushSort, but cloneForFlushSort() only clones
              * times and indices. The value arrays and bitmaps are still shared with the original
@@ -210,76 +217,96 @@ public abstract class ResourceByPathUtils {
              * Do not put the original list into tvListQueryMap here. The actual read path must use
              * workingListForFlushSort to avoid sorting the original list in place.
              */
-            list.getQueryContextSet().add(context);
-            context.addTVListToSet(Collections.singleton(list));
+            candidate.getQueryContextSet().add(context);
+            context.addTVListToSet(Collections.singleton(candidate));
             workingListForFlushSort.getQueryContextSet().add(context);
             tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
           }
-        } else {
-          if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
-            LOGGER.debug(
-                "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
-            list.getQueryContextSet().add(context);
-            tvListQueryMap.put(list, list.rowCount());
+          return tvListQueryMap;
+        }
 
-            // columnIndexList is to track column-level access for AlignedTVList.
-            // For TVList (primitive time series), it remains null and column tracking is not
-            // needed.
-            if (columnIndexList != null && context instanceof FragmentInstanceContext) {
-              ((FragmentInstanceContext) context).putAccessedColumns(list, columnIndexList);
-            }
-          } else {
-            /*
-             * +----------------------+
-             * |      MemTable        |
-             * |                      |
-             * |    +------------+    |          +-----------------+
-             * |    |   TVList   |<---+--+   +---+  Previous Query |
-             * |    +-----^------+    |  |   |   +-----------------+
-             * |          |           |  |   |
-             * +----------+-----------+  |   |   +----------------+
-             *            | Clone        +---+---+  Current Query |
-             *      +-----+------+           |   +----------------+
-             *      |   TVList   | <---------+
-             *      +------------+
-             */
-            LOGGER.debug(
-                "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
+        if (candidate.isSorted() || candidate.getQueryContextSet().isEmpty()) {
+          LOGGER.debug(
+              "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
+          candidate.getQueryContextSet().add(context);
+          tvListQueryMap.put(candidate, candidate.rowCount());
 
-            Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
-            listRamInfo =
-                (columnsToClone == null)
-                    ? list.calculateRamSize()
-                    : ((AlignedTVList) list).calculateRamSize(columnsToClone);
-
-            // reserve query memory
-            QueryContext firstQuery = list.getQueryContextSet().iterator().next();
-            if (firstQuery instanceof FragmentInstanceContext) {
-              MemoryReservationManager memoryReservationManager =
-                  ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-              memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
-              list.setReservedMemoryBytes(listRamInfo.getRamSize());
-            }
-            list.setOwnerQuery(firstQuery);
-
-            // clone TVList
-            TVList cloneList =
-                (columnsToClone == null)
-                    ? list.clone()
-                    : ((AlignedTVList) list).clone(columnsToClone);
-
-            cloneList.getQueryContextSet().add(context);
-            tvListQueryMap.put(cloneList, cloneList.rowCount());
-            if (columnIndexList != null && context instanceof FragmentInstanceContext) {
-              ((FragmentInstanceContext) context).putAccessedColumns(cloneList, columnIndexList);
-            }
-
-            if (columnsToClone != null) {
-              ((AlignedTVList) list)
-                  .moveUnclonedColumnsTo((AlignedTVList) cloneList, columnsToClone);
-            }
-            memChunk.setWorkingTVList(cloneList);
+          // columnIndexList is to track column-level access for AlignedTVList.
+          // For TVList (primitive time series), it remains null and column tracking is not needed.
+          if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+            ((FragmentInstanceContext) context).putAccessedColumns(candidate, columnIndexList);
           }
+          return tvListQueryMap;
+        }
+
+        /*
+         * +----------------------+
+         * |      MemTable        |
+         * |                      |
+         * |    +------------+    |          +-----------------+
+         * |    |   TVList   |<---+--+   +---+  Previous Query |
+         * |    +-----^------+    |  |   |   +-----------------+
+         * |          |           |  |   |
+         * +----------+-----------+  |   |   +----------------+
+         *            | Clone        +---+---+  Current Query |
+         *      +-----+------+           |   +----------------+
+         *      |   TVList   | <---------+
+         *      +------------+
+         */
+        LOGGER.debug(
+            "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
+
+        synchronized (memChunk) {
+          // Re-check defensively before cloning and publishing the replacement. The clone and the
+          // working-list swap must be done in the same memChunk critical section, so a concurrent
+          // query can never observe a working TVList whose columns have already been moved away.
+          if (memChunk.getWorkingTVList() != candidate) {
+            continue;
+          }
+
+          // calculateRamSize (synchronized method on TVList) was previously called before
+          // lockQueryList to avoid deadlock concerns. For partial clone of AlignedTVList, however
+          // calculateRamSize must now be called inside the lockQueryList section because it depends
+          // on accessing columns on the AlignedTVList.
+          // This is safe because the lock ordering - queryListLock must always be acquired before
+          // the TVList intrinsic lock (via synchronized methods like calculateRamSize, clone). So
+          // no AB-BA deadlock is possible.
+          Set<Integer> columnsToClone = getAccessedColumnsForQuery(candidate);
+          listRamInfo =
+              (columnsToClone == null)
+                  ? candidate.calculateRamSize()
+                  : ((AlignedTVList) candidate).calculateRamSize(columnsToClone);
+
+          // reserve query memory
+          QueryContext firstQuery = candidate.getQueryContextSet().iterator().next();
+          if (firstQuery instanceof FragmentInstanceContext) {
+            MemoryReservationManager memoryReservationManager =
+                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+            memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
+            candidate.setReservedMemoryBytes(listRamInfo.getRamSize());
+          }
+          candidate.setOwnerQuery(firstQuery);
+
+          // clone TVList
+          TVList cloneList =
+              (columnsToClone == null)
+                  ? candidate.clone()
+                  : ((AlignedTVList) candidate).clone(columnsToClone);
+
+          cloneList.getQueryContextSet().add(context);
+          tvListQueryMap.put(cloneList, cloneList.rowCount());
+          if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+            ((FragmentInstanceContext) context).putAccessedColumns(cloneList, columnIndexList);
+          }
+
+          // Move the uncloned columns and publish the clone in the same memChunk critical section,
+          // so a concurrent query never observes a working TVList whose columns were already moved.
+          if (columnsToClone != null) {
+            ((AlignedTVList) candidate)
+                .moveUnclonedColumnsTo((AlignedTVList) cloneList, columnsToClone);
+          }
+          memChunk.setWorkingTVList(cloneList);
+          return tvListQueryMap;
         }
       } catch (MemoryNotEnoughException ex) {
         if (listRamInfo != null) {
@@ -293,9 +320,8 @@ public abstract class ResourceByPathUtils {
         }
         throw ex;
       } finally {
-        list.unlockQueryList();
+        candidate.unlockQueryList();
       }
-      return tvListQueryMap;
     }
   }
 
