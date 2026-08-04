@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -215,31 +216,23 @@ public class ClusterSchemaManager {
       return result;
     }
 
-    if (databaseSchema.isSetMinSchemaRegionGroupNum()) {
-      // Validate alter SchemaRegionGroupNum
-      int minSchemaRegionGroupNum =
-          getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
-      if (databaseSchema.getMinSchemaRegionGroupNum() <= minSchemaRegionGroupNum) {
-        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
-        result.setMessage(
-            String.format(
-                "Failed to alter database. The SchemaRegionGroupNum could only be increased. "
-                    + "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d",
-                minSchemaRegionGroupNum, databaseSchema.getMinSchemaRegionGroupNum()));
+    if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
+      result =
+          validateMaxRegionGroupNumOnAlter(
+              databaseSchema.getName(),
+              TConsensusGroupType.SchemaRegion,
+              databaseSchema.getMaxSchemaRegionGroupNum());
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result;
       }
     }
-    if (databaseSchema.isSetMinDataRegionGroupNum()) {
-      // Validate alter DataRegionGroupNum
-      int minDataRegionGroupNum =
-          getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.DataRegion);
-      if (databaseSchema.getMinDataRegionGroupNum() <= minDataRegionGroupNum) {
-        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
-        result.setMessage(
-            String.format(
-                "Failed to alter database. The DataRegionGroupNum could only be increased. "
-                    + "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d",
-                minDataRegionGroupNum, databaseSchema.getMinDataRegionGroupNum()));
+    if (databaseSchema.isSetMaxDataRegionGroupNum()) {
+      result =
+          validateMaxRegionGroupNumOnAlter(
+              databaseSchema.getName(),
+              TConsensusGroupType.DataRegion,
+              databaseSchema.getMaxDataRegionGroupNum());
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result;
       }
     }
@@ -453,6 +446,14 @@ public class ClusterSchemaManager {
    * each Database based on existing cluster resources
    */
   public synchronized void adjustMaxRegionGroupNum() {
+    final boolean isAdjustSchemaRegionGroupNum =
+        !CONF.getSchemaRegionGroupExtensionPolicy().equals(RegionGroupExtensionPolicy.CUSTOM);
+    final boolean isAdjustDataRegionGroupNum =
+        !CONF.getDataRegionGroupExtensionPolicy().equals(RegionGroupExtensionPolicy.CUSTOM);
+    if (!isAdjustSchemaRegionGroupNum && !isAdjustDataRegionGroupNum) {
+      return;
+    }
+
     // Get all DatabaseSchemas
     Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
@@ -480,59 +481,37 @@ public class ClusterSchemaManager {
         continue;
       }
 
-      // Adjust maxSchemaRegionGroupNum for each Database.
-      // All Databases share the DataNodes equally.
-      // The allocated SchemaRegionGroups will not be shrunk.
-      final int allocatedSchemaRegionGroupCount;
-      try {
-        allocatedSchemaRegionGroupCount =
-            getPartitionManager()
-                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
-      } catch (final DatabaseNotExistsException e) {
-        // ignore the pre deleted database
-        continue;
+      int maxSchemaRegionGroupNum = databaseSchema.getMaxSchemaRegionGroupNum();
+      if (isAdjustSchemaRegionGroupNum) {
+        try {
+          maxSchemaRegionGroupNum =
+              adjustRegionGroupNum(
+                  TConsensusGroupType.SchemaRegion,
+                  databaseSchema,
+                  dataNodeNum,
+                  databaseNum,
+                  totalCpuCoreNum);
+        } catch (final DatabaseNotExistsException e) {
+          // ignore the pre deleted database
+          continue;
+        }
       }
 
-      final int maxSchemaRegionGroupNum =
-          calcMaxRegionGroupNum(
-              databaseSchema.getMinSchemaRegionGroupNum(),
-              SCHEMA_REGION_PER_DATA_NODE,
-              dataNodeNum,
-              databaseNum,
-              databaseSchema.getSchemaReplicationFactor(),
-              allocatedSchemaRegionGroupCount);
-      LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-          databaseSchema.getName(),
-          maxSchemaRegionGroupNum);
-
-      // Adjust maxDataRegionGroupNum for each Database.
-      // All Databases share the DataNodes equally.
-      // The allocated DataRegionGroups will not be shrunk.
-      final int allocatedDataRegionGroupCount;
-      try {
-        allocatedDataRegionGroupCount =
-            getPartitionManager()
-                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
-      } catch (final DatabaseNotExistsException e) {
-        // ignore the pre deleted database
-        continue;
+      int maxDataRegionGroupNum = databaseSchema.getMaxDataRegionGroupNum();
+      if (isAdjustDataRegionGroupNum) {
+        try {
+          maxDataRegionGroupNum =
+              adjustRegionGroupNum(
+                  TConsensusGroupType.DataRegion,
+                  databaseSchema,
+                  dataNodeNum,
+                  databaseNum,
+                  totalCpuCoreNum);
+        } catch (final DatabaseNotExistsException e) {
+          // ignore the pre deleted database
+          continue;
+        }
       }
-
-      final int maxDataRegionGroupNum =
-          calcMaxRegionGroupNum(
-              databaseSchema.getMinDataRegionGroupNum(),
-              DATA_REGION_PER_DATA_NODE == 0
-                  ? CONF.getDataRegionPerDataNodeProportion()
-                  : DATA_REGION_PER_DATA_NODE,
-              DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
-              databaseNum,
-              databaseSchema.getDataReplicationFactor(),
-              allocatedDataRegionGroupCount);
-      LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
-          databaseSchema.getName(),
-          maxDataRegionGroupNum);
 
       adjustMaxRegionGroupNumPlan.putEntry(
           databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
@@ -564,6 +543,135 @@ public class ClusterSchemaManager {
                     resourceWeight * resource / (databaseNum * replicationFactor)),
             // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
             allocatedRegionGroupCount));
+  }
+
+  /** Adjust the automatic max quota of a schema or data RegionGroup. */
+  public int adjustRegionGroupNum(
+      TConsensusGroupType consensusGroupType,
+      TDatabaseSchema databaseSchema,
+      int dataNodeNum,
+      int databaseNum,
+      int totalCpuCoreNum)
+      throws DatabaseNotExistsException {
+    final boolean isSchemaRegion = consensusGroupType == TConsensusGroupType.SchemaRegion;
+    final int allocatedRegionGroupCount =
+        getPartitionManager().getRegionGroupCount(databaseSchema.getName(), consensusGroupType);
+
+    int maxRegionGroupNum =
+        calcMaxRegionGroupNum(
+            isSchemaRegion
+                ? databaseSchema.getMinSchemaRegionGroupNum()
+                : databaseSchema.getMinDataRegionGroupNum(),
+            isSchemaRegion
+                ? SCHEMA_REGION_PER_DATA_NODE
+                : (DATA_REGION_PER_DATA_NODE == 0
+                    ? CONF.getDataRegionPerDataNodeProportion()
+                    : DATA_REGION_PER_DATA_NODE),
+            isSchemaRegion
+                ? dataNodeNum
+                : (DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum),
+            databaseNum,
+            isSchemaRegion
+                ? databaseSchema.getSchemaReplicationFactor()
+                : databaseSchema.getDataReplicationFactor(),
+            allocatedRegionGroupCount);
+    LOGGER.info(
+        "[AdjustRegionGroupNum] The maximum number of {}RegionGroups for Database: {} is adjusted to: {}",
+        isSchemaRegion ? "Schema" : "Data",
+        databaseSchema.getName(),
+        maxRegionGroupNum);
+
+    return maxRegionGroupNum;
+  }
+
+  public static TSStatus validateMaxRegionGroupNumOnCreation(
+      TDatabaseSchema databaseSchema, TConsensusGroupType consensusGroupType) {
+    return validateMaxRegionGroupNum(
+        consensusGroupType,
+        TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
+            ? databaseSchema.getMaxSchemaRegionGroupNum()
+            : databaseSchema.getMaxDataRegionGroupNum(),
+        true);
+  }
+
+  private static TSStatus validateMaxRegionGroupNum(
+      TConsensusGroupType consensusGroupType, int maxRegionGroupNum, boolean isCreate) {
+    final boolean isSchemaRegion = TConsensusGroupType.SchemaRegion.equals(consensusGroupType);
+    final RegionGroupExtensionPolicy policy =
+        isSchemaRegion
+            ? CONF.getSchemaRegionGroupExtensionPolicy()
+            : CONF.getDataRegionGroupExtensionPolicy();
+    final String configKey =
+        isSchemaRegion ? "max_schema_region_group_num" : "max_data_region_group_num";
+    final String fieldName = isSchemaRegion ? "MaxSchemaRegionGroupNum" : "MaxDataRegionGroupNum";
+
+    if (!policy.equals(RegionGroupExtensionPolicy.CUSTOM)) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Failed to %s database. The %s can only be set when %s_region_group_extension_policy is CUSTOM.",
+                  isCreate ? "create" : "alter", configKey, isSchemaRegion ? "schema" : "data"));
+    }
+
+    final int defaultRegionGroupNum =
+        isSchemaRegion
+            ? CONF.getDefaultSchemaRegionGroupNumPerDatabase()
+            : CONF.getDefaultDataRegionGroupNumPerDatabase();
+    if (maxRegionGroupNum < defaultRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "%s should be greater than or equal to default %sRegionGroupNum: %d.",
+                  fieldName, isSchemaRegion ? "Schema" : "Data", defaultRegionGroupNum));
+    }
+
+    return StatusUtils.OK;
+  }
+
+  private TSStatus validateMaxRegionGroupNumOnAlter(
+      String database, TConsensusGroupType consensusGroupType, int maxRegionGroupNum) {
+    TSStatus status = validateMaxRegionGroupNum(consensusGroupType, maxRegionGroupNum, false);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    final boolean isSchemaRegion = TConsensusGroupType.SchemaRegion.equals(consensusGroupType);
+    final String fieldName = isSchemaRegion ? "MaxSchemaRegionGroupNum" : "MaxDataRegionGroupNum";
+    final int minRegionGroupNum = getMinRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < minRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "%s should be greater than or equal to current min %sRegionGroupNum: %d.",
+                  fieldName, isSchemaRegion ? "Schema" : "Data", minRegionGroupNum));
+    }
+
+    final int currentMaxRegionGroupNum = getMaxRegionGroupNum(database, consensusGroupType);
+    if (maxRegionGroupNum < currentMaxRegionGroupNum) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "%s should be greater than or equal to current max %sRegionGroupNum: %d.",
+                  fieldName, isSchemaRegion ? "Schema" : "Data", currentMaxRegionGroupNum));
+    }
+
+    final int allocatedRegionGroupCount;
+    try {
+      allocatedRegionGroupCount =
+          getPartitionManager().getRegionGroupCount(database, consensusGroupType);
+    } catch (DatabaseNotExistsException e) {
+      return new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    if (maxRegionGroupNum < allocatedRegionGroupCount) {
+      return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "%s should be greater than or equal to allocated %sRegionGroupNum: %d.",
+                  fieldName, isSchemaRegion ? "Schema" : "Data", allocatedRegionGroupCount));
+    }
+
+    return StatusUtils.OK;
   }
 
   // ======================================================
