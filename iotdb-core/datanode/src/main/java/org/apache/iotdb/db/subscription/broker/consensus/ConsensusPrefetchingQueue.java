@@ -1787,7 +1787,11 @@ public class ConsensusPrefetchingQueue {
     // Use the persistent linger batch so an unexpected runtime failure cannot orphan already
     // reserved Tablets or advance replay progress past data that has become unreachable.
     final DeliveryBatchState batchState = lingerBatch;
-    resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
+    // Keep using the current iterator so its WAL reader cursor and buffered look-ahead request are
+    // preserved across bounded prefetch rounds. Rebuilding it here would replay all retained WAL
+    // entries before nextExpectedSearchIndex for every batch and make historical catch-up
+    // progressively slower. Explicit seek, WAL-gap recovery, and memory rollback still reset the
+    // iterator at their required positions.
     final MaterializationResult materializationResult =
         pumpFromSubscriptionWAL(
             batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
