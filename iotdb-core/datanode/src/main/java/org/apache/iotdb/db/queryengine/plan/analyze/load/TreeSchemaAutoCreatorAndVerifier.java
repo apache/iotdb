@@ -519,6 +519,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
+        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
         loadTsFileAnalyzer.context);
   }
 

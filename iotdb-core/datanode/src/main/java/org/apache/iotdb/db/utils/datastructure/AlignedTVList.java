@@ -619,7 +619,13 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     for (int i = 0; i < dataTypes.size(); i++) {
       deletedNumber += delete(lowerBound, upperBound, i).left;
@@ -627,7 +633,13 @@ public abstract class AlignedTVList extends TVList {
     return deletedNumber;
   }
 
-  public int deleteTime(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int deleteTime(long lowerBound, long upperBound) {
     delete(lowerBound, upperBound);
     int prevDeletedCnt = this.timeDeletedCnt;
     for (int i = 0; i < rowCount; i++) {
@@ -670,12 +682,17 @@ public abstract class AlignedTVList extends TVList {
   /**
    * Delete points in a specific column.
    *
+   * <p>Must be synchronized with {@link #sort()} on the same TVList instance: a query may sort this
+   * list in place ({@code sort()} is synchronized), and a concurrent delete would otherwise read
+   * the half-rebuilt {@code indices} and throw IndexOutOfBoundsException or delete wrong rows.
+   *
    * @param lowerBound deletion lower bound
    * @param upperBound deletion upper bound
    * @param columnIndex column index to be deleted
    * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
    */
-  public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
+  public synchronized Pair<Integer, Boolean> delete(
+      long lowerBound, long upperBound, int columnIndex) {
     if (columnIndex >= values.size()) {
       return new Pair<>(0, false);
     }
@@ -698,7 +715,13 @@ public abstract class AlignedTVList extends TVList {
     return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  public void deleteColumn(int columnIndex) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized void deleteColumn(int columnIndex) {
     List<Object> columnValues = values.get(columnIndex);
     if (columnValues == null) {
       return;
@@ -919,7 +942,7 @@ public abstract class AlignedTVList extends TVList {
       }
 
       /* 2.mask the column bitmap */
-      if (bitMaps != null && bitMaps[j] != null && containsMarkedBit(bitMaps[j], idx, len)) {
+      if (bitMaps != null && bitMaps[j] != null && bitMaps[j].isRangeAnyMarked(idx, len)) {
         getBitMap(j, arrayIndex).merge(bitMaps[j], idx, elementIdx, len);
       }
 
@@ -937,33 +960,6 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     return false;
-  }
-
-  static boolean containsMarkedBit(BitMap bitMap, int start, int length) {
-    // Avoid materializing a byte-array copy on the common aligned-tablet path, which starts at
-    // offset 0 and can be inspected directly by BitMap.
-    if (start == 0) {
-      return length > 0 && !bitMap.isAllUnmarked(length);
-    }
-
-    byte[] bytes = bitMap.getByteArray();
-    int end = start + length - 1;
-    int firstByteIndex = start >>> 3;
-    int lastByteIndex = end >>> 3;
-    if (firstByteIndex == lastByteIndex) {
-      int mask = (0xFF << (start & 7)) & (0xFF >>> (7 - (end & 7)));
-      return (bytes[firstByteIndex] & mask) != 0;
-    }
-
-    if ((bytes[firstByteIndex] & (0xFF << (start & 7))) != 0) {
-      return true;
-    }
-    for (int i = firstByteIndex + 1; i < lastByteIndex; i++) {
-      if (bytes[i] != 0) {
-        return true;
-      }
-    }
-    return (bytes[lastByteIndex] & (0xFF >>> (7 - (end & 7)))) != 0;
   }
 
   public static byte[] buildResultBitMapBytes(
@@ -1049,7 +1045,7 @@ public abstract class AlignedTVList extends TVList {
   private static boolean containsNonNullValue(
       BitMap[] bitMaps, TSStatus[] results, int columnIndex, int start, int length) {
     BitMap bitMap = bitMaps == null ? null : bitMaps[columnIndex];
-    boolean containsNull = bitMap != null && containsMarkedBit(bitMap, start, length);
+    boolean containsNull = bitMap != null && bitMap.isRangeAnyMarked(start, length);
     boolean containsFailure = results != null && containsFailedStatus(results, start, length);
     if (!containsNull && !containsFailure) {
       return true;

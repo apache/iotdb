@@ -108,7 +108,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       if (topicsUnsubByGroup.contains(topic)) {
         final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
         final String topicMode = topicMeta.getConfig().getMode();
-        final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
 
         if (isConsensusBasedTopic) {
           LOGGER.info(

@@ -114,7 +114,7 @@ public class AlignedBitmapRangeCheckPerformanceTest {
   private static void runOptimized(BitMap[] bitMaps, int start, int length, int operations) {
     long markedCount = 0;
     for (int i = 0; i < operations; i++) {
-      if (AlignedTVList.containsMarkedBit(bitMaps[i & BITMAP_MASK], start, length)) {
+      if (bitMaps[i & BITMAP_MASK].isRangeAnyMarked(start, length)) {
         markedCount++;
       }
     }

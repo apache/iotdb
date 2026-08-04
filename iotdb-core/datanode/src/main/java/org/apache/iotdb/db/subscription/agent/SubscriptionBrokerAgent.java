@@ -422,9 +422,8 @@ public class SubscriptionBrokerAgent {
     final String runtimeConsensusImplementation =
         Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
     return String.format(
-        "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
-            + "mode=consensus only supports data_region_consensus_protocol_class=%s, but current "
-            + "configured value is %s (runtime consensus implementation: %s)",
+        DataNodePipeMessages
+            .EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67,
         operation,
         topicNames,
         consumerGroupId,

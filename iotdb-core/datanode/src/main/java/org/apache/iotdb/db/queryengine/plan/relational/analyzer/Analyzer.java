@@ -119,7 +119,7 @@ public class Analyzer {
     analyzer.analyze(rewrittenStatement);
     if (analysis.isQuery()) {
       long analyzeCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(ANALYZER, analyzeCost);
+      QueryPlanCostMetricSet.getInstance().recordTablePlanCost(ANALYZER, analyzeCost);
       context.setAnalyzeCost(analyzeCost);
     }
 

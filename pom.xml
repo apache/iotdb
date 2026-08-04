@@ -77,6 +77,7 @@
         <enforcer.skip>true</enforcer.skip>
         <felix.version>5.1.9</felix.version>
         <findbugs.jsr305.version>3.0.2</findbugs.jsr305.version>
+        <forbiddenapis.version>3.10</forbiddenapis.version>
         <fusesource-mqtt-client.version>1.16</fusesource-mqtt-client.version>
         <google.java.format.version>1.28.0</google.java.format.version>
         <gson.version>2.13.1</gson.version>
@@ -145,7 +146,7 @@
         <thrift.version>0.23.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.2-260721-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.2-260731-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -1023,6 +1024,33 @@
                 <configuration>
                     <skip>${spotless.skip}</skip>
                 </configuration>
+            </plugin>
+            <!--
+                Enforce provider-compatible file APIs in every Maven module. The configured excludes
+                are paths relative to each module's target/classes directory and are limited to
+                APIs without a direct provider-compatible lifecycle equivalent.
+            -->
+            <plugin>
+                <groupId>de.thetaphi</groupId>
+                <artifactId>forbiddenapis</artifactId>
+                <version>${forbiddenapis.version}</version>
+                <configuration>
+                    <failOnUnsupportedJava>true</failOnUnsupportedJava>
+                    <!-- Some modules reference optional profile-specific classes, such as AINode thrift types. -->
+                    <failOnMissingClasses>false</failOnMissingClasses>
+                    <signaturesFiles>
+                        <signaturesFile>${maven.multiModuleProjectDirectory}/src/main/forbidden-apis/secure-erase</signaturesFile>
+                    </signaturesFiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>check-secure-erase-file-apis</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>

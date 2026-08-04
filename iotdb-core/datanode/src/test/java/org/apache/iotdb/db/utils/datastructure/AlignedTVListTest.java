@@ -245,42 +245,6 @@ public class AlignedTVListTest {
   }
 
   @Test
-  public void testContainsMarkedBitForLongAndArrayBackedBitmaps() {
-    assertContainsMarkedBitRanges(new BitMap(Long.SIZE));
-    assertContainsMarkedBitRanges(BitMap.createBitMapDynamically(Long.SIZE));
-
-    BitMap largeBitMap = BitMap.createBitMapDynamically(Long.SIZE * 2 + 2);
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(largeBitMap, 1, Long.SIZE));
-    largeBitMap.mark(Long.SIZE);
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(largeBitMap, 1, Long.SIZE));
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(largeBitMap, Long.SIZE + 1, Long.SIZE));
-    largeBitMap.mark(Long.SIZE * 2 + 1);
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(largeBitMap, Long.SIZE + 1, Long.SIZE + 1));
-  }
-
-  private static void assertContainsMarkedBitRanges(BitMap bitMap) {
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 0, 0));
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 0, Long.SIZE));
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 1, Long.SIZE - 1));
-
-    bitMap.mark(0);
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(bitMap, 0, 1));
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 1, Long.SIZE - 1));
-
-    bitMap.reset();
-    bitMap.mark(Long.SIZE / 2);
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 0, Long.SIZE / 2));
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(bitMap, 0, Long.SIZE / 2 + 1));
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(bitMap, Long.SIZE / 2 - 1, 3));
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, Long.SIZE / 2 + 1, 1));
-
-    bitMap.reset();
-    bitMap.mark(Long.SIZE - 1);
-    Assert.assertFalse(AlignedTVList.containsMarkedBit(bitMap, 1, Long.SIZE - 2));
-    Assert.assertTrue(AlignedTVList.containsMarkedBit(bitMap, 1, Long.SIZE - 1));
-  }
-
-  @Test
   public void testPrimitiveArraysAreAllocatedOnFirstWrite() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(
