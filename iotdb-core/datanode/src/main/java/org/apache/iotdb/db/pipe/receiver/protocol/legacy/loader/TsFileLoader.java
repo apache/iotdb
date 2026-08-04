@@ -53,7 +53,7 @@ public class TsFileLoader implements ILoader {
   @Override
   public void load(final SessionInfo sessionInfo) {
     try {
-      LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      LoadTsFileStatement statement = LoadTsFileStatement.createForPipe(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());

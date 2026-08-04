@@ -94,7 +94,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       return false;
     }
     for (final TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
-      if (topicMeta.getConfig().isConsensusMode()) {
+      if (topicMeta.getConfig().isIncrementalMode()) {
         return true;
       }
     }

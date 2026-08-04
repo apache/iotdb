@@ -676,7 +676,8 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.readLock().unlock();
       configNodeInfoReadWriteLock.readLock().unlock();
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(

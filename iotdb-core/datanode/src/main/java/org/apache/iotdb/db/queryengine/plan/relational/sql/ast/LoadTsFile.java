@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -74,19 +75,25 @@ public class LoadTsFile extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    this(location, filePath, loadAttributes, true);
+    this(location, filePath, loadAttributes, true, true);
   }
 
   public static LoadTsFile createUnchecked(
       NodeLocation location, String filePath, Map<String, String> loadAttributes) {
-    return new LoadTsFile(location, filePath, loadAttributes, false);
+    return new LoadTsFile(location, filePath, loadAttributes, false, true);
+  }
+
+  public static LoadTsFile createForPipe(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, false);
   }
 
   private LoadTsFile(
       NodeLocation location,
       String filePath,
       Map<String, String> loadAttributes,
-      boolean validateSourcePath) {
+      boolean validateSourcePath,
+      boolean validateInternalDataDir) {
     super(location);
     this.filePath =
         requireNonNull(filePath, DataNodeQueryMessages.EXCEPTION_FILEPATH_IS_NULL_84CE8A66);
@@ -105,8 +112,9 @@ public class LoadTsFile extends Statement {
 
     try {
       this.tsFiles =
-          org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath), validateSourcePath);
+          validateInternalDataDir
+              ? LoadTsFileStatement.processTsFile(new File(filePath), validateSourcePath)
+              : LoadTsFileStatement.processTsFileForPipe(new File(filePath));
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
@@ -306,7 +314,9 @@ public class LoadTsFile extends Statement {
       final Map<String, String> properties = this.loadAttributes;
 
       final LoadTsFile subStatement =
-          LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
+          isGeneratedByPipe
+              ? LoadTsFile.createForPipe(getLocation().orElse(null), filePath, properties)
+              : LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
 
       // Copy all configuration properties
       subStatement.databaseLevel = this.databaseLevel;

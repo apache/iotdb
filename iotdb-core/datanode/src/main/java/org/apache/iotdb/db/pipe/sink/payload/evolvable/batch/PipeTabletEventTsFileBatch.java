@@ -31,7 +31,6 @@ import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -251,7 +250,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     } finally {
       if (!sealedSuccessfully) {
         for (final Pair<String, File> sealedFile : list) {
-          if (sealedFile.right.exists() && !FileUtils.deleteQuietly(sealedFile.right)) {
+          if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile.right)) {
             LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFile);
           }
         }

@@ -85,13 +85,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -530,8 +530,9 @@ public class IoTConsensusServerImpl {
     if (!Files.exists(parentDir)) {
       Files.createDirectories(parentDir);
     }
-    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-        FileChannel channel = fos.getChannel()) {
+    try (FileChannel channel =
+        FileChannel.open(
+            targetFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
       channel.write(fileChunk.slice(), fileOffset);
     }
   }
