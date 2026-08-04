@@ -97,12 +97,13 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
-    refreshArrayMemCostWithoutIndex();
-
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
     }
+    // arrayMemCostWithoutIndex depends on per-column value arrays, so values must be
+    // initialized before computing it
+    refreshArrayMemCostWithoutIndex();
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
