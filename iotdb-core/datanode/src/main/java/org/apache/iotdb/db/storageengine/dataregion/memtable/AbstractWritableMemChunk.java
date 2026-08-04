@@ -36,7 +36,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -122,7 +121,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
           AlignedTVList alignedTVList = (AlignedTVList) tvList;
 
           // Get the union of all columns accessed by queries
-          Set<Integer> accessedColumns = getAccessedColumnsForQuery(alignedTVList);
+          Set<Integer> accessedColumns = alignedTVList.getAccessedColumnsForQuery();
 
           if (accessedColumns != null && !accessedColumns.isEmpty()) {
             // Release non-query columns to reduce memory before ownership transfer
@@ -145,25 +144,6 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     } finally {
       tvList.unlockQueryList();
     }
-  }
-
-  /**
-   * Get the union of all columns accessed by active queries on this TVList. This method must be
-   * called with tvList.lockQueryList() held.
-   */
-  private Set<Integer> getAccessedColumnsForQuery(AlignedTVList alignedTVList) {
-    Set<Integer> accessedColumns = new HashSet<>();
-    for (QueryContext queryContext : alignedTVList.getQueryContextSet()) {
-      if (!(queryContext instanceof FragmentInstanceContext)) {
-        return null;
-      }
-      FragmentInstanceContext ctx = (FragmentInstanceContext) queryContext;
-      Set<Integer> columns = ctx.getAccessedAlignedColumns(alignedTVList);
-      if (columns != null && !columns.isEmpty()) {
-        accessedColumns.addAll(columns);
-      }
-    }
-    return accessedColumns;
   }
 
   @Override
