@@ -222,6 +222,12 @@ public abstract class ResourceByPathUtils {
             workingListForFlushSort.getQueryContextSet().add(context);
             tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
           }
+
+          // columnIndexList is to track column-level access for AlignedTVList.
+          // For TVList (primitive time series), it remains null and column tracking is not needed.
+          if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+            ((FragmentInstanceContext) context).putAccessedColumns(candidate, columnIndexList);
+          }
           return tvListQueryMap;
         }
 
