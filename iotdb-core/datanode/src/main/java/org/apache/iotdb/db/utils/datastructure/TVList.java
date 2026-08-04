@@ -558,7 +558,13 @@ public abstract class TVList implements WALEntryValue {
     return clone();
   }
 
-  public int delete(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
     long minTime = Long.MAX_VALUE;
