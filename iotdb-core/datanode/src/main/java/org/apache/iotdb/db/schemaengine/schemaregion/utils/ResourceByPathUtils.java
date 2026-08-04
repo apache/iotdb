@@ -175,7 +175,8 @@ public abstract class ResourceByPathUtils {
         }
 
         if (copyTimeFilter != null
-            && !copyTimeFilter.satisfyStartEndTime(candidate.getMinTime(), candidate.getMaxTime())) {
+            && !copyTimeFilter.satisfyStartEndTime(
+                candidate.getMinTime(), candidate.getMaxTime())) {
           return tvListQueryMap;
         }
 
