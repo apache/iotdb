@@ -434,6 +434,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (isSystemDatabase) {
       databaseSchema.setMinSchemaRegionGroupNum(1);
+      databaseSchema.setMaxSchemaRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
       databaseSchema.setMinSchemaRegionGroupNum(
           configNodeConfig.getDefaultSchemaRegionGroupNumPerDatabase());
@@ -446,6 +447,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (isSystemDatabase) {
       databaseSchema.setMinDataRegionGroupNum(1);
+      databaseSchema.setMaxDataRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
       databaseSchema.setMinDataRegionGroupNum(
           configNodeConfig.getDefaultDataRegionGroupNumPerDatabase());
@@ -455,12 +457,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
-    if (isSystemDatabase) {
-      // Keep the system database in a single RegionGroup regardless of extension policies and
-      // user-configured defaults.
-      databaseSchema.setMaxSchemaRegionGroupNum(1);
-      databaseSchema.setMaxDataRegionGroupNum(1);
-    } else {
+    if (!isSystemDatabase) {
       if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
         TSStatus status =
             ClusterSchemaManager.validateMaxRegionGroupNumOnCreation(
