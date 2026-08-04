@@ -391,8 +391,8 @@ public class AlignedTVListTest {
     tvList.releaseNonQueryColumns(columnsToKeep);
 
     // Verify column 1 is released
-    Assert.assertTrue(tvList.getValues().get(1).isEmpty());
-    Assert.assertTrue(tvList.getBitMaps().get(1).isEmpty());
+    Assert.assertNull(tvList.getValues().get(1));
+    Assert.assertNull(tvList.getBitMaps().get(1));
 
     // Verify columns 0 and 2 are intact
     Assert.assertFalse(tvList.getValues().get(0).isEmpty());

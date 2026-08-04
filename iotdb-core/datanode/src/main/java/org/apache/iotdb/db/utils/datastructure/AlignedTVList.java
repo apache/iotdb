@@ -204,7 +204,7 @@ public abstract class AlignedTVList extends TVList {
       }
       memoryBinaryChunkSize[i] = 0;
     }
-    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps);
+    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, columnsToClone);
     // Column ownership changed on both lists, so refresh their per-block memory cost.
     refreshArrayMemCostWithoutIndex();
     cloneList.refreshArrayMemCostWithoutIndex();
@@ -237,7 +237,7 @@ public abstract class AlignedTVList extends TVList {
       for (Object dataArray : columnValues) {
         PrimitiveArrayManager.release(dataArray);
       }
-      columnValues.clear();
+      values.set(i, null);
       memoryBinaryChunkSize[i] = 0;
 
       // Release bitmap memory for non-query columns
@@ -246,7 +246,7 @@ public abstract class AlignedTVList extends TVList {
       }
     }
 
-    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps);
+    materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, columnsToKeep);
     // Refresh per-block memory cost after releasing columns
     refreshArrayMemCostWithoutIndex();
   }
