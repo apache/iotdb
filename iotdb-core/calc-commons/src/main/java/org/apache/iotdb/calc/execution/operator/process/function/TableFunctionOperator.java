@@ -100,11 +100,11 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     this.partitionRecognizer =
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
-    List<TSDataType> resultDataTypes = new ArrayList<>(outputDataTypes);
     this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
-    this.needPassThrough = properChannelCount != resultDataTypes.size();
+    this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
-    this.properBlockBuilder = new TsBlockBuilder(resultDataTypes.subList(0, properChannelCount));
+    this.properBlockBuilder =
+        new TsBlockBuilder(new ArrayList<>(outputDataTypes.subList(0, properChannelCount)));
     this.partitionCache = new PartitionCache();
     this.resultTsBlocks = new LinkedList<>();
     this.requireRecordSnapshot = requireRecordSnapshot;
@@ -191,6 +191,11 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     }
   }
 
+  /**
+   * Applies {@link AbstractOperator}'s low-cost row-count splitting after pass-through columns have
+   * been appended. The configured byte size is a logical target rather than an exact serialized
+   * limit; in particular, a single oversized row and highly variable binary payloads may exceed it.
+   */
   private TsBlock getNextResultTsBlock() {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
@@ -268,12 +273,11 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public void close() throws Exception {
-    partitionCache.close();
-    inputOperator.close();
+    partitionCache.clear();
     resultTsBlocks.clear();
     resultTsBlock = null;
     retainedTsBlock = null;
-    startOffset = 0;
+    inputOperator.close();
     if (processor != null) {
       destroyProcessor(processor);
       processor = null;
