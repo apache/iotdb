@@ -224,7 +224,16 @@ public abstract class ResourceByPathUtils {
              */
             candidate.getQueryContextSet().add(context);
             context.addTVListToSet(Collections.singleton(candidate));
-            workingListForFlushSort.getQueryContextSet().add(context);
+            // Query preparation is serialized by candidate's query-list lock, but cleanup removes
+            // the context under workingListForFlushSort's own lock. Use the same lock for this add
+            // to avoid concurrently mutating its HashSet. The lock order here is candidate first,
+            // then workingListForFlushSort; cleanup never holds both locks at the same time.
+            workingListForFlushSort.lockQueryList();
+            try {
+              workingListForFlushSort.getQueryContextSet().add(context);
+            } finally {
+              workingListForFlushSort.unlockQueryList();
+            }
             tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
           }
 
