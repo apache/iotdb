@@ -50,6 +50,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -313,6 +314,26 @@ public class FragmentInstanceExecutionTest {
               new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.PLAIN)),
           rows - i - 1,
           new Object[] {i + 10});
+    }
+    return memTable;
+  }
+
+  private IMemTable createMemTable(String deviceId, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "1");
+
+    // Insert data in reverse order to make it unsorted
+    int rows = 100;
+    for (int i = rows - 1; i >= 0; i--) {
+      Object[] values = new Object[5];
+      for (int j = 0; j < 5; j++) {
+        values[j] = (long) i * 100 + j;
+      }
+      memTable.writeAlignedRow(
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          schemaList,
+          i,
+          values);
     }
     return memTable;
   }
