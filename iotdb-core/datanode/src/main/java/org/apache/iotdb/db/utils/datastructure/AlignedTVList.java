@@ -221,13 +221,6 @@ public abstract class AlignedTVList extends TVList {
     return cloneList;
   }
 
-  public synchronized AlignedTVList clone(Set<Integer> columnsToClone) {
-    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
-    cloneAs(cloneList);
-    cloneColumnDataTo(cloneList, columnsToClone);
-    return cloneList;
-  }
-
   /**
    * Prepare a partial clone without changing this TVList. The returned plan must be committed only
    * after the query-memory reservation succeeds.
