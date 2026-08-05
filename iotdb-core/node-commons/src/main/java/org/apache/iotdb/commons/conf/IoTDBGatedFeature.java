@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** The nine commercial security features gated off in the IoTDB edition. */
+/** The ten commercial security features gated off in the IoTDB edition. */
 public enum IoTDBGatedFeature {
   SEPARATION_OF_POWERS("Separation of powers", "enable_separation_of_powers"),
   TDE("Transparent data encryption", "encrypt_type"),
@@ -32,6 +32,7 @@ public enum IoTDBGatedFeature {
       "enable_encrypt_config_file",
       "enable_encrypt_permission_file"),
   INTERNAL_SSL("Internal communication encryption", "enable_internal_ssl"),
+  SECURE_ERASE("Secure erase", "enable_secure_erase"),
   PASSWORD_EXPIRATION(
       "Password expiration", "password_expiration_days", "password_expiration_seconds"),
   BRUTE_FORCE(

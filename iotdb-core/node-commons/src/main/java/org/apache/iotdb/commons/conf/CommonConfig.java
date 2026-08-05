@@ -3560,7 +3560,8 @@ public class CommonConfig {
   }
 
   public void setEnableSecureErase(boolean enableSecureErase) {
-    this.enableSecureErase = enableSecureErase;
+    this.enableSecureErase =
+        EditionGate.forceDisabledInIoTDB(enableSecureErase, IoTDBGatedFeature.SECURE_ERASE);
   }
 
   public double getAuditLogSpaceTlInGB() {

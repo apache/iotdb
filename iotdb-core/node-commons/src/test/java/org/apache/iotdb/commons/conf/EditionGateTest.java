@@ -41,24 +41,41 @@ public class EditionGateTest {
   public void timechodbIsNoOp() {
     EditionGate.setIoTDBOverrideForTest(false);
     assertTrue(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.WHITE_BLACK_LIST));
+    assertTrue(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.SECURE_ERASE));
     assertEquals(7, EditionGate.forceValueInIoTDB(7, 0, IoTDBGatedFeature.BRUTE_FORCE));
     assertEquals("x", EditionGate.forceValueInIoTDB("x", "UNENCRYPTED", IoTDBGatedFeature.TDE));
     assertFalse(EditionGate.isIoTDBGatedConfigKey("enable_white_list"));
+    assertFalse(EditionGate.isIoTDBGatedConfigKey("enable_secure_erase"));
   }
 
   @Test
   public void iotdbClampsAndDetects() {
     EditionGate.setIoTDBOverrideForTest(true);
     assertFalse(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.WHITE_BLACK_LIST));
+    assertFalse(EditionGate.forceDisabledInIoTDB(true, IoTDBGatedFeature.SECURE_ERASE));
     assertEquals(0, EditionGate.forceValueInIoTDB(5, 0, IoTDBGatedFeature.BRUTE_FORCE));
     assertEquals(-1, EditionGate.forceValueInIoTDB(10, -1, IoTDBGatedFeature.IDLE_EVICTION));
     assertEquals(
         "UNENCRYPTED",
         EditionGate.forceValueInIoTDB("com.timecho.x", "UNENCRYPTED", IoTDBGatedFeature.TDE));
     assertTrue(EditionGate.isIoTDBGatedConfigKey("enable_white_list"));
+    assertTrue(EditionGate.isIoTDBGatedConfigKey("enable_secure_erase"));
     Optional<String> hit =
         EditionGate.firstGatedKey(new HashSet<>(Arrays.asList("foo", "enable_internal_ssl")));
     assertTrue(hit.isPresent());
     assertEquals("enable_internal_ssl", hit.get());
+  }
+
+  @Test
+  public void secureEraseConfigIsDisabledOnlyInIoTDB() {
+    CommonConfig config = new CommonConfig();
+
+    EditionGate.setIoTDBOverrideForTest(false);
+    config.setEnableSecureErase(true);
+    assertTrue(config.isEnableSecureErase());
+
+    EditionGate.setIoTDBOverrideForTest(true);
+    config.setEnableSecureErase(true);
+    assertFalse(config.isEnableSecureErase());
   }
 }

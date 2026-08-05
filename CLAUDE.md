@@ -77,7 +77,7 @@ exactly three properties:
 **`edition`** is filtered into `iotdb-core/node-commons/src/main/resources/module-config.properties`,
 read once by `ModuleConfigManager`, and consumed by two things:
 
-- `EditionGate` (`iotdb-core/node-commons/.../conf/EditionGate.java`) — clamps the nine
+- `EditionGate` (`iotdb-core/node-commons/.../conf/EditionGate.java`) — clamps the ten
   `IoTDBGatedFeature` security features to their disabled form in the IoTDB edition. In the
   TimechoDB edition every method is a no-op. Runtime `set configuration` of a gated key is rejected
   in `StorageEngine` and `ClusterConfigTaskExecutor`.
