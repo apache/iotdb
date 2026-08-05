@@ -2041,7 +2041,10 @@ public class ConsensusPrefetchingQueue {
             SubscriptionPollResponseType.TABLETS.getType(),
             payload,
             commitContext,
-            SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isTimeSelected(),
+            SubscriptionAgent.broker()
+                .getColumnFilterMatcher(
+                    topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))
+                .isTimeSelected(),
             getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
     // Install the ownership record before exposing the event to concurrent poll/ack threads.
@@ -2067,7 +2070,9 @@ public class ConsensusPrefetchingQueue {
       return Collections.emptyMap();
     }
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(topicName);
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
     final Map<String, Boolean> tableMap = new HashMap<>();
     for (final Tablet tablet : tablets) {
       if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {

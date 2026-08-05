@@ -53,7 +53,9 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
 
     if (registeredTaskCount == 0) {
       if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
-          ((SubscriptionSinkSubtask) subtask).getTopicName())) {
+          ((SubscriptionSinkSubtask) subtask).getTopicName(),
+          SubscriptionAgent.consumer()
+              .isTableModel(((SubscriptionSinkSubtask) subtask).getConsumerGroupId()))) {
         SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionSinkSubtask) subtask);
       }
       executor.register(subtask);
@@ -103,7 +105,8 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     // when dropping the subscription.
     final String consumerGroupId = ((SubscriptionSinkSubtask) subtask).getConsumerGroupId();
     final String topicName = ((SubscriptionSinkSubtask) subtask).getTopicName();
-    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+        topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
       SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
     }
   }
