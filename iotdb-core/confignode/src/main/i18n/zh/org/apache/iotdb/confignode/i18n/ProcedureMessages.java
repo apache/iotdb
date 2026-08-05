@@ -598,16 +598,6 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] 状态 {} 失败";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] 成功，{} 已添加到 DataNode {}。Procedure 耗时 {}（开始于 {}）。";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
-      "[pid{}][RemoveRegionGroup] 开始，region group {} 将从 DataNode {} 上删除。";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
-      "[pid{}][RemoveRegionGroup] region {} 将从 DataNode {} 上删除。";
-  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
-      "[pid{}][RemoveRegionGroup] 状态 {} 失败";
-  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] 删除 region {} 的一个副本失败（第 {}/{} 次尝试），将重试。原因：{}";
-  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
-      "[pid{}][RemoveRegionGroup] 成功，region group {} 已删除。过程耗时 {}（开始于 {}）。";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] 开始，{} 将从 DataNode {} 迁移到 {}。";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE = "[pid{}][MigrateRegion] 状态 {} 完成";
@@ -1469,12 +1459,6 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
           "worker {} 执行 procedure {} 时发生异常";
-  public static final String
-      EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
-          "无法推导出无冲突的 delete taskId：procId=%d，deleteTaskSeq=%d 超出了 ";
-  public static final String
-      EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
-          "无法推导出无冲突的 delete taskId：procId=%d，deleteTaskSeq=%d 超出了 %d/%d 位的预算";
   public static final String
       MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 =
           "显示 DataPartitionTable 完整性检查进度失败";
