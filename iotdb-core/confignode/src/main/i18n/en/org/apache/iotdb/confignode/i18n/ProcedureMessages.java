@@ -639,7 +639,7 @@ public final class ProcedureMessages {
   public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
       "[pid{}][RemoveRegionGroup] state {} failed";
   public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] failed to delete a replica of region {} (attempt {}), will keep retrying until it is deleted. reason: {}";
+      "[pid{}][RemoveRegionGroup] failed to delete a replica of region {} (attempt {}/{}), will retry. reason: {}";
   public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
       "[pid{}][RemoveRegionGroup] success, region group {} has been deleted. Procedure took {} (started at {}).";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
