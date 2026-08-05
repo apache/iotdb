@@ -241,15 +241,6 @@ public abstract class AlignedTVList extends TVList {
     return prepareMovePlan(cloneList, retainedColumns);
   }
 
-  public synchronized void moveUnclonedColumnsTo(
-      AlignedTVList cloneList, Set<Integer> columnsToClone) {
-    if (columnsToClone == null) {
-      return;
-    }
-    Set<Integer> retainedColumns = new HashSet<>(columnsToClone);
-    prepareMovePlan(cloneList, retainedColumns).commit();
-  }
-
   @SuppressWarnings("unchecked")
   private PartialClonePlan prepareMovePlan(AlignedTVList cloneList, Set<Integer> retainedColumns) {
     Objects.requireNonNull(cloneList, "cloneList cannot be null");
@@ -883,8 +874,8 @@ public abstract class AlignedTVList extends TVList {
    *
    * This method only performs the allocation phase: clone requested value/bitmap arrays and prepare
    * bitmap containers that will be needed by moved columns. It must not clear or move columns from
-   * the source TVList here. The destructive move is committed by moveUnclonedColumnsTo() only after
-   * cloneList is fully prepared for publication.
+   * the source TVList here. The destructive move is performed only by PartialClonePlan.commit()
+   * after cloneList and the ownership-transfer plan are fully prepared for publication.
    */
   private void cloneColumnDataTo(AlignedTVList cloneList, Set<Integer> columnsToClone) {
     boolean cloneAllColumns = columnsToClone == null;

@@ -435,30 +435,29 @@ public class AlignedTVListTest {
   }
 
   @Test
-  public void testMoveValidationFailureLeavesSourceUntouched() {
+  public void testPartialCloneFailureLeavesSourceUntouched() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(
             Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64));
     tvList.putAlignedValue(0, new Object[] {null, 2L, 3L});
 
-    Set<Integer> columnsToClone = Collections.singleton(1);
-    AlignedTVList clonedTvList = tvList.clone(columnsToClone);
-    clonedTvList.bitMaps = null;
+    List<Object> firstColumnValues = tvList.getValues().get(0);
+    List<Object> secondColumnValues = tvList.getValues().get(1);
+    List<Object> thirdColumnValues = tvList.getValues().get(2);
+    List<BitMap> firstColumnBitMaps = tvList.getBitMaps().get(0);
+    Object invalidThirdColumnArray = new int[ARRAY_SIZE];
+    thirdColumnValues.set(0, invalidThirdColumnArray);
 
-    try {
-      tvList.moveUnclonedColumnsTo(clonedTvList, columnsToClone);
-      Assert.fail("Expected move preparation to reject the incomplete target");
-    } catch (IllegalStateException expected) {
-      // expected
-    }
+    Set<Integer> columnsToClone = new HashSet<>(Arrays.asList(0, 1, 2));
+    Assert.assertThrows(ClassCastException.class, () -> tvList.preparePartialClone(columnsToClone));
 
-    Assert.assertNotNull(tvList.getValues().get(0));
-    Assert.assertNotNull(tvList.getValues().get(1));
-    Assert.assertNotNull(tvList.getValues().get(2));
-    Assert.assertNotNull(tvList.getBitMaps().get(0));
+    Assert.assertSame(firstColumnValues, tvList.getValues().get(0));
+    Assert.assertSame(secondColumnValues, tvList.getValues().get(1));
+    Assert.assertSame(thirdColumnValues, tvList.getValues().get(2));
+    Assert.assertSame(invalidThirdColumnArray, tvList.getValues().get(2).get(0));
+    Assert.assertSame(firstColumnBitMaps, tvList.getBitMaps().get(0));
     Assert.assertTrue(tvList.isNullValue(0, 0));
     Assert.assertEquals(2L, tvList.getLongByValueIndex(0, 1));
-    Assert.assertEquals(3L, tvList.getLongByValueIndex(0, 2));
   }
 
   @Test
