@@ -227,8 +227,9 @@ public class IoTDBPipeReceiverSessionIT {
             DATA_NODE_DEVICE,
             Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)),
             1);
-    tablet.addTimestamp(0, timestamp);
-    tablet.addValue("s1", 0, value);
+    final int rowIndex = tablet.rowSize++;
+    tablet.addTimestamp(rowIndex, timestamp);
+    tablet.addValue("s1", rowIndex, value);
     return PipeTransferTabletRawReq.toTPipeTransferReq(tablet, false);
   }
 
