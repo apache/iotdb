@@ -290,7 +290,8 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile-remote-sink</artifactId>
             <version>${project.version}</version>
-            <!--We will integrate tsfile-remote-sink-jar-with-dependencies into lib by assembly plugin-->
+            <classifier>jar-with-dependencies</classifier>
+            <!-- Packaged into ext/pipe only (not server lib); see distribution library-pipe.xml -->
             <scope>provided</scope>
         </dependency>
     </dependencies>

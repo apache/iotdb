@@ -32,12 +32,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Plugin ClassLoader with the default JVM parent-first delegation ({@link URLClassLoader}): ask the
+ * parent (AppClassLoader / server {@code lib/}) first, then load from the plugin directory if
+ * missing. Plugin jars must not be embedded into the server uber-jar; they belong under {@code
+ * ext/pipe} only.
+ */
 @ThreadSafe
 public class PipePluginClassLoader extends URLClassLoader {
-
-  private static final String[] PARENT_FIRST_CLASS_PREFIXES = {
-    "java.", "javax.", "jdk.", "sun.", "org.slf4j.", "org.apache.iotdb.pipe.api."
-  };
 
   private final String libRoot;
 
@@ -88,38 +90,6 @@ public class PipePluginClassLoader extends URLClassLoader {
   public synchronized void markAsDeprecated() throws IOException {
     deprecated = true;
     closeIfPossible();
-  }
-
-  @Override
-  protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-    synchronized (getClassLoadingLock(name)) {
-      Class<?> loadedClass = findLoadedClass(name);
-      if (loadedClass == null) {
-        loadedClass =
-            shouldLoadFromParentFirst(name) ? super.loadClass(name, false) : loadClassLocally(name);
-      }
-      if (resolve) {
-        resolveClass(loadedClass);
-      }
-      return loadedClass;
-    }
-  }
-
-  private Class<?> loadClassLocally(String name) throws ClassNotFoundException {
-    try {
-      return findClass(name);
-    } catch (ClassNotFoundException e) {
-      return super.loadClass(name, false);
-    }
-  }
-
-  private boolean shouldLoadFromParentFirst(String name) {
-    for (String prefix : PARENT_FIRST_CLASS_PREFIXES) {
-      if (name.startsWith(prefix)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private void closeIfPossible() throws IOException {

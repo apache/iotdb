@@ -43,6 +43,9 @@
             <outputDirectory>licenses</outputDirectory>
             <destName>NOTICE</destName>
         </file>
+        <!-- Copy fat jar by filesystem path into ext/pipe (never server lib/).
+             Reactor must build library-pipe first (module order + provided dep on
+             distribution). ProGuard excludes this artifact from libraryjars. -->
         <file>
             <source>${maven.multiModuleProjectDirectory}/library-pipe/tsfile-remote-sink/target/tsfile-remote-sink-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>ext/pipe</outputDirectory>

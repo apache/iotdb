@@ -36,6 +36,16 @@
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
     </properties>
     <dependencies>
+        <!-- Forces reactor to build the fat jar before distribution assembly.
+             scope=provided: not for runtime lib/. ProGuard must exclude this
+             artifact (see proguard exclusions below). -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile-remote-sink</artifactId>
+            <version>${project.version}</version>
+            <classifier>jar-with-dependencies</classifier>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
@@ -125,12 +135,6 @@
                     <artifactId>common</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile-remote-sink</artifactId>
-            <version>2.0.11-SNAPSHOT</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -360,7 +364,12 @@
                                     <inclusion>
                                         <groupId>org.apache.iotdb</groupId>
                                         <artifactId>*</artifactId>
-                                        <filter>!org/apache/iotdb/rest/**,!org/apache/iotdb/mqtt/**</filter>
+                                        <!-- Keep pipe plugins in ext/pipe only (library-pipe.xml).
+                                             Embedding tsfile-remote-sink in timechodb-server.jar
+                                             causes AppClassLoader to load plugin classes without
+                                             SSHD → NoClassDefFoundError / ClassCastException.
+                                             Assembly has no &lt;exclusions&gt;; strip by path. -->
+                                        <filter>!org/apache/iotdb/rest/**,!org/apache/iotdb/mqtt/**,!org/apache/iotdb/pipe/plugin/**,!org/apache/sshd/**</filter>
                                     </inclusion>
                                     <inclusion>
                                         <groupId>com.timecho.iotdb</groupId>
@@ -372,6 +381,27 @@
                             <outputDirectory>${project.basedir}/target</outputDirectory>
                             <outjar>${package.name}-server-${project.version}.jar</outjar>
                             <includeDependency>true</includeDependency>
+                            <!-- Never treat the pipe plugin (or its SSHD deps) as ProGuard
+                                 libraryjars: library class PipeTsFileRemoteSink extending
+                                 program PipeSink aborts the build. Plugin is copied to
+                                 ext/pipe via library-pipe.xml only. -->
+                            <exclusions>
+                                <!-- ArtifactFilter: null classifier only matches unclassified
+                                     artifacts; fat jar needs an explicit classifier exclusion. -->
+                                <exclusion>
+                                    <groupId>org.apache.iotdb</groupId>
+                                    <artifactId>tsfile-remote-sink</artifactId>
+                                </exclusion>
+                                <exclusion>
+                                    <groupId>org.apache.iotdb</groupId>
+                                    <artifactId>tsfile-remote-sink</artifactId>
+                                    <classifier>jar-with-dependencies</classifier>
+                                </exclusion>
+                                <exclusion>
+                                    <groupId>org.apache.sshd</groupId>
+                                    <artifactId>*</artifactId>
+                                </exclusion>
+                            </exclusions>
                             <proguardInclude>${project.basedir}/src/security/${proguard.config}</proguardInclude>
                             <libs>
                                 <lib>${jdk.library}</lib>
@@ -404,6 +434,14 @@
                             <outputFile>${project.build.directory}/common-dependency.jar</outputFile>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <!-- Keep pipe plugin + SSHD out of common-dependency.jar
+                                 (plugin lives only under ext/pipe). -->
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>org.apache.iotdb:tsfile-remote-sink</exclude>
+                                    <exclude>org.apache.sshd:*</exclude>
+                                </excludes>
+                            </artifactSet>
                             <!-- 过滤器配置：排除所有核心代码，仅保留第三方依赖 -->
                             <filters>
                                 <filter>

@@ -107,8 +107,11 @@
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
-                            <finalName>${project.build.finalName}-jar-with-dependencies</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
+                            <!-- Keep thin jar as the main artifact so proguard/distribution does
+                                 not merge the fat jar (and SSHD) into timechodb-server.jar.
+                                 Fat jar is attached with classifier jar-with-dependencies and
+                                 copied to ext/pipe by library-pipe.xml. -->
+                            <appendAssemblyId>true</appendAssemblyId>
                         </configuration>
                         <executions>
                             <execution>

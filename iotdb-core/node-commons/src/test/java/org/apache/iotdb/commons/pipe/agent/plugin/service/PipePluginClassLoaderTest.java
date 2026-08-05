@@ -46,7 +46,7 @@ import java.util.stream.Stream;
 public class PipePluginClassLoaderTest {
 
   @Test
-  public void testPluginClassesShouldOverrideParentClasses() throws Exception {
+  public void testParentFirstDelegationWhenParentHasClass() throws Exception {
     final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-test");
     try {
       final Path parentSources = Files.createDirectory(tempDir.resolve("parent-sources"));
@@ -89,7 +89,10 @@ public class PipePluginClassLoaderTest {
 
       final Path parentJar = tempDir.resolve("parent.jar");
       final Path childJar = tempDir.resolve("child.jar");
-      createJar(parentJar, parentClasses, Arrays.asList("test/plugin/Sample.class"));
+      createJar(
+          parentJar,
+          parentClasses,
+          Arrays.asList("test/plugin/Sample.class", "test/dep/Helper.class"));
       createJar(
           childJar,
           childClasses,
@@ -100,9 +103,49 @@ public class PipePluginClassLoaderTest {
           final PipePluginClassLoader pluginClassLoader =
               new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
         final Class<?> sampleClass = Class.forName("test.plugin.Sample", true, pluginClassLoader);
-        Assert.assertSame(pluginClassLoader, sampleClass.getClassLoader());
+        // Default parent-first: class present on parent must be defined by parent.
+        Assert.assertSame(parentClassLoader, sampleClass.getClassLoader());
         final Object sample = sampleClass.getDeclaredConstructor().newInstance();
-        Assert.assertEquals("child", sampleClass.getMethod("ping").invoke(sample));
+        Assert.assertEquals("parent", sampleClass.getMethod("ping").invoke(sample));
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  // When parent ClassLoader does not have the class, fall back to loading from the plugin jar.
+  @Test
+  public void testFallbackToPluginJarWhenParentMisses() throws Exception {
+    // Parent has no class; PipePluginClassLoader must fall back to the plugin jar
+    // (e.g. SSHD only shipped under ext/pipe, not in server lib/).
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-fallback-test");
+    try {
+      final Path childSources = Files.createDirectory(tempDir.resolve("child-sources"));
+      final Path childClasses = Files.createDirectory(tempDir.resolve("child-classes"));
+
+      final String sampleSource =
+          "package test.plugin;"
+              + "public class OnlyInPlugin {"
+              + "  public String ping() {"
+              + "    return \"plugin\";"
+              + "  }"
+              + "}";
+
+      compile(childSources, childClasses, createSources(sampleSource, "test.plugin.OnlyInPlugin"));
+
+      final Path childJar = tempDir.resolve("child.jar");
+      createJar(childJar, childClasses, Arrays.asList("test/plugin/OnlyInPlugin.class"));
+
+      // Empty parent classpath: mimics AppClassLoader missing plugin-only types.
+      try (final URLClassLoader parentClassLoader = new URLClassLoader(new URL[0], null);
+          final PipePluginClassLoader pluginClassLoader =
+              new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
+        final Class<?> pluginClass =
+            Class.forName("test.plugin.OnlyInPlugin", true, pluginClassLoader);
+        // Class is defined by the plugin loader, not the empty parent.
+        Assert.assertSame(pluginClassLoader, pluginClass.getClassLoader());
+        final Object instance = pluginClass.getDeclaredConstructor().newInstance();
+        Assert.assertEquals("plugin", pluginClass.getMethod("ping").invoke(instance));
       }
     } finally {
       deleteRecursively(tempDir);
@@ -113,6 +156,12 @@ public class PipePluginClassLoaderTest {
       final String source, final boolean helperSource) {
     final Map<String, String> sources = new LinkedHashMap<>();
     sources.put(helperSource ? "test.dep.Helper" : "test.plugin.Sample", source);
+    return sources;
+  }
+
+  private static Map<String, String> createSources(final String source, final String className) {
+    final Map<String, String> sources = new LinkedHashMap<>();
+    sources.put(className, source);
     return sources;
   }
 

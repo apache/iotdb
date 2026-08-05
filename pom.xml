@@ -75,10 +75,11 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <!-- Before distribution: assembly copies tsfile-remote-sink fat jar by path. -->
+        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
-        <module>library-pipe</module>
         <module>external-service-impl</module>
         <module>timecho-confignode</module>
         <module>timecho-server</module>
