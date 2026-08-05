@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -29,17 +31,31 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
 
   private static final int SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL = 100;
+  private static final long LONG_RUNNING_EVENT_INITIAL_REPORT_DELAY_IN_NANOS =
+      TimeUnit.MINUTES.toNanos(10);
+  private static final long LONG_RUNNING_EVENT_REPORT_INTERVAL_IN_NANOS =
+      TimeUnit.MINUTES.toNanos(30);
+  private static final int MAX_EVENT_REPORT_LENGTH = 1024;
+  private static final int MAX_STACK_TRACE_DEPTH = 64;
+
   private int totalRoundInAdjustmentInterval = 0;
   private int workingRoundInAdjustmentInterval = 0;
   private long sleepingTimeInMilliSecond = 50;
 
   private final Set<PipeProcessorSubtask> subtasks;
+
+  private volatile Thread workerThread;
+  private volatile PipeProcessorSubtask currentSubtask;
+
+  private PipeProcessorSubtask.EventProcessingContext lastReportedEventProcessingContext;
+  private long lastEventReportTimeInNanos = Long.MIN_VALUE;
 
   public PipeProcessorSubtaskWorker() {
     this(Collections.newSetFromMap(new ConcurrentHashMap<>()));
@@ -76,6 +92,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         continue;
       }
 
+      workerThread = Thread.currentThread();
+      currentSubtask = subtask;
       try {
         final boolean hasAtLeastOneEventProcessed = subtask.call();
         if (hasAtLeastOneEventProcessed) {
@@ -90,6 +108,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         } else {
           subtask.onFailure(e);
         }
+      } finally {
+        currentSubtask = null;
       }
     }
 
@@ -129,5 +149,96 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
     subtasks.add(pipeProcessorSubtask);
+  }
+
+  void watchLongRunningEvent() {
+    final PipeProcessorSubtask subtask = currentSubtask;
+    final Thread thread = workerThread;
+    if (subtask == null || thread == null) {
+      return;
+    }
+
+    final PipeProcessorSubtask.EventProcessingContext context = subtask.getEventProcessingContext();
+    final long currentTimeInNanos = System.nanoTime();
+    if (!isLongRunningEventReportDue(context, currentTimeInNanos)) {
+      return;
+    }
+
+    final StackTraceElement[] stackTrace = thread.getStackTrace();
+    // The event may finish while its stack is being captured. Do not attribute a later event's
+    // stack to this event.
+    if (currentSubtask != subtask || subtask.getEventProcessingContext() != context) {
+      return;
+    }
+
+    markLongRunningEventReported(context, currentTimeInNanos);
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775,
+        thread.getName(),
+        TimeUnit.NANOSECONDS.toMillis(currentTimeInNanos - context.getStartTimeInNanos()),
+        subtask.getPipeName(),
+        subtask.getRegionId(),
+        subtask.getDisplayTaskID(),
+        getEventReport(context.getEvent()),
+        thread.getState(),
+        formatStackTrace(stackTrace));
+  }
+
+  @VisibleForTesting
+  boolean isLongRunningEventReportDue(
+      final PipeProcessorSubtask.EventProcessingContext context, final long currentTimeInNanos) {
+    if (context == null
+        || currentTimeInNanos - context.getStartTimeInNanos()
+            < LONG_RUNNING_EVENT_INITIAL_REPORT_DELAY_IN_NANOS) {
+      return false;
+    }
+
+    return lastReportedEventProcessingContext != context
+        || currentTimeInNanos - lastEventReportTimeInNanos
+            >= LONG_RUNNING_EVENT_REPORT_INTERVAL_IN_NANOS;
+  }
+
+  @VisibleForTesting
+  void markLongRunningEventReported(
+      final PipeProcessorSubtask.EventProcessingContext context, final long currentTimeInNanos) {
+    lastReportedEventProcessingContext = context;
+    lastEventReportTimeInNanos = currentTimeInNanos;
+  }
+
+  @VisibleForTesting
+  static String getEventReport(final Event event) {
+    String report = event.getClass().getName();
+    if (event instanceof EnrichedEvent) {
+      try {
+        report =
+            event.getClass().getSimpleName() + ": " + ((EnrichedEvent) event).coreReportMessage();
+      } catch (final RuntimeException ignored) {
+        // Keep the event class name if its diagnostic method fails.
+      }
+    }
+
+    report = report.replace('\n', ' ').replace('\r', ' ');
+    return report.length() <= MAX_EVENT_REPORT_LENGTH
+        ? report
+        : report.substring(0, MAX_EVENT_REPORT_LENGTH) + "...";
+  }
+
+  @VisibleForTesting
+  static String formatStackTrace(final StackTraceElement[] stackTrace) {
+    final StringBuilder builder = new StringBuilder();
+    final int frameCount = Math.min(stackTrace.length, MAX_STACK_TRACE_DEPTH);
+    for (int i = 0; i < frameCount; ++i) {
+      builder.append('\n').append('\t').append(stackTrace[i]);
+    }
+    if (stackTrace.length > frameCount) {
+      builder
+          .append('\n')
+          .append('\t')
+          .append("... (")
+          .append(stackTrace.length - frameCount)
+          .append(')');
+    }
+    return builder.toString();
   }
 }

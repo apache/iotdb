@@ -77,6 +77,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final PipeProcessorSubtaskExecutionGuard executionGuard =
       new PipeProcessorSubtaskExecutionGuard();
   private final AtomicBoolean isResumingFromYield = new AtomicBoolean(false);
+  private final AtomicReference<EventProcessingContext> eventProcessingContext =
+      new AtomicReference<>();
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -110,7 +112,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      final ListeningScheduledExecutorService ignoredScheduledExecutor,
+      final ListeningScheduledExecutorService subtaskWorkerScheduledExecutor,
       final ExecutorService ignored,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
@@ -121,7 +123,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
         if (subtaskWorkerManager.get() == null) {
           subtaskWorkerManager.set(
-              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor));
+              new PipeProcessorSubtaskWorkerManager(
+                  subtaskWorkerThreadPoolExecutor, subtaskWorkerScheduledExecutor));
         }
       }
     }
@@ -160,6 +163,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     if (!isResumingFromYield.getAndSet(false)) {
       outputEventCollector.resetFlags();
     }
+    final EventProcessingContext currentEventProcessingContext =
+        new EventProcessingContext(event, System.nanoTime());
+    eventProcessingContext.set(currentEventProcessingContext);
     try {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).throwIfNoPrivilege();
@@ -301,6 +307,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
+    } finally {
+      eventProcessingContext.compareAndSet(currentEventProcessingContext, null);
     }
 
     return true;
@@ -354,6 +362,29 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   boolean isClosed() {
     return isClosed.get();
+  }
+
+  EventProcessingContext getEventProcessingContext() {
+    return eventProcessingContext.get();
+  }
+
+  static final class EventProcessingContext {
+
+    private final Event event;
+    private final long startTimeInNanos;
+
+    EventProcessingContext(final Event event, final long startTimeInNanos) {
+      this.event = event;
+      this.startTimeInNanos = startTimeInNanos;
+    }
+
+    Event getEvent() {
+      return event;
+    }
+
+    long getStartTimeInNanos() {
+      return startTimeInNanos;
+    }
   }
 
   @Override

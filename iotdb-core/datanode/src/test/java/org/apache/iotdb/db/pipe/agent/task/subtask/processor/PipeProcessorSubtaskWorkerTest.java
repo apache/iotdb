@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InOrder;
 
 import java.util.LinkedHashSet;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -61,6 +68,77 @@ public class PipeProcessorSubtaskWorkerTest {
     verify(stoppedPipe, never()).onFailure(any());
     verify(parserWaitingPipe, never()).onSuccess(any());
     verify(parserWaitingPipe, never()).onFailure(any());
+  }
+
+  @Test
+  public void testLongRunningEventReportIsRateLimited() {
+    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final long startTimeInNanos = 100;
+    final PipeProcessorSubtask.EventProcessingContext context =
+        new PipeProcessorSubtask.EventProcessingContext(
+            mock(EnrichedEvent.class), startTimeInNanos);
+    final long initialReportDelayInNanos = TimeUnit.MINUTES.toNanos(10);
+    final long reportIntervalInNanos = TimeUnit.MINUTES.toNanos(30);
+
+    Assert.assertFalse(
+        worker.isLongRunningEventReportDue(
+            context, startTimeInNanos + initialReportDelayInNanos - 1));
+    Assert.assertTrue(
+        worker.isLongRunningEventReportDue(context, startTimeInNanos + initialReportDelayInNanos));
+
+    final long firstReportTimeInNanos = startTimeInNanos + initialReportDelayInNanos;
+    worker.markLongRunningEventReported(context, firstReportTimeInNanos);
+    Assert.assertFalse(
+        worker.isLongRunningEventReportDue(
+            context, firstReportTimeInNanos + reportIntervalInNanos - 1));
+    Assert.assertTrue(
+        worker.isLongRunningEventReportDue(
+            context, firstReportTimeInNanos + reportIntervalInNanos));
+
+    final long nextEventStartTimeInNanos = firstReportTimeInNanos + 1;
+    final PipeProcessorSubtask.EventProcessingContext nextContext =
+        new PipeProcessorSubtask.EventProcessingContext(
+            mock(EnrichedEvent.class), nextEventStartTimeInNanos);
+    Assert.assertFalse(
+        worker.isLongRunningEventReportDue(
+            nextContext, nextEventStartTimeInNanos + initialReportDelayInNanos - 1));
+    Assert.assertTrue(
+        worker.isLongRunningEventReportDue(
+            nextContext, nextEventStartTimeInNanos + initialReportDelayInNanos));
+  }
+
+  @Test
+  public void testLongRunningEventLogPayloadIsBounded() {
+    final EnrichedEvent event = mock(EnrichedEvent.class);
+    when(event.coreReportMessage()).thenReturn("x".repeat(2048) + "\nmore");
+
+    final String eventReport = PipeProcessorSubtaskWorker.getEventReport(event);
+    Assert.assertEquals(1027, eventReport.length());
+    Assert.assertFalse(eventReport.contains("\n"));
+    Assert.assertTrue(eventReport.endsWith("..."));
+
+    final StackTraceElement[] stackTrace = new StackTraceElement[100];
+    for (int i = 0; i < stackTrace.length; ++i) {
+      stackTrace[i] = new StackTraceElement("Class", "method" + i, "File.java", i);
+    }
+    final String formattedStackTrace = PipeProcessorSubtaskWorker.formatStackTrace(stackTrace);
+    Assert.assertTrue(formattedStackTrace.contains("method63"));
+    Assert.assertFalse(formattedStackTrace.contains("method64"));
+    Assert.assertTrue(formattedStackTrace.contains("... (36)"));
+  }
+
+  @Test
+  @SuppressWarnings("unsafeThreadSchedule")
+  public void testWorkerManagerSchedulesWatcher() {
+    final ListeningExecutorService workerThreadPoolExecutor = mock(ListeningExecutorService.class);
+    final ListeningScheduledExecutorService watcherScheduledExecutor =
+        mock(ListeningScheduledExecutorService.class);
+
+    new PipeProcessorSubtaskWorkerManager(workerThreadPoolExecutor, watcherScheduledExecutor);
+
+    verify(workerThreadPoolExecutor, atLeastOnce()).submit(any(Runnable.class));
+    verify(watcherScheduledExecutor)
+        .scheduleWithFixedDelay(any(Runnable.class), eq(1L), eq(1L), eq(TimeUnit.MINUTES));
   }
 
   private PipeProcessorSubtask createRunnableSubtask(final String mockName) {
