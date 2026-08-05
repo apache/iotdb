@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -115,8 +116,8 @@ public class IoTDBPipeTwoStageAggregateIT extends AbstractPipeDualTreeModelAutoI
     sinkAttributes.put("sink.batch.enable", "false");
     sinkAttributes.put("sink.ip", receiverDataNode.getIp());
     sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
-    sinkAttributes.put("sink.user", "root");
-    sinkAttributes.put("sink.password", "root");
+    sinkAttributes.put("sink.user", SessionConfig.DEFAULT_USER);
+    sinkAttributes.put("sink.password", SessionConfig.DEFAULT_PASSWORD);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
