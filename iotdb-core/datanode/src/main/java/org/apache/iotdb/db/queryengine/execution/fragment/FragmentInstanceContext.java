@@ -245,6 +245,11 @@ public class FragmentInstanceContext extends QueryContext {
             });
   }
 
+  /** Remove column-access metadata for an unpublished TVList when clone preparation fails. */
+  public void removeAccessedColumns(TVList tvList) {
+    alignedTVListColumnAccessMap.remove(tvList);
+  }
+
   /**
    * Get columns of the AlignedTVList accessed by the query. This method is called from
    * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can

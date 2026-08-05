@@ -144,6 +144,11 @@ public abstract class ResourceByPathUtils {
             "Flushing/Working MemTable - add current query context to immutable TVList's query list");
         tvList.getQueryContextSet().add(context);
         tvListQueryMap.put(tvList, tvList.rowCount());
+        // columnIndexList is to track column-level access for AlignedTVList.
+        // For TVList (primitive time series), it remains null and column tracking is not needed.
+        if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+          ((FragmentInstanceContext) context).putAccessedColumns(tvList, columnIndexList);
+        }
       } finally {
         tvList.unlockQueryList();
       }
@@ -283,36 +288,77 @@ public abstract class ResourceByPathUtils {
                   ? candidate.calculateRamSize()
                   : ((AlignedTVList) candidate).calculateRamSize(columnsToClone);
 
-          // reserve query memory
           QueryContext firstQuery = candidate.getQueryContextSet().iterator().next();
-          if (firstQuery instanceof FragmentInstanceContext) {
-            MemoryReservationManager memoryReservationManager =
-                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-            memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
-            candidate.setReservedMemoryBytes(listRamInfo.getRamSize());
-          }
-          candidate.setOwnerQuery(firstQuery);
+          TVList cloneList = null;
+          AlignedTVList.PartialClonePlan partialClonePlan = null;
+          FragmentInstanceContext cloneContext =
+              columnIndexList != null && context instanceof FragmentInstanceContext
+                  ? (FragmentInstanceContext) context
+                  : null;
+          MemoryReservationManager memoryReservationManager =
+              firstQuery instanceof FragmentInstanceContext
+                  ? ((FragmentInstanceContext) firstQuery).getMemoryReservationContext()
+                  : null;
+          boolean reservationNeedsRollback = false;
+          boolean replacementPublished = false;
+          try {
+            // Reserve before allocating the clone, so this transient memory increase is still
+            // protected by query-memory admission control. Ownership is not published yet, and a
+            // later preparation failure rolls this exact reservation back immediately.
+            if (memoryReservationManager != null) {
+              memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
+              reservationNeedsRollback = true;
+            }
 
-          // clone TVList
-          TVList cloneList =
-              (columnsToClone == null)
-                  ? candidate.clone()
-                  : ((AlignedTVList) candidate).clone(columnsToClone);
+            // Clone and validate without changing the source list. PartialClonePlan.commit is the
+            // only destructive step and is allocation-free.
+            if (columnsToClone == null) {
+              cloneList = candidate.clone();
+            } else {
+              partialClonePlan = ((AlignedTVList) candidate).preparePartialClone(columnsToClone);
+              cloneList = partialClonePlan.getCloneList();
+            }
 
-          cloneList.getQueryContextSet().add(context);
-          tvListQueryMap.put(cloneList, cloneList.rowCount());
-          if (columnIndexList != null && context instanceof FragmentInstanceContext) {
-            ((FragmentInstanceContext) context).putAccessedColumns(cloneList, columnIndexList);
-          }
+            cloneList.getQueryContextSet().add(context);
+            tvListQueryMap.put(cloneList, cloneList.rowCount());
+            if (cloneContext != null) {
+              cloneContext.putAccessedColumns(cloneList, columnIndexList);
+            }
 
-          // Move the uncloned columns and publish the clone in the same memChunk critical section,
-          // so a concurrent query never observes a working TVList whose columns were already moved.
-          if (columnsToClone != null) {
-            ((AlignedTVList) candidate)
-                .moveUnclonedColumnsTo((AlignedTVList) cloneList, columnsToClone);
+            if (partialClonePlan != null) {
+              partialClonePlan.commit();
+            }
+            memChunk.setWorkingTVList(cloneList);
+            replacementPublished = true;
+
+            // Publish query ownership only after the replacement is fully committed. The
+            // candidate query-list lock prevents its owner from being released concurrently.
+            if (memoryReservationManager != null) {
+              candidate.setReservedMemoryBytes(listRamInfo.getRamSize());
+            }
+            candidate.setOwnerQuery(firstQuery);
+            reservationNeedsRollback = false;
+            return tvListQueryMap;
+          } catch (RuntimeException | Error failure) {
+            if (reservationNeedsRollback) {
+              try {
+                memoryReservationManager.releaseMemoryImmediately(listRamInfo.getRamSize());
+              } catch (RuntimeException | Error rollbackFailure) {
+                failure.addSuppressed(rollbackFailure);
+              }
+            }
+
+            // Before commit, remove the only external reference installed for the unpublished
+            // clone. Its arrays can then be reclaimed while candidate remains the working list.
+            if (!replacementPublished && cloneList != null) {
+              cloneList.getQueryContextSet().remove(context);
+              tvListQueryMap.remove(cloneList);
+              if (cloneContext != null) {
+                cloneContext.removeAccessedColumns(cloneList);
+              }
+            }
+            throw failure;
           }
-          memChunk.setWorkingTVList(cloneList);
-          return tvListQueryMap;
         }
       } catch (MemoryNotEnoughException ex) {
         if (listRamInfo != null) {
