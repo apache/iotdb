@@ -29,6 +29,9 @@ public final class TimechoServerMessages {
       "IoTDB-DataNode environment variables: {}";
   public static final String IOTDB_DATANODE_DEFAULT_CHARSET = "IoTDB-DataNode default charset is: {}";
   public static final String HARDWARE_GENERATION_FAILED = "hardware generation failed.";
+  public static final String
+      EXCEPTION_DATANODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_DATANODE_18580227 =
+          "DataNode cannot start on Windows when enable_secure_erase is true. Set enable_secure_erase to false and restart DataNode.";
 
   // Auth (separation of admin powers)
   public static final String UNSUPPORTED_AUTHOR_TYPE = "Unsupported authorType: ";

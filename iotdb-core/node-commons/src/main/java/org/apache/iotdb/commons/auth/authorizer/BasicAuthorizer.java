@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +118,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_NOT_EXIST, username));
     }
     if (useEncryptedPassword) {
-      return password.equals(user.getPassword());
+      return AuthUtils.passwordEquals(password, user.getPassword());
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
@@ -205,11 +206,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       return null;
     }
     if (Objects.isNull(password)) {
-      return user.getPassword();
+      return passwordToString(user.getPassword());
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
-      return user.getPassword();
+      return passwordToString(user.getPassword());
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
@@ -217,9 +218,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         forceUpdateUserPassword(username, password);
       } catch (AuthException ignore) {
       }
-      return userManager.getEntity(username).getPassword();
+      return passwordToString(userManager.getEntity(username).getPassword());
     }
     return null;
+  }
+
+  private static String passwordToString(byte[] password) {
+    return password == null ? null : new String(password, StandardCharsets.UTF_8);
   }
 
   @Override

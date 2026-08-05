@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -45,6 +46,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.Locale;
 import java.util.UUID;
 
 public class ConfigNode extends org.apache.iotdb.confignode.service.ConfigNode {
@@ -97,8 +99,20 @@ public class ConfigNode extends org.apache.iotdb.confignode.service.ConfigNode {
 
   @Override
   protected void start() throws IoTDBException {
+    checkSecureEraseCompatibility(
+        System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows"),
+        CommonDescriptor.getInstance().getConfig().isEnableSecureErase());
     super.start();
     timechoConfigManager.startApiKeyFileAutoActivationIfConfigured();
+  }
+
+  static void checkSecureEraseCompatibility(
+      final boolean isWindows, final boolean enableSecureErase) throws StartupException {
+    if (isWindows && enableSecureErase) {
+      throw new StartupException(
+          TimechoConfigNodeMessages
+              .EXCEPTION_CONFIGNODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_CONFIGNODE_05C8378F);
+    }
   }
 
   @Override

@@ -26,6 +26,9 @@ public final class TimechoConfigNodeMessages {
 
   // ConfigNode startup
   public static final String HARDWARE_GENERATION_FAILED = "hardware generation failed.";
+  public static final String
+      EXCEPTION_CONFIGNODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_CONFIGNODE_05C8378F =
+          "ConfigNode cannot start on Windows when enable_secure_erase is true. Set enable_secure_erase to false and restart ConfigNode.";
 
   // CLI activation
   public static final String CLI_ACTIVATION_SUCCESS =

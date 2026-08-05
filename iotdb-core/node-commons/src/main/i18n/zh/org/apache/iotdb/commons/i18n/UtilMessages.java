@@ -256,6 +256,12 @@ public final class UtilMessages {
   public static final String LOG_ARG_ABOVE_WARNING_THRESHOLD_NOT_ACCESSIBLE_FREE_SPACE_ARG_TOTAL_87DAD16A = "{} 超过警告阈值或不可访问，可用空间 {}，总空间 {}";
   public static final String EXCEPTION_VALUE_IS_NULL_192F6BFF = "value 不能为空";
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
+  public static final String LOG_SECURELY_ERASED_MEMORY_BUFFER_FOR_ARG_CAPACITY_ARG_BYTES_2F7CAB4C =
+      "已安全擦除 {} 的内存缓冲区，容量为 {} 字节。";
+  public static final String LOG_SECURELY_ERASED_ARRAY_FOR_ARG_TYPE_ARG_LENGTH_ARG_11E18B5E =
+      "已安全擦除 {} 的数组，类型为 {}，长度为 {}。";
+  public static final String LOG_SECURELY_ERASED_PASSWORD_BUFFER_FOR_ARG_LENGTH_ARG_F407256A =
+      "已安全擦除 {} 的密码缓冲区，长度为 {}。";
   public static final String EMPTY_MESSAGE = "";
 
 }

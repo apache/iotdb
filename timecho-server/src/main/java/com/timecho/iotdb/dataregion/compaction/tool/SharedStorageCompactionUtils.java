@@ -163,10 +163,14 @@ public class SharedStorageCompactionUtils {
         resources.add(new TsFileResource(tsFile, TsFileResourceStatus.NORMAL_ON_REMOTE));
       }
     } catch (Exception e) {
-      LOGGER.error(TimechoServerMessages.FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT, endPoint, e);
       for (File newFile : newFiles) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(newFile);
+        try {
+          fsFactory.deleteIfExists(newFile);
+        } catch (IOException cleanupException) {
+          e.addSuppressed(cleanupException);
+        }
       }
+      LOGGER.error(TimechoServerMessages.FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT, endPoint, e);
       return Collections.emptyList();
     }
     return resources;

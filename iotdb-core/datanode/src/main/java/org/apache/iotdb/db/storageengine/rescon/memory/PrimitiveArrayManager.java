@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PrimitiveArrayManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayManager.class);
+  private static final String PRIMITIVE_ARRAY_MANAGER = "primitive_array_manager";
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -280,10 +282,20 @@ public class PrimitiveArrayManager {
     } else if (array instanceof double[]) {
       order = TSDataType.DOUBLE.serialize();
     } else if (array instanceof Binary[]) {
-      Arrays.fill((Binary[]) array, null);
       order = TSDataType.TEXT.serialize();
     } else {
       throw new UnSupportedDataTypeException(array.getClass().toString());
+    }
+
+    ResidualDataProtectionUtils.eraseArrayIfEnabled(array, PRIMITIVE_ARRAY_MANAGER);
+    if (array instanceof Binary[]) {
+      Arrays.fill((Binary[]) array, null);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            StorageEngineMessages
+                .STORAGE_LOG_CLEARED_BINARY_ARRAY_REFERENCES_BEFORE_RETURNING_TO_PRIMITIVEARRAYMANAGER_LENGTH_ARG_225E8464,
+            ((Binary[]) array).length);
+      }
     }
 
     StorageEngineMemoryMetrics.getInstance().incPamRelease();

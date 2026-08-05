@@ -74,6 +74,15 @@ public class SerializeUtils {
     }
   }
 
+  public static void serialize(byte[] bytes, DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(bytes.length);
+      dataOutputStream.write(bytes);
+    } catch (IOException e) {
+      // unreachable
+    }
+  }
+
   public static String deserializeString(ByteBuffer buffer) {
     int length = buffer.getInt();
     byte[] strBytes = new byte[length];

@@ -43,6 +43,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,6 +56,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class AuthUtils {
+
+  private static final String AUTH_PASSWORD_COMPARISON = "auth_password_comparison";
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final int NAME_MIN_LENGTH = 4;
@@ -130,6 +134,18 @@ public class AuthUtils {
   }
 
   /**
+   * Checking whether origin password is mapping to the encrypted password stored in a mutable byte
+   * array.
+   *
+   * @param originPassword the password before encryption
+   * @param encryptPassword the password after encryption
+   */
+  public static boolean validatePassword(String originPassword, byte[] encryptPassword) {
+    return validatePassword(
+        originPassword, encryptPassword, AsymmetricEncrypt.DigestAlgorithm.SHA_256);
+  }
+
+  /**
    * Checking whether origin password is mapping to encrypt password by encryption
    *
    * @param originPassword the password before encryption
@@ -144,6 +160,36 @@ public class AuthUtils {
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
             CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .validate(originPassword, encryptPassword, digestAlgorithm);
+  }
+
+  /**
+   * Checking whether origin password is mapping to the encrypted password stored in a mutable byte
+   * array.
+   *
+   * @param originPassword the password before encryption
+   * @param encryptPassword the password after encryption
+   * @param digestAlgorithm the algorithm for encryption
+   */
+  public static boolean validatePassword(
+      String originPassword,
+      byte[] encryptPassword,
+      AsymmetricEncrypt.DigestAlgorithm digestAlgorithm) {
+    return encryptPassword != null
+        && validatePassword(
+            originPassword, new String(encryptPassword, StandardCharsets.UTF_8), digestAlgorithm);
+  }
+
+  /** Compare a string password with a password stored in a mutable byte array. */
+  public static boolean passwordEquals(String password, byte[] storedPassword) {
+    if (password == null || storedPassword == null) {
+      return false;
+    }
+    final byte[] passwordBytes = password.getBytes(StandardCharsets.UTF_8);
+    try {
+      return MessageDigest.isEqual(passwordBytes, storedPassword);
+    } finally {
+      ResidualDataProtectionUtils.erasePassword(passwordBytes, AUTH_PASSWORD_COMPARISON);
+    }
   }
 
   /**

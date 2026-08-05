@@ -105,6 +105,10 @@ while true; do
     esac
 done
 
+DEFAULT_FILE_SYSTEM_PROVIDER_OPT="-Djava.nio.file.spi.DefaultFileSystemProvider=com.timecho.iotdb.commons.file.SecureFileSystemProvider"
+IOTDB_JVM_OPTS=$(printf '%s\n' "$IOTDB_JVM_OPTS" | sed 's/[[:space:]]*-Djava\.nio\.file\.spi\.DefaultFileSystemProvider=[^[:space:]]*//g')
+IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS $DEFAULT_FILE_SYSTEM_PROVIDER_OPT"
+
 if [ "$(id -u)" -ne 0 ]; then
   echo "Notice: in some systems, ConfigNode must run in sudo mode to write data. The process may fail."
 fi

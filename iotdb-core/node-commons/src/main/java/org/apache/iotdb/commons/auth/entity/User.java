@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
@@ -27,7 +28,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -35,6 +38,8 @@ import java.util.Set;
 
 /** This class contains all information of a User. */
 public class User extends Role {
+
+  private static final String USER_PASSWORD = "user_password";
 
   public static final long INTERNAL_USER_END_ID = 9999;
 
@@ -69,7 +74,7 @@ public class User extends Role {
 
   private long userId = -1;
 
-  private String password;
+  private byte[] password;
 
   private Set<String> roleSet;
 
@@ -82,7 +87,7 @@ public class User extends Role {
   @TestOnly
   public User(String name, String password) {
     super(name);
-    this.password = password;
+    setPassword(password);
     this.roleSet = new HashSet<>();
   }
 
@@ -95,14 +100,21 @@ public class User extends Role {
    */
   public User(String name, String password, long userId) {
     super(name);
-    this.password = password;
+    setPassword(password);
     this.userId = userId;
     this.roleSet = new HashSet<>();
   }
 
   /** ---------- set func ---------------* */
   public void setPassword(String password) {
-    this.password = password;
+    final byte[] newPassword = password == null ? null : password.getBytes(StandardCharsets.UTF_8);
+    erasePassword();
+    this.password = newPassword;
+  }
+
+  public void erasePassword() {
+    ResidualDataProtectionUtils.erasePassword(password, USER_PASSWORD);
+    password = null;
   }
 
   public void setOpenIdUser(boolean openIdUser) {
@@ -126,7 +138,11 @@ public class User extends Role {
     return userId;
   }
 
-  public String getPassword() {
+  /**
+   * Returns the owned password buffer so callers that retain this reference can observe it being
+   * overwritten by {@link #erasePassword()}. Callers must not modify the returned array.
+   */
+  public byte[] getPassword() {
     return password;
   }
 
@@ -145,7 +161,9 @@ public class User extends Role {
   public TUserResp getUserInfo(ModelType modelType) {
     TUserResp resp = new TUserResp();
     resp.setPermissionInfo(getRoleInfo(modelType));
-    resp.setPassword(password);
+    final byte[] passwordBytes = password;
+    resp.setPassword(
+        passwordBytes == null ? null : new String(passwordBytes, StandardCharsets.UTF_8));
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
     resp.setUserId(userId);
@@ -178,7 +196,7 @@ public class User extends Role {
   private boolean contentEquals(User user) {
     return super.equals((Role) user)
         && Objects.equals(roleSet, user.roleSet)
-        && Objects.equals(password, user.password)
+        && Arrays.equals(password, user.password)
         && Objects.equals(isOpenIdUser, user.isOpenIdUser);
   }
 
@@ -186,7 +204,7 @@ public class User extends Role {
   public int hashCode() {
     return Objects.hash(
         super.getName(),
-        password,
+        Arrays.hashCode(password),
         super.getPathPrivilegeList(),
         super.getSysPrivilege(),
         roleSet,
@@ -225,7 +243,7 @@ public class User extends Role {
   @Override
   public void deserialize(ByteBuffer buffer) {
     super.setName(SerializeUtils.deserializeString(buffer));
-    password = SerializeUtils.deserializeString(buffer);
+    setPassword(SerializeUtils.deserializeString(buffer));
     int systemPriSize = buffer.getInt();
     Set<PrivilegeType> sysPri = new HashSet<>();
     for (int i = 0; i < systemPriSize; i++) {

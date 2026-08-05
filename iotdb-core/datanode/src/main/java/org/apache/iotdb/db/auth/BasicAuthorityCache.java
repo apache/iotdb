@@ -26,6 +26,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +39,16 @@ public class BasicAuthorityCache implements IAuthorCache {
   private final IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
   private final Cache<String, User> userCache =
-      Caffeine.newBuilder()
+      Caffeine.<String, User>newBuilder()
           .maximumSize(conf.getConfig().getAuthorCacheSize())
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
+          .executor(Runnable::run)
+          .removalListener(
+              (String userName, User user, RemovalCause cause) -> {
+                if (user != null) {
+                  user.erasePassword();
+                }
+              })
           .build();
 
   private final Cache<String, Role> roleCache =
@@ -109,6 +117,17 @@ public class BasicAuthorityCache implements IAuthorCache {
 
   @Override
   public void invalidAllCache() {
+    int clearedUserCount = 0;
+    for (final User user : userCache.asMap().values()) {
+      user.erasePassword();
+      clearedUserCount++;
+    }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodeMiscMessages
+              .LOG_CLEARED_PASSWORD_REFERENCES_FOR_ARG_CACHED_USERS_BEFORE_INVALIDATING_THE_AUTHORITY_CACHE_5AAF9560,
+          clearedUserCount);
+    }
     userCache.invalidateAll();
     roleCache.invalidateAll();
   }

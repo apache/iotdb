@@ -2854,6 +2854,13 @@ enable_encrypt_config_file=false
 # Datatype: boolean
 enable_encrypt_permission_file=false
 
+# The switch to control whether sensitive file and memory contents are overwritten before reuse or
+# deletion. When enabled, supported memory buffers are overwritten once with zero before reuse and
+# supported file erasure is handled by the configured secure file system provider.
+# effectiveMode: restart
+# Datatype: boolean
+enable_secure_erase=false
+
 ####################
 ### Auto Activation Configuration
 ####################

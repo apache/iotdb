@@ -29,6 +29,9 @@ public final class TimechoServerMessages {
       "IoTDB-DataNode 环境变量：{}";
   public static final String IOTDB_DATANODE_DEFAULT_CHARSET = "IoTDB-DataNode 默认字符集为：{}";
   public static final String HARDWARE_GENERATION_FAILED = "硬件信息生成失败。";
+  public static final String
+      EXCEPTION_DATANODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_DATANODE_18580227 =
+          "当 enable_secure_erase 为 true 时，DataNode 无法在 Windows 上启动。请将 enable_secure_erase 设置为 false 并重启 DataNode。";
 
   // 权限（管理员权限分离）
   public static final String UNSUPPORTED_AUTHOR_TYPE = "不支持的 authorType：";

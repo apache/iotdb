@@ -1540,5 +1540,7 @@ public final class StorageEngineMessages {
   // config-sync path. %s is the config key.
   public static final String MESSAGE_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =
       "Configuration '%s' is not available in this edition and cannot be set.";
+  public static final String STORAGE_LOG_CLEARED_BINARY_ARRAY_REFERENCES_BEFORE_RETURNING_TO_PRIMITIVEARRAYMANAGER_LENGTH_ARG_225E8464 =
+      "Cleared Binary array references before returning to PrimitiveArrayManager, length={}.";
 
 }

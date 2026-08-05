@@ -951,6 +951,9 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   public static final String DATANODE_CACHE_INIT_FAILED =
       "DataNode 缓存初始化失败";
+  public static final String
+      LOG_CLEARED_PASSWORD_REFERENCES_FOR_ARG_CACHED_USERS_BEFORE_INVALIDATING_THE_AUTHORITY_CACHE_5AAF9560 =
+          "在权限缓存失效前，已清除 {} 个缓存用户的密码引用。";
 
   // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor

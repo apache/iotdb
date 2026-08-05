@@ -161,6 +161,7 @@ set JAVA_OPTS=-ea^
  -DIOTDB_CONF="%IOTDB_CONF%"^
  -DOFF_HEAP_MEMORY="%OFF_HEAP_MEMORY%"^
  -Dsun.jnu.encoding=UTF-8^
+ -Djava.nio.file.spi.DefaultFileSystemProvider=com.timecho.iotdb.commons.file.SecureFileSystemProvider^
  -Dfile.encoding=UTF-8
 
 @REM ----------------------------------------------------------------------------

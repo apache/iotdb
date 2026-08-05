@@ -97,8 +97,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
     IOUtils.writeLong(outputStream, ((User) role).getUserId(), encodingBufferLocal);
     super.saveEntityName(outputStream, role);
-    IOUtils.writeString(
-        outputStream, ((User) role).getPassword(), STRING_ENCODING, encodingBufferLocal);
+    IOUtils.writeBytes(outputStream, ((User) role).getPassword(), encodingBufferLocal);
   }
 
   @Override
@@ -417,7 +416,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
         IOUtils.writeInt(memoryStream, -1 * strBuffer.length, encodingBufferLocal);
         memoryStream.write(strBuffer);
-        IOUtils.writeString(memoryStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeBytes(memoryStream, user.getPassword(), encodingBufferLocal);
         IOUtils.writeInt(memoryStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
         int privilegeNum = user.getPathPrivilegeList().size();
@@ -455,7 +454,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
         IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
         outputStream.write(strBuffer);
-        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeBytes(outputStream, user.getPassword(), encodingBufferLocal);
         IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
         int privilegeNum = user.getPathPrivilegeList().size();
@@ -496,7 +495,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         // test for version1
         IOUtils.writeInt(memoryStream, 1, encodingBufferLocal);
         IOUtils.writeString(memoryStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
-        IOUtils.writeString(memoryStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeBytes(memoryStream, user.getPassword(), encodingBufferLocal);
         savePrivileges(memoryStream, user);
         memoryStream.flush();
 
@@ -526,7 +525,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         // test for version1
         IOUtils.writeInt(outputStream, 1, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
-        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeBytes(outputStream, user.getPassword(), encodingBufferLocal);
         savePrivileges(outputStream, user);
         outputStream.flush();
         fileOutputStream.getFD().sync();

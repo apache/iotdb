@@ -70,6 +70,27 @@ public class IOUtils {
   }
 
   /**
+   * Write a byte array into the given stream using the same length-prefixed representation as
+   * {@link #writeString(OutputStream, String, String, ThreadLocal)}.
+   *
+   * @param outputStream the destination to insert.
+   * @param bytes the byte array to be written.
+   * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid frequently memory
+   *     allocations. A null may also be passed to use a local buffer.
+   * @throws IOException when an exception raised during operating the stream.
+   */
+  public static void writeBytes(
+      OutputStream outputStream, byte[] bytes, ThreadLocal<ByteBuffer> encodingBufferLocal)
+      throws IOException {
+    if (bytes != null) {
+      writeInt(outputStream, bytes.length, encodingBufferLocal);
+      outputStream.write(bytes);
+    } else {
+      writeInt(outputStream, 0, encodingBufferLocal);
+    }
+  }
+
+  /**
    * Write an integer into the given stream.
    *
    * @param outputStream the destination to insert.

@@ -258,6 +258,12 @@ public final class UtilMessages {
   public static final String LOG_ARG_ABOVE_WARNING_THRESHOLD_NOT_ACCESSIBLE_FREE_SPACE_ARG_TOTAL_87DAD16A = "{} is above the warning threshold, or not accessible, free space {}, total space {}";
   public static final String EXCEPTION_VALUE_IS_NULL_192F6BFF = "value is null";
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
+  public static final String LOG_SECURELY_ERASED_MEMORY_BUFFER_FOR_ARG_CAPACITY_ARG_BYTES_2F7CAB4C =
+      "Securely erased memory buffer for {}, capacity={} bytes.";
+  public static final String LOG_SECURELY_ERASED_ARRAY_FOR_ARG_TYPE_ARG_LENGTH_ARG_11E18B5E =
+      "Securely erased array for {}, type={}, length={}.";
+  public static final String LOG_SECURELY_ERASED_PASSWORD_BUFFER_FOR_ARG_LENGTH_ARG_F407256A =
+      "Securely erased password buffer for {}, length={}.";
   public static final String EMPTY_MESSAGE = "";
 
 }

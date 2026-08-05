@@ -105,6 +105,7 @@ public enum Metric {
 
   // compaction related
   DATA_WRITTEN("data_written"),
+  SECURE_ERASE_BYTES("secure_erase_bytes"),
   DATA_READ("data_read"),
   COMPACTION_TASK_COUNT("compaction_task_count"),
   COMPACTION_TASK_MEMORY("compaction_task_memory"),

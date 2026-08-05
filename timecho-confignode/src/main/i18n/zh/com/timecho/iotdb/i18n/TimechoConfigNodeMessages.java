@@ -26,6 +26,9 @@ public final class TimechoConfigNodeMessages {
 
   // ConfigNode 启动
   public static final String HARDWARE_GENERATION_FAILED = "硬件信息生成失败。";
+  public static final String
+      EXCEPTION_CONFIGNODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_CONFIGNODE_05C8378F =
+          "Windows 系统不支持在 enable_secure_erase 为 true 时启动 ConfigNode。请将 enable_secure_erase 设置为 false 后重新启动 ConfigNode。";
 
   // CLI 激活
   public static final String CLI_ACTIVATION_SUCCESS =

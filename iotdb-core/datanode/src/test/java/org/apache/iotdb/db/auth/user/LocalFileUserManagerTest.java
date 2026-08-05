@@ -32,6 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -83,7 +85,48 @@ public class LocalFileUserManagerTest {
     Assert.assertTrue(
         manager.createUser("testRaw", AuthUtils.encryptPassword("password1"), true, false));
     User user = manager.getEntity("testRaw");
-    Assert.assertEquals(user.getPassword(), AuthUtils.encryptPassword("password1"));
+    Assert.assertArrayEquals(
+        AuthUtils.encryptPassword("password1").getBytes(StandardCharsets.UTF_8),
+        user.getPassword());
+  }
+
+  @Test
+  public void testDeleteUserErasesPassword() throws Exception {
+    Assert.assertTrue(manager.createUser("user_to_delete", "password", false));
+    final User user = manager.getEntity("user_to_delete");
+    final byte[] password = user.getPassword();
+
+    Assert.assertTrue(manager.deleteEntity(user.getName()));
+
+    Assert.assertArrayEquals(new byte[password.length], password);
+    Assert.assertNull(manager.getEntity(user.getName()));
+  }
+
+  @Test
+  public void testResetErasesPasswordsBeforeClearingUsers() throws Exception {
+    Assert.assertTrue(manager.createUser("user_to_reset", "password", false));
+    final User user = manager.getEntity("user_to_reset");
+    final byte[] password = user.getPassword();
+
+    manager.reset();
+
+    Assert.assertArrayEquals(new byte[password.length], password);
+    Assert.assertNull(user.getPassword());
+  }
+
+  @Test
+  public void testRenameUserKeepsPassword() throws Exception {
+    Assert.assertTrue(manager.createUser("user_to_rename", "password", false, false));
+    final User user = manager.getEntity("user_to_rename");
+    final byte[] password = user.getPassword();
+    final byte[] expectedPassword = Arrays.copyOf(password, password.length);
+
+    manager.renameUser("user_to_rename", "renamed_user");
+
+    Assert.assertArrayEquals(expectedPassword, password);
+    Assert.assertArrayEquals(
+        "password".getBytes(StandardCharsets.UTF_8),
+        manager.getEntity("renamed_user").getPassword());
   }
 
   @Test

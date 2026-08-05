@@ -257,6 +257,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.exception.NotImplementedException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -375,10 +376,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
         PasswordChangeAuditContext.forTreeStatement(statement, context.getSession());
     boolean executionDelegated = false;
     try {
-      statement.setPassWord(
+      final byte[] oldPassword =
           AuthorityChecker.getAuthorityFetcher()
               .getUser(statement.getUserName(), true)
-              .getPassword());
+              .getPassword();
+      statement.setPassWord(
+          oldPassword == null ? null : new String(oldPassword, StandardCharsets.UTF_8));
       DataNodeAuthUtils.verifyPasswordReuse(
           statement.getAssociatedUsedId(), statement.getNewPassword());
 

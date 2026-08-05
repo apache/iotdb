@@ -21,18 +21,18 @@ package org.apache.iotdb.db.auth.entity;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
 public class UserTest {
 
   @Test
-  public void testUser() throws IllegalPathException {
+  public void testUser() throws Exception {
     User user = new User("user", "password123456");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
@@ -49,5 +49,37 @@ public class UserTest {
             + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false, maxSessionPerUser=-1, minSessionPerUser=-1}",
         user1.toString());
     Assert.assertEquals(user1, user);
+    Assert.assertArrayEquals(
+        "password123456".getBytes(StandardCharsets.UTF_8), user1.getPassword());
+  }
+
+  @Test
+  public void testPasswordBufferIsErasedWhenPasswordChanges() throws Exception {
+    final User user = new User("user", "old-password");
+    final byte[] oldPassword = user.getPassword();
+
+    user.setPassword("new-password");
+
+    Assert.assertArrayEquals(new byte[oldPassword.length], oldPassword);
+    Assert.assertArrayEquals("new-password".getBytes(StandardCharsets.UTF_8), user.getPassword());
+
+    final byte[] newPassword = user.getPassword();
+    user.erasePassword();
+
+    Assert.assertArrayEquals(new byte[newPassword.length], newPassword);
+    Assert.assertNull(user.getPassword());
+  }
+
+  @Test
+  public void testPasswordSerializationRemainsCompatible() throws Exception {
+    final User source = new User("user", "password");
+    final User target = new User("target", "password-to-erase");
+    final byte[] oldTargetPassword = target.getPassword();
+
+    target.deserialize(source.serialize());
+
+    Assert.assertArrayEquals(new byte[oldTargetPassword.length], oldTargetPassword);
+    Assert.assertArrayEquals("password".getBytes(StandardCharsets.UTF_8), target.getPassword());
+    Assert.assertEquals(source, target);
   }
 }

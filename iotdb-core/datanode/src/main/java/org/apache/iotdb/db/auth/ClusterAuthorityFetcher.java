@@ -556,7 +556,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else if (password != null) {
         if (useEncryptedPassword) {
-          return password.equals(user.getPassword())
+          return AuthUtils.passwordEquals(password, user.getPassword())
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
               : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
         } else {

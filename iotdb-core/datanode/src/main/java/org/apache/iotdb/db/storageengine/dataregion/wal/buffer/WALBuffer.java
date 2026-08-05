@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -78,6 +79,10 @@ public class WALBuffer extends AbstractWALBuffer {
   public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
+  private static final String WAL_WORKING_BUFFER = "wal_working_buffer";
+  private static final String WAL_IDLE_BUFFER = "wal_idle_buffer";
+  private static final String WAL_SYNCING_BUFFER = "wal_syncing_buffer";
+  private static final String WAL_COMPRESSED_BUFFER = "wal_compressed_buffer";
 
   // whether close method is called
   private volatile boolean isClosed = false;
@@ -185,6 +190,7 @@ public class WALBuffer extends AbstractWALBuffer {
     int capacity = size / 3;
     buffersLock.lock();
     try {
+      eraseBuffersIfEnabled();
       MmapUtil.clean(workingBuffer);
       MmapUtil.clean(idleBuffer);
       MmapUtil.clean(syncingBuffer);
@@ -676,6 +682,8 @@ public class WALBuffer extends AbstractWALBuffer {
     try {
       // No need to judge whether idleBuffer is null because syncingBuffer is not null
       // and there is only one buffer can be null between syncingBuffer and idleBuffer
+      ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+          syncingBuffer, WAL_SYNCING_BUFFER + ':' + identifier);
       idleBuffer = syncingBuffer;
       syncingBuffer = null;
       idleBufferReadyCondition.signalAll();
@@ -745,6 +753,7 @@ public class WALBuffer extends AbstractWALBuffer {
     }
     checkpointManager.close();
 
+    eraseBuffersIfEnabled();
     MmapUtil.clean(workingBuffer);
     MmapUtil.clean(idleBuffer);
     MmapUtil.clean(syncingBuffer);
@@ -753,6 +762,17 @@ public class WALBuffer extends AbstractWALBuffer {
     idleBuffer = null;
     syncingBuffer = null;
     compressedByteBuffer = null;
+  }
+
+  private void eraseBuffersIfEnabled() {
+    ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+        workingBuffer, WAL_WORKING_BUFFER + ':' + identifier);
+    ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+        idleBuffer, WAL_IDLE_BUFFER + ':' + identifier);
+    ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+        syncingBuffer, WAL_SYNCING_BUFFER + ':' + identifier);
+    ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+        compressedByteBuffer, WAL_COMPRESSED_BUFFER + ':' + identifier);
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {

@@ -29,11 +29,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IOUtilsTest {
 
   private static final String ENCODING = "UTF-8";
+
+  @Test
+  public void writeBytesUsesTheSameFormatAsWriteString() throws IOException {
+    final String value = "password-digest";
+    final ByteArrayOutputStream stringOutputStream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+
+    IOUtils.writeString(stringOutputStream, value, ENCODING, null);
+    IOUtils.writeBytes(byteOutputStream, value.getBytes(StandardCharsets.UTF_8), null);
+
+    Assert.assertArrayEquals(stringOutputStream.toByteArray(), byteOutputStream.toByteArray());
+  }
 
   @Test
   public void readStringReadsCompletePayloadAfterShortRead() throws IOException {

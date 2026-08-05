@@ -60,9 +60,9 @@ public class UserPasswordModifier {
 
     // 2. If old password check is required
     if (needCheckOld) {
-      String storedPassword = userManager.getEntity(username).getPassword();
+      byte[] storedPassword = userManager.getEntity(username).getPassword();
       String encryptedOldPassword = AuthUtils.encryptPassword(oldPassword);
-      if (!storedPassword.equals(encryptedOldPassword)) {
+      if (!AuthUtils.passwordEquals(encryptedOldPassword, storedPassword)) {
         throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Old password is incorrect");
       }
     }
@@ -243,9 +243,9 @@ public class UserPasswordModifier {
           try {
             UserPasswordModifier modifier = new UserPasswordModifier(userDir.getAbsolutePath());
             if (modifier.userManager.getEntity(username) != null) {
-              String storedPassword = modifier.userManager.getEntity(username).getPassword();
+              byte[] storedPassword = modifier.userManager.getEntity(username).getPassword();
               String encryptedOldPassword = AuthUtils.encryptPassword(oldPassword);
-              if (storedPassword.equals(encryptedOldPassword)) {
+              if (AuthUtils.passwordEquals(encryptedOldPassword, storedPassword)) {
                 valid = true;
                 break;
               }

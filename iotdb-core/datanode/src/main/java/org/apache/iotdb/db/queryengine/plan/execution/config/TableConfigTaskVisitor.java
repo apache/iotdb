@@ -309,6 +309,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1976,7 +1977,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
   private void visitUpdateUser(RelationalAuthorStatement node) {
     final User user = AuthorityChecker.getAuthorityFetcher().getUser(node.getUserName(), true);
-    node.setOldPassword(user.getPassword());
+    final byte[] oldPassword = user.getPassword();
+    node.setOldPassword(
+        oldPassword == null ? null : new String(oldPassword, StandardCharsets.UTF_8));
     DataNodeAuthUtils.verifyPasswordReuse(node.getAssociatedUserId(), node.getPassword());
   }
 

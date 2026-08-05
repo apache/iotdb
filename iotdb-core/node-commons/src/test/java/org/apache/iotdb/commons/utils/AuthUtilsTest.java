@@ -30,10 +30,28 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AuthUtilsTest {
+
+  @Test
+  public void testPasswordByteArrayComparisonAndValidation() {
+    final String password = "TimechoDB@2021";
+    final byte[] encryptedPassword =
+        AuthUtils.encryptPassword(password).getBytes(StandardCharsets.UTF_8);
+
+    Assert.assertTrue(
+        AuthUtils.passwordEquals(
+            new String(encryptedPassword, StandardCharsets.UTF_8), encryptedPassword));
+    Assert.assertFalse(AuthUtils.passwordEquals("different-password", encryptedPassword));
+    Assert.assertFalse(AuthUtils.passwordEquals(null, encryptedPassword));
+    Assert.assertFalse(AuthUtils.passwordEquals(password, null));
+    Assert.assertTrue(AuthUtils.validatePassword(password, encryptedPassword));
+    Assert.assertFalse(AuthUtils.validatePassword("different-password", encryptedPassword));
+    Assert.assertFalse(AuthUtils.validatePassword(password, (byte[]) null));
+  }
 
   @Test
   public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {

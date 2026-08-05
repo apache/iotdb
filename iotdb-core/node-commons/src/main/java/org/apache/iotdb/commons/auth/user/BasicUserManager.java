@@ -190,6 +190,33 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return null;
   }
 
+  @Override
+  public boolean deleteEntity(String entityName) {
+    lock.writeLock(entityName);
+    try {
+      final User user = (User) entityMap.get(entityName);
+      if (user == null) {
+        return false;
+      }
+      user.erasePassword();
+      entityMap.remove(entityName);
+      return true;
+    } finally {
+      lock.writeUnlock(entityName);
+    }
+  }
+
+  private void putUser(String username, User user) {
+    entityMap.compute(
+        username,
+        (key, previousUser) -> {
+          if (previousUser != null && previousUser != user) {
+            ((User) previousUser).erasePassword();
+          }
+          return user;
+        });
+  }
+
   public long getUserId(String username) throws AuthException {
     User user = this.getEntity(username);
     if (user == null) {
@@ -225,7 +252,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       if (userid == SUPER_USER_ID) {
         user.setMinSessionPerUser(1);
       }
-      entityMap.put(username, user);
+      putUser(username, user);
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -249,7 +276,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
           new User(
               username, enableEncrypt ? AuthUtils.encryptPassword(password) : password, userId);
       user.setMinSessionPerUser(1);
-      entityMap.put(username, user);
+      putUser(username, user);
     } finally {
       lock.writeUnlock(username);
     }
@@ -329,7 +356,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     try {
       User newUser = (User) entityMap.remove(username);
       newUser.setName(newUsername);
-      entityMap.put(newUsername, newUser);
+      putUser(newUsername, newUser);
     } finally {
       lock.writeUnlock(username);
     }
@@ -416,6 +443,9 @@ public abstract class BasicUserManager extends BasicRoleManager {
   @Override
   public void reset() throws AuthException {
     accessor.reset();
+    for (final Role role : entityMap.values()) {
+      ((User) role).erasePassword();
+    }
     entityMap.clear();
     initUserId();
     for (String userId : accessor.listAllEntities()) {
@@ -432,7 +462,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
         if (AuthUtils.isRootAdmin(user.getUserId())) {
           user.setMinSessionPerUser(1);
         }
-        entityMap.put(user.getName(), user);
+        putUser(user.getName(), user);
       } catch (IOException e) {
         LOGGER.warn(AuthMessages.LOAD_USER_EXCEPTION, userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);

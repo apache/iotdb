@@ -274,6 +274,11 @@ public class CommonDescriptor {
             properties
                 .getProperty("enable_audit_log", String.valueOf(config.isEnableAuditLog()))
                 .trim()));
+    config.setEnableSecureErase(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("enable_secure_erase", String.valueOf(config.isEnableSecureErase()))
+                .trim()));
     config.setAuditableOperationType(
         properties.getProperty("auditable_operation_type", "DDL,DML,QUERY,CONTROL").trim());
     config.setAuditableDdlEventType(

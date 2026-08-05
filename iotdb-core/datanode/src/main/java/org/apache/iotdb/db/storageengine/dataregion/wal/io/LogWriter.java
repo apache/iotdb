@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -51,6 +52,7 @@ import java.util.Map;
  */
 public abstract class LogWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
+  private static final String WAL_COMPRESSED_BUFFER = "wal_compressed_buffer";
 
   protected final File logFile;
   protected final FileChannel logChannel;
@@ -163,6 +165,11 @@ public abstract class LogWriter implements ILogWriter {
       }
     } catch (ClosedChannelException e) {
       logger.warn(StorageEngineMessages.CANNOT_WRITE_TO, logFile, e);
+    } finally {
+      if (compressed) {
+        ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
+            compressedByteBuffer, WAL_COMPRESSED_BUFFER);
+      }
     }
 
     WritingMetrics.getInstance()

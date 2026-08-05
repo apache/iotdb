@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -120,11 +121,23 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
 
   @Override
   protected void versionCheck(TSystemConfigurationResp configurationResp) throws StartupException {
+    checkSecureEraseCompatibility(
+        System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows"),
+        CommonDescriptor.getInstance().getConfig().isEnableSecureErase());
     if (!configurationResp.globalConfig.isEnterprise) {
       final String message =
           "TimechoDB DataNode can only be used with TimechoDB ConfigNode and cannot be used with IoTDB ConfigNode.";
       logger.error(message);
       throw new StartupException(message);
+    }
+  }
+
+  static void checkSecureEraseCompatibility(
+      final boolean isWindows, final boolean enableSecureErase) throws StartupException {
+    if (isWindows && enableSecureErase) {
+      throw new StartupException(
+          TimechoServerMessages
+              .EXCEPTION_DATANODE_CANNOT_START_ON_WINDOWS_WHEN_ENABLE_SECURE_ERASE_IS_TRUE_SET_ENABLE_SECURE_ERASE_TO_FALSE_AND_RESTART_DATANODE_18580227);
     }
   }
 

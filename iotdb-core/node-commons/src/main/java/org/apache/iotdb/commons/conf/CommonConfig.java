@@ -589,6 +589,7 @@ public class CommonConfig {
 
   private boolean enableEncryptConfigFile = false;
   private boolean enableEncryptPermissionFile = false;
+  private boolean enableSecureErase = false;
 
   private long auditLogBatchIntervalInMs = 1000L;
   private long auditLogBatchMaxQueueBytes = 256L * 1024L * 1024L; // 256MB
@@ -3552,6 +3553,14 @@ public class CommonConfig {
     this.enableEncryptPermissionFile =
         EditionGate.forceDisabledInIoTDB(
             enableEncryptPermissionFile, IoTDBGatedFeature.FILE_ENCRYPTION);
+  }
+
+  public boolean isEnableSecureErase() {
+    return enableSecureErase;
+  }
+
+  public void setEnableSecureErase(boolean enableSecureErase) {
+    this.enableSecureErase = enableSecureErase;
   }
 
   public double getAuditLogSpaceTlInGB() {

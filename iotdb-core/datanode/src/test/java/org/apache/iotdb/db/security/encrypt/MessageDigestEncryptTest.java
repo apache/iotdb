@@ -36,7 +36,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -81,14 +83,19 @@ public class MessageDigestEncryptTest {
     User user = manager.getEntity(users[0].getName());
     assertNull(user);
     for (User user1 : users) {
-      assertTrue(manager.createUser(user1.getName(), user1.getPassword(), false));
+      assertTrue(
+          manager.createUser(
+              user1.getName(), new String(user1.getPassword(), StandardCharsets.UTF_8), false));
     }
     for (User user1 : users) {
       user = manager.getEntity(user1.getName());
       assertEquals(user1.getName(), user.getName());
-      assertEquals(
-          messageDigestEncrypt.encrypt(
-              user1.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256),
+      assertArrayEquals(
+          messageDigestEncrypt
+              .encrypt(
+                  new String(user1.getPassword(), StandardCharsets.UTF_8),
+                  AsymmetricEncrypt.DigestAlgorithm.SHA_256)
+              .getBytes(StandardCharsets.UTF_8),
           user.getPassword());
     }
   }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.SecureEraseMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
@@ -77,6 +78,7 @@ public class DataNodeMetricsHelper {
     initCpuMetrics(metricService);
     initSystemMetrics(metricService);
     metricService.addMetricSet(WritingMetrics.getInstance());
+    metricService.addMetricSet(SecureEraseMetrics.getInstance());
 
     // bind query related metrics
     metricService.addMetricSet(QueryPlanCostMetricSet.getInstance());

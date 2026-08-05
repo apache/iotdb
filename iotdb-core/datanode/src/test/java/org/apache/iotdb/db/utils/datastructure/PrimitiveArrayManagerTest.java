@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -99,6 +100,30 @@ public class PrimitiveArrayManagerTest {
             break;
         }
       }
+    }
+  }
+
+  @Test
+  public void testReleaseErasesPooledValues() {
+    boolean originalEnableSecureErase =
+        CommonDescriptor.getInstance().getConfig().isEnableSecureErase();
+    CommonDescriptor.getInstance().getConfig().setEnableSecureErase(true);
+    try {
+      int[] ints = {1, 2};
+      byte[] firstBinaryValues = {1};
+      byte[] secondBinaryValues = {2};
+      Binary[] binaries = {new Binary(firstBinaryValues), new Binary(secondBinaryValues)};
+
+      PrimitiveArrayManager.release(ints);
+      PrimitiveArrayManager.release(binaries);
+
+      Assert.assertArrayEquals(new int[2], ints);
+      Assert.assertArrayEquals(new byte[1], firstBinaryValues);
+      Assert.assertArrayEquals(new byte[1], secondBinaryValues);
+      Assert.assertArrayEquals(new Binary[2], binaries);
+    } finally {
+      PrimitiveArrayManager.close();
+      CommonDescriptor.getInstance().getConfig().setEnableSecureErase(originalEnableSecureErase);
     }
   }
 }
