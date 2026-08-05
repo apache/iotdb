@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -157,6 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -415,6 +417,13 @@ public class Coordinator {
     } finally {
       DNAuditLogger.getInstance()
           .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+      if (statement instanceof AuthorStatement) {
+        final UserRoleModificationAuditContext auditContext =
+            new UserRoleModificationAuditContext(sql);
+        auditContext.setSessionInfo(session);
+        auditContext.track((AuthorStatement) statement);
+        auditContext.log(result == null ? null : result.status);
+      }
     }
   }
 
@@ -563,6 +572,13 @@ public class Coordinator {
     } finally {
       DNAuditLogger.getInstance()
           .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+      if (statement instanceof RelationalAuthorStatement) {
+        final UserRoleModificationAuditContext auditContext =
+            new UserRoleModificationAuditContext(sql);
+        auditContext.setSessionInfo(session);
+        auditContext.track((RelationalAuthorStatement) statement);
+        auditContext.log(result == null ? null : result.status);
+      }
     }
   }
 
