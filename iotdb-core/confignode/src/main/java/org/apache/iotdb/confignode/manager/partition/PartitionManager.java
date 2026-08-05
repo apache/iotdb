@@ -1448,8 +1448,8 @@ public class PartitionManager {
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createSchemaRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                            if (isRegionMaintainTaskCompleted(
+                                RegionMaintainType.CREATE, entry.getValue())) {
                               successfulTask.add(
                                   new TConsensusGroupId(
                                       TConsensusGroupType.SchemaRegion, entry.getKey()));
@@ -1484,8 +1484,8 @@ public class PartitionManager {
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createDataRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                            if (isRegionMaintainTaskCompleted(
+                                RegionMaintainType.CREATE, entry.getValue())) {
                               successfulTask.add(
                                   new TConsensusGroupId(
                                       TConsensusGroupType.DataRegion, entry.getKey()));
@@ -1524,8 +1524,8 @@ public class PartitionManager {
 
                       for (Map.Entry<Integer, TSStatus> entry :
                           deleteRegionHandler.getResponseMap().entrySet()) {
-                        if (entry.getValue().getCode()
-                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        if (isRegionMaintainTaskCompleted(
+                            RegionMaintainType.DELETE, entry.getValue())) {
                           successfulTask.add(regionIdMap.get(entry.getKey()));
                         }
                       }
@@ -1569,6 +1569,16 @@ public class PartitionManager {
                 }
               }
             });
+  }
+
+  static boolean isRegionMaintainTaskCompleted(
+      RegionMaintainType regionMaintainType, TSStatus status) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    return regionMaintainType == RegionMaintainType.CREATE
+        ? status.getCode() == TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode()
+        : status.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
   }
 
   public void startRegionCleaner() {
