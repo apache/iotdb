@@ -97,6 +97,52 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testWalFileCommitRequirementUsesPerWriterMaximum() {
+    final String regionId = "DataRegion[1]";
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, -1L, 0L, 0L, -1, -1L);
+    metadata.add(1, 1L, 0L, 100L, 7, 1L);
+    metadata.add(1, 2L, 0L, 100L, 7, 2L);
+    metadata.add(1, -1L, 0L, 200L, 8, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata(regionId, metadata);
+
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                Collections.singletonMap(
+                    new WriterId(regionId, 7), new WriterProgress(100L, 2L)))));
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 1L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+    assertTrue(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 2L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+  }
+
+  @Test
+  public void testWalFileCommitRequirementRejectsUnsupportedWriterMetadata() {
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, 1L, 0L, 0L, -1, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata("DataRegion[1]", metadata);
+
+    assertFalse(requirement.isCoveredBy(new RegionProgress(Collections.emptyMap())));
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testAdmissionClearCannotLeaveEntryEnqueuedAfterFence() throws Exception {
     final Class<?> queueClass =
