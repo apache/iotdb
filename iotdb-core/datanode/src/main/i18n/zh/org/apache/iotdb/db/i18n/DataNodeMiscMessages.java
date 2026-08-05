@@ -121,6 +121,8 @@ public final class DataNodeMiscMessages {
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "用户：%s，角色：%s";
+
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------

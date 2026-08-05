@@ -214,7 +214,9 @@ public class AuthorityChecker {
       return status;
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-      DNAuditLogger.getInstance().logRevokeFailure(statement, auditEntity, status);
+      DNAuditLogger auditLogger = DNAuditLogger.getInstance();
+      auditLogger.logRevokeFailure(statement, auditEntity, status);
+      auditLogger.logUserRoleModificationAuthorizationFailure(statement, auditEntity, status);
     }
   }
 
