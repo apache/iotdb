@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProce
 import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
@@ -128,332 +127,326 @@ public class ProcedureFactory implements IProcedureFactory {
     Procedure procedure;
     if (TimechoProcedureFactory.isTimechoProcedureType(procedureType)) {
       procedure = TimechoProcedureFactory.create(procedureType);
-    } else {
-      switch (procedureType) {
-        case DELETE_DATABASE_PROCEDURE:
-          procedure = new DeleteDatabaseProcedure(false);
-          break;
-        case ADD_CONFIG_NODE_PROCEDURE:
-          procedure = new AddConfigNodeProcedure();
-          break;
-        case REMOVE_CONFIG_NODE_PROCEDURE:
-          procedure = new RemoveConfigNodeProcedure();
-          break;
-        case REMOVE_DATA_NODE_PROCEDURE:
-          procedure = new RemoveDataNodesProcedure();
-          break;
-        case REGION_MIGRATE_PROCEDURE:
-          procedure = new RegionMigrateProcedure();
-          break;
-        case ADD_REGION_PEER_PROCEDURE:
-          procedure = new AddRegionPeerProcedure();
-          break;
-        case REMOVE_REGION_PEER_PROCEDURE:
-          procedure = new RemoveRegionPeerProcedure();
-          break;
-        case CREATE_REGION_GROUPS:
-          procedure = new CreateRegionGroupsProcedure();
-          break;
-        case RECONSTRUCT_REGION_PROCEDURE:
-          procedure = new ReconstructRegionProcedure();
-          break;
-        case NOTIFY_REGION_MIGRATION_PROCEDURE:
-          procedure = new NotifyRegionMigrationProcedure();
-          break;
-        case REMOVE_REGION_GROUP_PROCEDURE:
-          procedure = new RemoveRegionGroupProcedure();
-          break;
-        case ALTER_ENCODING_COMPRESSOR_PROCEDURE:
-          procedure = new AlterEncodingCompressorProcedure(false);
-          break;
-        case DELETE_TIMESERIES_PROCEDURE:
-          procedure = new DeleteTimeSeriesProcedure(false);
-          break;
-        case ALTER_TIMESERIES_DATATYPE_PROCEDURE:
-          procedure = new AlterTimeSeriesDataTypeProcedure(false);
-          break;
-        case RENAME_TIMESERIES_PROCEDURE:
-          procedure = new RenameTimeSeriesProcedure(false);
-          break;
-        case DELETE_LOGICAL_VIEW_PROCEDURE:
-          procedure = new DeleteLogicalViewProcedure(false);
-          break;
-        case ALTER_LOGICAL_VIEW_PROCEDURE:
-          procedure = new AlterLogicalViewProcedure(false);
-          break;
-        case CREATE_TRIGGER_PROCEDURE:
-          procedure = new CreateTriggerProcedure(false);
-          break;
-        case DROP_TRIGGER_PROCEDURE:
-          procedure = new DropTriggerProcedure(false);
-          break;
-        case CREATE_PIPE_PROCEDURE:
-          procedure = new CreatePipeProcedure();
-          break;
-        case START_PIPE_PROCEDURE:
-          procedure = new StartPipeProcedure();
-          break;
-        case STOP_PIPE_PROCEDURE:
-          procedure = new StopPipeProcedure();
-          break;
-        case DROP_PIPE_PROCEDURE:
-          procedure = new DropPipeProcedure();
-          break;
-        case CREATE_PIPE_PROCEDURE_V2:
-          procedure = new CreatePipeProcedureV2();
-          break;
-        case START_PIPE_PROCEDURE_V2:
-          procedure = new StartPipeProcedureV2();
-          break;
-        case STOP_PIPE_PROCEDURE_V2:
-          procedure = new StopPipeProcedureV2();
-          break;
-        case DROP_PIPE_PROCEDURE_V2:
-          procedure = new DropPipeProcedureV2();
-          break;
-        case ALTER_PIPE_PROCEDURE_V2:
-          procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V2);
-          break;
-        case ALTER_PIPE_PROCEDURE_V3:
-          procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V3);
-          break;
-        case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
-          procedure = new PipeHandleLeaderChangeProcedure();
-          break;
-        case PIPE_META_SYNC_PROCEDURE:
-          procedure = new PipeMetaSyncProcedure();
-          break;
-        case PIPE_HANDLE_META_CHANGE_PROCEDURE:
-          procedure = new PipeHandleMetaChangeProcedure();
-          break;
-        case CREATE_CQ_PROCEDURE:
-          procedure =
-              new CreateCQProcedure(
-                  ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
-          break;
-        case SET_TEMPLATE_PROCEDURE:
-          procedure = new SetTemplateProcedure(false);
-          break;
-        case DEACTIVATE_TEMPLATE_PROCEDURE:
-          procedure = new DeactivateTemplateProcedure(false);
-          break;
-        case UNSET_TEMPLATE_PROCEDURE:
-          procedure = new UnsetTemplateProcedure(false);
-          break;
-        case CREATE_TABLE_PROCEDURE:
-          procedure = new CreateTableProcedure(false);
-          break;
-        case CREATE_TABLE_VIEW_PROCEDURE:
-          procedure = new CreateTableViewProcedure(false);
-          break;
-        case ADD_TABLE_COLUMN_PROCEDURE:
-          procedure = new AddTableColumnProcedure(false);
-          break;
-        case ADD_VIEW_COLUMN_PROCEDURE:
-          procedure = new AddViewColumnProcedure(false);
-          break;
-        case SET_TABLE_PROPERTIES_PROCEDURE:
-          procedure = new SetTablePropertiesProcedure(false);
-          break;
-        case SET_VIEW_PROPERTIES_PROCEDURE:
-          procedure = new SetViewPropertiesProcedure(false);
-          break;
-        case RENAME_TABLE_COLUMN_PROCEDURE:
-          procedure = new RenameTableColumnProcedure(false);
-          break;
-        case RENAME_VIEW_COLUMN_PROCEDURE:
-          procedure = new RenameViewColumnProcedure(false);
-          break;
-        case DROP_TABLE_COLUMN_PROCEDURE:
-          procedure = new DropTableColumnProcedure(false);
-          break;
-        case DROP_VIEW_COLUMN_PROCEDURE:
-          procedure = new DropViewColumnProcedure(false);
-          break;
-        case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
-          procedure = new AlterTableColumnDataTypeProcedure(false);
-          break;
-        case ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE:
-          procedure = new AlterViewColumnDataTypeProcedure(false);
-          break;
-        case DROP_TABLE_PROCEDURE:
-          procedure = new DropTableProcedure(false);
-          break;
-        case DROP_VIEW_PROCEDURE:
-          procedure = new DropViewProcedure(false);
-          break;
-        case DELETE_DEVICES_PROCEDURE:
-          procedure = new DeleteDevicesProcedure(false);
-          break;
-        case RENAME_TABLE_PROCEDURE:
-          procedure = new RenameTableProcedure(false);
-          break;
-        case RENAME_VIEW_PROCEDURE:
-          procedure = new RenameViewProcedure(false);
-          break;
-        case CREATE_PIPE_PLUGIN_PROCEDURE:
-          procedure = new CreatePipePluginProcedure();
-          break;
-        case DROP_PIPE_PLUGIN_PROCEDURE:
-          procedure = new DropPipePluginProcedure();
-          break;
-        case AUTH_OPERATE_PROCEDURE:
-          procedure = new AuthOperationProcedure(false);
-          break;
-        case PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE:
-          procedure = new DeleteDatabaseProcedure(true);
-          break;
-        case PIPE_ENRICHED_DELETE_TIMESERIES_PROCEDURE:
-          procedure = new DeleteTimeSeriesProcedure(true);
-          break;
-        case PIPE_ENRICHED_DEACTIVATE_TEMPLATE_PROCEDURE:
-          procedure = new DeactivateTemplateProcedure(true);
-          break;
-        case PIPE_ENRICHED_UNSET_TEMPLATE_PROCEDURE:
-          procedure = new UnsetTemplateProcedure(true);
-          break;
-        case PIPE_ENRICHED_SET_TEMPLATE_PROCEDURE:
-          procedure = new SetTemplateProcedure(true);
-          break;
-        case PIPE_ENRICHED_ALTER_LOGICAL_VIEW_PROCEDURE:
-          procedure = new AlterLogicalViewProcedure(true);
-          break;
-        case PIPE_ENRICHED_DELETE_LOGICAL_VIEW_PROCEDURE:
-          procedure = new DeleteLogicalViewProcedure(true);
-          break;
-        case PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE:
-          procedure = new CreateTriggerProcedure(true);
-          break;
-        case PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE:
-          procedure = new DropTriggerProcedure(true);
-          break;
-        case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
-          procedure = new AuthOperationProcedure(true);
-          break;
-        case PIPE_ENRICHED_CREATE_TABLE_PROCEDURE:
-          procedure = new CreateTableProcedure(true);
-          break;
-        case PIPE_ENRICHED_DROP_TABLE_PROCEDURE:
-          procedure = new DropTableProcedure(true);
-          break;
-        case PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE:
-          procedure = new AddTableColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE:
-          procedure = new SetTablePropertiesProcedure(true);
-          break;
-        case PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE:
-          procedure = new RenameTableColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
-          procedure = new DropTableColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
-          procedure = new AlterTableColumnDataTypeProcedure(true);
-          break;
-        case PIPE_ENRICHED_ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE:
-          procedure = new AlterViewColumnDataTypeProcedure(true);
-          break;
-        case PIPE_ENRICHED_ALTER_TIMESERIES_DATATYPE_PROCEDURE:
-          procedure = new AlterTimeSeriesDataTypeProcedure(true);
-          break;
-        case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
-          procedure = new DeleteDevicesProcedure(true);
-          break;
-        case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
-          procedure = new RenameTableProcedure(true);
-          break;
-        case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
-          procedure = new CreateTableViewProcedure(true);
-          break;
-        case PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE:
-          procedure = new AddViewColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE:
-          procedure = new DropViewColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE:
-          procedure = new SetViewPropertiesProcedure(true);
-          break;
-        case PIPE_ENRICHED_DROP_VIEW_PROCEDURE:
-          procedure = new DropViewProcedure(true);
-          break;
-        case PIPE_ENRICHED_RENAME_VIEW_COLUMN_PROCEDURE:
-          procedure = new RenameViewColumnProcedure(true);
-          break;
-        case PIPE_ENRICHED_RENAME_VIEW_PROCEDURE:
-          procedure = new RenameViewProcedure(true);
-          break;
-        case PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE:
-          procedure = new AlterEncodingCompressorProcedure(true);
-          break;
-        case PIPE_ENRICHED_RENAME_TIMESERIES_PROCEDURE:
-          procedure = new RenameTimeSeriesProcedure(true);
-          break;
-        case REMOVE_AI_NODE_PROCEDURE:
-          procedure = new RemoveAINodeProcedure();
-          break;
-        case PIPE_ENRICHED_SET_TTL_PROCEDURE:
-          procedure = new SetTTLProcedure(true);
-          break;
-        case SET_TTL_PROCEDURE:
-          procedure = new SetTTLProcedure(false);
-          break;
-        case CREATE_TOPIC_PROCEDURE:
-          procedure = new CreateTopicProcedure();
-          break;
-        case DROP_TOPIC_PROCEDURE:
-          procedure = new DropTopicProcedure();
-          break;
-        case ALTER_TOPIC_PROCEDURE:
-          procedure = new AlterTopicProcedure();
-          break;
-        case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
-          procedure = new AlterTopicProcedure(true);
-          break;
-        case TOPIC_META_SYNC_PROCEDURE:
-          procedure = new TopicMetaSyncProcedure();
-          break;
-        case CREATE_SUBSCRIPTION_PROCEDURE:
-          procedure = new CreateSubscriptionProcedure();
-          break;
-        case DROP_SUBSCRIPTION_PROCEDURE:
-          procedure = new DropSubscriptionProcedure();
-          break;
-        case CREATE_CONSUMER_PROCEDURE:
-          procedure = new CreateConsumerProcedure();
-          break;
-        case DROP_CONSUMER_PROCEDURE:
-          procedure = new DropConsumerProcedure();
-          break;
-        case ALTER_CONSUMER_GROUP_PROCEDURE:
-          procedure = new AlterConsumerGroupProcedure();
-          break;
-        case CONSUMER_GROUP_META_SYNC_PROCEDURE:
-          procedure = new ConsumerGroupMetaSyncProcedure();
-          break;
-        case COMMIT_PROGRESS_SYNC_PROCEDURE:
-          procedure = new CommitProgressSyncProcedure();
-          break;
-        case SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE:
-          procedure = new SubscriptionHandleLeaderChangeProcedure();
-          break;
-        case CREATE_MANY_DATABASES_PROCEDURE:
-          procedure = new CreateManyDatabasesProcedure();
-          break;
-        case NEVER_FINISH_PROCEDURE:
-          procedure = new NeverFinishProcedure();
-          break;
-        case ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE:
-          procedure = new AddNeverFinishSubProcedureProcedure();
-          break;
-        case DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE:
-          procedure = new DataPartitionTableIntegrityCheckProcedure();
-          break;
-        default:
-          LOGGER.error(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE_2, typeCode);
-          throw new IOException(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE + typeCode);
+      try {
+        procedure.deserialize(buffer);
+      } catch (ThriftSerDeException e) {
+        LOGGER.warn(
+            ProcedureMessages
+                .CATCH_EXCEPTION_WHILE_DESERIALIZING_PROCEDURE_THIS_PROCEDURE_WILL_BE_IGNORED,
+            e);
+        procedure = null;
       }
+      return procedure;
+    }
+    switch (procedureType) {
+      case DELETE_DATABASE_PROCEDURE:
+        procedure = new DeleteDatabaseProcedure(false);
+        break;
+      case ADD_CONFIG_NODE_PROCEDURE:
+        procedure = new AddConfigNodeProcedure();
+        break;
+      case REMOVE_CONFIG_NODE_PROCEDURE:
+        procedure = new RemoveConfigNodeProcedure();
+        break;
+      case REMOVE_DATA_NODE_PROCEDURE:
+        procedure = new RemoveDataNodesProcedure();
+        break;
+      case REGION_MIGRATE_PROCEDURE:
+        procedure = new RegionMigrateProcedure();
+        break;
+      case ADD_REGION_PEER_PROCEDURE:
+        procedure = new AddRegionPeerProcedure();
+        break;
+      case REMOVE_REGION_PEER_PROCEDURE:
+        procedure = new RemoveRegionPeerProcedure();
+        break;
+      case CREATE_REGION_GROUPS:
+        procedure = new CreateRegionGroupsProcedure();
+        break;
+      case RECONSTRUCT_REGION_PROCEDURE:
+        procedure = new ReconstructRegionProcedure();
+        break;
+      case NOTIFY_REGION_MIGRATION_PROCEDURE:
+        procedure = new NotifyRegionMigrationProcedure();
+        break;
+      case ALTER_ENCODING_COMPRESSOR_PROCEDURE:
+        procedure = new AlterEncodingCompressorProcedure(false);
+        break;
+      case DELETE_TIMESERIES_PROCEDURE:
+        procedure = new DeleteTimeSeriesProcedure(false);
+        break;
+      case ALTER_TIMESERIES_DATATYPE_PROCEDURE:
+        procedure = new AlterTimeSeriesDataTypeProcedure(false);
+        break;
+      case DELETE_LOGICAL_VIEW_PROCEDURE:
+        procedure = new DeleteLogicalViewProcedure(false);
+        break;
+      case ALTER_LOGICAL_VIEW_PROCEDURE:
+        procedure = new AlterLogicalViewProcedure(false);
+        break;
+      case CREATE_TRIGGER_PROCEDURE:
+        procedure = new CreateTriggerProcedure(false);
+        break;
+      case DROP_TRIGGER_PROCEDURE:
+        procedure = new DropTriggerProcedure(false);
+        break;
+      case CREATE_PIPE_PROCEDURE:
+        procedure = new CreatePipeProcedure();
+        break;
+      case START_PIPE_PROCEDURE:
+        procedure = new StartPipeProcedure();
+        break;
+      case STOP_PIPE_PROCEDURE:
+        procedure = new StopPipeProcedure();
+        break;
+      case DROP_PIPE_PROCEDURE:
+        procedure = new DropPipeProcedure();
+        break;
+      case CREATE_PIPE_PROCEDURE_V2:
+        procedure = new CreatePipeProcedureV2();
+        break;
+      case START_PIPE_PROCEDURE_V2:
+        procedure = new StartPipeProcedureV2();
+        break;
+      case STOP_PIPE_PROCEDURE_V2:
+        procedure = new StopPipeProcedureV2();
+        break;
+      case DROP_PIPE_PROCEDURE_V2:
+        procedure = new DropPipeProcedureV2();
+        break;
+      case ALTER_PIPE_PROCEDURE_V2:
+        procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V2);
+        break;
+      case ALTER_PIPE_PROCEDURE_V3:
+        procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V3);
+        break;
+      case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new PipeHandleLeaderChangeProcedure();
+        break;
+      case PIPE_META_SYNC_PROCEDURE:
+        procedure = new PipeMetaSyncProcedure();
+        break;
+      case PIPE_HANDLE_META_CHANGE_PROCEDURE:
+        procedure = new PipeHandleMetaChangeProcedure();
+        break;
+      case CREATE_CQ_PROCEDURE:
+        procedure =
+            new CreateCQProcedure(
+                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
+        break;
+      case SET_TEMPLATE_PROCEDURE:
+        procedure = new SetTemplateProcedure(false);
+        break;
+      case DEACTIVATE_TEMPLATE_PROCEDURE:
+        procedure = new DeactivateTemplateProcedure(false);
+        break;
+      case UNSET_TEMPLATE_PROCEDURE:
+        procedure = new UnsetTemplateProcedure(false);
+        break;
+      case CREATE_TABLE_PROCEDURE:
+        procedure = new CreateTableProcedure(false);
+        break;
+      case CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(false);
+        break;
+      case ADD_TABLE_COLUMN_PROCEDURE:
+        procedure = new AddTableColumnProcedure(false);
+        break;
+      case ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(false);
+        break;
+      case SET_TABLE_PROPERTIES_PROCEDURE:
+        procedure = new SetTablePropertiesProcedure(false);
+        break;
+      case SET_VIEW_PROPERTIES_PROCEDURE:
+        procedure = new SetViewPropertiesProcedure(false);
+        break;
+      case RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure(false);
+        break;
+      case RENAME_VIEW_COLUMN_PROCEDURE:
+        procedure = new RenameViewColumnProcedure(false);
+        break;
+      case DROP_TABLE_COLUMN_PROCEDURE:
+        procedure = new DropTableColumnProcedure(false);
+        break;
+      case DROP_VIEW_COLUMN_PROCEDURE:
+        procedure = new DropViewColumnProcedure(false);
+        break;
+      case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(false);
+        break;
+      case DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure(false);
+        break;
+      case DROP_VIEW_PROCEDURE:
+        procedure = new DropViewProcedure(false);
+        break;
+      case DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure(false);
+        break;
+      case RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(false);
+        break;
+      case RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(false);
+        break;
+      case CREATE_PIPE_PLUGIN_PROCEDURE:
+        procedure = new CreatePipePluginProcedure();
+        break;
+      case DROP_PIPE_PLUGIN_PROCEDURE:
+        procedure = new DropPipePluginProcedure();
+        break;
+      case AUTH_OPERATE_PROCEDURE:
+        procedure = new AuthOperationProcedure(false);
+        break;
+      case PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE:
+        procedure = new DeleteDatabaseProcedure(true);
+        break;
+      case PIPE_ENRICHED_DELETE_TIMESERIES_PROCEDURE:
+        procedure = new DeleteTimeSeriesProcedure(true);
+        break;
+      case PIPE_ENRICHED_DEACTIVATE_TEMPLATE_PROCEDURE:
+        procedure = new DeactivateTemplateProcedure(true);
+        break;
+      case PIPE_ENRICHED_UNSET_TEMPLATE_PROCEDURE:
+        procedure = new UnsetTemplateProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_TEMPLATE_PROCEDURE:
+        procedure = new SetTemplateProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_LOGICAL_VIEW_PROCEDURE:
+        procedure = new AlterLogicalViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_DELETE_LOGICAL_VIEW_PROCEDURE:
+        procedure = new DeleteLogicalViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE:
+        procedure = new CreateTriggerProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE:
+        procedure = new DropTriggerProcedure(true);
+        break;
+      case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
+        procedure = new AuthOperationProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_PROCEDURE:
+        procedure = new CreateTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE:
+        procedure = new AddTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE:
+        procedure = new SetTablePropertiesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
+        procedure = new DropTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_TIMESERIES_DATATYPE_PROCEDURE:
+        procedure = new AlterTimeSeriesDataTypeProcedure(true);
+        break;
+      case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE:
+        procedure = new CreateTableViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE:
+        procedure = new AddViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE:
+        procedure = new DropViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE:
+        procedure = new SetViewPropertiesProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_VIEW_PROCEDURE:
+        procedure = new DropViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_VIEW_COLUMN_PROCEDURE:
+        procedure = new RenameViewColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_VIEW_PROCEDURE:
+        procedure = new RenameViewProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE:
+        procedure = new AlterEncodingCompressorProcedure(true);
+        break;
+      case REMOVE_AI_NODE_PROCEDURE:
+        procedure = new RemoveAINodeProcedure();
+        break;
+      case PIPE_ENRICHED_SET_TTL_PROCEDURE:
+        procedure = new SetTTLProcedure(true);
+        break;
+      case SET_TTL_PROCEDURE:
+        procedure = new SetTTLProcedure(false);
+        break;
+      case CREATE_TOPIC_PROCEDURE:
+        procedure = new CreateTopicProcedure();
+        break;
+      case DROP_TOPIC_PROCEDURE:
+        procedure = new DropTopicProcedure();
+        break;
+      case ALTER_TOPIC_PROCEDURE:
+        procedure = new AlterTopicProcedure();
+        break;
+      case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
+        procedure = new AlterTopicProcedure(true);
+        break;
+      case TOPIC_META_SYNC_PROCEDURE:
+        procedure = new TopicMetaSyncProcedure();
+        break;
+      case CREATE_SUBSCRIPTION_PROCEDURE:
+        procedure = new CreateSubscriptionProcedure();
+        break;
+      case DROP_SUBSCRIPTION_PROCEDURE:
+        procedure = new DropSubscriptionProcedure();
+        break;
+      case CREATE_CONSUMER_PROCEDURE:
+        procedure = new CreateConsumerProcedure();
+        break;
+      case DROP_CONSUMER_PROCEDURE:
+        procedure = new DropConsumerProcedure();
+        break;
+      case ALTER_CONSUMER_GROUP_PROCEDURE:
+        procedure = new AlterConsumerGroupProcedure();
+        break;
+      case CONSUMER_GROUP_META_SYNC_PROCEDURE:
+        procedure = new ConsumerGroupMetaSyncProcedure();
+        break;
+      case COMMIT_PROGRESS_SYNC_PROCEDURE:
+        procedure = new CommitProgressSyncProcedure();
+        break;
+      case SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new SubscriptionHandleLeaderChangeProcedure();
+        break;
+      case CREATE_MANY_DATABASES_PROCEDURE:
+        procedure = new CreateManyDatabasesProcedure();
+        break;
+      case NEVER_FINISH_PROCEDURE:
+        procedure = new NeverFinishProcedure();
+        break;
+      case ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE:
+        procedure = new AddNeverFinishSubProcedureProcedure();
+        break;
+      case DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE:
+        procedure = new DataPartitionTableIntegrityCheckProcedure();
+        break;
+      default:
+        LOGGER.error(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE_2, typeCode);
+        throw new IOException(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE + typeCode);
     }
     try {
       procedure.deserialize(buffer);
@@ -501,8 +494,6 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof NotifyRegionMigrationProcedure) {
       return ProcedureType.NOTIFY_REGION_MIGRATION_PROCEDURE;
-    } else if (procedure instanceof RemoveRegionGroupProcedure) {
-      return ProcedureType.REMOVE_REGION_GROUP_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {

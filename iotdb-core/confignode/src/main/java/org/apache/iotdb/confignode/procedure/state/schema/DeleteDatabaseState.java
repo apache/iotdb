@@ -26,8 +26,5 @@ public enum DeleteDatabaseState {
   DELETE_ALIAS_SCHEMA,
   INVALIDATE_ALIAS_CACHE,
   INVALIDATE_CACHE,
-  DELETE_DATABASE_SCHEMA,
-  // Delete the DatabasePartitionTable and related config after all region groups have been deleted
-  // by the RemoveRegionGroupProcedure children spawned in DELETE_DATABASE_SCHEMA.
-  DELETE_DATABASE_CONFIG
+  DELETE_DATABASE_SCHEMA
 }

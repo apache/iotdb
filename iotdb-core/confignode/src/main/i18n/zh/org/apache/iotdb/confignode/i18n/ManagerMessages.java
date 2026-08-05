@@ -73,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s 不存在。";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "减少快照 {} 的引用计数失败。";
+  public static final String DELETING_REGIONS_COSTS_MS = "删除 region 耗时 {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "检测到来自 DataNode {} 的历史 pipe 完成上报，pipe {}。remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -435,6 +436,8 @@ public final class ManagerMessages {
       "开始在 DataNode: {} 上创建 Region：{}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "开始在 Data Nodes 上创建 UDF [{}]，needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "开始在 DataNode: {} 上删除 Region：{}";
   public static final String START_TRANSFER_OF = "开始传输 {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "停止提交 CQ {}，原因：{}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -517,8 +520,6 @@ public final class ManagerMessages {
       "等待 configNode leader 就绪过程中发生意外中断。";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "等待获取 cluster id 过程中发生意外中断。";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "RegionMaintainer 队列中出现意外的非 create 任务；跳过处理（该队列目前仅用于重建 region 副本，region 删除由 RemoveRegionGroupProcedure 处理）。";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "waitingProcedureFinished 的 procedure 参数为空";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
