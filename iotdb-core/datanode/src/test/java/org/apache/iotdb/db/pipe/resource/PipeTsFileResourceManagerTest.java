@@ -248,8 +248,34 @@ public class PipeTsFileResourceManagerTest {
 
   @Test
   public void testConcurrentIncreaseTsFile() throws Exception {
+    assertConcurrentIncreaseFileReference(new File(TS_FILE_NAME), true);
+  }
+
+  @Test
+  public void testConcurrentIncreaseCopiedFile() throws Exception {
+    assertConcurrentIncreaseFileReference(new File(MODS_FILE_NAME), false);
+  }
+
+  @Test
+  public void testIncreaseFileReferenceRollsBackOnPublicReferenceFailure() throws Exception {
+    final File originModFile = new File(MODS_FILE_NAME);
+    final File pipeModFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originModFile, PIPE_NAME);
+    final File publicModFile =
+        new File(pipeModFile.getParentFile().getParentFile(), pipeModFile.getName());
+    Assert.assertTrue(publicModFile.mkdirs());
+
+    Assert.assertThrows(
+        IOException.class,
+        () -> pipeTsFileResourceManager.increaseFileReference(originModFile, false, PIPE_NAME));
+
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, PIPE_NAME));
+    Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+  }
+
+  private void assertConcurrentIncreaseFileReference(final File originFile, final boolean isTsFile)
+      throws Exception {
     final int concurrency = 64;
-    final File originTsFile = new File(TS_FILE_NAME);
     final CountDownLatch readyLatch = new CountDownLatch(concurrency);
     final CountDownLatch startLatch = new CountDownLatch(1);
     final ExecutorService executor = Executors.newFixedThreadPool(concurrency);
@@ -263,37 +289,36 @@ public class PipeTsFileResourceManagerTest {
                   readyLatch.countDown();
                   startLatch.await();
                   return pipeTsFileResourceManager.increaseFileReference(
-                      originTsFile, true, PIPE_NAME);
+                      originFile, isTsFile, PIPE_NAME);
                 }));
       }
 
       Assert.assertTrue(readyLatch.await(30, TimeUnit.SECONDS));
       startLatch.countDown();
 
-      File pipeTsFile = null;
+      File pipeFile = null;
       for (final Future<File> future : futures) {
         final File referencedFile = future.get(30, TimeUnit.SECONDS);
-        if (pipeTsFile == null) {
-          pipeTsFile = referencedFile;
+        if (pipeFile == null) {
+          pipeFile = referencedFile;
         } else {
-          Assert.assertEquals(pipeTsFile, referencedFile);
+          Assert.assertEquals(pipeFile, referencedFile);
         }
       }
 
-      Assert.assertNotNull(pipeTsFile);
+      Assert.assertNotNull(pipeFile);
       Assert.assertEquals(
-          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, PIPE_NAME));
+          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, PIPE_NAME));
       Assert.assertEquals(
-          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, null));
-      Assert.assertTrue(Files.exists(pipeTsFile.toPath()));
+          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, null));
+      Assert.assertTrue(Files.exists(pipeFile.toPath()));
 
       for (int i = 0; i < concurrency; i++) {
-        pipeTsFileResourceManager.decreaseFileReference(pipeTsFile, PIPE_NAME);
+        pipeTsFileResourceManager.decreaseFileReference(pipeFile, PIPE_NAME);
       }
-      Assert.assertEquals(
-          0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, PIPE_NAME));
-      Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, null));
-      Assert.assertFalse(Files.exists(pipeTsFile.toPath()));
+      Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, PIPE_NAME));
+      Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, null));
+      Assert.assertFalse(Files.exists(pipeFile.toPath()));
     } finally {
       startLatch.countDown();
       executor.shutdownNow();

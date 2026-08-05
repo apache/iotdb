@@ -148,7 +148,13 @@ public class PipeTsFileResourceManager {
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
-    increasePublicReference(resultFile, pipeName, isTsFile);
+    try {
+      increasePublicReference(resultFile, pipeName, isTsFile);
+    } catch (final IOException e) {
+      // The private reference must not outlive a failed public reference increase.
+      decreaseFileReference(resultFile, pipeName, false);
+      throw e;
+    }
     return resultFile;
   }
 
@@ -233,6 +239,13 @@ public class PipeTsFileResourceManager {
    */
   public void decreaseFileReference(
       final File hardlinkOrCopiedFile, final @Nullable String pipeName) {
+    decreaseFileReference(hardlinkOrCopiedFile, pipeName, true);
+  }
+
+  private void decreaseFileReference(
+      final File hardlinkOrCopiedFile,
+      final @Nullable String pipeName,
+      final boolean decreasePublicReference) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
@@ -247,7 +260,9 @@ public class PipeTsFileResourceManager {
 
     // Decrease the assigner's file to clear hard-link and memory cache
     // Note that it does not exist for historical files
-    decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    if (decreasePublicReference) {
+      decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    }
   }
 
   private void decreasePublicReferenceIfExists(final File file, final @Nullable String pipeName) {
