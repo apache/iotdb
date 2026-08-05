@@ -570,6 +570,7 @@ public class CommonConfig {
           AuditEventType.GENERATE_KEY,
           AuditEventType.LOGIN_REJECT_IP,
           AuditEventType.LOGIN_FAIL_MAX_TIMES,
+          AuditEventType.LOGIN_RESOURCE_RESTRICT,
           AuditEventType.LOGIN_EXCEED_LIMIT,
           AuditEventType.ACCOUNT_UNLOCKED,
           AuditEventType.ENTITY_STATUS_CHANGED);

@@ -214,6 +214,7 @@ public class SessionManager implements SessionManagerMBean {
                 DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO
                     + IoTDBConstant.VERSION);
       } else {
+        final TSStatus checkSessionNumStatus;
         synchronized (sessionLimitLock) {
           // check session nums
           User user = AuthorityChecker.getUser(username);
@@ -224,18 +225,28 @@ public class SessionManager implements SessionManagerMBean {
                 .setMessage(String.format("User %s does not exist", username));
             return openSessionResp;
           }
-          TSStatus checkSessionNumStatus =
+          checkSessionNumStatus =
               checkSessionNums(username, user.getMaxSessionPerUser(), user.getMinSessionPerUser());
           if (checkSessionNumStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             session.setSqlDialect(sqlDialect);
             supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
-          } else {
-            openSessionResp
-                .sessionId(-1)
-                .setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode())
-                .setMessage(checkSessionNumStatus.getMessage());
-            return openSessionResp;
           }
+        }
+        if (checkSessionNumStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          openSessionResp
+              .sessionId(-1)
+              .setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode())
+              .setMessage(checkSessionNumStatus.getMessage());
+          AUDIT_LOGGER.log(
+              new AuditLogFields(
+                  userId,
+                  username,
+                  session.getClientAddress(),
+                  AuditEventType.LOGIN_RESOURCE_RESTRICT,
+                  AuditLogOperation.CONTROL,
+                  false),
+              openSessionResp::getMessage);
+          return openSessionResp;
         }
 
         String logInMessage = "Login successfully";
