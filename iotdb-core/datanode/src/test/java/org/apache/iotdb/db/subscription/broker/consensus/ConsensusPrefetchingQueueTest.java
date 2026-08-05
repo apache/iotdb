@@ -1079,6 +1079,110 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testReadableWalIteratorSkipsFileListRefresh() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("skip-readable-wal-refresh");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
+      when(iterator.hasNext()).thenReturn(true);
+      setSubscriptionWalIterator(queue, iterator);
+
+      invokeEnsureSubscriptionWalReadable(queue);
+
+      verify(iterator).hasNext();
+      verify(iterator, never()).refresh();
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testWalRollDoesNotRefreshNewIteratorTwice() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("skip-new-iterator-refresh");
+    final File walDirectory = temporaryFolder.newFolder("skip-new-iterator-refresh-wal");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getCurrentSearchIndex()).thenReturn(1L);
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ProgressWALIterator replacementIterator = mock(ProgressWALIterator.class);
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              assertEquals(1L, startSearchIndex);
+              return replacementIterator;
+            }
+          };
+
+      final ProgressWALIterator exhaustedIterator = mock(ProgressWALIterator.class);
+      when(exhaustedIterator.hasNext()).thenReturn(false);
+      setSubscriptionWalIterator(queue, exhaustedIterator);
+
+      invokeEnsureSubscriptionWalReadable(queue);
+
+      verify(exhaustedIterator, times(2)).hasNext();
+      verify(exhaustedIterator).refresh();
+      verify(exhaustedIterator).close();
+      verify(walNode).rollWALFile();
+      verify(replacementIterator, never()).refresh();
+      assertSame(replacementIterator, subscriptionWalIterator(queue));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testPendingCursorAdvanceDefersWalIteratorRealignment() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("deferred-wal-realignment");
@@ -1647,6 +1751,14 @@ public class ConsensusPrefetchingQueueTest {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("subscriptionWALIterator");
     field.setAccessible(true);
     field.set(queue, iterator);
+  }
+
+  private static void invokeEnsureSubscriptionWalReadable(final ConsensusPrefetchingQueue queue)
+      throws Exception {
+    final Method method =
+        ConsensusPrefetchingQueue.class.getDeclaredMethod("ensureSubscriptionWalReadable");
+    method.setAccessible(true);
+    method.invoke(queue);
   }
 
   private static Tablet createTablet() {

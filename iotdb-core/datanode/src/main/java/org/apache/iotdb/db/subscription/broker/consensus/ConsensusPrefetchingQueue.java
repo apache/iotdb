@@ -1833,7 +1833,6 @@ public class ConsensusPrefetchingQueue {
       return MaterializationResult.SUCCESS;
     }
 
-    subscriptionWALIterator.refresh();
     ensureSubscriptionWalReadable();
 
     int entriesRead = 0;
@@ -1889,9 +1888,14 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void ensureSubscriptionWalReadable() {
-    if (Objects.isNull(subscriptionWALIterator)
-        || subscriptionWALIterator.hasNext()
-        || !(consensusReqReader instanceof WALNode)) {
+    if (Objects.isNull(subscriptionWALIterator) || subscriptionWALIterator.hasNext()) {
+      return;
+    }
+
+    // Listing and sorting all retained WAL files is only necessary after the iterator is
+    // exhausted. While it still has a readable request, refreshing cannot affect the next result.
+    subscriptionWALIterator.refresh();
+    if (subscriptionWALIterator.hasNext() || !(consensusReqReader instanceof WALNode)) {
       return;
     }
 
@@ -1908,9 +1912,6 @@ public class ConsensusPrefetchingQueue {
         currentWalIndex);
     ((WALNode) consensusReqReader).rollWALFile();
     resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
-    if (Objects.nonNull(subscriptionWALIterator)) {
-      subscriptionWALIterator.refresh();
-    }
   }
 
   private void resetSubscriptionWALPosition(final long startSearchIndex) {

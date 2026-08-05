@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -68,6 +69,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private final long startSearchIndex;
   private final WALNode liveWalNode;
   private File[] walFiles;
+  private long[] walFileVersionIds;
   private int currentFileIndex = -1;
   private ProgressWALReader currentReader;
   private long currentReaderVersionId = -1L;
@@ -114,23 +116,29 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     final File[] discoveredWalFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (discoveredWalFiles == null) {
       walFiles = new File[0];
+      walFileVersionIds = new long[0];
       return;
     }
     WALFileUtils.ascSortByVersionId(discoveredWalFiles);
-    final List<File> filteredWalFiles = new ArrayList<>(discoveredWalFiles.length);
+    final File[] filteredWalFiles = new File[discoveredWalFiles.length];
+    final long[] filteredWalFileVersionIds = new long[discoveredWalFiles.length];
+    int filteredWalFileCount = 0;
     for (int i = 0; i < discoveredWalFiles.length; i++) {
       final File walFile = discoveredWalFiles[i];
+      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
       final boolean isLastWalFile = i == discoveredWalFiles.length - 1;
-      if (!isLastWalFile && shouldSkipWalFile(walFile)) {
+      if (!isLastWalFile && shouldSkipWalFile(walFile, versionId)) {
         continue;
       }
-      filteredWalFiles.add(walFile);
+      filteredWalFiles[filteredWalFileCount] = walFile;
+      filteredWalFileVersionIds[filteredWalFileCount] = versionId;
+      filteredWalFileCount++;
     }
-    walFiles = filteredWalFiles.toArray(new File[0]);
+    walFiles = Arrays.copyOf(filteredWalFiles, filteredWalFileCount);
+    walFileVersionIds = Arrays.copyOf(filteredWalFileVersionIds, filteredWalFileCount);
   }
 
-  private boolean shouldSkipWalFile(final File walFile) {
-    final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+  private boolean shouldSkipWalFile(final File walFile, final long versionId) {
     return skippedBrokenWalVersionIds.contains(versionId) || isHeaderOnlyWalFile(walFile);
   }
 
@@ -141,22 +149,14 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   public void refresh() {
     final long currentVersionId =
         (currentFileIndex >= 0 && currentFileIndex < walFiles.length)
-            ? WALFileUtils.parseVersionId(walFiles[currentFileIndex].getName())
+            ? walFileVersionIds[currentFileIndex]
             : -1;
 
     refreshFileList();
 
     if (currentVersionId >= 0) {
-      currentFileIndex = -1;
-      for (int i = 0; i < walFiles.length; i++) {
-        if (WALFileUtils.parseVersionId(walFiles[i].getName()) >= currentVersionId) {
-          currentFileIndex = i;
-          break;
-        }
-      }
-      if (currentFileIndex < 0) {
-        currentFileIndex = walFiles.length;
-      }
+      final int refreshedIndex = Arrays.binarySearch(walFileVersionIds, currentVersionId);
+      currentFileIndex = refreshedIndex >= 0 ? refreshedIndex : -refreshedIndex - 1;
     }
   }
 
@@ -337,7 +337,7 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       if (fileIndex < 0) {
         return false;
       }
-      return openReaderAtIndex(fileIndex, consumedEntryCountInCurrentFile);
+      return openReaderAtIndex(fileIndex, consumedEntryCountInCurrentFile, true, snapshot);
     }
 
     final int previousFileIndex = findFileIndexByVersion(currentReaderVersionId);
@@ -351,21 +351,34 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private boolean openReaderAtIndex(final int fileIndex, final int skipEntries) throws IOException {
-    return openReaderAtIndex(fileIndex, skipEntries, true);
+    return openReaderAtIndex(fileIndex, skipEntries, true, null);
   }
 
   private boolean openReaderAtIndex(
       final int fileIndex, final int skipEntries, final boolean allowNearLiveRetry)
       throws IOException {
+    return openReaderAtIndex(fileIndex, skipEntries, allowNearLiveRetry, null);
+  }
+
+  private boolean openReaderAtIndex(
+      final int fileIndex,
+      final int skipEntries,
+      final boolean allowNearLiveRetry,
+      final WALMetaData liveMetaDataSnapshot)
+      throws IOException {
     final File walFile = walFiles[fileIndex];
-    final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+    final long versionId = walFileVersionIds[fileIndex];
     final boolean useLiveSnapshot =
         liveWalNode != null && versionId == liveWalNode.getCurrentWALFileVersion();
 
     try {
       final ProgressWALReader reader =
           useLiveSnapshot
-              ? new ProgressWALReader(walFile, liveWalNode.getCurrentWALMetaDataSnapshot())
+              ? new ProgressWALReader(
+                  walFile,
+                  liveMetaDataSnapshot != null
+                      ? liveMetaDataSnapshot
+                      : liveWalNode.getCurrentWALMetaDataSnapshot())
               : new ProgressWALReader(walFile);
       if (!skipEntries(reader, skipEntries)) {
         reader.close();
@@ -422,18 +435,16 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private int findFileIndexByVersion(final long versionId) {
-    for (int i = 0; i < walFiles.length; i++) {
-      if (WALFileUtils.parseVersionId(walFiles[i].getName()) == versionId) {
-        return i;
-      }
-    }
-    return -1;
+    final int fileIndex = Arrays.binarySearch(walFileVersionIds, versionId);
+    return fileIndex >= 0 ? fileIndex : -1;
   }
 
   private boolean openFirstReaderAfterVersion(final long versionId) throws IOException {
-    for (int i = 0; i < walFiles.length; i++) {
-      if (WALFileUtils.parseVersionId(walFiles[i].getName()) > versionId
-          && openReaderAtIndex(i, 0)) {
+    final int matchedFileIndex = Arrays.binarySearch(walFileVersionIds, versionId);
+    final int firstFileIndexAfterVersion =
+        matchedFileIndex >= 0 ? matchedFileIndex + 1 : -matchedFileIndex - 1;
+    for (int i = firstFileIndexAfterVersion; i < walFiles.length; i++) {
+      if (openReaderAtIndex(i, 0)) {
         return true;
       }
     }

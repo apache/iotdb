@@ -42,6 +42,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ProgressWALIteratorTest {
@@ -274,6 +276,41 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
+  public void testLiveWalReopenReusesMetadataSnapshot() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-live-snapshot");
+    final File liveWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(liveWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 1001L, 7, 2L));
+      }
+
+      final WALMetaData firstSnapshot = singleEntryMeta(19, 1L, 1L, 1000L, 7, 1L);
+      final WALMetaData secondSnapshot = firstSnapshot.copy();
+      secondSnapshot.add(19, 2L, 1L, 1001L, 7, 2L);
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(dir.toFile());
+      when(walNode.getCurrentWALFileVersion()).thenReturn(0L);
+      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(firstSnapshot, secondSnapshot);
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, 1L)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(1L, iterator.next().getSearchIndex());
+        assertTrue(iterator.hasNext());
+        assertEquals(2L, iterator.next().getSearchIndex());
+        verify(walNode, times(2)).getCurrentWALMetaDataSnapshot();
+      }
+    } finally {
+      Files.deleteIfExists(liveWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
   public void testIteratorMarksIncompleteScanWhenNearLiveWalCannotBeOpened() throws Exception {
     final Path dir = Files.createTempDirectory("progress-wal-iterator-incomplete-scan");
     final File brokenLiveWal =
@@ -336,16 +373,29 @@ public class ProgressWALIteratorTest {
       assertEquals(entryCount, consumeWithReopenedIterator(dir.toFile(), entryCount, batchSize));
       final long reopenNanos = System.nanoTime() - reopenStartNanos;
 
+      final long refreshStartNanos = System.nanoTime();
+      assertEquals(entryCount, consumeWithRefreshedIterator(dir.toFile(), entryCount, batchSize));
+      final long refreshNanos = System.nanoTime() - refreshStartNanos;
+
       final long reuseStartNanos = System.nanoTime();
       assertEquals(entryCount, consumeWithReusedIterator(dir.toFile(), entryCount));
       final long reuseNanos = System.nanoTime() - reuseStartNanos;
 
-      final double speedup = (double) reopenNanos / Math.max(1L, reuseNanos);
+      final double reopenSpeedup = (double) reopenNanos / Math.max(1L, reuseNanos);
+      final double refreshSpeedup = (double) refreshNanos / Math.max(1L, reuseNanos);
       System.out.printf(
           "Subscription WAL iterator benchmark: entries=%d, batchSize=%d, "
-              + "reopen=%.3f ms, reuse=%.3f ms, speedup=%.2fx%n",
-          entryCount, batchSize, reopenNanos / 1_000_000.0, reuseNanos / 1_000_000.0, speedup);
-      assertTrue("Reusing the iterator should be faster than reopening each batch", speedup > 1.0);
+              + "reopen=%.3f ms, refreshEachBatch=%.3f ms, reuse=%.3f ms, "
+              + "reopenSpeedup=%.2fx, refreshSpeedup=%.2fx%n",
+          entryCount,
+          batchSize,
+          reopenNanos / 1_000_000.0,
+          refreshNanos / 1_000_000.0,
+          reuseNanos / 1_000_000.0,
+          reopenSpeedup,
+          refreshSpeedup);
+      assertTrue(
+          "Reusing the iterator should be faster than reopening each batch", reopenSpeedup > 1.0);
     } finally {
       Files.deleteIfExists(dataWal.toPath());
       Files.deleteIfExists(successorWal.toPath());
@@ -380,6 +430,26 @@ public class ProgressWALIteratorTest {
       while (consumed < entryCount && iterator.hasNext()) {
         iterator.next();
         consumed++;
+      }
+    }
+    return consumed;
+  }
+
+  private static int consumeWithRefreshedIterator(
+      final File walDirectory, final int entryCount, final int batchSize) throws Exception {
+    int consumed = 0;
+    try (ProgressWALIterator iterator = new ProgressWALIterator(walDirectory, 1L)) {
+      while (consumed < entryCount) {
+        iterator.refresh();
+        int batchCount = 0;
+        while (batchCount < batchSize && iterator.hasNext()) {
+          iterator.next();
+          batchCount++;
+          consumed++;
+        }
+        if (batchCount == 0) {
+          break;
+        }
       }
     }
     return consumed;
