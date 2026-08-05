@@ -688,11 +688,11 @@ public class TsFileProcessorTest {
     // Test Tablet
     processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1764688, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1764688, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1764688, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
     // Test records
@@ -701,7 +701,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
     }
-    Assert.assertEquals(1598168, memTable.getTVListsRamCost());
+    Assert.assertEquals(1766304, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
   }
@@ -724,21 +724,21 @@ public class TsFileProcessorTest {
     // Test Tablet
     processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1764688, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(3552552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(3552552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(3552552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(3552552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(3552552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(6937104, memTable.getTVListsRamCost());
+    Assert.assertEquals(7537280, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(7105104, memTable.getTVListsRamCost());
+    Assert.assertEquals(7705280, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
     Assert.assertEquals(1920960, memTable.memSize());
@@ -748,14 +748,14 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
     }
-    Assert.assertEquals(7106720, memTable.getTVListsRamCost());
+    Assert.assertEquals(7706896, memTable.getTVListsRamCost());
     // Test records
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
     }
-    Assert.assertEquals(7108336, memTable.getTVListsRamCost());
+    Assert.assertEquals(7708512, memTable.getTVListsRamCost());
     Assert.assertEquals(240200, memTable.getTotalPointsNum());
     Assert.assertEquals(1923360, memTable.memSize());
   }
