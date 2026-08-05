@@ -195,9 +195,9 @@ public class ConsensusPrefetchingQueue {
   private volatile ProgressWALIterator subscriptionWALIterator;
 
   /**
-   * Seek requests must not close/reset the WAL iterator from RPC threads because the prefetch
-   * worker may be reading it concurrently. Instead, seek only records the latest desired reset and
-   * the queue's next prefetch round applies it after observing the new seek generation.
+   * WAL cursor changes outside the iterator must not close/reset it from RPC threads because the
+   * prefetch worker may be reading it concurrently. Instead, the latest desired reset is recorded
+   * and applied by the next prefetch round after observing the expected seek generation.
    */
   private volatile long pendingSubscriptionWalResetSearchIndex = Long.MIN_VALUE;
 
@@ -1597,9 +1597,20 @@ public class ConsensusPrefetchingQueue {
     return hasLocalSearchIndex(request) && request.getSearchIndex() < nextExpectedSearchIndex.get();
   }
 
-  private void advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
+  private boolean advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
     if (hasLocalSearchIndex(request)) {
       nextExpectedSearchIndex.set(request.getSearchIndex() + 1);
+      return true;
+    }
+    return false;
+  }
+
+  private void advanceLocalCursorFromPendingIfPresent(
+      final IndexedConsensusRequest request, final long expectedSeekGeneration) {
+    if (advanceLocalCursorIfPresent(request)) {
+      // The pending path advances independently of the WAL iterator. Defer realignment until the
+      // next round so the current pending batch can finish without repeatedly reopening the WAL.
+      requestSubscriptionWalReset(nextExpectedSearchIndex.get(), expectedSeekGeneration);
     }
   }
 
@@ -1678,12 +1689,12 @@ public class ConsensusPrefetchingQueue {
 
       if (shouldSkipForRecoveryProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
       if (shouldSkipForMaterializedProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
 
@@ -1695,7 +1706,7 @@ public class ConsensusPrefetchingQueue {
       }
       markMaterializedProgress(request);
       processedCount++;
-      advanceLocalCursorIfPresent(request);
+      advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
         break;
       }
@@ -1787,7 +1798,9 @@ public class ConsensusPrefetchingQueue {
     // Use the persistent linger batch so an unexpected runtime failure cannot orphan already
     // reserved Tablets or advance replay progress past data that has become unreachable.
     final DeliveryBatchState batchState = lingerBatch;
-    resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
+    // Keep the iterator and its buffered next request across rounds. Reopening it here discards the
+    // request prepared by hasNext() and repeatedly re-reads, skips, and decompresses the same WAL
+    // segment. Pending-path cursor advances and seek operations request explicit realignment.
     final MaterializationResult materializationResult =
         pumpFromSubscriptionWAL(
             batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
@@ -1915,6 +1928,11 @@ public class ConsensusPrefetchingQueue {
   protected void onWalGapRetryScheduled() {}
 
   private boolean hasReadableWalEntries() {
+    if (pendingSubscriptionWalResetSearchIndex != Long.MIN_VALUE) {
+      // Do not advance the stale iterator only to discard its buffered request when the next round
+      // applies the pending realignment. Returning true keeps the worker scheduled for that round.
+      return true;
+    }
     return Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasNext();
   }
 
@@ -2209,7 +2227,10 @@ public class ConsensusPrefetchingQueue {
 
   private boolean ackMissingInFlightEvent(
       final SubscriptionCommitContext commitContext, final boolean silent) {
-    acquireWriteLock();
+    // Late or duplicate ACKs touch the same concurrent lifecycle indexes and commit manager as the
+    // regular in-flight ACK path. A read lock is sufficient to fence seek/close transitions while
+    // allowing ACKs to proceed concurrently with a long-running WAL prefetch round.
+    acquireReadLock();
     try {
       if (!canAcceptCommitContext(commitContext, "ack", silent)) {
         return false;
@@ -2256,7 +2277,7 @@ public class ConsensusPrefetchingQueue {
       }
       return true;
     } finally {
-      releaseWriteLock();
+      releaseReadLock();
     }
   }
 

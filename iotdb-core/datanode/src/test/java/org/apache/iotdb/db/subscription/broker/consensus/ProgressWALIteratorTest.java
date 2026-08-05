@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.io.File;
@@ -297,6 +298,91 @@ public class ProgressWALIteratorTest {
       Files.deleteIfExists(brokenLiveWal.toPath());
       Files.deleteIfExists(dir);
     }
+  }
+
+  @Test
+  public void testIteratorReusePerformance() throws Exception {
+    Assume.assumeTrue(
+        "Enable with -Diotdb.test.subscription.performance=true",
+        Boolean.getBoolean("iotdb.test.subscription.performance"));
+
+    final int entryCount = Integer.getInteger("iotdb.test.subscription.performance.entries", 4096);
+    final int batchSize = Integer.getInteger("iotdb.test.subscription.performance.batch-size", 64);
+    assertTrue("entry count must be positive", entryCount > 0);
+    assertTrue("batch size must be positive", batchSize > 0);
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-performance");
+    final File dataWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File successorWal =
+        dir.resolve(
+                WALFileUtils.getLogFileName(
+                    1, entryCount + 1L, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(dataWal, WALFileVersion.V3)) {
+        for (long index = 1; index <= entryCount; index++) {
+          writer.write(searchableEntry(index), singleEntryMeta(19, index, 1L, index, 7, index));
+        }
+      }
+      try (WALWriter ignored = new WALWriter(successorWal, WALFileVersion.V3)) {
+        // Seal the data WAL so both benchmark variants read the same historical file.
+      }
+
+      assertEquals(entryCount, consumeWithReusedIterator(dir.toFile(), entryCount));
+
+      final long reopenStartNanos = System.nanoTime();
+      assertEquals(entryCount, consumeWithReopenedIterator(dir.toFile(), entryCount, batchSize));
+      final long reopenNanos = System.nanoTime() - reopenStartNanos;
+
+      final long reuseStartNanos = System.nanoTime();
+      assertEquals(entryCount, consumeWithReusedIterator(dir.toFile(), entryCount));
+      final long reuseNanos = System.nanoTime() - reuseStartNanos;
+
+      final double speedup = (double) reopenNanos / Math.max(1L, reuseNanos);
+      System.out.printf(
+          "Subscription WAL iterator benchmark: entries=%d, batchSize=%d, "
+              + "reopen=%.3f ms, reuse=%.3f ms, speedup=%.2fx%n",
+          entryCount, batchSize, reopenNanos / 1_000_000.0, reuseNanos / 1_000_000.0, speedup);
+      assertTrue("Reusing the iterator should be faster than reopening each batch", speedup > 1.0);
+    } finally {
+      Files.deleteIfExists(dataWal.toPath());
+      Files.deleteIfExists(successorWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  private static int consumeWithReopenedIterator(
+      final File walDirectory, final int entryCount, final int batchSize) throws Exception {
+    int consumed = 0;
+    long nextSearchIndex = 1L;
+    while (consumed < entryCount) {
+      int batchCount = 0;
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walDirectory, nextSearchIndex)) {
+        while (batchCount < batchSize && iterator.hasNext()) {
+          nextSearchIndex = iterator.next().getSearchIndex() + 1L;
+          batchCount++;
+          consumed++;
+        }
+      }
+      if (batchCount == 0) {
+        break;
+      }
+    }
+    return consumed;
+  }
+
+  private static int consumeWithReusedIterator(final File walDirectory, final int entryCount)
+      throws Exception {
+    int consumed = 0;
+    try (ProgressWALIterator iterator = new ProgressWALIterator(walDirectory, 1L)) {
+      while (consumed < entryCount && iterator.hasNext()) {
+        iterator.next();
+        consumed++;
+      }
+    }
+    return consumed;
   }
 
   private static ByteBuffer searchableEntry(final long bodySearchIndex) {
