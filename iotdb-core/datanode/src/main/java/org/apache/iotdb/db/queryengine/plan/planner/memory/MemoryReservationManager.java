@@ -41,6 +41,12 @@ public interface MemoryReservationManager {
   void releaseMemoryCumulatively(final long size);
 
   /**
+   * Release the given size immediately. This is used to roll back a reservation when the operation
+   * protected by that reservation fails before ownership is published.
+   */
+  void releaseMemoryImmediately(final long size);
+
+  /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of
    * this manager ends, Or the memory to be released in the batch may not be released correctly.
    */

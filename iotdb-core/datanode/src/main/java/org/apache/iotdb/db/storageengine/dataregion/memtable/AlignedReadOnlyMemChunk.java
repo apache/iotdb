@@ -122,12 +122,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         // We must update queryRowCount here, otherwise, it may be used later to build
         // BitMaps, causing bitmap array size mismatch and possible out of bound.
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =
               (FragmentInstanceContext) alignedTvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
             long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
@@ -367,12 +367,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =
               (FragmentInstanceContext) alignedTvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
             long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
