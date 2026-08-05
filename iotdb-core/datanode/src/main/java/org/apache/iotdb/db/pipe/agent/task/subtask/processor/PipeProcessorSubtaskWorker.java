@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,16 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private int workingRoundInAdjustmentInterval = 0;
   private long sleepingTimeInMilliSecond = 50;
 
-  private final Set<PipeProcessorSubtask> subtasks =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<PipeProcessorSubtask> subtasks;
+
+  public PipeProcessorSubtaskWorker() {
+    this(Collections.newSetFromMap(new ConcurrentHashMap<>()));
+  }
+
+  @VisibleForTesting
+  PipeProcessorSubtaskWorker(final Set<PipeProcessorSubtask> subtasks) {
+    this.subtasks = subtasks;
+  }
 
   @Override
   @SuppressWarnings("squid:S2189")
@@ -56,7 +65,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     subtasks.removeIf(PipeProcessorSubtask::isClosed);
   }
 
-  private boolean runSubtasks() {
+  @VisibleForTesting
+  boolean runSubtasks() {
     ++totalRoundInAdjustmentInterval;
 
     boolean canSleepBeforeNextRound = true;
