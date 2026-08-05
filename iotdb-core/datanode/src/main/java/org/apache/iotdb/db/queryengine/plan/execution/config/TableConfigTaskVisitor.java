@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -1628,8 +1629,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
-    PasswordChangeAuditContext auditContext =
+    PasswordChangeAuditContext passwordAuditContext =
         PasswordChangeAuditContext.forTableStatement(node, context.getSession());
+    UserRoleModificationAuditContext userRoleAuditContext =
+        UserRoleModificationAuditContext.forTableStatement(
+            node, context.getSession(), context.getSql());
     boolean executionDelegated = false;
     try {
       context.setQueryType(node.getQueryType());
@@ -1644,12 +1648,14 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         visitUpdateUser(node);
       }
       IConfigTask task =
-          PasswordChangeAuditTask.wrap(new RelationalAuthorizerTask(node), auditContext);
+          PasswordChangeAuditTask.wrap(
+              new RelationalAuthorizerTask(node, userRoleAuditContext), passwordAuditContext);
       executionDelegated = true;
       return task;
     } finally {
       if (!executionDelegated) {
-        auditContext.log(null);
+        passwordAuditContext.log(null);
+        userRoleAuditContext.log(null);
       }
     }
   }

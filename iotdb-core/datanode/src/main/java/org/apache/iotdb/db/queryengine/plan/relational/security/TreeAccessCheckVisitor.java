@@ -645,10 +645,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             authorType == AuthorType.CREATE_ROLE || authorType == AuthorType.DROP_ROLE
                 ? statement::getRoleName
                 : () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName();
-        return checkGlobalAuth(
-            context.setAuditLogOperation(AuditLogOperation.DDL),
-            PrivilegeType.MANAGE_ROLE,
-            auditObject);
+        TSStatus status =
+            checkGlobalAuth(
+                context.setAuditLogOperation(AuditLogOperation.DDL),
+                PrivilegeType.MANAGE_ROLE,
+                auditObject);
+        if (authorType == AuthorType.GRANT_USER_ROLE || authorType == AuthorType.REVOKE_USER_ROLE) {
+          DNAuditLogger.getInstance()
+              .logUserRoleModificationAuthorizationFailure(statement, context, status);
+        }
+        return status;
 
       case REVOKE_USER:
       case GRANT_USER:
