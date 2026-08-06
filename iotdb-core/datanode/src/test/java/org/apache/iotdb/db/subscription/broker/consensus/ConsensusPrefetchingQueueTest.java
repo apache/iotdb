@@ -75,6 +75,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -1183,7 +1184,7 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
-  public void testPendingCursorAdvanceDefersWalIteratorRealignment() throws Exception {
+  public void testPendingCursorAdvanceFastForwardsWalIteratorInPlace() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("deferred-wal-realignment");
     ConsensusPrefetchingQueue queue = null;
@@ -1223,20 +1224,10 @@ public class ConsensusPrefetchingQueueTest {
           queue.getCurrentSeekGeneration());
 
       assertEquals(8L, queue.getCurrentReadSearchIndex());
-      final Method hasReadableWalEntries =
-          ConsensusPrefetchingQueue.class.getDeclaredMethod("hasReadableWalEntries");
-      hasReadableWalEntries.setAccessible(true);
-      assertTrue((Boolean) hasReadableWalEntries.invoke(queue));
-      verify(staleIterator, never()).hasNext();
-
-      final Method applyPendingWalReset =
-          ConsensusPrefetchingQueue.class.getDeclaredMethod(
-              "applyPendingSubscriptionWalReset", long.class);
-      applyPendingWalReset.setAccessible(true);
-      applyPendingWalReset.invoke(queue, queue.getCurrentSeekGeneration());
-
-      verify(staleIterator).close();
-      assertNull(subscriptionWalIterator(queue));
+      verify(staleIterator)
+          .advanceTo(anyLong(), any(ProgressWALIterator.WriterProgressCoverage.class));
+      verify(staleIterator, never()).close();
+      assertSame(staleIterator, subscriptionWalIterator(queue));
     } finally {
       if (queue != null) {
         queue.close();

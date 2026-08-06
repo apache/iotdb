@@ -1608,10 +1608,28 @@ public class ConsensusPrefetchingQueue {
   private void advanceLocalCursorFromPendingIfPresent(
       final IndexedConsensusRequest request, final long expectedSeekGeneration) {
     if (advanceLocalCursorIfPresent(request)) {
-      // The pending path advances independently of the WAL iterator. Defer realignment until the
-      // next round so the current pending batch can finish without repeatedly reopening the WAL.
-      requestSubscriptionWalReset(nextExpectedSearchIndex.get(), expectedSeekGeneration);
+      // Pending delivery advances independently of the WAL reader. Raise its local lower bound in
+      // place so stale local requests are filtered without rebuilding and rescanning retained WAL.
+      final ProgressWALIterator iterator = subscriptionWALIterator;
+      if (Objects.nonNull(iterator) && seekGeneration.get() == expectedSeekGeneration) {
+        iterator.advanceTo(
+            nextExpectedSearchIndex.get(), this::isWriterProgressCoveredForWalFastForward);
+      }
     }
+  }
+
+  private boolean isWriterProgressCoveredForWalFastForward(
+      final long physicalTime, final int nodeId, final long localSeq) {
+    final WriterProgress candidate = new WriterProgress(physicalTime, localSeq);
+    final WriterProgress recoveryProgress =
+        recoveryWriterProgressByWriter.get(new WriterId(consensusGroupId.toString(), nodeId));
+    if (Objects.nonNull(recoveryProgress)
+        && compareWriterProgress(candidate, recoveryProgress) <= 0) {
+      return true;
+    }
+    final WriterProgress materializedProgress = materializedProgressByWriter.get(nodeId);
+    return Objects.nonNull(materializedProgress)
+        && compareWriterProgress(candidate, materializedProgress) <= 0;
   }
 
   private MaterializationResult appendRealtimeRequest(
