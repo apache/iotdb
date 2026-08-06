@@ -49,7 +49,7 @@ public class ClusterAuthorityFetcherLeaseTest {
     Assert.assertNotNull(fetcher.getAuthorCache().getUserCache(user.getName()));
 
     clock.addMillis(T_FENCE_MS + 1);
-    fetcher.checkCacheAvailable();
+    fetcher.failIfMetadataLeaseFenced();
 
     Assert.assertNull(
         "a fenced DataNode must drop its permission cache so a missed REVOKE cannot keep authorizing",
@@ -66,7 +66,7 @@ public class ClusterAuthorityFetcherLeaseTest {
     // An active lease (a ConfigNode heartbeat was just received) must not needlessly drop the
     // cache.
     clock.addMillis(1_000L);
-    fetcher.checkCacheAvailable();
+    fetcher.failIfMetadataLeaseFenced();
 
     Assert.assertNotNull(
         "an active lease must not needlessly drop the permission cache",
@@ -96,8 +96,8 @@ public class ClusterAuthorityFetcherLeaseTest {
     }
 
     @Override
-    boolean isMetadataLeaseFenced() {
-      return MetadataLeaseTestUtils.isFenced(leaseManager);
+    void failIfMetadataLeaseFenced() {
+      MetadataLeaseTestUtils.isFenced(leaseManager);
     }
   }
 }

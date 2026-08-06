@@ -20,21 +20,25 @@
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.auth.AuthOperationProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -50,8 +54,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.confignode.procedure.state.auth.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
@@ -68,7 +72,6 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   private static final String CONSENSUS_WRITE_ERROR =
       ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
-  private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
@@ -97,54 +100,40 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
           writePlan(env);
           return Flow.HAS_MORE_STATE;
         case DATANODE_AUTHCACHE_INVALIDING:
-          TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-          TSStatus status;
-          req.setUsername(user);
-          req.setRoleName(role);
+          TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq(user, role);
           if (plan.getAuthorType() == ConfigPhysicalPlanType.AccountUnlock
               || plan.getAuthorType() == ConfigPhysicalPlanType.RAccountUnlock) {
             // For account unlock, role carries the optional login address.
             req.setNeedDisconnect(true);
           }
-          Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
-          while (it.hasNext()) {
-            Pair<TDataNodeConfiguration, Long> pair = it.next();
-            if (pair.getRight() + this.timeoutMS < System.currentTimeMillis()) {
-              it.remove();
-              continue;
-            }
-            status =
-                (TSStatus)
-                    SyncDataNodeClientPool.getInstance()
-                        .sendSyncRequestToDataNodeWithRetry(
-                            pair.getLeft().getLocation().getInternalEndPoint(),
-                            req,
-                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
-            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              it.remove();
-            }
-          }
-          if (dataNodesToInvalid.isEmpty()) {
+          final boolean proceeded =
+              new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+                  .propagate(targets -> broadcastAuthorityCache(req, targets));
+
+          if (proceeded) {
             LOGGER.info(ProcedureMessages.AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY);
             return Flow.NO_MORE_STATE;
-          } else {
-            setNextState(AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING);
           }
-          break;
+          LOGGER.error(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED);
+          setFailure(
+              new ProcedureException(
+                  new IoTDBException(
+                      ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED,
+                      TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())));
+          return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.error(ProcedureMessages.FAIL_WHEN_EXECUTE, plan);
         setFailure(new ProcedureException(e));
       } else {
-        LOGGER.error(
-            ProcedureMessages.RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE, plan, state, e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  String.format(
-                      ProcedureMessages.FAIL_TO_EXECUTE_PLAN_AT_STATE, plan.toString(), state)));
-        }
+        LOGGER.error(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED, e);
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED,
+                    e,
+                    TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())));
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -164,17 +153,24 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     }
     if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DATANODE_AUTHCACHE_INVALIDING);
-      for (TDataNodeConfiguration item : datanodes) {
-        this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
-      }
-      LOGGER.info(
-          ProcedureMessages.EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES,
-          plan,
-          dataNodesToInvalid);
+      LOGGER.info(ProcedureMessages.EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES, plan);
     } else {
       LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
     }
+  }
+
+  private static Map<Integer, TSStatus> broadcastAuthorityCache(
+      final TInvalidatePermissionCacheReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TInvalidatePermissionCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_PERMISSION_CACHE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   @Override
