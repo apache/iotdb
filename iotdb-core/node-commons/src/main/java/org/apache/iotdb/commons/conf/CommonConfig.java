@@ -573,6 +573,9 @@ public class CommonConfig {
           AuditEventType.LOGIN_RESOURCE_RESTRICT,
           AuditEventType.LOGIN_EXCEED_LIMIT,
           AuditEventType.ACCOUNT_UNLOCKED,
+          AuditEventType.MODIFY_PASSWD,
+          AuditEventType.MODIFY_ROLE_MEMBERSHIP,
+          AuditEventType.REVOKE_FAILED,
           AuditEventType.ENTITY_STATUS_CHANGED);
 
   /** The level of privilege required to record audit logs * */
