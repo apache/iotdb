@@ -102,6 +102,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -768,10 +769,21 @@ public class ConfigNodeProcedureEnv {
   }
 
   public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, null);
+  }
+
+  public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, boolean isTableModel) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, Boolean.valueOf(isTableModel));
+  }
+
+  private List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, Boolean isTableModel) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleTopicMetaReq request =
         new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
+    if (Objects.nonNull(isTableModel)) {
+      request.setIsTableModel(isTableModel);
+    }
 
     final DataNodeAsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(

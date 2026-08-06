@@ -1449,7 +1449,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
-        exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
+        exceptionMessage =
+            req.isSetIsTableModel()
+                ? SubscriptionAgent.topic()
+                    .handleDropTopic(req.getTopicNameToDrop(), req.isIsTableModel())
+                : SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
       } else if (req.isSetTopicMeta()) {
         exceptionMessage =
             SubscriptionAgent.topic()

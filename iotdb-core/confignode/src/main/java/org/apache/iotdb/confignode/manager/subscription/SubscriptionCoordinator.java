@@ -51,6 +51,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -82,15 +83,17 @@ public class SubscriptionCoordinator {
   private final SubscriptionMetaSyncer subscriptionMetaSyncer;
   private final SubscriptionOwnerLeaseSyncer subscriptionOwnerLeaseSyncer;
 
-  // Serialize client ALTER TOPIC requests per topic. Besides preventing ordinary partial updates
-  // from being built from the same snapshot, this also ensures that only one owner-transfer
-  // request can own the renewal-block entry for a topic at a time.
-  private final Map<String, TopicAlterationLock> topicAlterationLocks = new HashMap<>();
+  // Serialize client ALTER TOPIC requests per model-qualified topic. Besides preventing ordinary
+  // partial updates from being built from the same snapshot, this also ensures that only one
+  // owner-transfer request can own the renewal-block entry for a topic at a time.
+  private final Map<TopicModelKey, TopicAlterationLock> topicAlterationLocks = new HashMap<>();
 
-  // topicName -> blockSinceMs (ConfigNode local clock when owner-lease renewal was stopped for an
-  // in-flight owner transfer). Used to skip renewal and to bound the admission wait.
-  private final Map<String, Long> blockedOwnerLeaseRenewalTopics =
+  // model-qualified topic -> blockSinceMs (ConfigNode local clock when owner-lease renewal was
+  // stopped for an in-flight owner transfer). Used to skip renewal and to bound the admission wait.
+  private final Map<TopicModelKey, Long> blockedOwnerLeaseRenewalTopics =
       Collections.synchronizedMap(new HashMap<>());
+
+  private record TopicModelKey(String topicName, boolean isTableModel) {}
 
   private static class TopicAlterationLock {
 
@@ -148,25 +151,35 @@ public class SubscriptionCoordinator {
   }
 
   public void lockTopicAlteration(final String topicName) {
+    lockTopicAlteration(topicName, false);
+  }
+
+  public void lockTopicAlteration(final String topicName, final boolean isTableModel) {
+    final TopicModelKey topicModelKey = new TopicModelKey(topicName, isTableModel);
     final TopicAlterationLock topicAlterationLock;
     synchronized (topicAlterationLocks) {
       topicAlterationLock =
-          topicAlterationLocks.computeIfAbsent(topicName, ignored -> new TopicAlterationLock());
+          topicAlterationLocks.computeIfAbsent(topicModelKey, ignored -> new TopicAlterationLock());
       topicAlterationLock.referenceCount++;
     }
     topicAlterationLock.lock.lock();
   }
 
   public void unlockTopicAlteration(final String topicName) {
+    unlockTopicAlteration(topicName, false);
+  }
+
+  public void unlockTopicAlteration(final String topicName, final boolean isTableModel) {
+    final TopicModelKey topicModelKey = new TopicModelKey(topicName, isTableModel);
     final TopicAlterationLock topicAlterationLock;
     synchronized (topicAlterationLocks) {
-      topicAlterationLock = topicAlterationLocks.get(topicName);
+      topicAlterationLock = topicAlterationLocks.get(topicModelKey);
     }
 
     topicAlterationLock.lock.unlock();
     synchronized (topicAlterationLocks) {
       if (--topicAlterationLock.referenceCount == 0) {
-        topicAlterationLocks.remove(topicName, topicAlterationLock);
+        topicAlterationLocks.remove(topicModelKey, topicAlterationLock);
       }
     }
   }
@@ -221,7 +234,9 @@ public class SubscriptionCoordinator {
   }
 
   public boolean blockOwnerLeaseRenewalIfOwnerTransfer(TAlterTopicReq req) {
-    final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+    final TopicMeta currentTopicMeta =
+        subscriptionInfo.deepCopyTopicMeta(
+            req.getTopicName(), new TopicConfig(req.getTopicAttributes()).isTableTopic());
     final TopicMeta updatedTopicMeta =
         Objects.isNull(currentTopicMeta)
             ? null
@@ -232,12 +247,18 @@ public class SubscriptionCoordinator {
       return false;
     }
 
-    blockedOwnerLeaseRenewalTopics.put(req.getTopicName(), System.currentTimeMillis());
+    blockedOwnerLeaseRenewalTopics.put(
+        new TopicModelKey(req.getTopicName(), currentTopicMeta.visibleUnderTableModel()),
+        System.currentTimeMillis());
     return true;
   }
 
   public void unblockOwnerLeaseRenewal(String topicName) {
-    blockedOwnerLeaseRenewalTopics.remove(topicName);
+    unblockOwnerLeaseRenewal(topicName, false);
+  }
+
+  public void unblockOwnerLeaseRenewal(final String topicName, final boolean isTableModel) {
+    blockedOwnerLeaseRenewalTopics.remove(new TopicModelKey(topicName, isTableModel));
   }
 
   /**
@@ -250,7 +271,9 @@ public class SubscriptionCoordinator {
    */
   public TopicMeta buildAlteredTopicMetaAfterOwnerLeaseExpired(TAlterTopicReq req)
       throws InterruptedException {
-    final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+    final TopicMeta currentTopicMeta =
+        subscriptionInfo.deepCopyTopicMeta(
+            req.getTopicName(), new TopicConfig(req.getTopicAttributes()).isTableTopic());
     final TopicMeta updatedTopicMeta =
         Objects.isNull(currentTopicMeta)
             ? null
@@ -268,7 +291,8 @@ public class SubscriptionCoordinator {
       return updatedTopicMeta;
     }
 
-    waitForOwnerLeaseExpiration(req.getTopicName(), leaseDurationMs);
+    waitForOwnerLeaseExpiration(
+        req.getTopicName(), currentTopicMeta.visibleUnderTableModel(), leaseDurationMs);
 
     // Another alteration may have completed while this owner transfer was waiting for the old
     // lease to drain. Rebuild from the latest TopicMeta so that this request only applies its own
@@ -278,7 +302,14 @@ public class SubscriptionCoordinator {
 
   void waitForOwnerLeaseExpiration(final String topicName, final long leaseDurationMs)
       throws InterruptedException {
-    final Long blockSinceMs = blockedOwnerLeaseRenewalTopics.get(topicName);
+    waitForOwnerLeaseExpiration(topicName, false, leaseDurationMs);
+  }
+
+  void waitForOwnerLeaseExpiration(
+      final String topicName, final boolean isTableModel, final long leaseDurationMs)
+      throws InterruptedException {
+    final Long blockSinceMs =
+        blockedOwnerLeaseRenewalTopics.get(new TopicModelKey(topicName, isTableModel));
     if (Objects.isNull(blockSinceMs)) {
       return;
     }
@@ -303,13 +334,18 @@ public class SubscriptionCoordinator {
    * let its local lease expire and fence the owner (fail-closed).
    */
   public void pushTopicOwnerLeasesToDataNodes() {
-    final Set<String> blockedTopicNames;
+    final Set<String> blockedTreeTopicNames = new HashSet<>();
+    final Set<String> blockedTableTopicNames = new HashSet<>();
     synchronized (blockedOwnerLeaseRenewalTopics) {
-      blockedTopicNames = new HashSet<>(blockedOwnerLeaseRenewalTopics.keySet());
+      for (final TopicModelKey topicModelKey : blockedOwnerLeaseRenewalTopics.keySet()) {
+        (topicModelKey.isTableModel() ? blockedTableTopicNames : blockedTreeTopicNames)
+            .add(topicModelKey.topicName());
+      }
     }
 
     final List<TTopicOwnerLeaseEntry> ownerLeases =
-        subscriptionInfo.collectTopicOwnerLeaseEntries(blockedTopicNames);
+        subscriptionInfo.collectTopicOwnerLeaseEntries(
+            blockedTreeTopicNames, blockedTableTopicNames);
     if (ownerLeases.isEmpty()) {
       return;
     }
@@ -339,7 +375,7 @@ public class SubscriptionCoordinator {
               String.format(
                   "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
     }
-    return configManager.getProcedureManager().dropTopic(topicName);
+    return configManager.getProcedureManager().dropTopic(topicName, req.isTableModel);
   }
 
   public TShowTopicResp showTopic(TShowTopicReq req) {

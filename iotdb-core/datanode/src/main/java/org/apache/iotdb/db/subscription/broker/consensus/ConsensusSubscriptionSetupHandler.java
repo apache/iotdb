@@ -159,13 +159,15 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
       final String consumerGroupId = groupEntry.getKey();
+      final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
       for (final String topicName : groupEntry.getValue()) {
-        if (!isConsensusBasedTopic(topicName)) {
+        if (!isConsensusBasedTopic(topicName, isTableModel)) {
           continue;
         }
         try {
           final Map<String, TopicConfig> topicConfigs =
-              SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+              SubscriptionAgent.topic()
+                  .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
           final TopicConfig topicConfig = topicConfigs.get(topicName);
           if (topicConfig == null) {
             continue;
@@ -292,8 +294,12 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   public static boolean isConsensusBasedTopic(final String topicName) {
+    return isConsensusBasedTopic(topicName, false);
+  }
+
+  public static boolean isConsensusBasedTopic(final String topicName, final boolean isTableModel) {
     try {
-      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
+      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
       final boolean result = TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
           DataNodePipeMessages.PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9,
@@ -311,8 +317,9 @@ public class ConsensusSubscriptionSetupHandler {
     }
   }
 
-  private static boolean isConsensusBasedTopicRequired(final String topicName) {
-    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
+  private static boolean isConsensusBasedTopicRequired(
+      final String topicName, final boolean isTableModel) {
+    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
     if (Objects.isNull(topicMode)) {
       throw new SubscriptionException(
           String.format(
@@ -325,6 +332,12 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void setupConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames) {
+    setupConsensusSubscriptions(
+        consumerGroupId, topicNames, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
+  }
+
+  public static void setupConsensusSubscriptions(
+      final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
@@ -359,9 +372,10 @@ public class ConsensusSubscriptionSetupHandler {
     setupConsensusTopics(
         consumerGroupId,
         topicNames,
-        ConsensusSubscriptionSetupHandler::isConsensusBasedTopicRequired,
+        topicName -> isConsensusBasedTopicRequired(topicName, isTableModel),
         topicName ->
-            setupConsensusQueueForTopic(consumerGroupId, topicName, ioTConsensus, commitManager),
+            setupConsensusQueueForTopic(
+                consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
                 consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
@@ -456,13 +470,15 @@ public class ConsensusSubscriptionSetupHandler {
   private static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
+      final boolean isTableModel,
       final IoTConsensus ioTConsensus,
       final ConsensusSubscriptionCommitManager commitManager) {
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     // Get topic config for building the converter
     final Map<String, TopicConfig> topicConfigs =
-        SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+        SubscriptionAgent.topic()
+            .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
     final TopicConfig topicConfig = topicConfigs.get(topicName);
     if (topicConfig == null) {
       throw new SubscriptionException(

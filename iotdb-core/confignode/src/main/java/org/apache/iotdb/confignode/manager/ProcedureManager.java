@@ -1922,7 +1922,8 @@ public class ProcedureManager {
   public TSStatus alterTopic(TAlterTopicReq req) {
     final SubscriptionCoordinator subscriptionCoordinator =
         configManager.getSubscriptionManager().getSubscriptionCoordinator();
-    subscriptionCoordinator.lockTopicAlteration(req.getTopicName());
+    final boolean isTableModel = new TopicConfig(req.getTopicAttributes()).isTableTopic();
+    subscriptionCoordinator.lockTopicAlteration(req.getTopicName(), isTableModel);
     boolean isOwnerLeaseRenewalBlocked = false;
     try {
       isOwnerLeaseRenewalBlocked =
@@ -1973,9 +1974,9 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     } finally {
       if (isOwnerLeaseRenewalBlocked) {
-        subscriptionCoordinator.unblockOwnerLeaseRenewal(req.getTopicName());
+        subscriptionCoordinator.unblockOwnerLeaseRenewal(req.getTopicName(), isTableModel);
       }
-      subscriptionCoordinator.unlockTopicAlteration(req.getTopicName());
+      subscriptionCoordinator.unlockTopicAlteration(req.getTopicName(), isTableModel);
     }
   }
 
@@ -2055,6 +2056,22 @@ public class ProcedureManager {
   public TSStatus dropTopic(String topicName) {
     try {
       DropTopicProcedure procedure = new DropTopicProcedure(topicName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else {
+        return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropTopic(String topicName, boolean isTableModel) {
+    try {
+      DropTopicProcedure procedure = new DropTopicProcedure(topicName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
