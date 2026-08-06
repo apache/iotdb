@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -44,13 +45,26 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
 
   @Test
   public void testWriteBackSinkWithTargetDatabaseForTreeModel() throws Exception {
+    testWriteBackSinkWithTargetDatabaseForTreeModel("root.target.db");
+  }
+
+  @Test
+  public void testWriteBackSinkPreservesTreeModelTargetDatabaseCase() throws Exception {
+    testWriteBackSinkWithTargetDatabaseForTreeModel("TargetDB");
+  }
+
+  private void testWriteBackSinkWithTargetDatabaseForTreeModel(final String targetDatabase)
+      throws Exception {
+    final String qualifiedTargetDatabase = PathUtils.qualifyDatabaseName(targetDatabase);
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create database root.source",
             "create timeseries root.source.d1.s1 with datatype=INT32,encoding=PLAIN",
-            "create database root.target.db",
-            "create timeseries root.target.db.d1.s1 with datatype=INT32,encoding=PLAIN"),
+            "create database " + qualifiedTargetDatabase,
+            "create timeseries "
+                + qualifiedTargetDatabase
+                + ".d1.s1 with datatype=INT32,encoding=PLAIN"),
         null);
 
     try (final SyncConfigNodeIServiceClient client =
@@ -65,7 +79,7 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "write-back-sink");
-      sinkAttributes.put("sink.database", "root.target.db");
+      sinkAttributes.put("sink.database", targetDatabase);
       sinkAttributes.put("user", "root");
 
       final TSStatus status =
@@ -89,8 +103,8 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select * from root.target.db.**",
-        "Time,root.target.db.d1.s1,",
+        "select * from " + qualifiedTargetDatabase + ".**",
+        "Time," + qualifiedTargetDatabase + ".d1.s1,",
         Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1,", "2,2,"))));
   }
 }
