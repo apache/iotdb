@@ -416,8 +416,7 @@ public class CommonDescriptor {
     config.setPasswordExpirationDays(
         Long.parseLong(
             properties.getProperty(
-                "password_expiration_seconds",
-                String.valueOf(config.getPasswordExpirationDays()))));
+                "password_expiration_days", String.valueOf(config.getPasswordExpirationDays()))));
 
     config.setPasswordReuseIntervalDays(
         Long.parseLong(
