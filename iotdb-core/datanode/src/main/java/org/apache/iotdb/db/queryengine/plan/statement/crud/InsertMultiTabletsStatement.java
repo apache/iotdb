@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablets;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
@@ -167,6 +168,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
     splitResult.setInsertTabletStatementList(mergedList);
     return splitResult;
+  }
+
+  @Override
+  public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+      toRelationalStatement(MPPQueryContext context) {
+    return new InsertTablets(this, context);
   }
 
   @TableModel

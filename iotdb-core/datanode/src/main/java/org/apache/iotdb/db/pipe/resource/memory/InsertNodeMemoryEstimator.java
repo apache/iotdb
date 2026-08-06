@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -72,6 +73,8 @@ public class InsertNodeMemoryEstimator {
   private static final String RELATIONAL_INSERT_ROWS_NODE = "RelationalInsertRowsNode";
   private static final String RELATIONAL_INSERT_ROW_NODE = "RelationalInsertRowNode";
   private static final String RELATIONAL_INSERT_TABLET_NODE = "RelationalInsertTabletNode";
+  private static final String RELATIONAL_INSERT_MULTI_TABLETS_NODE =
+      "RelationalInsertMultiTabletsNode";
 
   private static final long NUM_BYTES_OBJECT_REF = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   private static final long NUM_BYTES_OBJECT_HEADER = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
@@ -105,6 +108,9 @@ public class InsertNodeMemoryEstimator {
 
   private static final long RELATIONAL_INSERT_TABLET_NODE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(RelationalInsertTabletNode.class);
+
+  private static final long RELATIONAL_INSERT_MULTI_TABLETS_NODE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertMultiTabletsNode.class);
 
   // ============================Device And Measurement===================================
 
@@ -177,6 +183,9 @@ public class InsertNodeMemoryEstimator {
           return sizeOfInsertRowsOfOneDeviceNode((InsertRowsOfOneDeviceNode) insertNode);
         case INSERT_MULTI_TABLETS_NODE:
           return sizeOfInsertMultiTabletsNode((InsertMultiTabletsNode) insertNode);
+        case RELATIONAL_INSERT_MULTI_TABLETS_NODE:
+          return sizeOfRelationalInsertMultiTabletsNode(
+              (RelationalInsertMultiTabletsNode) insertNode);
         case RELATIONAL_INSERT_ROWS_NODE:
           return sizeOfRelationalInsertRowsNode((RelationalInsertRowsNode) insertNode);
         case RELATIONAL_INSERT_ROW_NODE:
@@ -311,6 +320,17 @@ public class InsertNodeMemoryEstimator {
     } finally {
       releaseDeduplicatedObjectSet(deduplicatedObjects);
     }
+  }
+
+  private static long sizeOfRelationalInsertMultiTabletsNode(
+      final RelationalInsertMultiTabletsNode node) {
+    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
+    long size = RELATIONAL_INSERT_MULTI_TABLETS_NODE_SIZE;
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+    size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
+    size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
+    size += sizeOfResults(node.getResults());
+    return size;
   }
 
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {

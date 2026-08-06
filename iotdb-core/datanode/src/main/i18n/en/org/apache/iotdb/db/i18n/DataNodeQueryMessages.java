@@ -1904,6 +1904,9 @@ public final class DataNodeQueryMessages {
       "'  must be consistent across the entire cluster and only one can be set at a time.";
   public static final String CANNOT_INSERT_INTO_MULTIPLE_DATABASES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY =
       "Cannot insert into multiple databases within one statement, please split them manually";
+  public static final String
+      CANNOT_INSERT_INTO_MULTIPLE_TABLES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY_5967C460 =
+          "Cannot insert into multiple tables within one statement, please split them manually";
   public static final String THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_VALUELIST_S_SIZE_D =
       "the measurementList's size %d is not consistent with the valueList's size %d";
   public static final String THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_COLUMNLIST_S_SIZE_D =

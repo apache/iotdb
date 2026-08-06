@@ -24,6 +24,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.List;
+
 /**
  * This interface defines a session for interacting with IoTDB tables. It supports operations such
  * as data insertion, executing queries, and closing the session. Implementations of this interface
@@ -45,6 +47,15 @@ public interface ITableSession extends AutoCloseable {
    * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
    */
   void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
+
+  /**
+   * Inserts multiple {@link Tablet}s into the database.
+   *
+   * @param tablets the tablets containing time-series data to be inserted.
+   * @throws StatementExecutionException if an error occurs while executing the statement.
+   * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
+   */
+  void insert(List<Tablet> tablets) throws StatementExecutionException, IoTDBConnectionException;
 
   /**
    * Executes a non-query SQL statement, such as a DDL or DML command.

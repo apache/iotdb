@@ -203,6 +203,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitInsertTablets(InsertTablets node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitFlush(Flush node, C context) {
     return visitStatement(node, context);
   }

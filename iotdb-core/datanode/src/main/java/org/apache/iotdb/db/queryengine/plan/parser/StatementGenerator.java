@@ -419,12 +419,31 @@ public class StatementGenerator {
       insertTabletStatement.setRowCount(rowCount);
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
+      insertTabletStatement.setWriteToTable(req.isWriteToTable());
+      if (req.isWriteToTable()) {
+        if (!req.isSetColumnCategoriesList()
+            || req.getColumnCategoriesListSize() != req.getMeasurementsListSize()
+            || req.getColumnCategoriesList().get(i).size() != req.measurementsList.get(i).size()) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
+        }
+        TsTableColumnCategory[] columnCategories =
+            new TsTableColumnCategory[req.getColumnCategoriesList().get(i).size()];
+        for (int j = 0; j < columnCategories.length; j++) {
+          columnCategories[j] =
+              TsTableColumnCategory.fromTsFileColumnCategory(
+                  ColumnCategory.values()[req.getColumnCategoriesList().get(i).get(j).intValue()]);
+        }
+        insertTabletStatement.setColumnCategories(columnCategories);
+      }
       // skip empty tablet
       if (insertTabletStatement.isEmpty()) {
         continue;
       }
       insertTabletStatementList.add(insertTabletStatement);
     }
+    insertStatement.setWriteToTable(req.isWriteToTable());
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;

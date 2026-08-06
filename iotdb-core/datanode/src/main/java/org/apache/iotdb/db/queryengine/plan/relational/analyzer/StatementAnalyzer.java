@@ -183,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -1227,11 +1228,27 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitInsertTablets(InsertTablets insert, Optional<Scope> scope) {
+      return visitInsert(
+          insert,
+          scope,
+          () -> SchemaValidator.validate(metadata, insert, insert.getContext(), accessControl));
+    }
+
+    @Override
     public Scope visitInsertRows(InsertRows node, Optional<Scope> context) {
       return visitInsert(node, context);
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      return visitInsert(
+          insert,
+          scope,
+          () -> SchemaValidator.validate(metadata, insert, insert.getContext(), accessControl));
+    }
+
+    private Scope visitInsert(
+        WrappedInsertStatement insert, Optional<Scope> scope, Runnable schemaValidation) {
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
@@ -1242,7 +1259,7 @@ public class StatementAnalyzer {
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
+              schemaValidation,
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,

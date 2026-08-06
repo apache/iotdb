@@ -870,6 +870,17 @@ public class SessionConnection {
         () -> insertTabletsInternal(request), request::getPrefixPaths);
   }
 
+  protected void insertTablets(TSInsertTabletsReq request, List<String> devices)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    callWithRetryAndVerifyWithRedirectionForMultipleDevices(
+        () -> insertTabletsInternal(request), () -> devices);
+  }
+
+  protected void insertTabletsWithoutRedirect(TSInsertTabletsReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    callWithRetryAndVerify(() -> insertTabletsInternal(request));
+  }
+
   private TSStatus insertTabletsInternal(TSInsertTabletsReq request) throws TException {
     request.setSessionId(sessionId);
     return client.insertTablets(request);
