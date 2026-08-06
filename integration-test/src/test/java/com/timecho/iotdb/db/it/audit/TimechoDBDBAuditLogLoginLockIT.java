@@ -52,7 +52,7 @@ public class TimechoDBDBAuditLogLoginLockIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setTimestampPrecision("ns")
+        .setTimestampPrecision("ms")
         .setEnableAuditLog(true)
         .setAuditableOperationType(
             new StringJoiner(",")

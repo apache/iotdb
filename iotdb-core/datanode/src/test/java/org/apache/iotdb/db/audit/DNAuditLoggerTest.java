@@ -59,6 +59,18 @@ import static org.mockito.Mockito.mock;
 public class DNAuditLoggerTest {
 
   @Test
+  public void testAuditLogTimestampsAreStrictlyIncreasing() {
+    DNAuditLogger auditLogger = DNAuditLogger.getInstance();
+    long previous = auditLogger.nextLogTimestamp();
+
+    for (int i = 0; i < 1000; i++) {
+      long current = auditLogger.nextLogTimestamp();
+      assertTrue(current > previous);
+      previous = current;
+    }
+  }
+
+  @Test
   public void testAlterUserPasswordSqlIsSanitized() {
     assertEquals(
         "alter user alice set password ...",

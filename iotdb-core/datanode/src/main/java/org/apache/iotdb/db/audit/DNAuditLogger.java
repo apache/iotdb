@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseState
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.timecho.iotdb.utils.AsyncBatchUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -90,6 +91,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -139,6 +141,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private volatile AsyncBatchUtils<InsertRowStatement> asyncBatchUtils;
 
   private final Object asyncBatchLock = new Object();
+  private final AtomicLong lastLogTimestamp = new AtomicLong(Long.MIN_VALUE);
 
   // This text matcher is only a fallback. Password-update semantic nodes must clear sql_string
   // before any audit entry is generated.
@@ -733,7 +736,20 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public void log(IAuditEntity auditLogFields, Supplier<String> log) {
-    log(auditLogFields, log, CommonDateTimeUtils::currentTime);
+    log(auditLogFields, log, this::nextLogTimestamp);
+  }
+
+  /** Prevent audit rows for the same device from overwriting each other in the same clock tick. */
+  @VisibleForTesting
+  long nextLogTimestamp() {
+    while (true) {
+      long last = lastLogTimestamp.get();
+      long current = CommonDateTimeUtils.currentTime();
+      long next = Math.max(current, last + 1);
+      if (lastLogTimestamp.compareAndSet(last, next)) {
+        return next;
+      }
+    }
   }
 
   /**
