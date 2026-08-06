@@ -178,6 +178,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ALTER_TIMESERIES_DATATYPE_PROCEDURE:
         procedure = new AlterTimeSeriesDataTypeProcedure(false);
         break;
+      case RENAME_TIMESERIES_PROCEDURE:
+        procedure = new RenameTimeSeriesProcedure(false);
+        break;
       case DELETE_LOGICAL_VIEW_PROCEDURE:
         procedure = new DeleteLogicalViewProcedure(false);
         break;
