@@ -239,12 +239,12 @@ public abstract class ResourceByPathUtils {
       }
     } catch (MemoryNotEnoughException ex) {
       LOGGER.warn(
-          "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypes {}",
+          "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypeCount {}",
           listRamInfo.getRamSize(),
           listRamInfo.getTimestampsSize(),
           listRamInfo.getArrayMemCost(),
           listRamInfo.getRowCount(),
-          listRamInfo.getDataTypes());
+          listRamInfo.getDataTypes().size());
       throw ex;
     } finally {
       list.unlockQueryList();
