@@ -1074,6 +1074,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           setConfigurationStatement.getNeededPrivileges(),
           context);
     } catch (IOException e) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              context.setResult(false).setAuditLogOperation(AuditLogOperation.CONTROL), () -> "");
       throw new AccessDeniedException(DataNodeQueryMessages.FAILED_TO_CHECK_CONFIG_ITEM_PERMISSION);
     }
     setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
