@@ -52,6 +52,7 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
   private final String targetTimeColumn;
   private final Set<String> targetTagColumns;
   private final boolean generateNewTimeColumn;
+  private final boolean generateNewTableName;
 
   private MemoizedCheckedSupplier<TableTsBlock2TsFileWriter, IOException> tsFileWriter;
   private long rowCount = 0;
@@ -66,6 +67,7 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
     this.targetTableName = copyToOptions.getTargetTableName();
     this.targetTimeColumn = copyToOptions.getTargetTimeColumn();
     this.generateNewTimeColumn = copyToOptions.isGenerateNewTimeColumn();
+    this.generateNewTableName = copyToOptions.isGenerateNewTableName();
     targetTagColumns = copyToOptions.getTargetTagColumns();
 
     List<ColumnSchema> columnSchemas =
@@ -165,7 +167,9 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
     builder.getValueColumnBuilders()[2].writeLong(deviceCount);
     builder.getValueColumnBuilders()[3].writeLong(targetFile.length());
     builder.getValueColumnBuilders()[4].writeBinary(
-        new Binary(targetTableName, TSFileConfig.STRING_CHARSET));
+        new Binary(
+            targetTableName + (generateNewTableName ? AUTO_GEN_MARK : ""),
+            TSFileConfig.STRING_CHARSET));
     builder.getValueColumnBuilders()[5].writeBinary(
         new Binary(
             targetTimeColumn + (generateNewTimeColumn ? AUTO_GEN_MARK : ""),
