@@ -123,10 +123,13 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.DeleteUserResourceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetUserResourceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowUserResourceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.AlterTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
@@ -232,10 +235,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitio
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -977,6 +983,24 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, MPPQueryContext context) {
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
+  }
+
+  @Override
+  public IConfigTask visitSetUserResourceQuota(
+      SetUserResourceQuotaStatement statement, MPPQueryContext context) {
+    return new SetUserResourceQuotaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowUserResourceQuota(
+      ShowUserResourceQuotaStatement statement, MPPQueryContext context) {
+    return new ShowUserResourceQuotaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitDeleteUserResourceQuota(
+      DeleteUserResourceQuotaStatement statement, MPPQueryContext context) {
+    return new DeleteUserResourceQuotaTask(statement);
   }
 
   @Override

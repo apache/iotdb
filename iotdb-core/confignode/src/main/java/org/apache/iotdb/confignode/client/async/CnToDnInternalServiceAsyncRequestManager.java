@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetUserResourceQuotaReq;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
@@ -420,6 +421,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.setThrottleQuota(
                 (TSetThrottleQuotaReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SET_USER_RESOURCE_QUOTA,
+        (req, client, handler) ->
+            client.setUserResourceQuota(
+                (TSetUserResourceQuotaReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.RESET_PEER_LIST,
         (req, client, handler) ->

@@ -197,6 +197,41 @@ struct TSetThrottleQuotaReq {
   2: required TThrottleQuota throttleQuota
 }
 
+enum TResourceType {
+  CPU,
+  MEMORY,
+  DISK_IO,
+  TEMP_DISK
+}
+
+enum TOperationType {
+  READ,
+  WRITE
+}
+
+struct TResourceQuotaRange {
+  1: required i64 minValue
+  2: required i64 maxValue
+}
+
+struct TUserResourceQuota {
+  1: optional map<TResourceType, TResourceQuotaRange> readQuota
+  2: optional map<TResourceType, TResourceQuotaRange> writeQuota
+  3: optional map<ThrottleType, TTimedQuota> throttleLimit
+}
+
+// Per-DataNode in-use snapshot for SHOW USER QUOTA (heartbeat reported).
+struct TUserResourceUsageSnapshot {
+  // username -> resourceType -> inUse
+  1: optional map<string, map<TResourceType, i64>> readInUse
+  2: optional map<string, map<TResourceType, i64>> writeInUse
+}
+
+struct TSetUserResourceQuotaReq {
+  1: required string userName
+  2: required TUserResourceQuota userResourceQuota
+}
+
 struct TPipeHeartbeatResp {
   1: required list<binary> pipeMetaList
   2: optional list<bool> pipeCompletedList

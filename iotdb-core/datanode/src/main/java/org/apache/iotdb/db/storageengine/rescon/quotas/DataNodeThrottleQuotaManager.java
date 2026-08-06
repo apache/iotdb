@@ -21,7 +21,9 @@ package org.apache.iotdb.db.storageengine.rescon.quotas;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
+import org.apache.iotdb.commons.quota.UserResourceQuotaConverter;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -57,6 +59,14 @@ public class DataNodeThrottleQuotaManager {
 
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
     throttleQuotaLimit.setQuotas(req);
+    // Avoid re-entering UserResourceQuotaManager while either singleton is still constructing.
+    // Live RPC updates sync; recover() only restores local throttle maps.
+    if (UserResourceQuotaManager.isInitialized()) {
+      UserResourceQuotaManager.getInstance()
+          .updateQuotaWithoutThrottleSync(
+              req.getUserName(),
+              UserResourceQuotaConverter.fromThrottleQuota(req.getThrottleQuota()));
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -76,7 +86,8 @@ public class DataNodeThrottleQuotaManager {
    * @return the {@link OperationQuota}
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
-  public OperationQuota checkQuota(String userName, Statement s) throws RpcThrottlingException {
+  public OperationQuota checkQuota(String userName, Statement s)
+      throws RpcThrottlingException, UserResourceQuotaExceededException {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       return NoopOperationQuota.get();
     }
@@ -115,9 +126,22 @@ public class DataNodeThrottleQuotaManager {
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
   private OperationQuota checkQuota(String userName, int numWrites, int numReads, Statement s)
-      throws RpcThrottlingException {
+      throws RpcThrottlingException, UserResourceQuotaExceededException {
     OperationQuota quota = getQuota(userName);
     quota.checkQuota(numWrites, numReads, s);
+    if (numWrites > 0
+        && IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()
+        && !IoTDBConstant.PATH_ROOT.equals(userName)) {
+      AcquireContext ctx =
+          new AcquireContext()
+              .setRequestId(String.valueOf(System.nanoTime()))
+              .setStatementType(s.getType().name());
+      QuotaTokenBundle bundle =
+          UserResourceQuotaManager.getInstance()
+              .acquireWriteResources(
+                  userName, WriteMemoryEstimator.estimate(s), ctx, AcquirePolicy.defaults());
+      return new ResourceAwareOperationQuota(quota, bundle);
+    }
     return quota;
   }
 

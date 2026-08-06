@@ -33,6 +33,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetUserResourceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
@@ -224,6 +225,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserResourceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -234,6 +236,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResourceQuotaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -1476,6 +1479,27 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TThrottleQuotaResp getThrottleQuota() {
     return configManager.getThrottleQuota();
+  }
+
+  @Override
+  public TSStatus setUserResourceQuota(TSetUserResourceQuotaReq req) throws TException {
+    return configManager.setUserResourceQuota(req);
+  }
+
+  @Override
+  public TUserResourceQuotaResp showUserResourceQuota(TShowUserResourceQuotaReq req) {
+    return configManager.showUserResourceQuota(req);
+  }
+
+  @Override
+  public TUserResourceQuotaResp getUserResourceQuota() {
+    return configManager.getUserResourceQuota();
+  }
+
+  @Override
+  public TSStatus reportUserResourceUsage(
+      int dataNodeId, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot usage) {
+    return configManager.reportUserResourceUsage(dataNodeId, usage);
   }
 
   @Override
