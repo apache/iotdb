@@ -840,7 +840,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
       ImmutableList.of(
-          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.STRING),
           new ColumnHeader(ROW_COUNT, TSDataType.INT64),
           new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
           new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),
