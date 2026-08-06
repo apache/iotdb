@@ -112,9 +112,7 @@ public class WriteBackSink implements PipeConnector {
     try {
       PathUtils.checkAndReturnSingleMeasurement(trimmedTargetDatabase);
       return validateAndNormalizeTreeModelDatabaseName(
-          IoTDBConstant.PATH_ROOT
-              + IoTDBConstant.PATH_SEPARATOR
-              + trimmedTargetDatabase);
+          IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + trimmedTargetDatabase);
     } catch (final Exception e) {
       throw new PipeException(
           String.format("The target database %s is invalid.", targetDatabase), e);
