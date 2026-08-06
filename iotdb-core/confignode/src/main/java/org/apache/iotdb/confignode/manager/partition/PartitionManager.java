@@ -548,14 +548,14 @@ public class PartitionManager {
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
       final String database = entry.getKey();
-      int minRegionGroupNum =
-          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      int maxRegionGroupNum =
+          getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       int allocatedRegionGroupCount =
           partitionInfo.getRegionGroupCount(database, consensusGroupType);
 
-      // Extend RegionGroups until allocatedRegionGroupCount == minRegionGroupNum
-      if (allocatedRegionGroupCount < minRegionGroupNum) {
-        allotmentMap.put(database, minRegionGroupNum - allocatedRegionGroupCount);
+      // Extend RegionGroups until allocatedRegionGroupCount == maxRegionGroupNum
+      if (allocatedRegionGroupCount < maxRegionGroupNum) {
+        allotmentMap.put(database, maxRegionGroupNum - allocatedRegionGroupCount);
       }
     }
 

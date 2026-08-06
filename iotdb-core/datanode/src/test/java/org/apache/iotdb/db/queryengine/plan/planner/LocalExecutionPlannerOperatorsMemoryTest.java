@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 
 import org.junit.After;
@@ -158,6 +159,51 @@ public class LocalExecutionPlannerOperatorsMemoryTest {
     Assert.assertEquals(freeBefore - request, PLANNER.getFreeMemoryForOperators());
 
     manager.releaseAllReservedMemory();
+    Assert.assertEquals(0L, manager.getReservedBytesInTotalForTest());
+    Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+  }
+
+  @Test
+  public void testImmediateReservationRollback() {
+    long request = Math.min(1024L, PLANNER.getFreeMemoryForOperators());
+    if (request <= 0) {
+      return;
+    }
+
+    NotThreadSafeMemoryReservationManager manager =
+        new NotThreadSafeMemoryReservationManager(new QueryId("normal_query"), "test");
+    long freeBefore = PLANNER.getFreeMemoryForOperators();
+
+    manager.reserveMemoryCumulatively(request);
+    manager.releaseMemoryImmediately(request);
+    manager.reserveMemoryImmediately();
+
+    Assert.assertEquals(0L, manager.getReservedBytesInTotalForTest());
+    Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+
+    manager.reserveMemoryImmediately(request);
+    manager.releaseMemoryImmediately(request);
+
+    Assert.assertEquals(0L, manager.getReservedBytesInTotalForTest());
+    Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+  }
+
+  @Test
+  public void testFailedCumulativeReservationDoesNotRemainPending() {
+    long freeBefore = PLANNER.getFreeMemoryForOperators();
+    long request = freeBefore + MEMORY_BATCH_THRESHOLD;
+    NotThreadSafeMemoryReservationManager manager =
+        new NotThreadSafeMemoryReservationManager(new QueryId("normal_query"), "test");
+
+    try {
+      manager.reserveMemoryCumulatively(request);
+      Assert.fail("Expected insufficient query memory");
+    } catch (MemoryNotEnoughException expected) {
+      // expected
+    }
+
+    // A stale pending reservation would make this retry fail again.
+    manager.reserveMemoryImmediately();
     Assert.assertEquals(0L, manager.getReservedBytesInTotalForTest());
     Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
   }
