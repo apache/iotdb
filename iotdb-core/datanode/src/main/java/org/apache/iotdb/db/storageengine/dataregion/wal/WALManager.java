@@ -60,6 +60,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long WAL_THROTTLE_WARNING_PRINT_INTERVAL_MS = 3600 * 1000L;
 
   // manage all wal nodes and decide how to allocate them
   private final NodeAllocationStrategy walNodesManager;
@@ -69,6 +70,7 @@ public class WALManager implements IService {
   private final AtomicLong totalDiskUsage = new AtomicLong();
   // total number of wal files
   private final AtomicLong totalFileNum = new AtomicLong();
+  private final AtomicLong lastWalThrottleWarningLogTime = new AtomicLong(0L);
 
   private WALManager() {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
@@ -185,17 +187,16 @@ public class WALManager implements IService {
     while ((firstLoop || shouldThrottle())) {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
-        logger.warn(
-            StorageEngineMessages
-                .STORAGE_LOG_WAL_DISK_USAGE_IS_LARGER_THAN_THE_WAL_THROTTLE_THRESHOLD_2396FFCC,
-            getTotalDiskUsage(),
-            getThrottleThreshold());
+        logWalThrottleWarningIfNecessary();
       }
       firstLoop = false;
       if (Thread.interrupted()) {
         logger.info(StorageEngineMessages.TIMED_WAL_DELETE_THREAD_INTERRUPTED);
         return;
       }
+    }
+    if (!shouldThrottle()) {
+      resetWalThrottleWarningLogTime();
     }
   }
 
@@ -255,6 +256,9 @@ public class WALManager implements IService {
 
   public void subtractTotalDiskUsage(long size) {
     totalDiskUsage.accumulateAndGet(size, (x, y) -> x - y);
+    if (!shouldThrottle()) {
+      resetWalThrottleWarningLogTime();
+    }
   }
 
   public long getTotalFileNum() {
@@ -323,7 +327,29 @@ public class WALManager implements IService {
 
   public void clear() {
     totalDiskUsage.set(0);
+    resetWalThrottleWarningLogTime();
     walNodesManager.clear();
+  }
+
+  void logWalThrottleWarningIfNecessary() {
+    if (!shouldThrottle()) {
+      resetWalThrottleWarningLogTime();
+      return;
+    }
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastWalThrottleWarningLogTime.get();
+    if ((lastLogTime == 0 || now - lastLogTime >= WAL_THROTTLE_WARNING_PRINT_INTERVAL_MS)
+        && lastWalThrottleWarningLogTime.compareAndSet(lastLogTime, now)) {
+      logger.warn(
+          StorageEngineMessages
+              .STORAGE_LOG_WAL_DISK_USAGE_IS_LARGER_THAN_THE_WAL_THROTTLE_THRESHOLD_2396FFCC,
+          getTotalDiskUsage(),
+          getThrottleThreshold());
+    }
+  }
+
+  void resetWalThrottleWarningLogTime() {
+    lastWalThrottleWarningLogTime.set(0L);
   }
 
   @Override

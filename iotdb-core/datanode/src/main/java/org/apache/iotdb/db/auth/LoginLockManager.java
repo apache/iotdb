@@ -39,6 +39,8 @@ import java.util.concurrent.ConcurrentMap;
 
 public class LoginLockManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoginLockManager.class);
+  private static final int MULTIPLE_USERS_FOR_IP_WARNING_THRESHOLD = 50;
+  private static final int MULTIPLE_IPS_FOR_USER_WARNING_THRESHOLD = 100;
 
   // Configuration parameters
   private final int failedLoginAttempts;
@@ -48,6 +50,8 @@ public class LoginLockManager {
   // Lock records storage (in-memory only)
   private final ConcurrentMap<Long, UserLockInfo> userLocks = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, UserLockInfo> userIpLocks = new ConcurrentHashMap<>();
+  private final Set<String> warnedIpsWithMultipleUsers = ConcurrentHashMap.newKeySet();
+  private final Set<Long> warnedUsersWithMultipleIpLocks = ConcurrentHashMap.newKeySet();
 
   // Exempt users who should never be locked (only valid if request is from local host)
   private static final Set<Long> EXEMPT_USERS;
@@ -218,7 +222,7 @@ public class LoginLockManager {
             existing.addFailureTime(now);
             // Check if threshold reached (log only when it just reaches)
             int failCountIp = existing.getFailureCount();
-            if (failCountIp >= failedLoginAttempts) {
+            if (failCountIp == failedLoginAttempts) {
               LOGGER.info(DataNodeMiscMessages.IP_LOCKED, ip, userId);
             }
             return existing;
@@ -240,7 +244,7 @@ public class LoginLockManager {
             existing.addFailureTime(now);
             // Check if threshold reached (log only when it just reaches)
             int failCountUser = existing.getFailureCount();
-            if (failCountUser >= failedLoginAttemptsPerUser) {
+            if (failCountUser == failedLoginAttemptsPerUser) {
               LOGGER.info(
                   DataNodeMiscMessages.MISC_LOG_USER_ID_LOCKED_DUE_TO_FAILED_ATTEMPTS_743CFB3A,
                   userId,
@@ -266,6 +270,7 @@ public class LoginLockManager {
     String userIpKey = buildUserIpKey(userId, ip);
     userIpLocks.remove(userIpKey);
     userLocks.remove(userId);
+    resetPotentialAttackWarningsIfBelowThreshold(userId, ip);
   }
 
   /**
@@ -276,15 +281,27 @@ public class LoginLockManager {
    */
   public void unlock(long userId, String ip) {
     if (ip == null || ip.isEmpty()) {
+      Set<String> affectedIps = new HashSet<>();
+      for (String key : userIpLocks.keySet()) {
+        if (key.startsWith(userId + "@")) {
+          String[] parts = key.split("@", 2);
+          if (parts.length == 2) {
+            affectedIps.add(parts[1]);
+          }
+        }
+      }
       // Unlock global user lock
       userLocks.remove(userId);
       // Also remove all IP locks for this user
       userIpLocks.keySet().removeIf(key -> key.startsWith(userId + "@"));
+      warnedUsersWithMultipleIpLocks.remove(userId);
+      affectedIps.forEach(this::resetIpWarningIfBelowThreshold);
       LOGGER.info(DataNodeMiscMessages.USER_UNLOCKED_MANUAL, userId);
     } else {
       // Unlock specific user@ip lock
       String userIpKey = buildUserIpKey(userId, ip);
       userIpLocks.remove(userIpKey);
+      resetPotentialAttackWarningsIfBelowThreshold(userId, ip);
       LOGGER.info(DataNodeMiscMessages.IP_UNLOCKED_MANUAL, ip, userId);
     }
   }
@@ -293,6 +310,8 @@ public class LoginLockManager {
   public void cleanExpiredLocks() {
     long now = System.currentTimeMillis();
     long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
+    Set<Long> affectedUsers = new HashSet<>();
+    Set<String> affectedIps = new HashSet<>();
 
     // Clean expired user locks
     userLocks
@@ -319,6 +338,10 @@ public class LoginLockManager {
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
                 final String[] parts = entry.getKey().split("@", 2);
+                if (parts.length == 2) {
+                  affectedUsers.add(Long.parseLong(parts[0]));
+                  affectedIps.add(parts[1]);
+                }
                 LOGGER.info(
                     DataNodeMiscMessages.IP_UNLOCKED_EXPIRED,
                     parts.length == 2 ? parts[1] : "",
@@ -327,6 +350,9 @@ public class LoginLockManager {
               }
               return false;
             });
+
+    affectedUsers.forEach(this::resetUserWarningIfBelowThreshold);
+    affectedIps.forEach(this::resetIpWarningIfBelowThreshold);
   }
 
   // Helper methods
@@ -336,15 +362,21 @@ public class LoginLockManager {
 
   private void checkForPotentialAttacks(long userId, String ip) {
     // Check if IP is locked by many users
-    Set<Long> usersForIp = new HashSet<>();
-    for (String key : userIpLocks.keySet()) {
-      if (key.endsWith("@" + ip)) {
-        usersForIp.add(Long.parseLong(key.split("@")[0]));
+    if (ip != null && !ip.isEmpty()) {
+      Set<Long> usersForIp = new HashSet<>();
+      for (String key : userIpLocks.keySet()) {
+        if (key.endsWith("@" + ip)) {
+          usersForIp.add(Long.parseLong(key.split("@")[0]));
+        }
       }
-    }
 
-    if (usersForIp.size() > 50) {
-      LOGGER.warn(DataNodeMiscMessages.IP_LOCKED_MULTIPLE_USERS, ip, usersForIp.size());
+      if (usersForIp.size() > MULTIPLE_USERS_FOR_IP_WARNING_THRESHOLD) {
+        if (warnedIpsWithMultipleUsers.add(ip)) {
+          LOGGER.warn(DataNodeMiscMessages.IP_LOCKED_MULTIPLE_USERS, ip, usersForIp.size());
+        }
+      } else {
+        warnedIpsWithMultipleUsers.remove(ip);
+      }
     }
 
     // Check if user has many IP locks
@@ -355,9 +387,52 @@ public class LoginLockManager {
       }
     }
 
-    if (ipsForUser.size() > 100) {
-      LOGGER.warn(DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS, userId, ipsForUser.size());
+    if (ipsForUser.size() > MULTIPLE_IPS_FOR_USER_WARNING_THRESHOLD) {
+      if (warnedUsersWithMultipleIpLocks.add(userId)) {
+        LOGGER.warn(DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS, userId, ipsForUser.size());
+      }
+    } else {
+      warnedUsersWithMultipleIpLocks.remove(userId);
     }
+  }
+
+  private void resetPotentialAttackWarningsIfBelowThreshold(long userId, String ip) {
+    resetUserWarningIfBelowThreshold(userId);
+    if (ip != null && !ip.isEmpty()) {
+      resetIpWarningIfBelowThreshold(ip);
+    }
+  }
+
+  private void resetUserWarningIfBelowThreshold(long userId) {
+    if (countIpsForUser(userId) <= MULTIPLE_IPS_FOR_USER_WARNING_THRESHOLD) {
+      warnedUsersWithMultipleIpLocks.remove(userId);
+    }
+  }
+
+  private void resetIpWarningIfBelowThreshold(String ip) {
+    if (countUsersForIp(ip) <= MULTIPLE_USERS_FOR_IP_WARNING_THRESHOLD) {
+      warnedIpsWithMultipleUsers.remove(ip);
+    }
+  }
+
+  private int countUsersForIp(String ip) {
+    Set<Long> usersForIp = new HashSet<>();
+    for (String key : userIpLocks.keySet()) {
+      if (key.endsWith("@" + ip)) {
+        usersForIp.add(Long.parseLong(key.split("@")[0]));
+      }
+    }
+    return usersForIp.size();
+  }
+
+  private int countIpsForUser(long userId) {
+    Set<String> ipsForUser = new HashSet<>();
+    for (String key : userIpLocks.keySet()) {
+      if (key.startsWith(userId + "@")) {
+        ipsForUser.add(key.split("@")[1]);
+      }
+    }
+    return ipsForUser.size();
   }
 
   public static LoginLockManager getInstance() {

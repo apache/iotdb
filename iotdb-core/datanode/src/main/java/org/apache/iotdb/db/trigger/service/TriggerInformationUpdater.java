@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -56,6 +57,7 @@ public class TriggerInformationUpdater {
   private Future<?> updateFuture;
 
   private static final long UPDATE_INTERVAL = 1000L * 60;
+  private final LogThrottler updateFailureLogThrottler = new LogThrottler();
 
   public void startTriggerInformationUpdater() {
     if (updateFuture == null) {
@@ -97,8 +99,11 @@ public class TriggerInformationUpdater {
             .updateLocationOfStatefulTrigger(
                 triggerInformation.getTriggerName(), triggerInformation.getDataNodeLocation());
       }
+      updateFailureLogThrottler.reset();
     } catch (Exception e) {
-      LOGGER.warn(DataNodeMiscMessages.ERROR_UPDATING_TRIGGER_INFO, e);
+      if (updateFailureLogThrottler.shouldLog(LogThrottler.getFailureSignature(e))) {
+        LOGGER.warn(DataNodeMiscMessages.ERROR_UPDATING_TRIGGER_INFO, e);
+      }
     }
   }
 }

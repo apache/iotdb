@@ -485,6 +485,14 @@
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                         <ignoredDependency>at.yawk.lz4:lz4-java</ignoredDependency>
                     </ignoredDependencies>
+                    <ignoredUsedUndeclaredDependencies>
+                        <ignoredUsedUndeclaredDependency>ch.qos.logback:logback-classic</ignoredUsedUndeclaredDependency>
+                        <ignoredUsedUndeclaredDependency>ch.qos.logback:logback-core</ignoredUsedUndeclaredDependency>
+                    </ignoredUsedUndeclaredDependencies>
+                    <ignoredNonTestScopedDependencies>
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-classic</ignoredNonTestScopedDependency>
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-core</ignoredNonTestScopedDependency>
+                    </ignoredNonTestScopedDependencies>
                 </configuration>
             </plugin>
             <plugin>

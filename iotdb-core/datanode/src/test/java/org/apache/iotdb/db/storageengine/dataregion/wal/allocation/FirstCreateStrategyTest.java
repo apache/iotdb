@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -30,6 +33,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -37,6 +43,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,12 +64,19 @@ public class FirstCreateStrategyTest {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test3")
       };
   private String[] prevWalDirs;
+  private NodeStatus previousNodeStatus;
+  private String previousStatusReason;
+  private double previousDiskSpaceWarningThreshold;
 
   @Before
   public void setUp() throws Exception {
     prevWalDirs = commonConfig.getWalDirs();
+    previousNodeStatus = commonConfig.getNodeStatus();
+    previousStatusReason = commonConfig.getStatusReason();
+    previousDiskSpaceWarningThreshold = commonConfig.getDiskSpaceWarningThreshold();
     EnvironmentUtils.envSetUp();
     commonConfig.setWalDirs(walDirs);
+    setDiskSpaceWarningThresholdForTest(previousDiskSpaceWarningThreshold);
   }
 
   @After
@@ -72,6 +86,9 @@ public class FirstCreateStrategyTest {
       EnvironmentUtils.cleanDir(walDir);
     }
     commonConfig.setWalDirs(prevWalDirs);
+    setDiskSpaceWarningThresholdForTest(previousDiskSpaceWarningThreshold);
+    commonConfig.setNodeStatus(previousNodeStatus);
+    commonConfig.setStatusReason(previousStatusReason);
   }
 
   @Test
@@ -222,6 +239,47 @@ public class FirstCreateStrategyTest {
     }
   }
 
+  @Test
+  public void testFailToCreateWalNodeDisksFullLoggedOnlyOnceUntilRecovery() {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger)
+            LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.ERROR);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    FirstCreateStrategy strategy = null;
+    try {
+      setDiskSpaceWarningThresholdForTest(1.1);
+      strategy = new FirstCreateStrategy();
+      strategy.applyForWALNode("failed-1");
+      strategy.applyForWALNode("failed-2");
+
+      assertEquals(
+          1, countLogEvents(appender, StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL));
+
+      setDiskSpaceWarningThresholdForTest(-1.0);
+      IWALNode walNode = strategy.applyForWALNode("success");
+      assertTrue(walNode instanceof WALNode);
+
+      strategy.folderManager = null;
+      setDiskSpaceWarningThresholdForTest(1.1);
+      strategy.applyForWALNode("failed-3");
+      assertEquals(
+          2, countLogEvents(appender, StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL));
+    } finally {
+      if (strategy != null) {
+        strategy.clear();
+      }
+      logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
+      appender.stop();
+    }
+  }
+
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
@@ -262,5 +320,16 @@ public class FirstCreateStrategyTest {
         time,
         columns,
         true);
+  }
+
+  private void setDiskSpaceWarningThresholdForTest(double threshold) {
+    commonConfig.setDiskSpaceWarningThreshold(threshold);
+    JVMCommonUtils.setDiskSpaceWarningThreshold(threshold);
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    return appender.list.stream()
+        .filter(event -> messagePattern.equals(event.getMessage()))
+        .count();
   }
 }

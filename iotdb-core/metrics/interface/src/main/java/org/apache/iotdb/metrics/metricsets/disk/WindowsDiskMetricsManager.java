@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.metricsets.disk;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.i18n.MetricsMessages;
+import org.apache.iotdb.metrics.utils.FailureLogState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +94,12 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
   private long nextPowerShellRetryTime = 0L;
   private long nextFailureLogTime = 0L;
   private String lastPowerShellFailure = "";
+  private final FailureLogState diskFormatFailureLogState = new FailureLogState();
+  private final FailureLogState processFormatFailureLogState = new FailureLogState();
+  private final FailureLogState longParseFailureLogState = new FailureLogState();
+  private final FailureLogState doubleParseFailureLogState = new FailureLogState();
+  private boolean hasLongParseFailureInCurrentUpdate = false;
+  private boolean hasDoubleParseFailureInCurrentUpdate = false;
 
   private final Map<String, Long> lastReadOperationCountForDisk = new HashMap<>();
   private final Map<String, Long> lastWriteOperationCountForDisk = new HashMap<>();
@@ -265,8 +272,16 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     long currentTime = System.currentTimeMillis();
     updateInterval = lastUpdateTime == 0L ? 0L : currentTime - lastUpdateTime;
     lastUpdateTime = currentTime;
+    hasLongParseFailureInCurrentUpdate = false;
+    hasDoubleParseFailureInCurrentUpdate = false;
     updateDiskInfo();
     updateProcessInfo();
+    if (!hasLongParseFailureInCurrentUpdate) {
+      clearFailureLogState(longParseFailureLogState);
+    }
+    if (!hasDoubleParseFailureInCurrentUpdate) {
+      clearFailureLogState(doubleParseFailureLogState);
+    }
   }
 
   private void updateDiskInfo() {
@@ -358,9 +373,10 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
     String[] processMetricArray = processInfo.split("\t");
     if (processMetricArray.length < 4) {
-      LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT, processInfo);
+      logUnexpectedWindowsProcessIoFormatIfNecessary(processInfo);
       return;
     }
+    clearFailureLogState(processFormatFailureLogState);
 
     long readOpsPerSec = parseLong(processMetricArray[0]);
     long writeOpsPerSec = parseLong(processMetricArray[1]);
@@ -383,13 +399,15 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   private Map<String, String[]> queryDiskInfo() {
     Map<String, String[]> result = new HashMap<>();
+    boolean hasUnexpectedFormat = false;
     for (String line : executePowerShell(DISK_QUERY)) {
       if (line == null || line.isEmpty()) {
         continue;
       }
       String[] values = line.split("\t");
       if (values.length < 9) {
-        LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_DISK_IO_FORMAT, line);
+        hasUnexpectedFormat = true;
+        logUnexpectedWindowsDiskIoFormatIfNecessary(line);
         continue;
       }
       String diskId = values[0].trim();
@@ -399,6 +417,9 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       String[] metricArray = new String[8];
       System.arraycopy(values, 1, metricArray, 0, metricArray.length);
       result.put(diskId, metricArray);
+    }
+    if (!hasUnexpectedFormat) {
+      clearFailureLogState(diskFormatFailureLogState);
     }
     return result;
   }
@@ -446,7 +467,8 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Math.round(Double.parseDouble(value.trim()));
     } catch (NumberFormatException e) {
-      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_LONG_WINDOWS_DISK, value, e);
+      hasLongParseFailureInCurrentUpdate = true;
+      logFailedToParseLongWindowsDiskIfNecessary(value, e);
       return 0L;
     }
   }
@@ -455,7 +477,8 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Double.parseDouble(value.trim());
     } catch (NumberFormatException e) {
-      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK, value, e);
+      hasDoubleParseFailureInCurrentUpdate = true;
+      logFailedToParseDoubleWindowsDiskIfNecessary(value, e);
       return 0.0;
     }
   }
@@ -550,6 +573,34 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     }
   }
 
+  private void logUnexpectedWindowsDiskIoFormatIfNecessary(String line) {
+    if (shouldLogFailure(
+        diskFormatFailureLogState, MetricsMessages.UNEXPECTED_WINDOWS_DISK_IO_FORMAT)) {
+      LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_DISK_IO_FORMAT, line);
+    }
+  }
+
+  private void logUnexpectedWindowsProcessIoFormatIfNecessary(String processInfo) {
+    if (shouldLogFailure(
+        processFormatFailureLogState, MetricsMessages.UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT)) {
+      LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT, processInfo);
+    }
+  }
+
+  private void logFailedToParseLongWindowsDiskIfNecessary(String value, NumberFormatException e) {
+    if (shouldLogFailure(
+        longParseFailureLogState, MetricsMessages.FAILED_TO_PARSE_LONG_WINDOWS_DISK)) {
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_LONG_WINDOWS_DISK, value, e);
+    }
+  }
+
+  private void logFailedToParseDoubleWindowsDiskIfNecessary(String value, NumberFormatException e) {
+    if (shouldLogFailure(
+        doubleParseFailureLogState, MetricsMessages.FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK)) {
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK, value, e);
+    }
+  }
+
   private boolean shouldLogFailure(long currentTime, String failureMessage) {
     if (!failureMessage.equals(lastPowerShellFailure) || currentTime >= nextFailureLogTime) {
       lastPowerShellFailure = failureMessage;
@@ -557,6 +608,14 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       return true;
     }
     return false;
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    return failureLogState.shouldLog(failureMessage);
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    failureLogState.clear();
   }
 
   private void clearPowerShellFailure() {

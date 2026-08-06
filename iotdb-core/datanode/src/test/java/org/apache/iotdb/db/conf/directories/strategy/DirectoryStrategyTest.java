@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
 import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
 import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
 import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,6 +39,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -77,7 +83,9 @@ public class DirectoryStrategyTest {
   }
 
   @After
-  public void tearDown() {}
+  public void tearDown() {
+    MinFolderOccupiedSpaceFirstStrategy.resetCannotCalculateOccupiedSpaceLogTimes();
+  }
 
   @Test
   public void testSequenceStrategy() throws DiskSpaceInsufficientException {
@@ -181,6 +189,44 @@ public class DirectoryStrategyTest {
     assertEquals(1, strategy.getSelectionsSinceRefresh());
   }
 
+  @Test
+  public void testMinFolderOccupiedSpaceFirstStrategyLogThrottle() throws Exception {
+    MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy =
+        new MinFolderOccupiedSpaceFirstStrategy();
+    minFolderOccupiedSpaceFirstStrategy.setRefreshIntervalMs(Long.MAX_VALUE);
+    minFolderOccupiedSpaceFirstStrategy.setRefreshSelectionThreshold(1);
+    minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
+
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(DirectoryStrategy.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.ERROR);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      PowerMockito.doThrow(new IOException("broken occupied space"))
+          .when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
+      assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
+      assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
+      assertEquals(1, countLogEvents(appender, UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE));
+
+      PowerMockito.doReturn(0L).when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
+      assertEquals(0, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
+
+      PowerMockito.doThrow(new IOException("broken occupied space again"))
+          .when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
+      assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
+      assertEquals(2, countLogEvents(appender, UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE));
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
+      appender.stop();
+    }
+  }
+
   private int getIndexOfMinOccupiedSpace() throws IOException {
     int index = -1;
     long minOccupied = Long.MAX_VALUE;
@@ -241,5 +287,15 @@ public class DirectoryStrategyTest {
       fail();
     } catch (DiskSpaceInsufficientException e) {
     }
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    long count = 0;
+    for (ILoggingEvent event : appender.list) {
+      if (messagePattern.equals(event.getMessage())) {
+        count++;
+      }
+    }
+    return count;
   }
 }

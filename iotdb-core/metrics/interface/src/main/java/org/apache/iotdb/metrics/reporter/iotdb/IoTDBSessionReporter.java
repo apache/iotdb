@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.utils.FailureLogState;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -54,6 +55,8 @@ public class IoTDBSessionReporter extends IoTDBReporter {
       MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final FailureLogState asyncReportFailureLogState = new FailureLogState();
+  private final FailureLogState insertFailureLogState = new FailureLogState();
 
   /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
@@ -117,8 +120,9 @@ public class IoTDBSessionReporter extends IoTDBReporter {
                   values.put(prefix, value);
                 }
                 writeMetricsToIoTDB(values, System.currentTimeMillis());
+                clearFailureLogState(asyncReportFailureLogState);
               } catch (Throwable t) {
-                LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED, t);
+                logAsyncReportFailureIfNecessary(t);
               }
             },
             1,
@@ -162,8 +166,9 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
     try {
       sessionPool.insertRecord(prefix, time, sensors, dataTypes, values);
+      clearFailureLogState(insertFailureLogState);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
+      logInsertFailureIfNecessary(e);
     }
   }
 
@@ -193,8 +198,31 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
     try {
       sessionPool.insertRecords(deviceIds, times, sensors, dataTypes, values);
+      clearFailureLogState(insertFailureLogState);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logInsertFailureIfNecessary(e);
+    }
+  }
+
+  private void logAsyncReportFailureIfNecessary(Throwable t) {
+    if (shouldLogFailure(
+        asyncReportFailureLogState, MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED)) {
+      LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED, t);
+    }
+  }
+
+  private void logInsertFailureIfNecessary(Exception e) {
+    if (shouldLogFailure(
+        insertFailureLogState, MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED)) {
       LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
     }
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    return failureLogState.shouldLog(failureMessage);
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    failureLogState.clear();
   }
 }

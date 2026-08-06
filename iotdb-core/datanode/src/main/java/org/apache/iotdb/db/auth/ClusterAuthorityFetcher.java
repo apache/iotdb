@@ -73,6 +73,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
@@ -90,6 +91,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       ConfigNodeClientManager.getInstance();
 
   private static final String CONNECTERROR = "Failed to connect to config node.";
+  private static final long CONNECT_ERROR_LOG_INTERVAL_MS = 60_000L;
+  private static final AtomicLong LAST_CONNECT_ERROR_LOG_TIME = new AtomicLong(0L);
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
@@ -371,8 +374,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       authizedPatternTree = configNodeClient.fetchAuthizedPatternTree(req);
+      resetConfigNodeConnectionErrorLogTime();
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      logConfigNodeConnectionError();
       authizedPatternTree.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
@@ -398,6 +402,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                   statementToAuthorizerReq((RelationalAuthorStatement) plan))
               : configNodeClient.operatePermission(
                   statementToAuthorizerReq((AuthorStatement) plan));
+      resetConfigNodeConnectionErrorLogTime();
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus));
       } else {
@@ -407,7 +412,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } catch (AuthException e) {
       future.setException(e);
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      logConfigNodeConnectionError();
       future.setException(e);
     }
     return future;
@@ -472,6 +477,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               ? configNodeClient.queryRPermission(
                   statementToAuthorizerReq((RelationalAuthorStatement) plan))
               : configNodeClient.queryPermission(statementToAuthorizerReq((AuthorStatement) plan));
+      resetConfigNodeConnectionErrorLogTime();
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
         future.setException(
             new IoTDBException(
@@ -482,7 +488,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } catch (AuthException e) {
       future.setException(e);
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      logConfigNodeConnectionError();
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       future.setException(new IoTDBException(authorizerResp.getStatus()));
@@ -573,8 +579,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
         status = configNodeClient.login(req);
+        resetConfigNodeConnectionErrorLogTime();
       } catch (ClientManagerException | TException e) {
-        LOGGER.error(CONNECTERROR);
+        logConfigNodeConnectionError();
         status = new TPermissionInfoResp();
         status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       } finally {
@@ -605,8 +612,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
         permissionInfoResp = configNodeClient.getUser(userName);
+        resetConfigNodeConnectionErrorLogTime();
       } catch (ClientManagerException | TException e) {
-        LOGGER.error(CONNECTERROR);
+        logConfigNodeConnectionError();
       }
       if (permissionInfoResp != null
           && permissionInfoResp.getStatus().getCode()
@@ -643,8 +651,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
+      resetConfigNodeConnectionErrorLogTime();
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      logConfigNodeConnectionError();
       permissionInfoResp = new TPermissionInfoResp();
       permissionInfoResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
@@ -674,8 +683,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkRoleOfUser(req);
+      resetConfigNodeConnectionErrorLogTime();
     } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
+      logConfigNodeConnectionError();
       permissionInfoResp = new TPermissionInfoResp();
       permissionInfoResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
@@ -727,6 +737,19 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
     }
     return user;
+  }
+
+  static void logConfigNodeConnectionError() {
+    long now = System.currentTimeMillis();
+    long lastLogTime = LAST_CONNECT_ERROR_LOG_TIME.get();
+    if ((lastLogTime == 0 || now - lastLogTime >= CONNECT_ERROR_LOG_INTERVAL_MS)
+        && LAST_CONNECT_ERROR_LOG_TIME.compareAndSet(lastLogTime, now)) {
+      LOGGER.error(CONNECTERROR);
+    }
+  }
+
+  static void resetConfigNodeConnectionErrorLogTime() {
+    LAST_CONNECT_ERROR_LOG_TIME.set(0L);
   }
 
   /** Cache role. */
