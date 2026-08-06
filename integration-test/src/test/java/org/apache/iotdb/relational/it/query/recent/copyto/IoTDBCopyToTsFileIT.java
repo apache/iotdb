@@ -506,7 +506,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -547,7 +547,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -680,7 +680,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(1, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
