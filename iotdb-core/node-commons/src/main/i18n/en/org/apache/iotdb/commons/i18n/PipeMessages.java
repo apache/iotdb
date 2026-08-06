@@ -966,5 +966,12 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_PIPE_PLUGIN_FROM_ARG_BECAUSE_THE_FOLLOWING_CLASSES_CONFLICT_WITH_THE_PARENT_CLASSLOADER_SAME_FULLY_QUALIFIED_NAME_BUT_DIFFERENT_BYTECODE_ARG_0647E8F3 =
+          "Failed to load pipe plugin from %s, because the following classes conflict with the parent ClassLoader (same fully-qualified name but different bytecode): %s";
+  public static final String EXCEPTION_LIBROOT_CANNOT_BE_NULL_C22EAC78 = "libRoot cannot be null";
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_PIPE_PLUGIN_FROM_ARG_BECAUSE_THE_PATH_DOES_NOT_EXIST_1AD125AD =
+          "Failed to load pipe plugin from %s, because the path does not exist";
 
 }

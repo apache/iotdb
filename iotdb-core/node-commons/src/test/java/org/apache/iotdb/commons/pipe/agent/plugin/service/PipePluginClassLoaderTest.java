@@ -28,6 +28,7 @@ import javax.tools.ToolProvider;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -46,53 +47,61 @@ import java.util.stream.Stream;
 public class PipePluginClassLoaderTest {
 
   @Test
-  public void testPluginClassesShouldOverrideParentClasses() throws Exception {
-    final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-test");
+  public void testRejectPluginWhenParentHasDifferentBytecode() throws Exception {
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-conflict");
     try {
-      final Path parentSources = Files.createDirectory(tempDir.resolve("parent-sources"));
-      final Path parentClasses = Files.createDirectory(tempDir.resolve("parent-classes"));
-      final Path childSources = Files.createDirectory(tempDir.resolve("child-sources"));
-      final Path childClasses = Files.createDirectory(tempDir.resolve("child-classes"));
+      final Path parentJar = buildJarWithHelper(tempDir, "parent", "parent");
+      final Path childJar = buildJarWithHelper(tempDir, "child", "child");
 
-      final String sampleSource =
-          "package test.plugin;"
-              + "public class Sample {"
-              + "  public String ping() {"
-              + "    return test.dep.Helper.value();"
-              + "  }"
-              + "}";
-      final String parentHelperSource =
-          "package test.dep;"
-              + "public class Helper {"
-              + "  public static String value() {"
-              + "    return \"parent\";"
-              + "  }"
-              + "}";
-      final String childHelperSource =
-          "package test.dep;"
-              + "public class Helper {"
-              + "  public static String value() {"
-              + "    return \"child\";"
-              + "  }"
-              + "}";
+      try (final URLClassLoader parentClassLoader =
+          new URLClassLoader(new URL[] {parentJar.toUri().toURL()}, null)) {
+        // Ensure parent has already resolved the class resource.
+        Assert.assertNotNull(parentClassLoader.getResource("test/dep/Helper.class"));
 
+        try {
+          new PipePluginClassLoader(childJar.toString(), parentClassLoader);
+          Assert.fail("Expected IOException for conflicting classes");
+        } catch (final IOException e) {
+          Assert.assertTrue(e.getMessage().contains("test.dep.Helper"));
+        }
+
+        // Conflict check must not define classes into the parent ClassLoader.
+        Assert.assertNull(findLoadedClass(parentClassLoader, "test.dep.Helper"));
+        Assert.assertNull(findLoadedClass(parentClassLoader, "test.plugin.Sample"));
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  @Test
+  public void testAllowPluginWhenParentHasIdenticalBytecode() throws Exception {
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-same");
+    try {
+      final Path sharedClasses = Files.createDirectory(tempDir.resolve("shared-classes"));
+      final Path sharedSources = Files.createDirectory(tempDir.resolve("shared-sources"));
       compile(
-          parentSources,
-          parentClasses,
-          createSources(sampleSource, false),
-          createSources(parentHelperSource, true));
-      compile(
-          childSources,
-          childClasses,
-          createSources(sampleSource, false),
-          createSources(childHelperSource, true));
+          sharedSources,
+          sharedClasses,
+          createSources(
+              "package test.dep;"
+                  + "public class Helper {"
+                  + "  public static String value() { return \"same\"; }"
+                  + "}",
+              true),
+          createSources(
+              "package test.plugin;"
+                  + "public class Sample {"
+                  + "  public String ping() { return test.dep.Helper.value(); }"
+                  + "}",
+              false));
 
       final Path parentJar = tempDir.resolve("parent.jar");
       final Path childJar = tempDir.resolve("child.jar");
-      createJar(parentJar, parentClasses, Arrays.asList("test/plugin/Sample.class"));
+      createJar(parentJar, sharedClasses, Arrays.asList("test/dep/Helper.class"));
       createJar(
           childJar,
-          childClasses,
+          sharedClasses,
           Arrays.asList("test/plugin/Sample.class", "test/dep/Helper.class"));
 
       try (final URLClassLoader parentClassLoader =
@@ -100,13 +109,74 @@ public class PipePluginClassLoaderTest {
           final PipePluginClassLoader pluginClassLoader =
               new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
         final Class<?> sampleClass = Class.forName("test.plugin.Sample", true, pluginClassLoader);
+        // Sample is only in the plugin jar → loaded by plugin ClassLoader.
         Assert.assertSame(pluginClassLoader, sampleClass.getClassLoader());
+        // Helper is identical and present on parent → parent-delegation loads parent's copy.
+        final Class<?> helperClass = Class.forName("test.dep.Helper", true, pluginClassLoader);
+        Assert.assertSame(parentClassLoader, helperClass.getClassLoader());
         final Object sample = sampleClass.getDeclaredConstructor().newInstance();
-        Assert.assertEquals("child", sampleClass.getMethod("ping").invoke(sample));
+        Assert.assertEquals("same", sampleClass.getMethod("ping").invoke(sample));
       }
     } finally {
       deleteRecursively(tempDir);
     }
+  }
+
+  @Test
+  public void testConflictCheckDoesNotLoadPluginClasses() throws Exception {
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-noload");
+    try {
+      final Path parentJar = buildJarWithHelper(tempDir, "parent", "parent");
+      final Path childJar = buildJarWithHelper(tempDir, "child", "child");
+
+      try (final URLClassLoader parentClassLoader =
+          new URLClassLoader(new URL[] {parentJar.toUri().toURL()}, null)) {
+        try {
+          PipePluginClassLoader.validateNoConflictingClassesWithParent(
+              childJar, List.of(childJar), parentClassLoader);
+          Assert.fail("Expected IOException for conflicting classes");
+        } catch (final IOException expected) {
+          // expected
+        }
+
+        Assert.assertNull(findLoadedClass(parentClassLoader, "test.dep.Helper"));
+        Assert.assertNull(findLoadedClass(parentClassLoader, "test.plugin.Sample"));
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  private static Path buildJarWithHelper(Path tempDir, String prefix, String helperValue)
+      throws IOException {
+    final Path sources = Files.createDirectory(tempDir.resolve(prefix + "-sources"));
+    final Path classes = Files.createDirectory(tempDir.resolve(prefix + "-classes"));
+    compile(
+        sources,
+        classes,
+        createSources(
+            "package test.dep;"
+                + "public class Helper {"
+                + "  public static String value() { return \""
+                + helperValue
+                + "\"; }"
+                + "}",
+            true),
+        createSources(
+            "package test.plugin;"
+                + "public class Sample {"
+                + "  public String ping() { return test.dep.Helper.value(); }"
+                + "}",
+            false));
+    final Path jar = tempDir.resolve(prefix + ".jar");
+    createJar(jar, classes, Arrays.asList("test/plugin/Sample.class", "test/dep/Helper.class"));
+    return jar;
+  }
+
+  private static Class<?> findLoadedClass(ClassLoader classLoader, String name) throws Exception {
+    final Method method = ClassLoader.class.getDeclaredMethod("findLoadedClass", String.class);
+    method.setAccessible(true);
+    return (Class<?>) method.invoke(classLoader, name);
   }
 
   private static Map<String, String> createSources(

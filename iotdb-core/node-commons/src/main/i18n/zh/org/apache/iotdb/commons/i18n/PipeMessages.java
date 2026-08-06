@@ -932,5 +932,12 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_PIPE_PLUGIN_FROM_ARG_BECAUSE_THE_FOLLOWING_CLASSES_CONFLICT_WITH_THE_PARENT_CLASSLOADER_SAME_FULLY_QUALIFIED_NAME_BUT_DIFFERENT_BYTECODE_ARG_0647E8F3 =
+          "从 %s 加载 pipe plugin 失败，因为以下类与父 ClassLoader 冲突（全类名相同但字节码不同）：%s";
+  public static final String EXCEPTION_LIBROOT_CANNOT_BE_NULL_C22EAC78 = "libRoot 不能为空";
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_PIPE_PLUGIN_FROM_ARG_BECAUSE_THE_PATH_DOES_NOT_EXIST_1AD125AD =
+          "从 %s 加载 pipe plugin 失败，因为路径不存在";
 
 }
