@@ -272,7 +272,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public void close() throws Exception {
-    partitionCache.clear();
+    partitionCache.close();
     resultTsBlocks.clear();
     resultTsBlock = null;
     retainedTsBlock = null;
