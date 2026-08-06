@@ -118,6 +118,7 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
   }
 
   private boolean isConsensusDrivenTopic() {
-    return ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
+    return ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+        topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
   }
 }

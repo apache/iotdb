@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -98,19 +99,22 @@ public class SubscriptionTopicAgent {
 
   private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
     final String topicName = metaFromCoordinator.getTopicName();
-    final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName);
+    final boolean isTableModel = metaFromCoordinator.visibleUnderTableModel();
+    final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
     TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
-    topicMetaKeeper.removeTopicMeta(topicName);
+    topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
-    } else if (!metaFromCoordinator.getConfig().isTableTopic()) {
+    } else if (!metaFromCoordinator.getConfig().isTableTopic()
+        && !topicMetaKeeper.containsTopicMeta(topicName, true)) {
       // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
       // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
       SubscriptionAgent.broker().dropColumnFilter(topicName);
     }
     SubscriptionAgent.broker()
-        .refreshConsensusQueueOrderMode(topicName, metaFromCoordinator.getConfig().getOrderMode());
+        .refreshConsensusQueueOrderMode(
+            topicName, isTableModel, metaFromCoordinator.getConfig().getOrderMode());
   }
 
   static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
@@ -185,9 +189,19 @@ public class SubscriptionTopicAgent {
   }
 
   public TPushTopicMetaRespExceptionMessage handleDropTopic(final String topicName) {
+    return handleDropTopic(topicName, null);
+  }
+
+  public TPushTopicMetaRespExceptionMessage handleDropTopic(
+      final String topicName, final boolean isTableModel) {
+    return handleDropTopic(topicName, Boolean.valueOf(isTableModel));
+  }
+
+  private TPushTopicMetaRespExceptionMessage handleDropTopic(
+      final String topicName, final Boolean isTableModel) {
     acquireWriteLock();
     try {
-      handleDropTopicInternal(topicName);
+      handleDropTopicInternal(topicName, isTableModel);
       return null;
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_TOPIC, topicName, e);
@@ -200,9 +214,19 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  private void handleDropTopicInternal(final String topicName) {
-    topicMetaKeeper.removeTopicMeta(topicName);
-    SubscriptionAgent.broker().dropColumnFilter(topicName);
+  private void handleDropTopicInternal(final String topicName, final Boolean isTableModel) {
+    final TopicMeta topicMeta =
+        Objects.isNull(isTableModel)
+            ? topicMetaKeeper.getTopicMeta(topicName)
+            : topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+    if (Objects.isNull(isTableModel)) {
+      topicMetaKeeper.removeTopicMeta(topicName);
+    } else {
+      topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
+    }
+    if (Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel()) {
+      SubscriptionAgent.broker().dropColumnFilter(topicName);
+    }
   }
 
   public boolean isTopicExisted(final String topicName) {
@@ -215,11 +239,15 @@ public class SubscriptionTopicAgent {
   }
 
   public String getTopicFormat(final String topicName) {
+    return getTopicFormat(topicName, false);
+  }
+
+  public String getTopicFormat(final String topicName, final boolean isTableModel) {
     acquireReadLock();
     try {
-      return topicMetaKeeper.containsTopicMeta(topicName)
+      return topicMetaKeeper.containsTopicMeta(topicName, isTableModel)
           ? topicMetaKeeper
-              .getTopicMeta(topicName)
+              .getTopicMeta(topicName, isTableModel)
               .getConfig()
               .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE)
           : null;
@@ -229,10 +257,14 @@ public class SubscriptionTopicAgent {
   }
 
   public String getTopicMode(final String topicName) {
+    return getTopicMode(topicName, false);
+  }
+
+  public String getTopicMode(final String topicName, final boolean isTableModel) {
     acquireReadLock();
     try {
-      return topicMetaKeeper.containsTopicMeta(topicName)
-          ? topicMetaKeeper.getTopicMeta(topicName).getConfig().getMode()
+      return topicMetaKeeper.containsTopicMeta(topicName, isTableModel)
+          ? topicMetaKeeper.getTopicMeta(topicName, isTableModel).getConfig().getMode()
           : null;
     } finally {
       releaseReadLock();
@@ -240,23 +272,32 @@ public class SubscriptionTopicAgent {
   }
 
   public String getTopicOrderMode(final String topicName) {
+    return getTopicOrderMode(topicName, false);
+  }
+
+  public String getTopicOrderMode(final String topicName, final boolean isTableModel) {
     acquireReadLock();
     try {
-      return topicMetaKeeper.getTopicMeta(topicName).getConfig().getOrderMode();
+      return topicMetaKeeper.getTopicMeta(topicName, isTableModel).getConfig().getOrderMode();
     } finally {
       releaseReadLock();
     }
   }
 
   public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
+    return getTopicConfigs(topicNames, false);
+  }
+
+  public Map<String, TopicConfig> getTopicConfigs(
+      final Set<String> topicNames, final boolean isTableModel) {
     acquireReadLock();
     try {
       return topicNames.stream()
-          .filter(topicMetaKeeper::containsTopicMeta)
+          .filter(topicName -> topicMetaKeeper.containsTopicMeta(topicName, isTableModel))
           .collect(
               Collectors.toMap(
                   topicName -> topicName,
-                  topicName -> topicMetaKeeper.getTopicMeta(topicName).getConfig()));
+                  topicName -> topicMetaKeeper.getTopicMeta(topicName, isTableModel).getConfig()));
     } finally {
       releaseReadLock();
     }
@@ -265,7 +306,8 @@ public class SubscriptionTopicAgent {
   public TSStatus checkTopicOwner(final ConsumerConfig consumerConfig, final String topicName) {
     acquireReadLock();
     try {
-      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
+      final TopicMeta topicMeta =
+          topicMetaKeeper.getTopicMeta(topicName, isTableModel(consumerConfig));
       if (Objects.isNull(topicMeta) || !topicMeta.isOwnerFencingEnabled()) {
         return RpcUtils.SUCCESS_STATUS;
       }
@@ -340,7 +382,10 @@ public class SubscriptionTopicAgent {
     acquireWriteLock();
     try {
       for (final TTopicOwnerLeaseEntry lease : ownerLeases) {
-        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(lease.getTopicName());
+        final TopicMeta topicMeta =
+            lease.isSetIsTableModel()
+                ? topicMetaKeeper.getTopicMeta(lease.getTopicName(), lease.isIsTableModel())
+                : topicMetaKeeper.getTopicMeta(lease.getTopicName());
         if (Objects.isNull(topicMeta)) {
           continue;
         }
@@ -350,5 +395,9 @@ public class SubscriptionTopicAgent {
     } finally {
       releaseWriteLock();
     }
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(consumerConfig.getSqlDialect());
   }
 }

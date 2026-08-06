@@ -79,7 +79,10 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     this.databaseName = databaseName;
     this.commitContext = commitContext;
     this.columnFilterMatcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(commitContext.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                commitContext.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(commitContext.getConsumerGroupId()));
     this.timeSelectedByTable = columnFilterMatcher.getTimeSelectedByTable(databaseName);
 
     init();

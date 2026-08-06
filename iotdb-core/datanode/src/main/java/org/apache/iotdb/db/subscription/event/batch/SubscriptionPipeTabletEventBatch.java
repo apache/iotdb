@@ -265,7 +265,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
 
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                prefetchingQueue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()));
 
     final List<Tablet> prunedTablets = new ArrayList<>(tablets.right.size());
     for (final Tablet tablet : tablets.right) {

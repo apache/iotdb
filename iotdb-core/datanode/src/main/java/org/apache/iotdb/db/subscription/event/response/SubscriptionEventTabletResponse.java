@@ -96,7 +96,10 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     this.commitContext = commitContext;
     this.rootCommitContext = rootCommitContext;
     this.columnFilterMatcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(queue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                queue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(queue.getConsumerGroupId()));
 
     init();
   }

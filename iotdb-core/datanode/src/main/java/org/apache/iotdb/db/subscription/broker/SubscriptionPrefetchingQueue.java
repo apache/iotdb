@@ -153,6 +153,10 @@ public abstract class SubscriptionPrefetchingQueue {
     return topicName;
   }
 
+  public String getConsumerGroupId() {
+    return brokerId;
+  }
+
   protected void cleanUpInternal() {
     // clean up events in batches
     batches.cleanUp();
@@ -675,7 +679,10 @@ public abstract class SubscriptionPrefetchingQueue {
   private boolean canPassThroughTsFile(final PipeTsFileInsertionEvent event) {
     return PipeEventCollector.canSkipParsing4TsFileEvent(event)
         && (!event.isTableModelEvent()
-            || SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isMatchAll());
+            || SubscriptionAgent.broker()
+                .getColumnFilterMatcher(
+                    topicName, SubscriptionAgent.consumer().isTableModel(brokerId))
+                .isMatchAll());
   }
 
   private RetryableState onRetryableTabletInsertionEvent(

@@ -689,6 +689,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -716,6 +717,7 @@ struct TTopicOwnerLeaseEntry {
   2: required string ownerId
   3: required i64 ownerEpoch
   4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
 }
 
 struct TPushTopicOwnerLeaseReq {

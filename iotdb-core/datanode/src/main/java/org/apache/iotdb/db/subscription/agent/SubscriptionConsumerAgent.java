@@ -103,7 +103,9 @@ public class SubscriptionConsumerAgent {
     if (Objects.isNull(metaInAgent)) {
       SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
       ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
-          consumerGroupId, metaFromCoordinator.getSubscribedTopicNames());
+          consumerGroupId,
+          metaFromCoordinator.getSubscribedTopicNames(),
+          metaFromCoordinator.visibleUnder(true));
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       return;
     }
@@ -128,7 +130,9 @@ public class SubscriptionConsumerAgent {
       }
 
       ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
-          consumerGroupId, metaFromCoordinator.getSubscribedTopicNames());
+          consumerGroupId,
+          metaFromCoordinator.getSubscribedTopicNames(),
+          metaFromCoordinator.visibleUnder(true));
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       // no need to create broker manually
@@ -141,7 +145,8 @@ public class SubscriptionConsumerAgent {
     final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
     final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
-      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, metaFromCoordinator.visibleUnder(true))) {
         consensusTopicsUnsubByGroup.add(topicName);
         continue;
       }
@@ -272,6 +277,17 @@ public class SubscriptionConsumerAgent {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.getTopicsSubscribedByConsumer(consumerGroupId, consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isTableModel(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      return Objects.nonNull(consumerGroupMeta) && consumerGroupMeta.visibleUnder(true);
     } finally {
       releaseReadLock();
     }

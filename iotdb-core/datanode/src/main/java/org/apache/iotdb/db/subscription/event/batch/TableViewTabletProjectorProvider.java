@@ -75,7 +75,9 @@ class TableViewTabletProjectorProvider {
 
       final TopicConfig topicConfig =
           SubscriptionAgent.topic()
-              .getTopicConfigs(Collections.singleton(prefetchingQueue.getTopicName()))
+              .getTopicConfigs(
+                  Collections.singleton(prefetchingQueue.getTopicName()),
+                  SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()))
               .get(prefetchingQueue.getTopicName());
       if (Objects.isNull(topicConfig)) {
         return false;

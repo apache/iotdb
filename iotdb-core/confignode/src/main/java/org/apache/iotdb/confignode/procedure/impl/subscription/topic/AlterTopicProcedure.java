@@ -124,7 +124,11 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info(ProcedureMessages.ALTERTOPICPROCEDURE_EXECUTEFROMVALIDATE);
 
-    existedTopicMeta = subscriptionInfo.get().deepCopyTopicMeta(updatedTopicMeta.getTopicName());
+    existedTopicMeta =
+        subscriptionInfo
+            .get()
+            .deepCopyTopicMeta(
+                updatedTopicMeta.getTopicName(), updatedTopicMeta.visibleUnderTableModel());
     if (Objects.nonNull(updatedTopicAttributes) && Objects.nonNull(existedTopicMeta)) {
       updatedTopicMeta = existedTopicMeta.deepCopyWithUpdatedAttributes(updatedTopicAttributes);
     }

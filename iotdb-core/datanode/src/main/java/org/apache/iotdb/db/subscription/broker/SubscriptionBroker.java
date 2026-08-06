@@ -102,7 +102,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   @Override
   public boolean acceptsTopic(final String topicName) {
     return Objects.nonNull(topicName)
-        && !ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
+        && !ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName, isTableModel());
   }
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
@@ -436,7 +436,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
           brokerId);
       return;
     }
-    final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
+    final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName, isTableModel());
     final SubscriptionPrefetchingQueue prefetchingQueue;
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       prefetchingQueue =
@@ -465,7 +465,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   public void updateCompletedTopicNames(final String topicName) {
     // mark topic name completed only for topic of snapshot mode
     if (SubscriptionAgent.topic()
-        .getTopicMode(topicName)
+        .getTopicMode(topicName, isTableModel())
         .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
       completedTopicNames.put(topicName, topicName);
     }
@@ -487,7 +487,9 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     prefetchingQueue.markClosed();
 
     // mark topic name completed only for topic of snapshot mode
-    if (SubscriptionAgent.topic().getTopicMode(topicName).equals(TopicConstant.MODE_SNAPSHOT_VALUE)
+    if (SubscriptionAgent.topic()
+            .getTopicMode(topicName, isTableModel())
+            .equals(TopicConstant.MODE_SNAPSHOT_VALUE)
         && prefetchingQueue.isCompleted()) {
       completedTopicNames.put(topicName, topicName);
     }
@@ -506,6 +508,10 @@ public class SubscriptionBroker implements ISubscriptionBroker {
             .PIPE_LOG_SUBSCRIPTION_DROP_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_21F313CB,
         topicName,
         brokerId);
+  }
+
+  private boolean isTableModel() {
+    return SubscriptionAgent.consumer().isTableModel(brokerId);
   }
 
   @Override
