@@ -472,12 +472,23 @@ public class PipeMemoryManager {
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
-  private boolean isHardEnoughForResizing(final PipeMemoryBlock block) {
+  private boolean isHardEnoughForResizing(
+      final PipeMemoryBlock block, final long extraMemoryInBytes) {
     if (block instanceof PipeTabletMemoryBlock) {
-      return isHardEnough4TabletParsing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) extraMemoryInBytes
+                  + (double) usedMemorySizeInBytesOfTsFiles
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTablets + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTablets();
     }
     if (block instanceof PipeTsFileMemoryBlock) {
-      return isHardEnough4TsFileSlicing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) usedMemorySizeInBytesOfTsFiles
+                  + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTsFiles + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTsTiles();
     }
     return true;
   }
@@ -710,7 +721,7 @@ public class PipeMemoryManager {
       // Dynamically resized data-structure blocks must obey the same admission thresholds as
       // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
       // prevent downstream consumers from allocating the memory needed to release them.
-      if (isHardEnoughForResizing(block)
+      if (isHardEnoughForResizing(block, sizeInBytes)
           && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
               >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
