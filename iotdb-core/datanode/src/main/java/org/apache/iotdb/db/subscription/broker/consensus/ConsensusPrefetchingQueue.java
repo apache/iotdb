@@ -195,9 +195,9 @@ public class ConsensusPrefetchingQueue {
   private volatile ProgressWALIterator subscriptionWALIterator;
 
   /**
-   * Seek requests must not close/reset the WAL iterator from RPC threads because the prefetch
-   * worker may be reading it concurrently. Instead, seek only records the latest desired reset and
-   * the queue's next prefetch round applies it after observing the new seek generation.
+   * WAL cursor changes outside the iterator must not close/reset it from RPC threads because the
+   * prefetch worker may be reading it concurrently. Instead, the latest desired reset is recorded
+   * and applied by the next prefetch round after observing the expected seek generation.
    */
   private volatile long pendingSubscriptionWalResetSearchIndex = Long.MIN_VALUE;
 
@@ -1597,10 +1597,39 @@ public class ConsensusPrefetchingQueue {
     return hasLocalSearchIndex(request) && request.getSearchIndex() < nextExpectedSearchIndex.get();
   }
 
-  private void advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
+  private boolean advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
     if (hasLocalSearchIndex(request)) {
       nextExpectedSearchIndex.set(request.getSearchIndex() + 1);
+      return true;
     }
+    return false;
+  }
+
+  private void advanceLocalCursorFromPendingIfPresent(
+      final IndexedConsensusRequest request, final long expectedSeekGeneration) {
+    if (advanceLocalCursorIfPresent(request)) {
+      // Pending delivery advances independently of the WAL reader. Raise its local lower bound in
+      // place so stale local requests are filtered without rebuilding and rescanning retained WAL.
+      final ProgressWALIterator iterator = subscriptionWALIterator;
+      if (Objects.nonNull(iterator) && seekGeneration.get() == expectedSeekGeneration) {
+        iterator.advanceTo(
+            nextExpectedSearchIndex.get(), this::isWriterProgressCoveredForWalFastForward);
+      }
+    }
+  }
+
+  private boolean isWriterProgressCoveredForWalFastForward(
+      final long physicalTime, final int nodeId, final long localSeq) {
+    final WriterProgress candidate = new WriterProgress(physicalTime, localSeq);
+    final WriterProgress recoveryProgress =
+        recoveryWriterProgressByWriter.get(new WriterId(consensusGroupId.toString(), nodeId));
+    if (Objects.nonNull(recoveryProgress)
+        && compareWriterProgress(candidate, recoveryProgress) <= 0) {
+      return true;
+    }
+    final WriterProgress materializedProgress = materializedProgressByWriter.get(nodeId);
+    return Objects.nonNull(materializedProgress)
+        && compareWriterProgress(candidate, materializedProgress) <= 0;
   }
 
   private MaterializationResult appendRealtimeRequest(
@@ -1678,12 +1707,12 @@ public class ConsensusPrefetchingQueue {
 
       if (shouldSkipForRecoveryProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
       if (shouldSkipForMaterializedProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
 
@@ -1695,7 +1724,7 @@ public class ConsensusPrefetchingQueue {
       }
       markMaterializedProgress(request);
       processedCount++;
-      advanceLocalCursorIfPresent(request);
+      advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
         break;
       }
@@ -1787,7 +1816,9 @@ public class ConsensusPrefetchingQueue {
     // Use the persistent linger batch so an unexpected runtime failure cannot orphan already
     // reserved Tablets or advance replay progress past data that has become unreachable.
     final DeliveryBatchState batchState = lingerBatch;
-    resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
+    // Keep the iterator and its buffered next request across rounds. Reopening it here discards the
+    // request prepared by hasNext() and repeatedly re-reads, skips, and decompresses the same WAL
+    // segment. Pending-path cursor advances and seek operations request explicit realignment.
     final MaterializationResult materializationResult =
         pumpFromSubscriptionWAL(
             batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
@@ -1820,7 +1851,6 @@ public class ConsensusPrefetchingQueue {
       return MaterializationResult.SUCCESS;
     }
 
-    subscriptionWALIterator.refresh();
     ensureSubscriptionWalReadable();
 
     int entriesRead = 0;
@@ -1876,9 +1906,14 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void ensureSubscriptionWalReadable() {
-    if (Objects.isNull(subscriptionWALIterator)
-        || subscriptionWALIterator.hasNext()
-        || !(consensusReqReader instanceof WALNode)) {
+    if (Objects.isNull(subscriptionWALIterator) || subscriptionWALIterator.hasNext()) {
+      return;
+    }
+
+    // Listing and sorting all retained WAL files is only necessary after the iterator is
+    // exhausted. While it still has a readable request, refreshing cannot affect the next result.
+    subscriptionWALIterator.refresh();
+    if (subscriptionWALIterator.hasNext() || !(consensusReqReader instanceof WALNode)) {
       return;
     }
 
@@ -1895,9 +1930,6 @@ public class ConsensusPrefetchingQueue {
         currentWalIndex);
     ((WALNode) consensusReqReader).rollWALFile();
     resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
-    if (Objects.nonNull(subscriptionWALIterator)) {
-      subscriptionWALIterator.refresh();
-    }
   }
 
   private void resetSubscriptionWALPosition(final long startSearchIndex) {
@@ -1915,6 +1947,11 @@ public class ConsensusPrefetchingQueue {
   protected void onWalGapRetryScheduled() {}
 
   private boolean hasReadableWalEntries() {
+    if (pendingSubscriptionWalResetSearchIndex != Long.MIN_VALUE) {
+      // Do not advance the stale iterator only to discard its buffered request when the next round
+      // applies the pending realignment. Returning true keeps the worker scheduled for that round.
+      return true;
+    }
     return Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasNext();
   }
 
@@ -2209,7 +2246,10 @@ public class ConsensusPrefetchingQueue {
 
   private boolean ackMissingInFlightEvent(
       final SubscriptionCommitContext commitContext, final boolean silent) {
-    acquireWriteLock();
+    // Late or duplicate ACKs touch the same concurrent lifecycle indexes and commit manager as the
+    // regular in-flight ACK path. A read lock is sufficient to fence seek/close transitions while
+    // allowing ACKs to proceed concurrently with a long-running WAL prefetch round.
+    acquireReadLock();
     try {
       if (!canAcceptCommitContext(commitContext, "ack", silent)) {
         return false;
@@ -2256,7 +2296,7 @@ public class ConsensusPrefetchingQueue {
       }
       return true;
     } finally {
-      releaseWriteLock();
+      releaseReadLock();
     }
   }
 
