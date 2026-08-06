@@ -122,7 +122,6 @@ set JAVA_OPTS=-ea^
  -DCONFIGNODE_HOME="%CONFIGNODE_HOME%"^
  -DCONFIGNODE_CONF="%CONFIGNODE_CONF%"^
  -Dsun.jnu.encoding=UTF-8^
- -Djava.nio.file.spi.DefaultFileSystemProvider=com.timecho.iotdb.commons.file.SecureFileSystemProvider^
  -Dfile.encoding=UTF-8
 
 @REM ***** CLASSPATH library setting *****

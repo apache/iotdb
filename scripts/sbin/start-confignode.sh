@@ -123,7 +123,9 @@ initConfigNodeEnv
 
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS $IOTDB_HEAP_DUMP_COMMAND"
 
-CLASSPATH=""
+# The default file-system provider is loaded while the JVM is still initializing NIO.2. Keep its
+# exploded classes ahead of application JARs to avoid recursive JAR loading through File.toPath().
+CLASSPATH="${CONFIGNODE_HOME}/lib/bootstrap"
 for f in "${CONFIGNODE_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done

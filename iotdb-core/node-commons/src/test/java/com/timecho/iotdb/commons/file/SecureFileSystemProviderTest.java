@@ -36,6 +36,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.FileChannel;
@@ -60,6 +62,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -432,18 +436,28 @@ public class SecureFileSystemProviderTest {
   @Test
   public void testProviderCanBeInstalledAsJvmDefault() throws Exception {
     final Path childFile = tempDirectory.resolve("default-provider-child");
+    final Path bootstrapDirectory = createBootstrapDirectory();
+    final Path childMainJar = createChildMainJar();
     final String javaExecutable =
         Path.of(System.getProperty("java.home"), "bin", "java" + (isWindows() ? ".exe" : ""))
             .toString();
+    final String childClasspath =
+        bootstrapDirectory
+            + File.pathSeparator
+            + childMainJar
+            + File.pathSeparator
+            + System.getProperty("java.class.path");
     final Process process =
         new ProcessBuilder(
                 javaExecutable,
                 "-Djava.nio.file.spi.DefaultFileSystemProvider="
                     + SecureFileSystemProvider.class.getName(),
                 "-cp",
-                System.getProperty("java.class.path"),
+                childClasspath,
                 DefaultProviderProcess.class.getName(),
-                childFile.toString())
+                childFile.toString(),
+                bootstrapDirectory.toString(),
+                childMainJar.toString())
             .redirectErrorStream(true)
             .start();
 
@@ -455,6 +469,50 @@ public class SecureFileSystemProviderTest {
         new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
     Assert.assertTrue(output, exited);
     Assert.assertEquals(output, 0, process.exitValue());
+  }
+
+  private Path createBootstrapDirectory() throws Exception {
+    final Path classOutputDirectory =
+        Path.of(
+            SecureFileSystemProvider.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .toURI());
+    final Path sourceDirectory = classOutputDirectory.resolve("com/timecho/iotdb/commons/file");
+    final Path bootstrapDirectory = tempDirectory.resolve("lib/bootstrap");
+    try (final java.util.stream.Stream<Path> paths = Files.walk(sourceDirectory)) {
+      paths
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().endsWith(".class"))
+          .forEach(
+              source -> {
+                final Path target =
+                    bootstrapDirectory.resolve(classOutputDirectory.relativize(source));
+                try {
+                  Files.createDirectories(target.getParent());
+                  Files.copy(source, target);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
+    }
+    return bootstrapDirectory;
+  }
+
+  private Path createChildMainJar() throws IOException {
+    final Path childMainJar = tempDirectory.resolve("default-provider-child.jar");
+    final String classResource =
+        DefaultProviderProcess.class.getName().replace('.', '/') + ".class";
+    try (final InputStream input =
+            DefaultProviderProcess.class.getResourceAsStream('/' + classResource);
+        final JarOutputStream output = new JarOutputStream(Files.newOutputStream(childMainJar))) {
+      Assert.assertNotNull(input);
+      output.putNextEntry(new JarEntry(classResource));
+      input.transferTo(output);
+      output.closeEntry();
+    }
+    return childMainJar;
   }
 
   private Path secure(Path path) {
@@ -507,10 +565,34 @@ public class SecureFileSystemProviderTest {
 
     private DefaultProviderProcess() {}
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
       CommonDescriptor.getInstance().getConfig().setEnableSecureErase(true);
       if (!(FileSystems.getDefault().provider() instanceof SecureFileSystemProvider)) {
         throw new AssertionError();
+      }
+      final Path providerLocation =
+          Path.of(
+                  SecureFileSystemProvider.class
+                      .getProtectionDomain()
+                      .getCodeSource()
+                      .getLocation()
+                      .toURI())
+              .toAbsolutePath()
+              .normalize();
+      if (!providerLocation.equals(Path.of(args[1]).toAbsolutePath().normalize())) {
+        throw new AssertionError("Provider was not loaded from bootstrap: " + providerLocation);
+      }
+      final Path mainLocation =
+          Path.of(
+                  DefaultProviderProcess.class
+                      .getProtectionDomain()
+                      .getCodeSource()
+                      .getLocation()
+                      .toURI())
+              .toAbsolutePath()
+              .normalize();
+      if (!mainLocation.equals(Path.of(args[2]).toAbsolutePath().normalize())) {
+        throw new AssertionError("Child main was not loaded from JAR: " + mainLocation);
       }
       final Path file = Path.of(args[0]);
       if (!file.toFile().getPath().equals(file.toString())) {

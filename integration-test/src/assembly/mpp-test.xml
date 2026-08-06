@@ -26,6 +26,14 @@
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
+        <!-- The default file-system provider must be loadable before the JVM opens application JARs. -->
+        <fileSet>
+            <outputDirectory>lib/bootstrap</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/target/classes</directory>
+            <includes>
+                <include>com/timecho/iotdb/commons/file/**</include>
+            </includes>
+        </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf</directory>

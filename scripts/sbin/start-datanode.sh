@@ -109,7 +109,9 @@ fi
 #checkAllVariables is in iotdb-common.sh
 checkAllVariables
 
-CLASSPATH=""
+# The default file-system provider is loaded while the JVM is still initializing NIO.2. Keep its
+# exploded classes ahead of application JARs to avoid recursive JAR loading through File.toPath().
+CLASSPATH="${IOTDB_HOME}/lib/bootstrap"
 for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done

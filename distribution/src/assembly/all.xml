@@ -27,6 +27,14 @@
     </formats>
     <baseDirectory>${package.name}-${project.version}-bin</baseDirectory>
     <fileSets>
+        <!-- The default file-system provider must be loadable before the JVM opens application JARs. -->
+        <fileSet>
+            <outputDirectory>lib/bootstrap</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/target/classes</directory>
+            <includes>
+                <include>com/timecho/iotdb/commons/file/**</include>
+            </includes>
+        </fileSet>
         <!-- 包含合并的依赖JAR -->
         <fileSet>
             <outputDirectory>lib</outputDirectory>
