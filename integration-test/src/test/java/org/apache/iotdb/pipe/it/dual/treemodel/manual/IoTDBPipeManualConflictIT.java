@@ -45,7 +45,7 @@ import java.util.Map;
 public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT {
   @Test
   @Ignore("Requires forwarding pipe request filtering, which is disabled.")
-  public void testDoubleLivingTimeseries() throws Exception {
+  public void testDoubleLivingTimeseriesAndTemplate() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -151,74 +151,11 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         "select count(*) from root.ln.** group by level=1",
         "count(root.ln.*.*.*),",
         Collections.singleton("2,"));
+
+    assertDoubleLivingTemplate();
   }
 
-  @Test
-  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
-  public void testDoubleLivingTemplate() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> sourceAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> sinkAttributes = new HashMap<>();
-
-      sourceAttributes.put("source.inclusion", "data, schema");
-      sourceAttributes.put("source.forwarding-pipe-requests", "false");
-      sourceAttributes.put("user", "root");
-
-      sinkAttributes.put("sink", "iotdb-thrift-sink");
-      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
-      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
-      sinkAttributes.put("sink.batch.enable", "false");
-      sinkAttributes.put("sink.ip", receiverIp);
-      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-    }
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> sourceAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> sinkAttributes = new HashMap<>();
-
-      sourceAttributes.put("source.inclusion", "data, schema");
-      sourceAttributes.put("source.forwarding-pipe-requests", "false");
-      sourceAttributes.put("user", "root");
-
-      sinkAttributes.put("sink", "iotdb-thrift-sink");
-      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
-      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
-      sinkAttributes.put("sink.batch.enable", "false");
-      sinkAttributes.put("sink.ip", senderEnv.getDataNodeWrapper(0).getIp());
-      sinkAttributes.put("sink.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-    }
-
+  private void assertDoubleLivingTemplate() throws Exception {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
