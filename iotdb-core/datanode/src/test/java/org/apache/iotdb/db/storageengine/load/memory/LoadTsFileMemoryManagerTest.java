@@ -96,6 +96,9 @@ public class LoadTsFileMemoryManagerTest {
     Assert.assertEquals(usedMemoryBefore + 1024, manager.getUsedMemorySizeInBytes());
     block.forceResize(0);
     Assert.assertEquals(usedMemoryBefore, manager.getUsedMemorySizeInBytes());
+    block.forceResize(0);
+    Assert.assertEquals(0L, block.getMemoryUsageInBytes());
+    Assert.assertEquals(usedMemoryBefore, manager.getUsedMemorySizeInBytes());
     block.close();
     Assert.assertEquals(usedMemoryBefore, manager.getUsedMemorySizeInBytes());
   }
