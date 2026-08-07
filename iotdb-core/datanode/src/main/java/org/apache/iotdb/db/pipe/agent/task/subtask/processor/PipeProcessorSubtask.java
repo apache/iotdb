@@ -279,11 +279,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           e.getMessage());
       return false;
     } catch (final Exception e) {
-      if (ExceptionUtils.getRootCause(e) instanceof PipeProcessorSubtaskYieldException) {
+      final Throwable rootCause = ExceptionUtils.getRootCause(e);
+      if (rootCause instanceof PipeProcessorSubtaskYieldException) {
         isResumingFromYield.set(true);
-        throw (PipeProcessorSubtaskYieldException) ExceptionUtils.getRootCause(e);
+        throw (PipeProcessorSubtaskYieldException) rootCause;
       }
-      if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+      if (rootCause instanceof PipeRuntimeOutOfMemoryCriticalException) {
         PipeLogger.log(
             LOGGER::info,
             DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
