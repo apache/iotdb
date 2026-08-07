@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -63,6 +64,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -259,10 +261,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
-        (schemaRegionId, listeningQueueNewFirstIndex) ->
-            PipeDataNodeAgent.runtime()
-                .schemaListener(new SchemaRegionId(schemaRegionId))
-                .removeBefore(listeningQueueNewFirstIndex));
+        (schemaRegionId, listeningQueueNewFirstIndex) -> {
+          final SchemaRegionListeningQueue listeningQueue =
+              PipeDataNodeAgent.runtime()
+                  .schemaListenerIfPresent(new SchemaRegionId(schemaRegionId));
+          if (listeningQueue != null) {
+            listeningQueue.removeBefore(listeningQueueNewFirstIndex);
+          }
+        });
 
     return schemaRegionId2ListeningQueueNewFirstIndex.keySet();
   }
@@ -322,6 +328,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final String taskId = pipeName + "_" + creationTime;
     PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
     PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
+    PipeEventCommitManager.getInstance().clear(pipeName, creationTime);
     PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
 
     return true;
@@ -364,6 +371,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String taskId = pipeName + "_" + creationTime;
       PipeTsFileToTabletsMetrics.getInstance().deregister(taskId);
       PipeDataNodeSinglePipeMetrics.getInstance().deregister(taskId);
+      PipeEventCommitManager.getInstance().clear(pipeName, creationTime);
       PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(pipeTsFileResourcePipeName);
       // When the pipe contains no pipe tasks, there is no corresponding prefetching queue for the
       // subscribed pipe, so the subscription needs to be manually marked as completed.
