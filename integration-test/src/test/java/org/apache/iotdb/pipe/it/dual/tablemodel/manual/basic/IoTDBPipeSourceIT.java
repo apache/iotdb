@@ -115,7 +115,6 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "true");
-      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test");
       extractorAttributes.put("extractor.pattern", "root.db1");
@@ -166,13 +165,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelDualManualIT {
       Thread.sleep(10000);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.dropPipeExtended(new TDropPipeReq("p1").setIsTableModel(false)).getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client.dropPipeExtended(new TDropPipeReq("p1").setIsTableModel(true)).getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.dropPipeExtended(new TDropPipeReq("p2").setIsTableModel(false)).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client.dropPipeExtended(new TDropPipeReq("p2").setIsTableModel(true)).getCode());

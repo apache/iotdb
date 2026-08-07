@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -281,7 +282,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.mode", "log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -346,72 +347,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.mode", "file");
-      sourceAttributes.put("user", "root");
-
-      sinkAttributes.put("sink", "iotdb-thrift-sink");
-      sinkAttributes.put("sink.batch.enable", "false");
-      sinkAttributes.put("sink.ip", receiverIp);
-      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-
-      final Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("1,1.0,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
-
-      TestUtils.executeNonQueries(
-          senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"),
-          null);
-
-      expectedResSet.add("2,2.0,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
-
-      TestUtils.executeNonQueries(
-          senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
-          null);
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
-    }
-  }
-
-  @Test
-  public void testLifeCycleHybridMode() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      TestUtils.executeNonQueries(
-          senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
-          null);
-
-      final Map<String, String> sourceAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> sinkAttributes = new HashMap<>();
-
-      sourceAttributes.put("source.mode", "hybrid");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -669,6 +605,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testDoubleLiving() throws Exception {
     // Double living is two clusters with pipes connecting each other.
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);

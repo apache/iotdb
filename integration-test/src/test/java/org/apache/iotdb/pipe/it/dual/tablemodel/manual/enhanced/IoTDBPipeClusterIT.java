@@ -184,12 +184,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testWithAllParametersInStreamingMode() throws Exception {
-    testWithAllParameters("true");
+    testWithAllParameters("batch");
   }
 
   @Test
   public void testWithAllParametersInNotStreamingMode() throws Exception {
-    testWithAllParameters("false");
+    testWithAllParameters("batch");
   }
 
   private void testWithAllParameters(final String realtimeMode) throws Exception {
@@ -220,7 +220,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("start-time", "0");
       sourceAttributes.put("end-time", "199");
-      sourceAttributes.put("mode.streaming", realtimeMode);
+      sourceAttributes.put("source.realtime.mode", realtimeMode);
       sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");

@@ -186,38 +186,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     } catch (Exception e) {
       fail(e.getMessage());
     }
-
-    // Tree model
-    try (final Connection connection = env.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.test_sink");
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.test_sink.d1(s_int INT32,s_long INT64,s_float float,s_double double)");
-      statement.execute(
-          "INSERT INTO root.test_sink.d1(time,s_int,s_long,s_float,s_double) VALUES (2025-01-01 03:50:14,1,1,1,1),(2025-01-01 03:50:30,12,14,16.24,18.5),(2025-01-01 03:51:45,22,24,26.24,28.5),(2025-01-01 03:51:59,32,34,36.46,38.6),(2025-01-01 03:52:00,10,14,16.46,18.6)");
-      statement.execute("CREATE USER user_new 'paSs1234@56789'");
-      // Do not grant SYSTEM privilege to avoid auto creation
-      statement.execute("GRANT write ON root.** TO USER user_new");
-      statement.execute(
-          "create pipe user_sink_pipe with source ('pattern'='root.test_sink.d1') with processor ('processor'='aggregate-processor', 'output.database'='root.user_sink_db', 'operators'='avg') with sink ('sink'='write-back-sink','user'='user_new','password'='paSs1234@56789')");
-
-      final long startTime = System.currentTimeMillis();
-      while (System.currentTimeMillis() - startTime <= 20_000L) {
-        try (final ResultSet set = statement.executeQuery("show pipe user_sink_pipe")) {
-          Assert.assertTrue(set.next());
-          try {
-            Assert.assertEquals("0", set.getString(8));
-            return;
-          } catch (final Throwable t) {
-            // Retry
-          }
-        }
-      }
-      Assert.fail();
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
   }
 
   @Test

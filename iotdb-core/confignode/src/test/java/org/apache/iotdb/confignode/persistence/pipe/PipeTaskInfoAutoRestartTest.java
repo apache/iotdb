@@ -307,7 +307,7 @@ public class PipeTaskInfoAutoRestartTest {
   }
 
   @Test
-  public void testAlterLegacyDoubleLivingPipePreservesBothVisibility() throws Exception {
+  public void testAlterLegacyDoubleLivingPipeTreatsKeyAsIgnored() throws Exception {
     final String pipeName = "oldDoubleLivingPipe";
     createPipeWithSourceAttributes(
         pipeName,
@@ -318,13 +318,17 @@ public class PipeTaskInfoAutoRestartTest {
           }
         });
 
-    final TAlterPipeReq alterPipeRequest = createAlterPipeRequest(pipeName, true);
+    Assert.assertFalse(pipeTaskInfo.isPipeExisted(pipeName, true));
+
+    final TAlterPipeReq alterPipeRequest = createAlterPipeRequest(pipeName, false);
     pipeTaskInfo.checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
     final Map<String, String> extractorAttributes = alterPipeRequest.getExtractorAttributes();
     Assert.assertEquals(
         "true", extractorAttributes.get(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY));
-    Assert.assertFalse(extractorAttributes.containsKey(SystemConstant.SQL_DIALECT_KEY));
+    Assert.assertEquals(
+        SystemConstant.SQL_DIALECT_TREE_VALUE,
+        extractorAttributes.get(SystemConstant.SQL_DIALECT_KEY));
     Assert.assertFalse(extractorAttributes.containsKey(SystemConstant.PIPE_VISIBILITY_KEY));
   }
 

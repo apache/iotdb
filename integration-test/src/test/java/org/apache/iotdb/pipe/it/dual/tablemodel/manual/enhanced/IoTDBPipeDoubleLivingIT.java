@@ -36,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,6 +53,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
+@Ignore("Double-living is disabled in the open-source edition.")
 public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelDualManualIT {
 
   @Override
