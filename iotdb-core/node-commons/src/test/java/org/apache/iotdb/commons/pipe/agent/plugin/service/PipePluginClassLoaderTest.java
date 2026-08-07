@@ -28,6 +28,7 @@ import javax.tools.ToolProvider;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -46,6 +47,7 @@ import java.util.stream.Stream;
 
 public class PipePluginClassLoaderTest {
 
+  // Verify that a plugin is rejected when it contains different bytecode for a parent class.
   @Test
   public void testRejectPluginWhenParentHasDifferentBytecode() throws Exception {
     final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-conflict");
@@ -74,6 +76,7 @@ public class PipePluginClassLoaderTest {
     }
   }
 
+  // Verify that identical parent and plugin bytecode is allowed and uses parent delegation.
   @Test
   public void testAllowPluginWhenParentHasIdenticalBytecode() throws Exception {
     final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-same");
@@ -122,6 +125,7 @@ public class PipePluginClassLoaderTest {
     }
   }
 
+  // Verify that conflict scanning does not load plugin classes into the parent loader.
   @Test
   public void testConflictCheckDoesNotLoadPluginClasses() throws Exception {
     final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-noload");
@@ -141,6 +145,79 @@ public class PipePluginClassLoaderTest {
 
         Assert.assertNull(findLoadedClass(parentClassLoader, "test.dep.Helper"));
         Assert.assertNull(findLoadedClass(parentClassLoader, "test.plugin.Sample"));
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  // Verify that Java core classes cannot be overridden by plugin classes.
+  @Test
+  public void testJavaCoreClassIsLoadedByBootstrapClassLoader() throws Exception {
+    // Verify that a plugin cannot replace a Java core class through parent delegation.
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-core-protect");
+    try {
+      final Path childJar = tempDir.resolve("plugin.jar");
+      createJarWithResource(childJar, "java/lang/String.class", new byte[0]);
+
+      try (final URLClassLoader parentClassLoader = new URLClassLoader(new URL[0], null)) {
+        try {
+          new PipePluginClassLoader(childJar.toString(), parentClassLoader);
+          Assert.fail("Expected IOException for a conflicting Java core class");
+        } catch (IOException expected) {
+          Assert.assertTrue(expected.getMessage().contains("java.lang.String"));
+        }
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  // Verify that closing the plugin loader releases the plugin JAR file handle.
+  @Test
+  public void testPluginJarFileHandleReleasedAfterClose() throws Exception {
+    // Verify that closing the plugin class loader releases the underlying JAR file.
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-file-handle");
+    try {
+      final Path childJar = buildJarWithHelper(tempDir, "close-test", "dummy");
+      try (final URLClassLoader parentClassLoader = new URLClassLoader(new URL[0], null);
+          final PipePluginClassLoader pluginClassLoader =
+              new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
+        Class.forName("test.plugin.Sample", true, pluginClassLoader);
+        pluginClassLoader.close();
+      }
+      Assert.assertTrue(Files.deleteIfExists(childJar));
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  // Verify parent-first resource lookup and enumeration of duplicate resources.
+  @Test
+  public void testPluginResourceIsolation() throws Exception {
+    // Verify parent-first lookup and enumeration of duplicate resources.
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-resource-isolation");
+    try {
+      final Path parentJar = tempDir.resolve("parent.jar");
+      final Path childJar = tempDir.resolve("child.jar");
+      createJarWithResource(parentJar, "config.properties", "source=parent");
+      createJarWithResource(childJar, "config.properties", "source=child");
+      try (final URLClassLoader parentClassLoader =
+              new URLClassLoader(new URL[] {parentJar.toUri().toURL()}, null);
+          final PipePluginClassLoader pluginClassLoader =
+              new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
+        final URL resourceUrl = pluginClassLoader.getResource("config.properties");
+        Assert.assertNotNull(resourceUrl);
+        try (InputStream inputStream = resourceUrl.openStream()) {
+          Assert.assertEquals(
+              "source=parent", new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        final List<URL> allResources = new ArrayList<>();
+        pluginClassLoader
+            .getResources("config.properties")
+            .asIterator()
+            .forEachRemaining(allResources::add);
+        Assert.assertEquals(2, allResources.size());
       }
     } finally {
       deleteRecursively(tempDir);
@@ -228,6 +305,20 @@ public class PipePluginClassLoaderTest {
         jarOutputStream.write(Files.readAllBytes(classesDir.resolve(classEntry)));
         jarOutputStream.closeEntry();
       }
+    }
+  }
+
+  private static void createJarWithResource(Path jarPath, String resourceName, String content)
+      throws IOException {
+    createJarWithResource(jarPath, resourceName, content.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static void createJarWithResource(Path jarPath, String resourceName, byte[] content)
+      throws IOException {
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
+      jarOutputStream.putNextEntry(new JarEntry(resourceName));
+      jarOutputStream.write(content);
+      jarOutputStream.closeEntry();
     }
   }
 
