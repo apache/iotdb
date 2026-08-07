@@ -55,7 +55,7 @@ ddlStatement
     // ExternalService
     | createService | startService | stopService | dropService | showService
     // Pipe Task
-    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes | showReceivers
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
@@ -699,6 +699,10 @@ stopPipe
 
 showPipes
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
+    ;
+
+showReceivers
+    : SHOW RECEIVERS
     ;
 
 // Pipe Plugin =========================================================================================

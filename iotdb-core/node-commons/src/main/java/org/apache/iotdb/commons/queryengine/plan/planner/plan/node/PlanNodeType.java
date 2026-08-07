@@ -142,6 +142,7 @@ public enum PlanNodeType {
   SHOW_DISK_USAGE((short) 107),
   TREE_COLLECT((short) 108),
   LOAD_TSFILE_OBJECT_PIECE((short) 109),
+  SHOW_RECEIVERS((short) 110),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),

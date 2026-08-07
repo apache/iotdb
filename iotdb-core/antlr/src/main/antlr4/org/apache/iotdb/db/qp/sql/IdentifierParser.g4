@@ -197,6 +197,7 @@ keyWords
     | QUERY
     | QUERYID
     | QUOTA
+    | RECEIVERS
     | RANGE
     | READONLY
     | READ

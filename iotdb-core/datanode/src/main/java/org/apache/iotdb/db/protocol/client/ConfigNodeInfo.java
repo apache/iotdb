@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.client;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -33,8 +34,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -49,6 +52,8 @@ public class ConfigNodeInfo {
   /** latest config nodes. */
   private final Set<TEndPoint> onlineConfigNodes;
 
+  private final Map<TEndPoint, Integer> configNodeIdMap;
+
   public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
   SystemPropertiesHandler systemPropertiesHandler = DataNodeSystemPropertiesHandler.getInstance();
@@ -56,6 +61,7 @@ public class ConfigNodeInfo {
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.onlineConfigNodes = new HashSet<>();
+    this.configNodeIdMap = new HashMap<>();
   }
 
   public static void reinitializeStatics() {
@@ -81,6 +87,7 @@ public class ConfigNodeInfo {
     try {
       onlineConfigNodes.clear();
       onlineConfigNodes.addAll(latestConfigNodes);
+      configNodeIdMap.keySet().retainAll(onlineConfigNodes);
       storeConfigNodeList();
       long endTime = System.currentTimeMillis();
       logger.info(
@@ -90,6 +97,35 @@ public class ConfigNodeInfo {
     } catch (IOException e) {
       logger.error(DataNodeMiscMessages.UPDATE_CONFIG_NODE_FAILED, e);
       return false;
+    } finally {
+      configNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    return true;
+  }
+
+  public boolean updateConfigNodeLocations(List<TConfigNodeLocation> latestConfigNodeLocations) {
+    if (latestConfigNodeLocations == null) {
+      return false;
+    }
+    final List<TEndPoint> latestConfigNodes = new ArrayList<>();
+    final Map<TEndPoint, Integer> latestConfigNodeIdMap = new HashMap<>();
+    for (TConfigNodeLocation configNodeLocation : latestConfigNodeLocations) {
+      if (configNodeLocation == null || configNodeLocation.getInternalEndPoint() == null) {
+        continue;
+      }
+      final TEndPoint internalEndPoint = configNodeLocation.getInternalEndPoint();
+      latestConfigNodes.add(internalEndPoint);
+      latestConfigNodeIdMap.put(internalEndPoint, configNodeLocation.getConfigNodeId());
+    }
+
+    if (!updateConfigNodeList(latestConfigNodes)) {
+      return false;
+    }
+
+    configNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      configNodeIdMap.putAll(latestConfigNodeIdMap);
+      configNodeIdMap.keySet().retainAll(onlineConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -150,6 +186,18 @@ public class ConfigNodeInfo {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  public int getConfigNodeId(TEndPoint internalEndPoint) {
+    if (internalEndPoint == null) {
+      return -1;
+    }
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      return configNodeIdMap.getOrDefault(internalEndPoint, -1);
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
   }
 
   private static class ConfigNodeInfoHolder {

@@ -161,6 +161,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -876,6 +877,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
     // This query cannot be rejected, but will be filtered at configNode
     // Does not need auth check here
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus visitShowReceivers(
+      ShowReceiversStatement statement, TreeAccessCheckContext context) {
+    // This query follows SHOW PIPES: it cannot be rejected here.
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true),
+        () -> "SHOW RECEIVERS");
     return StatusUtils.OK;
   }
 

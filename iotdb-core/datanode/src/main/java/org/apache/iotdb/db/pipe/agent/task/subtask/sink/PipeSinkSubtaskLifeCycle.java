@@ -147,6 +147,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
     if (runningTaskCount == 1) {
       executor.stop(subtask.getTaskID());
+      subtask.discardReceiverRuntimeSessions();
     }
 
     runningTaskCount--;
