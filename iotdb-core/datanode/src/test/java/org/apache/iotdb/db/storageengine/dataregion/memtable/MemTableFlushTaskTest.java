@@ -211,7 +211,7 @@ public class MemTableFlushTaskTest {
     private boolean columnMappingBuilt;
 
     private TrackingAlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-      super(schemaList, false);
+      super(schemaList);
     }
 
     @Override
