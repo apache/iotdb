@@ -37,6 +37,7 @@ public class UDAFIntegralAvg implements UDTF {
 
   long startTime = -1;
   long lastTime = -1;
+  boolean hasValue;
   double lastValue = 0;
   double integralValue = 0;
 
@@ -51,29 +52,36 @@ public class UDAFIntegralAvg implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    startTime = -1;
+    lastTime = -1;
+    hasValue = false;
+    lastValue = 0;
+    integralValue = 0;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     long nowTime = row.getTime();
     double nowValue = Util.getValueAsDouble(row);
-    if (startTime < 0) {
-      startTime = nowTime;
-    }
     if (Double.isFinite(nowValue)) {
-      // calculate the ladder-shaped area between last point and this one
-      // skip and initialize the memory if no existing previous point is available
-      if (lastTime >= 0) {
+      if (!hasValue) {
+        startTime = nowTime;
+      } else {
+        // calculate the ladder-shaped area between last point and this one
         integralValue += (lastValue + nowValue) * (nowTime - lastTime) / 2.0;
       }
       lastTime = nowTime;
       lastValue = nowValue;
+      hasValue = true;
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (startTime < 0) {
+    if (!hasValue) {
       // empty input
       collector.putDouble(0, 0);
     } else if (startTime == lastTime) {
