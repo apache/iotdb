@@ -183,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -1232,6 +1233,11 @@ public class StatementAnalyzer {
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      if (insert instanceof InsertValues) {
+        ((InsertValues) insert)
+            .materialize(new PlannerContext(metadata, typeManager), sessionContext);
+      }
+
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
