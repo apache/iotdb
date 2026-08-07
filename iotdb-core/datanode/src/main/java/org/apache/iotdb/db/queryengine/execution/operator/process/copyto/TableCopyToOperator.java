@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.copyto;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -28,11 +29,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.TsFileFormatCopyToWriter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,6 +44,7 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class TableCopyToOperator implements ProcessOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableCopyToOperator.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableCopyToOperator.class);
 
@@ -79,7 +84,11 @@ public class TableCopyToOperator implements ProcessOperator {
   public TsBlock next() throws Exception {
     IFormatCopyToWriter formatWriter = getWriter();
     if (!childOperator.hasNext()) {
-      formatWriter.seal();
+      try {
+        formatWriter.seal();
+      } catch (IOException e) {
+        throw newCopyToWriteError(e);
+      }
       isFinished = true;
       return formatWriter.buildResultTsBlock();
     }
@@ -88,8 +97,22 @@ public class TableCopyToOperator implements ProcessOperator {
       return null;
     }
     hasData = true;
-    formatWriter.write(tsBlock);
+    try {
+      formatWriter.write(tsBlock);
+    } catch (IOException e) {
+      throw newCopyToWriteError(e);
+    }
     return null;
+  }
+
+  private IoTDBRuntimeException newCopyToWriteError(IOException e) {
+    LOGGER.warn(
+        DataNodeQueryMessages.LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37, e);
+    return new IoTDBRuntimeException(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D,
+            e.getMessage()),
+        TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode());
   }
 
   private IFormatCopyToWriter getWriter() throws Exception {
