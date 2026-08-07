@@ -294,6 +294,80 @@ public class AggregationOperatorTest {
   }
 
   @Test
+  public void testGroupByIntermediateResultWithFinishedEmptyChild() throws Exception {
+    QueryId queryId = new QueryId("stub_query_finished_empty_child");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    driverContext.addOperatorContext(
+        1, new PlanNodeId("finished-empty-child"), FixedTsBlockOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        2, new PlanNodeId("data-child"), FixedTsBlockOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
+        3, new PlanNodeId("aggregation"), AggregationOperator.class.getSimpleName());
+    driverContext
+        .getOperatorContexts()
+        .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
+
+    List<Operator> children = new ArrayList<>();
+    children.add(
+        new FixedTsBlockOperator(
+            driverContext.getOperatorContexts().get(0), buildEmptyTsBlock()));
+    children.add(
+        new FixedTsBlockOperator(
+            driverContext.getOperatorContexts().get(1), buildCountTsBlock(new long[] {0}, 5)));
+
+    List<InputLocation[]> inputLocationForCount = new ArrayList<>();
+    inputLocationForCount.add(new InputLocation[] {new InputLocation(0, 0)});
+    inputLocationForCount.add(new InputLocation[] {new InputLocation(1, 0)});
+
+    List<TreeAggregator> finalAggregators = new ArrayList<>();
+    finalAggregators.add(
+        new TreeAggregator(
+            AccumulatorFactory.createBuiltinAccumulators(
+                    Collections.singletonList(TAggregationType.COUNT),
+                    TSDataType.INT32,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true)
+                .get(0),
+            AggregationStep.FINAL,
+            inputLocationForCount));
+
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 100, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+    AggregationOperator aggregationOperator =
+        new AggregationOperator(
+            driverContext.getOperatorContexts().get(2),
+            finalAggregators,
+            initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
+            children,
+            false,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
+    int resultCount = 0;
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
+      TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      assertEquals(0, resultTsBlock.getTimeColumn().getLong(0));
+      assertEquals(5, resultTsBlock.getColumn(0).getLong(0));
+      resultCount++;
+    }
+    assertEquals(1, resultCount);
+  }
+
+  @Test
   public void testGroupByIntermediateResultWithFinishedChild() throws Exception {
     QueryId queryId = new QueryId("stub_query_finished_child");
     FragmentInstanceId instanceId =
@@ -489,6 +563,10 @@ public class AggregationOperatorTest {
         children,
         false,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+  }
+
+  private TsBlock buildEmptyTsBlock() {
+    return new TsBlockBuilder(Collections.singletonList(TSDataType.INT64)).build();
   }
 
   private TsBlock buildCountTsBlock(long[] times, long... counts) {
