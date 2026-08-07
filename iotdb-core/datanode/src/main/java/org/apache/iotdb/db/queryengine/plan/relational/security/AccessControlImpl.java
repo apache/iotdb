@@ -270,6 +270,7 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  @SuppressWarnings("java:S6541") // Keep all relational authorization branches together.
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement, IAuditEntity auditEntity) {
     AuthorRType type = statement.getAuthorType();

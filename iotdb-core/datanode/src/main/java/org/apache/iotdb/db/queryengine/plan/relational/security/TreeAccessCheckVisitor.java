@@ -699,9 +699,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     }
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
-    if (statement.getUserName().equals(context.getUsername())) {
+    if (Objects.equals(statement.getUserName(), context.getUsername())) {
       // users can change the username and password of themselves
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true), context::getUsername);

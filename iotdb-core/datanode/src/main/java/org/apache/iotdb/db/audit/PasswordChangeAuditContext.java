@@ -117,17 +117,17 @@ public final class PasswordChangeAuditContext {
   }
 
   private static String getTreeTargetUsername(Statement statement) {
-    return statement instanceof AuthorStatement
-            && ((AuthorStatement) statement).getAuthorType() == AuthorType.UPDATE_USER
-        ? ((AuthorStatement) statement).getUserName()
+    return statement instanceof AuthorStatement authorStatement
+            && authorStatement.getAuthorType() == AuthorType.UPDATE_USER
+        ? authorStatement.getUserName()
         : null;
   }
 
   private static String getTableTargetUsername(
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement) {
-    return statement instanceof RelationalAuthorStatement
-            && ((RelationalAuthorStatement) statement).getAuthorType() == AuthorRType.UPDATE_USER
-        ? ((RelationalAuthorStatement) statement).getUserName()
+    return statement instanceof RelationalAuthorStatement authorStatement
+            && authorStatement.getAuthorType() == AuthorRType.UPDATE_USER
+        ? authorStatement.getUserName()
         : null;
   }
 

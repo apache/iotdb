@@ -58,12 +58,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   // This text matcher is only a fallback. Password-update semantic nodes must clear sql_string
   // before any audit entry is generated.
-  private static final Pattern ALTER_USER_PASSWORD_PATTERN =
+  private static final Pattern ALTER_USER_PASSWORD_PREFIX_PATTERN =
       Pattern.compile(
-          "^(\\s*ALTER\\s+USER\\s+.+?\\s+SET\\s+PASSWORD\\s+)"
-              + "(?:(?:U&)?'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\")"
-              + "(\\s*;?\\s*)$",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "^\\s*ALTER\\s+USER\\s+\\S+\\s+SET\\s+PASSWORD\\s+", Pattern.CASE_INSENSITIVE);
   private static final Pattern VALUES_PATTERN = Pattern.compile("(?i)(values)\\([^)]*\\)");
 
   private Coordinator coordinator;
@@ -90,10 +87,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
   @NotNull
   static InsertRowStatement generateInsertStatement(
       IAuditEntity auditLogFields, String log, PartialPath logDevice, long logTimestamp) {
-    String username = auditLogFields.getUsername();
-    String address = auditLogFields.getCliHostname();
-    AuditEventType type = auditLogFields.getAuditEventType();
-    AuditLogOperation operation = auditLogFields.getAuditLogOperation();
+    final String username = auditLogFields.getUsername();
+    final String address = auditLogFields.getCliHostname();
+    final AuditEventType type = auditLogFields.getAuditEventType();
+    final AuditLogOperation operation = auditLogFields.getAuditLogOperation();
     PrivilegeLevel privilegeLevel = PrivilegeLevel.GLOBAL;
     if (auditLogFields.getPrivilegeTypes() != null) {
       for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
@@ -165,11 +162,58 @@ public class DNAuditLogger extends AbstractAuditLogger {
     if (sqlString.regionMatches(true, 0, "CREATE USER", 0, "CREATE USER".length())) {
       sqlString = String.join(" ", Arrays.asList(sqlString.split(" ")).subList(0, 3)) + " ...";
     }
-    Matcher alterUserMatcher = ALTER_USER_PASSWORD_PATTERN.matcher(sqlString);
-    if (alterUserMatcher.matches()) {
-      sqlString = alterUserMatcher.replaceFirst("$1...$2");
+    final Matcher passwordPrefixMatcher = ALTER_USER_PASSWORD_PREFIX_PATTERN.matcher(sqlString);
+    if (passwordPrefixMatcher.find()) {
+      final int passwordLiteralStart = passwordPrefixMatcher.end();
+      final int passwordLiteralEnd = findQuotedTokenEnd(sqlString, passwordLiteralStart);
+      if (passwordLiteralEnd >= 0 && isStatementSuffix(sqlString, passwordLiteralEnd)) {
+        sqlString =
+            sqlString.substring(0, passwordLiteralStart)
+                + "..."
+                + sqlString.substring(passwordLiteralEnd);
+      }
     }
     return VALUES_PATTERN.matcher(sqlString).replaceAll("$1(...)");
+  }
+
+  private static int skipWhitespace(final String value, int index) {
+    while (index < value.length() && Character.isWhitespace(value.charAt(index))) {
+      index++;
+    }
+    return index;
+  }
+
+  private static int findQuotedTokenEnd(final String value, final int index) {
+    int quoteIndex = index;
+    if (value.regionMatches(true, quoteIndex, "U&", 0, 2)) {
+      quoteIndex += 2;
+    }
+    if (quoteIndex >= value.length()) {
+      return -1;
+    }
+    final char quote = value.charAt(quoteIndex);
+    if (quote != '\'' && quote != '"') {
+      return -1;
+    }
+    for (int cursor = quoteIndex + 1; cursor < value.length(); cursor++) {
+      if (value.charAt(cursor) != quote) {
+        continue;
+      }
+      if (cursor + 1 < value.length() && value.charAt(cursor + 1) == quote) {
+        cursor++;
+        continue;
+      }
+      return cursor + 1;
+    }
+    return -1;
+  }
+
+  private static boolean isStatementSuffix(final String value, final int index) {
+    int suffixIndex = skipWhitespace(value, index);
+    if (suffixIndex < value.length() && value.charAt(suffixIndex) == ';') {
+      suffixIndex = skipWhitespace(value, suffixIndex + 1);
+    }
+    return suffixIndex == value.length();
   }
 
   private static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
@@ -177,17 +221,17 @@ public class DNAuditLogger extends AbstractAuditLogger {
       return PrivilegeLevel.GLOBAL;
     }
     switch (type) {
-      case READ_DATA:
-      case DROP:
-      case ALTER:
-      case CREATE:
-      case DELETE:
-      case INSERT:
-      case SELECT:
-      case MANAGE_DATABASE:
-      case WRITE_DATA:
-      case READ_SCHEMA:
-      case WRITE_SCHEMA:
+      case READ_DATA,
+      DROP,
+      ALTER,
+      CREATE,
+      DELETE,
+      INSERT,
+      SELECT,
+      MANAGE_DATABASE,
+      WRITE_DATA,
+      READ_SCHEMA,
+      WRITE_SCHEMA:
         return PrivilegeLevel.OBJECT;
       default:
         return PrivilegeLevel.GLOBAL;
