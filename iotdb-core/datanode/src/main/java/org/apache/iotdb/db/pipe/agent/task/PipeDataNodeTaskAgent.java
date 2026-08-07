@@ -242,11 +242,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         }
 
         final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-        if (progressIndex instanceof MetaProgressIndex) {
-          if (((MetaProgressIndex) progressIndex).getIndex() + 1
+        final Optional<MetaProgressIndex> metaProgressIndex =
+            Objects.isNull(progressIndex)
+                ? Optional.empty()
+                : progressIndex.getProgressIndexByType(MetaProgressIndex.class);
+        if (metaProgressIndex.isPresent()) {
+          if (metaProgressIndex.get().getIndex() + 1
               < schemaRegionId2ListeningQueueNewFirstIndex.getOrDefault(id, Long.MAX_VALUE)) {
             schemaRegionId2ListeningQueueNewFirstIndex.put(
-                id, ((MetaProgressIndex) progressIndex).getIndex() + 1);
+                id, metaProgressIndex.get().getIndex() + 1);
           }
         } else {
           // Do not clear "minimumProgressIndex"s related queues to avoid clearing

@@ -632,16 +632,6 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] state {} failed";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
-      "[pid{}][RemoveRegionGroup] started, region group {} will be deleted from DataNodes {}.";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
-      "[pid{}][RemoveRegionGroup] region {} will be deleted from DataNode {}.";
-  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
-      "[pid{}][RemoveRegionGroup] state {} failed";
-  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] failed to delete a replica of region {} (attempt {}), will keep retrying until it is deleted. reason: {}";
-  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
-      "[pid{}][RemoveRegionGroup] success, region group {} has been deleted. Procedure took {} (started at {}).";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE =
@@ -1398,10 +1388,6 @@ public final class ProcedureMessages {
   public static final String LOG_ARG_8393DD4A = "{}";
   public static final String MESSAGE_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
   public static final String MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "Exception happened when worker {} execute procedure {}";
-  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
-      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the ";
-  public static final String EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
-      "cannot derive a collision-free delete taskId: procId=%d, deleteTaskSeq=%d exceed the %d/%d-bit budget";
   public static final String MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 = "Failed to show DataPartitionTable integrity check progress";
   public static final String MESSAGE_ENCOUNTERED_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_5FA2739F =
       "Encountered unexpected DataPartitionTableIntegrityCheckProcedureState {} when showing progress";

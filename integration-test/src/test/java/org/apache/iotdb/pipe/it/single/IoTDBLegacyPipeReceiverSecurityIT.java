@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
+import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -39,7 +41,11 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,11 +58,13 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
+import java.util.Collections;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -66,6 +74,16 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
   private static final String LEGACY_PIPE_PASSWORD = "StrngPsWd@623451";
   private static final String LEGACY_DATABASE = "root.legacy_poc";
   private static final String LEGACY_TIMESERIES = LEGACY_DATABASE + ".d1.s1";
+
+  private static final String NO_USE_PIPE_USER = "legacyNoUsePipe";
+  private static final String NO_USE_PIPE_PASSWORD = "StrngPsWd@623452";
+
+  private static final String LEGACY_TSFILE_USER = "legacyTsFileUser";
+  private static final String LEGACY_TSFILE_PASSWORD = "StrngPsWd@623453";
+  private static final String LEGACY_TSFILE_DATABASE = "root.legacy_tsfile_auth";
+  private static final String LEGACY_TSFILE_DEVICE = LEGACY_TSFILE_DATABASE + ".d1";
+  private static final String LEGACY_TSFILE_NAME =
+      "0-" + LEGACY_TSFILE_DATABASE + "-0-0-0-0-0-0.tsfile";
 
   @BeforeClass
   public static void setUp() {
@@ -117,6 +135,29 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
   }
 
   @Test
+  public void testLegacyPipeRpcRequiresLoginAndUsePipePrivilege() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE USER " + NO_USE_PIPE_USER + " '" + NO_USE_PIPE_PASSWORD + "'");
+    }
+
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (final IoTDBSyncClient client = createClient(dataNode)) {
+      assertLegacyPipeRpcStatus(client, TSStatusCode.NOT_LOGIN);
+
+      final TSOpenSessionResp openSessionResp =
+          client.openSession(createOpenSessionReq(NO_USE_PIPE_USER, NO_USE_PIPE_PASSWORD));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), openSessionResp.getStatus().getCode());
+      try {
+        assertLegacyPipeRpcStatus(client, TSStatusCode.NO_PERMISSION);
+      } finally {
+        client.closeSession(new TSCloseSessionReq(openSessionResp.getSessionId()));
+      }
+    }
+  }
+
+  @Test
   public void testLegacyPipeDataDeleteUsesAuthenticatedUserPermission() throws Exception {
     prepareLegacyPipePrivilegeEscalationData();
     assertDirectDeleteDeniedForLegacyPipeUser();
@@ -152,6 +193,72 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
     }
 
     assertLegacyPocRowCount(2);
+  }
+
+  @Test
+  public void testLegacyTsFileLoadUsesAuthenticatedUserPermission() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + LEGACY_TSFILE_DATABASE);
+      statement.execute(
+          "CREATE TIMESERIES " + LEGACY_TSFILE_DEVICE + ".s1 WITH DATATYPE=INT32,ENCODING=RLE");
+      statement.execute("CREATE USER " + LEGACY_TSFILE_USER + " '" + LEGACY_TSFILE_PASSWORD + "'");
+      statement.execute("GRANT SYSTEM ON root.** TO USER " + LEGACY_TSFILE_USER);
+    }
+
+    final File tempDir = Files.createTempDirectory("legacy-pipe-tsfile-auth").toFile();
+    try {
+      final File tsFile = new File(tempDir, LEGACY_TSFILE_NAME);
+      generateTsFile(tsFile, LEGACY_TSFILE_DEVICE);
+
+      final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+      try (final IoTDBSyncClient client = createClient(dataNode)) {
+        final TSOpenSessionResp openSessionResp =
+            client.openSession(createOpenSessionReq(LEGACY_TSFILE_USER, LEGACY_TSFILE_PASSWORD));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), openSessionResp.getStatus().getCode());
+
+        try {
+          final TSStatus handshakeStatus =
+              client.handshake(
+                  new TSyncIdentityInfo(
+                      "legacyTsFilePrivilege",
+                      System.currentTimeMillis(),
+                      "UNKNOWN",
+                      LEGACY_TSFILE_DATABASE));
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), handshakeStatus.getCode());
+
+          final TSStatus status = sendLegacyTsFile(client, tsFile);
+          Assert.assertEquals(TSStatusCode.PIPESERVER_ERROR.getStatusCode(), status.getCode());
+        } finally {
+          client.closeSession(new TSCloseSessionReq(openSessionResp.getSessionId()));
+        }
+      }
+    } finally {
+      FileUtils.deleteDirectory(tempDir);
+    }
+
+    assertTimeseriesRowCount(LEGACY_TSFILE_DEVICE, "s1", 0);
+  }
+
+  private void assertLegacyPipeRpcStatus(
+      final IoTDBSyncClient client, final TSStatusCode expectedStatusCode) throws Exception {
+    final int expectedCode = expectedStatusCode.getStatusCode();
+    Assert.assertEquals(
+        expectedCode,
+        client
+            .handshake(
+                new TSyncIdentityInfo(
+                    "legacyRpcPermission", System.currentTimeMillis(), "UNKNOWN", ""))
+            .getCode());
+    Assert.assertEquals(
+        expectedCode,
+        client
+            .sendFile(
+                new TSyncTransportMetaInfo("permission.tsfile", 0), ByteBuffer.wrap(new byte[] {1}))
+            .getCode());
+    Assert.assertEquals(expectedCode, client.sendPipeData(ByteBuffer.allocate(0)).getCode());
   }
 
   private void prepareLegacyPipePrivilegeEscalationData() throws SQLException {
@@ -200,6 +307,47 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
       }
       Assert.assertEquals(expectedCount, actualCount);
     }
+  }
+
+  private void assertTimeseriesRowCount(
+      final String device, final String measurement, final int expectedCount) throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet =
+            statement.executeQuery("SELECT COUNT(" + measurement + ") FROM " + device)) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(expectedCount, resultSet.getInt(1));
+    }
+  }
+
+  private void generateTsFile(final File tsFile, final String device) throws Exception {
+    try (final TsFileGenerator generator = new TsFileGenerator(tsFile)) {
+      generator.registerTimeseries(
+          device,
+          Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE)));
+      generator.generateData(device, 2, 1, false);
+    }
+  }
+
+  private TSStatus sendLegacyTsFile(final IoTDBSyncClient client, final File tsFile)
+      throws Exception {
+    final TSStatus fileStatus =
+        client.sendFile(
+            new TSyncTransportMetaInfo(tsFile.getName(), 0),
+            ByteBuffer.wrap(Files.readAllBytes(tsFile.toPath())));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), fileStatus.getCode());
+    return client.sendPipeData(
+        ByteBuffer.wrap(new TsFilePipeData("", tsFile.getName(), 1).serialize()));
+  }
+
+  private IoTDBSyncClient createClient(final DataNodeWrapper dataNode) throws Exception {
+    return new IoTDBSyncClient(
+        new ThriftClientProperty.Builder().build(),
+        dataNode.getIp(),
+        dataNode.getPort(),
+        false,
+        null,
+        null);
   }
 
   private TSOpenSessionReq createOpenSessionReq() {

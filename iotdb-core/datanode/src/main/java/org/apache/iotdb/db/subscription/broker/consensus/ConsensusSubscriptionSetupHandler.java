@@ -61,9 +61,9 @@ import java.util.function.Predicate;
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
- * <p>For each consensus-mode topic subscribed by a consumer group, this handler discovers matching
- * local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and binds one
- * queue per region to the consensus subscription broker.
+ * <p>For each incremental-mode topic subscribed by a consumer group, this handler discovers
+ * matching local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and
+ * binds one queue per region to the consensus subscription broker.
  */
 public class ConsensusSubscriptionSetupHandler {
 
@@ -159,13 +159,15 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
       final String consumerGroupId = groupEntry.getKey();
+      final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
       for (final String topicName : groupEntry.getValue()) {
-        if (!isConsensusBasedTopic(topicName)) {
+        if (!isConsensusBasedTopic(topicName, isTableModel)) {
           continue;
         }
         try {
           final Map<String, TopicConfig> topicConfigs =
-              SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+              SubscriptionAgent.topic()
+                  .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
           final TopicConfig topicConfig = topicConfigs.get(topicName);
           if (topicConfig == null) {
             continue;
@@ -292,9 +294,13 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   public static boolean isConsensusBasedTopic(final String topicName) {
+    return isConsensusBasedTopic(topicName, false);
+  }
+
+  public static boolean isConsensusBasedTopic(final String topicName, final boolean isTableModel) {
     try {
-      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
-      final boolean result = TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
+      final boolean result = TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
           DataNodePipeMessages.PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9,
           topicName,
@@ -311,8 +317,9 @@ public class ConsensusSubscriptionSetupHandler {
     }
   }
 
-  private static boolean isConsensusBasedTopicRequired(final String topicName) {
-    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
+  private static boolean isConsensusBasedTopicRequired(
+      final String topicName, final boolean isTableModel) {
+    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
     if (Objects.isNull(topicMode)) {
       throw new SubscriptionException(
           String.format(
@@ -320,11 +327,17 @@ public class ConsensusSubscriptionSetupHandler {
                   .EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20,
               topicName));
     }
-    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+    return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
   }
 
   public static void setupConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames) {
+    setupConsensusSubscriptions(
+        consumerGroupId, topicNames, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
+  }
+
+  public static void setupConsensusSubscriptions(
+      final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
@@ -332,7 +345,7 @@ public class ConsensusSubscriptionSetupHandler {
           Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
       LOGGER.warn(
           DataNodePipeMessages
-              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812,
+              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4,
           consumerGroupId,
           ConsensusFactory.IOT_CONSENSUS,
           configuredProtocol,
@@ -359,9 +372,10 @@ public class ConsensusSubscriptionSetupHandler {
     setupConsensusTopics(
         consumerGroupId,
         topicNames,
-        ConsensusSubscriptionSetupHandler::isConsensusBasedTopicRequired,
+        topicName -> isConsensusBasedTopicRequired(topicName, isTableModel),
         topicName ->
-            setupConsensusQueueForTopic(consumerGroupId, topicName, ioTConsensus, commitManager),
+            setupConsensusQueueForTopic(
+                consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
                 consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
@@ -456,13 +470,15 @@ public class ConsensusSubscriptionSetupHandler {
   private static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
+      final boolean isTableModel,
       final IoTConsensus ioTConsensus,
       final ConsensusSubscriptionCommitManager commitManager) {
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     // Get topic config for building the converter
     final Map<String, TopicConfig> topicConfigs =
-        SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+        SubscriptionAgent.topic()
+            .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
     final TopicConfig topicConfig = topicConfigs.get(topicName);
     if (topicConfig == null) {
       throw new SubscriptionException(

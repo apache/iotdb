@@ -553,7 +553,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName));
+                    dataBaseName,
+                    shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -583,7 +584,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName));
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName,
+                    shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->

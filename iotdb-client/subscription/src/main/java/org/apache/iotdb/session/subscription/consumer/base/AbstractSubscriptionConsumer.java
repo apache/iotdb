@@ -168,7 +168,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
     // For the topic that needs to be detected, there are two scenarios to consider:
-    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
+    //   1. Initial topics are unbounded and cannot be fully consumed.
     //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
     // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
     // topics, then it has not been fully consumed.
