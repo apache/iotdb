@@ -26,15 +26,24 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class MemTableFlushTaskTest {
@@ -159,5 +168,60 @@ public class MemTableFlushTaskTest {
     assertEquals(endTime, chunkMetaData.getEndTime());
     assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
+  }
+
+  @Test
+  public void testAlignedFlushWithoutDeletedMeasurementsSkipsColumnMapping() {
+    TrackingAlignedWritableMemChunk memChunk = createTrackingAlignedMemChunk();
+    memChunk.putAlignedRow(1, new Object[] {1, 1L});
+    memChunk.sortTvListForFlush();
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+
+    assertFalse(memChunk.isColumnMappingBuilt());
+    assertFalse(ioTaskQueue.isEmpty());
+  }
+
+  @Test
+  public void testAlignedFlushWithDeletedMeasurementsKeepsColumnMapping() {
+    TrackingAlignedWritableMemChunk memChunk = createTrackingAlignedMemChunk();
+    memChunk.putAlignedRow(1, new Object[] {1, 1L});
+    memChunk.removeColumn("s1");
+    memChunk.sortTvListForFlush();
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+
+    assertTrue(memChunk.isColumnMappingBuilt());
+    assertFalse(ioTaskQueue.isEmpty());
+  }
+
+  private TrackingAlignedWritableMemChunk createTrackingAlignedMemChunk() {
+    List<IMeasurementSchema> schemas =
+        new ArrayList<>(
+            Arrays.asList(
+                new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
+                new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)));
+    return new TrackingAlignedWritableMemChunk(schemas);
+  }
+
+  private static class TrackingAlignedWritableMemChunk extends AlignedWritableMemChunk {
+
+    private boolean columnMappingBuilt;
+
+    private TrackingAlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
+      super(schemaList);
+    }
+
+    @Override
+    public List<Integer> buildColumnIndexList(List<IMeasurementSchema> schemaList) {
+      columnMappingBuilt = true;
+      return super.buildColumnIndexList(schemaList);
+    }
+
+    private boolean isColumnMappingBuilt() {
+      return columnMappingBuilt;
+    }
   }
 }
