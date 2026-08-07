@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -81,6 +82,22 @@ public class LoadTsFileMemoryManagerTest {
       Assert.assertEquals(0L, manager.getUsedMemorySizeInBytes());
       Assert.assertNull(getDataCacheMemoryBlock(manager));
     }
+  }
+
+  @Test
+  public void testParserMemoryBlockGrowsAndReleasesFromQueryPool() throws Exception {
+    final LoadTsFileMemoryManager manager = LoadTsFileMemoryManager.getInstance();
+    final long usedMemoryBefore = manager.getUsedMemorySizeInBytes();
+    final TsFileInsertionEventParserMemoryBlock block =
+        LoadTsFileParserMemoryManager.getInstance().forceAllocate(0);
+
+    Assert.assertEquals(0L, block.getMemoryUsageInBytes());
+    block.forceResize(1024);
+    Assert.assertEquals(usedMemoryBefore + 1024, manager.getUsedMemorySizeInBytes());
+    block.forceResize(0);
+    Assert.assertEquals(usedMemoryBefore, manager.getUsedMemorySizeInBytes());
+    block.close();
+    Assert.assertEquals(usedMemoryBefore, manager.getUsedMemorySizeInBytes());
   }
 
   private static LoadTsFileMemoryManager newMemoryManager() throws Exception {
