@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -44,6 +45,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTDBDataRegionAirGapSinkTest {
 
@@ -91,14 +93,21 @@ public class IoTDBDataRegionAirGapSinkTest {
       sink.transfer(new PipeHeartbeatEvent("1", false));
 
       final List<Short> requestTypes = new ArrayList<>();
+      long transferredTsFileBytes = 0;
       for (final byte[] requestBytes : sink.sentRequests) {
-        requestTypes.add(toTPipeTransferReq(requestBytes).type);
+        final TPipeTransferReq req = toTPipeTransferReq(requestBytes);
+        requestTypes.add(req.type);
+        if (req.type == PipeRequestType.TRANSFER_TS_FILE_PIECE.getType()) {
+          transferredTsFileBytes +=
+              PipeTransferTsFilePieceReq.fromTPipeTransferReq(req).getFilePiece().length;
+        }
       }
 
       Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_PIECE.getType()));
       Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_RAW.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_BATCH.getType()));
+      Assert.assertEquals(transferredTsFileBytes, sink.rateLimitedBytes.get());
     }
   }
 
@@ -140,6 +149,7 @@ public class IoTDBDataRegionAirGapSinkTest {
   private static class RecordingIoTDBDataRegionAirGapSink extends IoTDBDataRegionAirGapSink {
 
     private final List<byte[]> sentRequests = new ArrayList<>();
+    private final AtomicLong rateLimitedBytes = new AtomicLong(0);
 
     private void prepareSocket() {
       sockets.set(0, new TestingAirGapSocket());
@@ -154,6 +164,11 @@ public class IoTDBDataRegionAirGapSinkTest {
     protected boolean sendBytes(final AirGapSocket socket, final byte[] bytes) {
       sentRequests.add(Arrays.copyOf(bytes, bytes.length));
       return true;
+    }
+
+    @Override
+    protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+      rateLimitedBytes.addAndGet(requiredBytes);
     }
 
     private static class TestingAirGapSocket extends AirGapSocket {

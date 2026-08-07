@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -2647,7 +2648,8 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
+    LoggerPeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

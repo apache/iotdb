@@ -331,17 +331,15 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
-    if (index == MinimumProgressIndex.INSTANCE) {
+    if (Objects.isNull(index) || index == MinimumProgressIndex.INSTANCE) {
       return;
     }
-    if (!(index instanceof TimeWindowStateProgressIndex)) {
-      throw new PipeException(
-          String.format(
-              "The aggregate processor does not support progressIndexType %s", index.getType()));
-    }
-
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
-        (TimeWindowStateProgressIndex) index;
+        index.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+    // A pipe altered from another processor may not have window state yet.
+    if (Objects.isNull(timeWindowStateProgressIndex)) {
+      return;
+    }
     for (final Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
@@ -516,32 +514,29 @@ public class AggregateProcessor implements PipeProcessor {
   public void process(
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
-    try {
-      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-        final AtomicReference<Exception> ex = new AtomicReference<>();
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-            .consumeTabletInsertionEventsWithRetry(
-                event -> {
-                  try {
-                    process(event, eventCollector);
-                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-                    throw e;
-                  } catch (Exception e) {
-                    ex.set(e);
-                  }
-                },
-                "AggregateProcessor::process");
-        if (ex.get() != null) {
-          throw ex.get();
-        }
-      } else {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+          .consumeTabletInsertionEventsWithRetry(
+              event -> {
+                try {
+                  process(event, eventCollector);
+                } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                  throw e;
+                } catch (Exception e) {
+                  throw new PipeException(e.getMessage(), e);
+                }
+              },
+              "AggregateProcessor::process");
+      tsFileInsertionEvent.close();
+    } else {
+      try {
         for (final TabletInsertionEvent tabletInsertionEvent :
             tsFileInsertionEvent.toTabletInsertionEvents()) {
           process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
-    } finally {
-      tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events

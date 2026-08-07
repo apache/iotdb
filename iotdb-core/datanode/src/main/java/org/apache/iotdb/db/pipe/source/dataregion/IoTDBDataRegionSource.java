@@ -172,7 +172,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
           EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
     }
 
-    // Validate source.start-time and source.end-time
+    // A global time range takes precedence over a history-specific time range.
     if (validator
             .getParameters()
             .hasAnyAttributes(
@@ -183,20 +183,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         && validator
             .getParameters()
             .hasAnyAttributes(
-                EXTRACTOR_HISTORY_ENABLE_KEY,
-                SOURCE_HISTORY_ENABLE_KEY,
                 SOURCE_HISTORY_START_TIME_KEY,
                 EXTRACTOR_HISTORY_START_TIME_KEY,
                 SOURCE_HISTORY_END_TIME_KEY,
                 EXTRACTOR_HISTORY_END_TIME_KEY)) {
       LOGGER.warn(
-          "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.",
+          "When {}, {}, {} or {} is specified, specifying {}, {}, {} or {} is invalid.",
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_ENABLE_KEY,
-          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,

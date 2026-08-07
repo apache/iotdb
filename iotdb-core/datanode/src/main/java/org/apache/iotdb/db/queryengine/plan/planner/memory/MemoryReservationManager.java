@@ -41,6 +41,12 @@ public interface MemoryReservationManager {
   void releaseMemoryCumulatively(final long size);
 
   /**
+   * Release the given size immediately. This is used to roll back a reservation when the operation
+   * protected by that reservation fails before ownership is published.
+   */
+  void releaseMemoryImmediately(final long size);
+
+  /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of
    * this manager ends, Or the memory to be released in the batch may not be released correctly.
    */
@@ -72,4 +78,10 @@ public interface MemoryReservationManager {
    * @param bytesAlreadyReserved the amount of memory that has already been reserved
    */
   void reserveMemoryVirtually(final long bytesToBeReserved, final long bytesAlreadyReserved);
+
+  /**
+   * Mark this manager as highest-priority (e.g. SHOW QUERIES). When operators memory is
+   * insufficient, allocation will fall back to zero bytes instead of failing.
+   */
+  void setHighestPriority(boolean isHighestPriority);
 }

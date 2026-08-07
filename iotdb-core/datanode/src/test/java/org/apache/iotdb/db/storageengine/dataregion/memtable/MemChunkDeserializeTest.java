@@ -302,7 +302,7 @@ public class MemChunkDeserializeTest {
     memTableMap.put(deviceID, memChunkGroup);
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
-    QueryContext context = new QueryContext();
+    QueryContext context = new QueryContext(false);
     MeasurementPath nonAlignedFullPath =
         new MeasurementPath(
             deviceID,
@@ -327,7 +327,7 @@ public class MemChunkDeserializeTest {
     memTableMap.put(deviceID, memChunkGroup);
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
-    QueryContext context = new QueryContext();
+    QueryContext context = new QueryContext(false);
     AlignedPath alignedFullPath = new AlignedPath("d1", measurementList, schemaList);
     return memTable.query(context, alignedFullPath, Long.MIN_VALUE, null, null);
   }

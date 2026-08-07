@@ -163,7 +163,16 @@ public abstract class PipeTaskAgent {
 
   public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       final PipeMeta pipeMetaFromCoordinator) {
-    acquireWriteLock();
+    final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
     } finally {
@@ -202,6 +211,12 @@ public abstract class PipeTaskAgent {
     // Do nothing with the subscription pipe if disable subscription
     if (PipeStaticMeta.isSubscriptionPipe(pipeName)
         && !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
+    // PRE_DELETE is a coordinator-only marker. The drop procedure pushes DROPPED explicitly after
+    // persisting the marker, so task agents should retain their current runtime state here.
+    if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.PRE_DELETE) {
       return;
     }
 
@@ -355,7 +370,15 @@ public abstract class PipeTaskAgent {
   protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
-    acquireWriteLock();
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName,
+          String.format(
+              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              pipeName),
+          System.currentTimeMillis());
+    }
     try {
       return handleDropPipeInternal(pipeName);
     } finally {

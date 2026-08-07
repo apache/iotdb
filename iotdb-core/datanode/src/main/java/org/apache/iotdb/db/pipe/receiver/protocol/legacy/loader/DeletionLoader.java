@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,7 +38,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.Collections;
 
 /** This loader is used to load deletion plan. */
@@ -52,24 +52,31 @@ public class DeletionLoader implements ILoader {
   }
 
   @Override
-  public void load() throws PipeException {
+  public void load(final SessionInfo sessionInfo) throws PipeException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new PipeException("storage engine readonly");
     }
     try {
       Statement statement = generateStatement();
+      TSStatus authorityStatus =
+          AuthorityChecker.checkAuthority(statement, sessionInfo.getUserName());
+      if (authorityStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(authorityStatus.getMessage());
+      }
+
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
+                  sessionInfo,
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  statement.isDebug());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Delete {} error, statement: {}.", deletion, statement);
         LOGGER.error("Delete result status : {}.", result.status);

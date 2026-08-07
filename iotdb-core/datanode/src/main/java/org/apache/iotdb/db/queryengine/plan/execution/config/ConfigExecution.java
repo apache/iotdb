@@ -285,4 +285,9 @@ public class ConfigExecution implements IQueryExecution {
   public String getStatementType() {
     return statementType.name();
   }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
+  }
 }

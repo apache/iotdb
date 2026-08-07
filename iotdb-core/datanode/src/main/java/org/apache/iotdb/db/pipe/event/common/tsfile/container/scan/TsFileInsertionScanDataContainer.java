@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -159,6 +160,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
+      if (Objects.isNull(chunkReader)) {
+        close();
+      }
     } catch (final Exception e) {
       close();
       throw e;
@@ -352,6 +356,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       }
       PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      // Keep the parser state so the caller can yield its parser slot and retry from the same
+      // unconsumed data after memory is available again.
+      throw e;
     } catch (final Exception e) {
       close();
       throw new PipeException("Failed to get next tablet insertion event.", e);
@@ -385,7 +393,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       } while (Objects.nonNull(chunkReader) && !chunkReader.hasNextSatisfiedPage());
 
       if (Objects.isNull(chunkReader)) {
-        close();
+        // Let the caller release the last tablet's memory before closing the parser.
         break;
       }
 

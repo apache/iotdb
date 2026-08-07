@@ -27,12 +27,18 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -66,5 +72,44 @@ public class LoadTsFileSchedulerTest {
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());
+  }
+
+  @Test
+  public void testTsFileDataManagerClearReleasesCachedMemory() throws Exception {
+    final Constructor<LoadTsFileDataCacheMemoryBlock> memoryBlockConstructor =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredConstructor(long.class);
+    memoryBlockConstructor.setAccessible(true);
+    final LoadTsFileDataCacheMemoryBlock memoryBlock =
+        memoryBlockConstructor.newInstance(1024 * 1024L);
+
+    final Class<?> dataManagerClass =
+        Class.forName(LoadTsFileScheduler.class.getName() + "$TsFileDataManager");
+    final Constructor<?> dataManagerConstructor =
+        dataManagerClass.getDeclaredConstructor(
+            LoadTsFileScheduler.class,
+            LoadSingleTsFileNode.class,
+            LoadTsFileDataCacheMemoryBlock.class);
+    dataManagerConstructor.setAccessible(true);
+    final Object dataManager =
+        dataManagerConstructor.newInstance(
+            mock(LoadTsFileScheduler.class), mock(LoadSingleTsFileNode.class), memoryBlock);
+
+    // Simulate data buffered before split or routing aborts. clear() is the last chance to return
+    // this accounting to the shared LOAD memory block.
+    final long cachedMemorySize = 128L;
+    memoryBlock.addMemoryUsage(cachedMemorySize);
+    final Field dataSizeField = dataManagerClass.getDeclaredField("dataSize");
+    dataSizeField.setAccessible(true);
+    dataSizeField.setLong(dataManager, cachedMemorySize);
+
+    final Method clearMethod = dataManagerClass.getDeclaredMethod("clear");
+    clearMethod.setAccessible(true);
+    clearMethod.invoke(dataManager);
+
+    final Method getMemoryUsageMethod =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getMemoryUsageInBytes");
+    getMemoryUsageMethod.setAccessible(true);
+    Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
+    Assert.assertEquals(0L, dataSizeField.getLong(dataManager));
   }
 }

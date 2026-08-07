@@ -61,6 +61,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.BiFunction;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
@@ -82,6 +84,8 @@ public class Coordinator {
 
   private static final Logger SAMPLED_QUERIES_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
+
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -125,6 +129,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       boolean userQuery,
+      boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -142,6 +147,7 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
+      queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -173,7 +179,15 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
+        statement,
+        queryId,
+        session,
+        sql,
+        partitionFetcher,
+        schemaFetcher,
+        Long.MAX_VALUE,
+        false,
+        statement.isDebug());
   }
 
   public ExecutionResult executeForTreeModel(
@@ -184,12 +198,14 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -234,6 +250,29 @@ public class Coordinator {
     return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo sessionInfo,
+      String s,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTreeModel(
+        statement,
+        queryId,
+        sessionInfo,
+        s,
+        partitionFetcher,
+        schemaFetcher,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
+  }
+
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
   }
@@ -270,27 +309,11 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
         if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
-          long costTime = queryExecution.getTotalExecutionTime();
-          // print slow query
-          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-            SLOW_SQL_LOGGER.info(
-                "Cost: {} ms, {}",
-                costTime / 1_000_000,
-                getContentOfRequest(nativeApiRequest, queryExecution));
-          }
-
-          // only sample successful query
-          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
-            String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
-            if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
-              if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
-                SAMPLED_QUERIES_LOGGER.info(queryRequest);
-              }
-            } else {
-              // no limit, always sampled
-              SAMPLED_QUERIES_LOGGER.info(queryRequest);
-            }
-          }
+          recordQueries(
+              queryExecution::getTotalExecutionTime,
+              () -> getContentOfRequest(nativeApiRequest, queryExecution),
+              t,
+              queryExecution.isDebug());
         }
       }
     }
@@ -323,6 +346,37 @@ public class Coordinator {
                 new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
           }
         });
+  }
+
+  public static void recordQueries(
+      LongSupplier executionTime,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t,
+      boolean debug) {
+
+    long costTime = executionTime.getAsLong();
+    // print slow query
+    if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
+      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // always print the query when debug is true
+    if (debug) {
+      DEBUG_LOGGER.info(contentOfQuerySupplier.get());
+    }
+
+    // only sample successful query
+    if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+      String queryRequest = contentOfQuerySupplier.get();
+      if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+        if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+          SAMPLED_QUERIES_LOGGER.info(queryRequest);
+        }
+      } else {
+        // no limit, always sampled
+        SAMPLED_QUERIES_LOGGER.info(queryRequest);
+      }
+    }
   }
 
   public void cleanupQueryExecution(Long queryId) {

@@ -178,31 +178,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
-      if (alterSchema.isSetMinSchemaRegionGroupNum()) {
-        currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
-        currentSchema.setMaxSchemaRegionGroupNum(
-            Math.max(
-                currentSchema.getMinSchemaRegionGroupNum(),
-                currentSchema.getMaxSchemaRegionGroupNum()));
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The minimum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-            currentSchema.getName(),
-            currentSchema.getMinSchemaRegionGroupNum());
+      if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
+        currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
             currentSchema.getName(),
             currentSchema.getMaxSchemaRegionGroupNum());
       }
-      if (alterSchema.isSetMinDataRegionGroupNum()) {
-        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
-        currentSchema.setMaxDataRegionGroupNum(
-            Math.max(
-                currentSchema.getMinDataRegionGroupNum(),
-                currentSchema.getMaxDataRegionGroupNum()));
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The minimum number of DataRegionGroups for Database: {} is adjusted to: {}",
-            currentSchema.getName(),
-            currentSchema.getMinDataRegionGroupNum());
+      if (alterSchema.isSetMaxDataRegionGroupNum()) {
+        currentSchema.setMaxDataRegionGroupNum(alterSchema.getMaxDataRegionGroupNum());
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
             currentSchema.getName(),
@@ -458,7 +442,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void isDatabaseNameValid(String databaseName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      mTree.checkDatabaseAlreadySet(new PartialPath(databaseName));
+      final PartialPath databasePath = new PartialPath(databaseName);
+      for (final String node : databasePath.getNodes()) {
+        if (node.isEmpty()) {
+          throw new IllegalPathException(databaseName);
+        }
+      }
+      mTree.checkDatabaseAlreadySet(databasePath);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

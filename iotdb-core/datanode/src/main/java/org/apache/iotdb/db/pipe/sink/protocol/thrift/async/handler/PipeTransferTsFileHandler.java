@@ -38,6 +38,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -154,6 +155,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           "Client has been returned to the pool. Current handler status is %s. Will not transfer %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
+      onError(new PipeConnectionException("Client has been returned to the pool."));
       return;
     }
 
@@ -171,11 +173,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (sink.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
-    }
-    final int readLength = reader.read(readBuffer);
+    final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
       if (currentFile == modFile) {
@@ -198,12 +196,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName)
-                : dataBaseName == null
+                    dataBaseName,
+                    sink.shouldWaitForSchemaBeforeLoad())
+                : dataBaseName == null && !sink.shouldWaitForSchemaBeforeLoad()
                     ? PipeTransferTsFileSealReq.toTPipeTransferReq(
                         tsFile.getName(), tsFile.length())
                     : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length(), dataBaseName);
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        sink.shouldWaitForSchemaBeforeLoad());
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -246,6 +248,22 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     position += readLength;
+  }
+
+  protected int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
+      throws IOException {
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
+  }
+
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
+    }
   }
 
   @Override
@@ -469,8 +487,26 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   @Override
   public void close() {
-    super.close();
-    releaseReadBufferMemoryBlock();
+    try {
+      if (reader != null) {
+        reader.close();
+        reader = null;
+      }
+
+      if (currentFile.exists()
+          && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
+      }
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to close file reader or delete generated batch file.", e);
+    } finally {
+      super.close();
+      releaseReadBufferMemoryBlock();
+    }
   }
 
   private void releaseReadBufferMemoryBlock() {

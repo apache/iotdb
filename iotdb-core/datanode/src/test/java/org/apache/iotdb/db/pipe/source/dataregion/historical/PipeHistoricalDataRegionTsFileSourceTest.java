@@ -24,11 +24,17 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,8 +42,45 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipeHistoricalDataRegionTsFileSourceTest {
+
+  @Test
+  public void testGlobalTimeRangeRespectsHistoryEnable() throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSourceConstant.SOURCE_START_TIME_KEY, "1000");
+    attributes.put(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY, Boolean.FALSE.toString());
+
+    final PipeHistoricalDataRegionTsFileSource realtimeOnlySource =
+        new PipeHistoricalDataRegionTsFileSource();
+    realtimeOnlySource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertFalse((Boolean) getPrivateField(realtimeOnlySource, "isHistoricalSourceEnabled"));
+    Assert.assertEquals(
+        1000L,
+        ((Long) getPrivateField(realtimeOnlySource, "historicalDataExtractionStartTime"))
+            .longValue());
+
+    final PipeHistoricalDataRegionTsFileSource defaultSource =
+        new PipeHistoricalDataRegionTsFileSource();
+    attributes.remove(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY);
+    defaultSource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertTrue((Boolean) getPrivateField(defaultSource, "isHistoricalSourceEnabled"));
+
+    final PipeHistoricalDataRegionTsFileSource restartedSource =
+        new PipeHistoricalDataRegionTsFileSource();
+    attributes.put(PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY, Boolean.FALSE.toString());
+    attributes.put(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY, Boolean.TRUE.toString());
+    restartedSource.validate(
+        new PipeParameterValidator(new PipeParameters(new HashMap<>(attributes))));
+
+    Assert.assertTrue((Boolean) getPrivateField(restartedSource, "isHistoricalSourceEnabled"));
+  }
 
   @Test
   public void testMayTsFileContainUnprocessedDataUsesEqualOrAfterCoverage() throws Exception {
@@ -63,6 +106,38 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
               new IoTProgressIndex(1, 90L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           true);
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testTsFileResourceCoveredByPattern() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalPatternCoverage").toFile();
+
+    try {
+      final PipeHistoricalDataRegionTsFileSource source =
+          new PipeHistoricalDataRegionTsFileSource();
+      final Method method =
+          PipeHistoricalDataRegionTsFileSource.class.getDeclaredMethod(
+              "isTsFileResourceCoveredByPattern", TsFileResource.class);
+      method.setAccessible(true);
+
+      final TsFileResource resource =
+          createClosedTsFileResourceWithDevices(
+              tempDir, "covered-pattern.tsfile", "root.sg.d1", "root.sg.d2");
+
+      setPrivateField(source, "pipePattern", new PrefixPipePattern("root.sg"));
+      Assert.assertTrue((Boolean) method.invoke(source, resource));
+
+      setPrivateField(source, "pipePattern", new PrefixPipePattern("root.sg.d1"));
+      Assert.assertFalse((Boolean) method.invoke(source, resource));
+      Assert.assertFalse(
+          (Boolean)
+              method.invoke(
+                  source,
+                  createClosedTsFileResource(
+                      tempDir, "empty-device.tsfile", new SimpleProgressIndex(0, 1))));
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
     }
@@ -104,6 +179,18 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     return resource;
   }
 
+  private static TsFileResource createClosedTsFileResourceWithDevices(
+      final File tempDir, final String fileName, final String... devices) throws Exception {
+    final TsFileResource resource =
+        createClosedTsFileResource(tempDir, fileName, new SimpleProgressIndex(0, 1));
+    for (final String device : devices) {
+      final PlainDeviceID deviceID = new PlainDeviceID(device);
+      resource.updateStartTime(deviceID, 0);
+      resource.updateEndTime(deviceID, 1);
+    }
+    return resource;
+  }
+
   private static ProgressIndex hybridProgressIndex(
       final ProgressIndex firstProgressIndex, final ProgressIndex... progressIndexes) {
     ProgressIndex result = new HybridProgressIndex(firstProgressIndex);
@@ -119,5 +206,13 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     final Field field = PipeHistoricalDataRegionTsFileSource.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(source, value);
+  }
+
+  private static Object getPrivateField(
+      final PipeHistoricalDataRegionTsFileSource source, final String fieldName)
+      throws ReflectiveOperationException {
+    final Field field = PipeHistoricalDataRegionTsFileSource.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(source);
   }
 }

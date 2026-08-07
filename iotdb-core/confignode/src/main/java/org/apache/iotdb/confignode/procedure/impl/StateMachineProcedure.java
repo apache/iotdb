@@ -132,6 +132,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
+   * Returns whether the specified state is already present in the persisted state history.
+   *
+   * <p>The current state is included once it has been scheduled. This is useful when an append-only
+   * state is added to a procedure and the new execution path needs to coexist with procedures
+   * persisted by an older version.
+   */
+  protected final boolean hasReachedState(final TState state) {
+    return states.contains(getStateId(state));
+  }
+
+  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure

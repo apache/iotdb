@@ -163,6 +163,8 @@ public class MPPQueryContext {
    */
   private boolean needSetHighestPriority = false;
 
+  private boolean debug = false;
+
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -711,6 +713,14 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   public boolean needSetHighestPriority() {

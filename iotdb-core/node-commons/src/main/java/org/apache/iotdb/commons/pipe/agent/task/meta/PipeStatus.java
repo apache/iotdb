@@ -23,6 +23,7 @@ public enum PipeStatus {
   RUNNING((byte) 0),
   STOPPED((byte) 1),
   DROPPED((byte) 2),
+  PRE_DELETE((byte) 3),
   ;
 
   private final byte type;
@@ -43,6 +44,8 @@ public enum PipeStatus {
         return PipeStatus.STOPPED;
       case 2:
         return PipeStatus.DROPPED;
+      case 3:
+        return PipeStatus.PRE_DELETE;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

@@ -327,6 +327,17 @@ public class DataNodeSchemaCache {
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
+  public void updateLastCacheIfExists(
+      final String database,
+      final PartialPath deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    deviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
+  }
+
   /**
    * Update the {@link DeviceLastCache} on query.
    *
