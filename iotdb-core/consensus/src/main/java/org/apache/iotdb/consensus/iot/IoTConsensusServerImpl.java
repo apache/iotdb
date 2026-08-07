@@ -122,6 +122,9 @@ public class IoTConsensusServerImpl {
   // write.
   private static final long WRITER_META_PERSIST_MIN_INTERVAL_MS = 1_000L;
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
+  private static final String WAIT_FOR_PREVIOUS_REQUEST_MESSAGE =
+      IoTConsensusMessages
+          .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
@@ -1374,6 +1377,7 @@ public class IoTConsensusServerImpl {
      * order in follower the same as the leader. And besides order insurance, we can make the
      * deserialization of PlanNode to be concurrent
      */
+    @SuppressWarnings({"java:S3776", "java:S6541"}) // Keep lock-protected ordering state together.
     private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
       logger.debug(
           IoTConsensusMessages.CACHE_AND_INSERT_START,
@@ -1465,9 +1469,7 @@ public class IoTConsensusServerImpl {
             for (int j = i + 1; j < insertNodes.size(); j++) {
               subStatus.add(
                   RpcUtils.getStatus(
-                      TSStatusCode.WRITE_PROCESS_REJECT,
-                      IoTConsensusMessages
-                          .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7));
+                      TSStatusCode.WRITE_PROCESS_REJECT, WAIT_FOR_PREVIOUS_REQUEST_MESSAGE));
             }
             break;
           }
