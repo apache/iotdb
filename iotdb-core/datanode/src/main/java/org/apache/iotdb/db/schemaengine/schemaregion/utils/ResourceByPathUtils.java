@@ -87,6 +87,14 @@ public abstract class ResourceByPathUtils {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
+  static Map<TSDataType, Integer> countDataTypes(List<TSDataType> dataTypes) {
+    Map<TSDataType, Integer> dataTypeCounts = new LinkedHashMap<>();
+    for (TSDataType dataType : dataTypes) {
+      dataTypeCounts.merge(dataType, 1, Integer::sum);
+    }
+    return dataTypeCounts;
+  }
+
   public abstract ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
@@ -372,12 +380,12 @@ public abstract class ResourceByPathUtils {
       } catch (MemoryNotEnoughException ex) {
         if (listRamInfo != null) {
           LOGGER.warn(
-              "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypes {}",
+              "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypeCounts {}",
               listRamInfo.getRamSize(),
               listRamInfo.getTimestampsSize(),
               listRamInfo.getArrayMemCost(),
               listRamInfo.getRowCount(),
-              listRamInfo.getDataTypes());
+              countDataTypes(listRamInfo.getDataTypes()));
         }
         throw ex;
       } finally {
