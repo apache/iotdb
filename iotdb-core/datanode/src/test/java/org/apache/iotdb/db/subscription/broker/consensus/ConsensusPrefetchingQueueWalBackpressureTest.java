@@ -79,6 +79,90 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
+  public void testHistoricalCatchUpReusesWalIteratorAcrossBatches() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final int originalBatchMaxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
+    final int originalBatchMaxTabletCount = config.getSubscriptionConsensusBatchMaxTabletCount();
+    final long originalBatchMaxSize = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+    final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
+    final File systemDir = temporaryFolder.newFolder("system-wal-iterator-reuse");
+    final File walDirectory = temporaryFolder.newFolder("wal-iterator-reuse");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusBatchMaxWalEntries(1);
+      config.setSubscriptionConsensusBatchMaxTabletCount(128);
+      config.setSubscriptionConsensusBatchMaxSizeInBytes(Long.MAX_VALUE);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+
+      writeSealedWal(walDirectory);
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(walDirectory);
+      when(walNode.getCurrentSearchIndex()).thenReturn((long) REQUEST_COUNT);
+      when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
+      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      final DataRegionId regionId = new DataRegionId(1);
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      assertNull(queue.poll("consumer"));
+      final ProgressWALIterator initialIterator = subscriptionWalIterator(queue);
+      assertNotNull(initialIterator);
+
+      for (long expectedLocalSequence = 1L;
+          expectedLocalSequence <= REQUEST_COUNT;
+          expectedLocalSequence++) {
+        queue.drivePrefetchOnce();
+        assertEquals(initialIterator, subscriptionWalIterator(queue));
+        assertEquals(expectedLocalSequence + 1L, queue.getCurrentReadSearchIndex());
+
+        final SubscriptionEvent event = queue.poll("consumer");
+        assertNotNull(event);
+        assertEquals(
+            expectedLocalSequence, event.getCommitContext().getWriterProgress().getLocalSeq());
+        assertTrue(queue.ack("consumer", event.getCommitContext()));
+      }
+
+      assertEquals(REQUEST_COUNT, queue.getWalPathAcceptedEntries());
+      assertEquals(0, queue.getPrefetchedEventCount());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      config.setSubscriptionConsensusBatchMaxWalEntries(originalBatchMaxWalEntries);
+      config.setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTabletCount);
+      config.setSubscriptionConsensusBatchMaxSizeInBytes(originalBatchMaxSize);
+      config.setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testAckRecoversDrainedSuffixFromWalWithoutReoffer() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
@@ -286,6 +370,13 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
     final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("pendingEntries");
     field.setAccessible(true);
     return (BlockingQueue<IndexedConsensusRequest>) field.get(queue);
+  }
+
+  private static ProgressWALIterator subscriptionWalIterator(final ConsensusPrefetchingQueue queue)
+      throws Exception {
+    final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("subscriptionWALIterator");
+    field.setAccessible(true);
+    return (ProgressWALIterator) field.get(queue);
   }
 
   private static ConsensusSubscriptionCommitManager newCommitManager(final File systemDir)
