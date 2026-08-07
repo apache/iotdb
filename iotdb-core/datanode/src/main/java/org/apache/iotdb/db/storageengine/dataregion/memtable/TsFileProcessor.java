@@ -314,9 +314,9 @@ public class TsFileProcessor {
 
     ensureMemTable(infoForMetrics);
     workMemTable.checkDataType(insertRowNode);
-    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+    AlignedTvListRamCostSnapshot alignedRamCostSnapshot =
         insertRowNode.isAligned()
-            ? new AlignedTVListRamCostSnapshot(workMemTable, insertRowNode.getDeviceID())
+            ? new AlignedTvListRamCostSnapshot(workMemTable, insertRowNode.getDeviceID())
             : null;
 
     long[] memIncrements;
@@ -392,7 +392,7 @@ public class TsFileProcessor {
         pointInserted = workMemTable.insert(insertRowNode);
       }
     } finally {
-      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, memIncrements[0]);
+      reconcileAlignedTvListRamCost(alignedRamCostSnapshot, memIncrements[0]);
     }
 
     // Update start time of this memtable
@@ -424,10 +424,10 @@ public class TsFileProcessor {
         alignedDeviceIds.add(insertRowNode.getDeviceID());
       }
     }
-    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+    AlignedTvListRamCostSnapshot alignedRamCostSnapshot =
         alignedDeviceIds.isEmpty()
             ? null
-            : new AlignedTVListRamCostSnapshot(workMemTable, alignedDeviceIds);
+            : new AlignedTvListRamCostSnapshot(workMemTable, alignedDeviceIds);
 
     long memControlStartTime = System.nanoTime();
     if (insertRowsNode.isMixingAlignment()) {
@@ -524,7 +524,7 @@ public class TsFileProcessor {
         }
       }
     } finally {
-      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, alignedMemTableIncrement);
+      reconcileAlignedTvListRamCost(alignedRamCostSnapshot, alignedMemTableIncrement);
     }
 
     tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
@@ -639,6 +639,7 @@ public class TsFileProcessor {
    * @param rangeList start and end index list of rows to be inserted in insertTabletPlan
    * @param results result array
    */
+  @SuppressWarnings("java:S6541") // Keep ordered write-path state updates together.
   public void insertTablet(
       InsertTabletNode insertTabletNode,
       List<int[]> rangeList,
@@ -754,7 +755,7 @@ public class TsFileProcessor {
         }
       }
     } finally {
-      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, memIncrements[0]);
+      reconcileAlignedTvListRamCost(alignedRamCostSnapshot, memIncrements[0]);
     }
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
@@ -923,7 +924,8 @@ public class TsFileProcessor {
     return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
   }
 
-  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
+  // This estimator is one stateful pass over the incoming aligned rows.
+  @SuppressWarnings({"squid:S3776", "java:S6541"})
   private long[] checkAlignedMemCostAndAddToTspInfoForRows(List<InsertRowNode> insertRowNodeList)
       throws WriteProcessException {
     // Fixed-size TVList structures and materialized value primitive arrays.
@@ -1250,6 +1252,7 @@ public class TsFileProcessor {
    * when the tablet has at least one successful non-null value in that block and the working TVList
    * has not already allocated its value array.
    */
+  @SuppressWarnings("java:S107") // Parameters mirror the tablet write representation.
   private static long calculateTabletValueArrayMemCost(
       AlignedWritableMemChunk alignedMemChunk,
       String[] measurementIds,
@@ -1366,8 +1369,8 @@ public class TsFileProcessor {
                 && columnCategories[index] == TsTableColumnCategory.FIELD);
   }
 
-  private void reconcileAlignedTVListRamCost(
-      AlignedTVListRamCostSnapshot snapshot, long estimatedMemTableIncrement) {
+  private void reconcileAlignedTvListRamCost(
+      AlignedTvListRamCostSnapshot snapshot, long estimatedMemTableIncrement) {
     if (snapshot == null) {
       return;
     }
@@ -1415,14 +1418,14 @@ public class TsFileProcessor {
     private final Set<IDeviceID> deviceIds;
     private final long ramCostBeforeWrite;
 
-    AlignedTVListRamCostSnapshot(IMemTable memTable, IDeviceID deviceId) {
+    AlignedTvListRamCostSnapshot(IMemTable memTable, IDeviceID deviceId) {
       this.memTable = memTable;
       this.deviceId = deviceId;
       this.deviceIds = null;
       this.ramCostBeforeWrite = getRamCost(memTable, deviceId);
     }
 
-    AlignedTVListRamCostSnapshot(IMemTable memTable, Set<IDeviceID> deviceIds) {
+    AlignedTvListRamCostSnapshot(IMemTable memTable, Set<IDeviceID> deviceIds) {
       this.memTable = memTable;
       this.deviceId = null;
       this.deviceIds = deviceIds;
@@ -1452,8 +1455,8 @@ public class TsFileProcessor {
 
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       long ramCost = alignedMemChunk.getWorkingTVList().getRamSize();
-      for (AlignedTVList sortedTVList : alignedMemChunk.getSortedList()) {
-        ramCost += sortedTVList.getRamSize();
+      for (AlignedTVList sortedTvList : alignedMemChunk.getSortedList()) {
+        ramCost += sortedTvList.getRamSize();
       }
       return ramCost;
     }
