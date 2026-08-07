@@ -17,8 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate;
 
-public enum RemoveRegionGroupState {
-  DELETE_REGION_REPLICAS,
+public enum RateFunctionType {
+  RATE("rate", true, true),
+  INCREASE("increase", true, true),
+  IRATE("irate", true, false),
+  DELTA("delta", false, true);
+
+  private final String functionName;
+  private final boolean counter;
+  private final boolean windowed;
+
+  RateFunctionType(String functionName, boolean counter, boolean windowed) {
+    this.functionName = functionName;
+    this.counter = counter;
+    this.windowed = windowed;
+  }
+
+  public String getFunctionName() {
+    return functionName;
+  }
+
+  public boolean isCounter() {
+    return counter;
+  }
+
+  public boolean isWindowed() {
+    return windowed;
+  }
 }

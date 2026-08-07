@@ -219,7 +219,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "%s 获取所有 endpoint 时，集群没有可用的 SubscriptionProvider";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password 与 encryptedPassword 互斥；已设置 encryptedPassword";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password 与 encryptedPassword 互斥；已设置 password";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode 主题不应生成 pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "incremental mode 的 topic 不应生成 pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "不支持的 SubscriptionCommitContext 版本：";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "过期的订阅事件";
   public static final String FIELD_SEPARATOR = "，";

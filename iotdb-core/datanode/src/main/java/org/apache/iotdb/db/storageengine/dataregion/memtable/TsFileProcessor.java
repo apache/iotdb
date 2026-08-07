@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -649,19 +650,8 @@ public class TsFileProcessor {
 
     ensureMemTable(infoForMetrics);
     workMemTable.checkDataType(insertTabletNode);
-    Set<IDeviceID> alignedDeviceIds = new HashSet<>();
-    if (insertTabletNode.isAligned()) {
-      for (int[] range : rangeList) {
-        for (Pair<IDeviceID, Integer> deviceEndPosition :
-            insertTabletNode.splitByDevice(range[0], range[1])) {
-          alignedDeviceIds.add(deviceEndPosition.getLeft());
-        }
-      }
-    }
-    AlignedTvListRamCostSnapshot alignedRamCostSnapshot =
-        alignedDeviceIds.isEmpty()
-            ? null
-            : new AlignedTvListRamCostSnapshot(workMemTable, alignedDeviceIds);
+    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+        takeAlignedTVListRamCostSnapshot(workMemTable, insertTabletNode, rangeList);
 
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, infoForMetrics);
@@ -1397,7 +1387,31 @@ public class TsFileProcessor {
     }
   }
 
-  static final class AlignedTvListRamCostSnapshot {
+  static AlignedTVListRamCostSnapshot takeAlignedTVListRamCostSnapshot(
+      IMemTable memTable, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
+    if (!insertTabletNode.isAligned() || rangeList.isEmpty()) {
+      return null;
+    }
+
+    if (!(insertTabletNode instanceof RelationalInsertTabletNode)
+        || ((RelationalInsertTabletNode) insertTabletNode).isSingleDevice()) {
+      return new AlignedTVListRamCostSnapshot(
+          memTable, insertTabletNode.getDeviceID(rangeList.get(0)[0]));
+    }
+
+    Set<IDeviceID> alignedDeviceIds = new HashSet<>();
+    for (int[] range : rangeList) {
+      for (Pair<IDeviceID, Integer> deviceEndPosition :
+          insertTabletNode.splitByDevice(range[0], range[1])) {
+        alignedDeviceIds.add(deviceEndPosition.getLeft());
+      }
+    }
+    return alignedDeviceIds.isEmpty()
+        ? null
+        : new AlignedTVListRamCostSnapshot(memTable, alignedDeviceIds);
+  }
+
+  static final class AlignedTVListRamCostSnapshot {
 
     private final IMemTable memTable;
     private final IDeviceID deviceId;

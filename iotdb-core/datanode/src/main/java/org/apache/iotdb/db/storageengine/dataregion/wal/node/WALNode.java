@@ -398,7 +398,7 @@ public class WALNode implements IWALNode {
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
         if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
           long fileSize = currentWal.length();
-          if (currentWal.delete()) {
+          if (org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(currentWal)) {
             deleteFileSize += fileSize;
             buffer.removeMemTableIdsOfWal(versionId);
             successfullyDeleted.add(versionId);

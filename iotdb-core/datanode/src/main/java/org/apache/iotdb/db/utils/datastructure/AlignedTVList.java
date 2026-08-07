@@ -87,7 +87,8 @@ public abstract class AlignedTVList extends TVList {
   private long materializedBitmapMemoryCost;
   private long arrayMemCostWithoutPrimitiveArraysAndIndex;
 
-  // Data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
+  // Data type list -> list of TVList, add 1 when expanded -> primitive array of basic type.
+  // A null primitive array means all existing rows in that block are null for the column.
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<Object>> values;
 
@@ -261,7 +262,7 @@ public abstract class AlignedTVList extends TVList {
         markNullValue(i, arrayIndex, elementIndex);
         continue;
       }
-      Object valueArray = getOrCreateValueArray(i, arrayIndex);
+      Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
@@ -406,37 +407,13 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void extendColumn(TSDataType dataType) {
-    if (bitMaps == null) {
-      List<List<BitMap>> localBitMaps = new ArrayList<>(values.size());
-      for (int i = 0; i < values.size(); i++) {
-        localBitMaps.add(null);
-      }
-      bitMaps = localBitMaps;
-    }
     List<Object> columnValue = new ArrayList<>(timestamps.size());
-    List<BitMap> columnBitMaps = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
       columnValue.add(null);
-      BitMap bitMap = BitMap.createBitMapDynamically(ARRAY_SIZE);
-      // The following code is for these 2 kinds of scenarios.
-
-      // Eg1: If rowCount=5 and ARRAY_SIZE=2, we need to supply 3 bitmaps for the extending column.
-      // The first 2 bitmaps should mark all bits to represent 4 nulls and the 3rd bitmap should
-      // mark
-      // the 1st bit to represent 1 null value.
-
-      // Eg2: If rowCount=4 and ARRAY_SIZE=2, we need to supply 2 bitmaps for the extending column.
-      // These 2 bitmaps should mark all bits to represent 4 nulls.
-      if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
-        bitMap.markRange(0, rowCount % ARRAY_SIZE);
-      } else {
-        bitMap.markAll();
-      }
-      columnBitMaps.add(bitMap);
     }
-    materializedBitmapMemoryCost +=
-        timestamps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
-    this.bitMaps.add(columnBitMaps);
+    if (bitMaps != null) {
+      bitMaps.add(null);
+    }
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
     refreshArrayMemCostWithoutPrimitiveArrays();
@@ -642,7 +619,13 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     for (int i = 0; i < dataTypes.size(); i++) {
       deletedNumber += delete(lowerBound, upperBound, i).left;
@@ -650,7 +633,13 @@ public abstract class AlignedTVList extends TVList {
     return deletedNumber;
   }
 
-  public int deleteTime(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int deleteTime(long lowerBound, long upperBound) {
     delete(lowerBound, upperBound);
     int prevDeletedCnt = this.timeDeletedCnt;
     for (int i = 0; i < rowCount; i++) {
@@ -693,12 +682,17 @@ public abstract class AlignedTVList extends TVList {
   /**
    * Delete points in a specific column.
    *
+   * <p>Must be synchronized with {@link #sort()} on the same TVList instance: a query may sort this
+   * list in place ({@code sort()} is synchronized), and a concurrent delete would otherwise read
+   * the half-rebuilt {@code indices} and throw IndexOutOfBoundsException or delete wrong rows.
+   *
    * @param lowerBound deletion lower bound
    * @param upperBound deletion upper bound
    * @param columnIndex column index to be deleted
    * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
    */
-  public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
+  public synchronized Pair<Integer, Boolean> delete(
+      long lowerBound, long upperBound, int columnIndex) {
     if (columnIndex >= values.size()) {
       return new Pair<>(0, false);
     }
@@ -721,29 +715,21 @@ public abstract class AlignedTVList extends TVList {
     return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  public void deleteColumn(int columnIndex) {
-    if (bitMaps == null) {
-      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
-      for (int j = 0; j < dataTypes.size(); j++) {
-        localBitMaps.add(null);
-      }
-      bitMaps = localBitMaps;
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized void deleteColumn(int columnIndex) {
+    List<Object> columnValues = values.get(columnIndex);
+    if (columnValues == null) {
+      return;
     }
-    if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>(values.get(columnIndex).size());
-      for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(BitMap.createBitMapDynamically(ARRAY_SIZE));
+    for (int arrayIndex = 0; arrayIndex < columnValues.size(); arrayIndex++) {
+      if (columnValues.get(arrayIndex) != null) {
+        getBitMap(columnIndex, arrayIndex).markAll();
       }
-      bitMaps.set(columnIndex, columnBitMaps);
-      materializedBitmapMemoryCost +=
-          columnBitMaps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
-    }
-    for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
-      if (bitMaps.get(columnIndex).get(i) == null) {
-        bitMaps.get(columnIndex).set(i, BitMap.createBitMapDynamically(ARRAY_SIZE));
-        materializedBitmapMemoryCost += bitmapRamCost();
-      }
-      bitMaps.get(columnIndex).get(i).markAll();
     }
   }
 
@@ -928,7 +914,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private void markNullBitmapRange(
-      Object[] values,
+      Object[] inputValues,
       BitMap[] bitMaps,
       TSStatus[] results,
       int idx,
@@ -942,15 +928,21 @@ public abstract class AlignedTVList extends TVList {
             ? buildResultBitMap(results, idx, elementIdx, len)
             : null;
 
-    for (int j = 0; j < values.length; j++) {
+    for (int j = 0; j < inputValues.length; j++) {
+      // A null value array represents an entirely null block, so no bitmap is needed until the
+      // block receives its first non-null value.
+      if (values.get(j).get(arrayIndex) == null) {
+        continue;
+      }
+
       /* Fast-path: column is entirely null */
-      if (values[j] == null) {
+      if (inputValues[j] == null) {
         getBitMap(j, arrayIndex).markRange(elementIdx, len);
         continue;
       }
 
       /* 2.mask the column bitmap */
-      if (bitMaps != null && bitMaps[j] != null && containsMarkedBit(bitMaps[j], idx, len)) {
+      if (bitMaps != null && bitMaps[j] != null && bitMaps[j].isRangeAnyMarked(idx, len)) {
         getBitMap(j, arrayIndex).merge(bitMaps[j], idx, elementIdx, len);
       }
 
@@ -968,31 +960,6 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     return false;
-  }
-
-  private static boolean containsMarkedBit(BitMap bitMap, int start, int length) {
-    if (length <= 0) {
-      return false;
-    }
-
-    byte[] bytes = bitMap.getByteArray();
-    int end = start + length - 1;
-    int firstByteIndex = start >>> 3;
-    int lastByteIndex = end >>> 3;
-    if (firstByteIndex == lastByteIndex) {
-      int mask = (0xFF << (start & 7)) & (0xFF >>> (7 - (end & 7)));
-      return (bytes[firstByteIndex] & mask) != 0;
-    }
-
-    if ((bytes[firstByteIndex] & (0xFF << (start & 7))) != 0) {
-      return true;
-    }
-    for (int i = firstByteIndex + 1; i < lastByteIndex; i++) {
-      if (bytes[i] != 0) {
-        return true;
-      }
-    }
-    return (bytes[lastByteIndex] & (0xFF >>> (7 - (end & 7)))) != 0;
   }
 
   public static byte[] buildResultBitMapBytes(
@@ -1032,7 +999,7 @@ public abstract class AlignedTVList extends TVList {
       if (value[i] == null || !containsNonNullValue(bitMaps, results, i, idx, remaining)) {
         continue;
       }
-      Object valueArray = getOrCreateValueArray(i, arrayIndex);
+      Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
@@ -1078,7 +1045,7 @@ public abstract class AlignedTVList extends TVList {
   private static boolean containsNonNullValue(
       BitMap[] bitMaps, TSStatus[] results, int columnIndex, int start, int length) {
     BitMap bitMap = bitMaps == null ? null : bitMaps[columnIndex];
-    boolean containsNull = bitMap != null && containsMarkedBit(bitMap, start, length);
+    boolean containsNull = bitMap != null && bitMap.isRangeAnyMarked(start, length);
     boolean containsFailure = results != null && containsFailedStatus(results, start, length);
     if (!containsNull && !containsFailure) {
       return true;
@@ -1096,7 +1063,7 @@ public abstract class AlignedTVList extends TVList {
     return false;
   }
 
-  private Object getOrCreateValueArray(int columnIndex, int arrayIndex) {
+  private Object getOrCreateValueArray(int columnIndex, int arrayIndex, int elementIndex) {
     List<Object> columnValues = values.get(columnIndex);
     Object valueArray = columnValues.get(arrayIndex);
     if (valueArray == null) {
@@ -1104,6 +1071,9 @@ public abstract class AlignedTVList extends TVList {
       columnValues.set(arrayIndex, valueArray);
       materializedValueArrayCounts[columnIndex]++;
       materializedValueArrayMemCost += valueListArrayMemCost(dataTypes.get(columnIndex));
+      if (elementIndex > 0) {
+        getBitMap(columnIndex, arrayIndex).markRange(0, elementIndex);
+      }
     }
     return valueArray;
   }
@@ -1138,6 +1108,10 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
+    List<Object> columnValues = values.get(columnIndex);
+    if (columnValues == null || columnValues.get(arrayIndex) == null) {
+      return false;
+    }
     // mark the null value in the current bitmap
     BitMap bitMap = getBitMap(columnIndex, arrayIndex);
     if (bitMap.isMarked(elementIndex)) {
@@ -1779,59 +1753,54 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public BitMap getAllValueColDeletedMap(int rowCount) {
-    // row exists when any column value exists
-    if (bitMaps == null) {
+    if (rowCount <= 0) {
       return null;
     }
+
+    int blockCount = (rowCount + ARRAY_SIZE - 1) / ARRAY_SIZE;
+    // Preserve the dense fast path: one column without null blocks or bitmaps proves that every row
+    // has at least one value.
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
-      if (values.get(columnIndex) != null && bitMaps.get(columnIndex) == null) {
+      List<Object> columnValues = values.get(columnIndex);
+      if (columnValues == null) {
+        continue;
+      }
+      List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(columnIndex);
+      boolean columnHasNoNull = true;
+      for (int blockIndex = 0; blockIndex < blockCount; blockIndex++) {
+        if (columnValues.get(blockIndex) == null
+            || (columnBitMaps != null && columnBitMaps.get(blockIndex) != null)) {
+          columnHasNoNull = false;
+          break;
+        }
+      }
+      if (columnHasNoNull) {
         return null;
       }
     }
 
-    byte[] rowBitsArr = new byte[rowCount / Byte.SIZE + 1];
-    int bitsMapSize =
-        rowCount % ARRAY_SIZE == 0 ? rowCount / ARRAY_SIZE : rowCount / ARRAY_SIZE + 1;
-    boolean[] allNotNullArray = new boolean[bitsMapSize];
+    byte[] rowBitsArr = new byte[(rowCount + Byte.SIZE - 1) / Byte.SIZE];
     Arrays.fill(rowBitsArr, (byte) 0xFF);
-    for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
-      List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
-      if (columnBitMaps == null) {
-        Arrays.fill(rowBitsArr, (byte) 0x00);
-        break;
-      } else if (values.get(columnIndex) != null) {
-        int row = 0;
-        boolean isEnd = true;
-        for (int i = 0; i < bitsMapSize; i++) {
-          if (allNotNullArray[i]) {
-            row += ARRAY_SIZE;
-            continue;
-          }
-
-          BitMap bitMap = columnBitMaps.get(i);
-          int index = row / Byte.SIZE;
-          int size = ((Math.min((rowCount - row), ARRAY_SIZE)) + 7) >>> 3;
-          row += ARRAY_SIZE;
-
-          if (bitMap == null) {
-            Arrays.fill(rowBitsArr, index, index + size, (byte) 0x00);
-            allNotNullArray[i] = true;
-            continue;
-          }
-
-          byte bits = (byte) 0X00;
-          byte[] bitMapBytes = bitMap.getByteArray();
-          for (int j = 0; j < size; j++) {
-            rowBitsArr[index] &= bitMapBytes[j];
-            bits |= rowBitsArr[index++];
-            isEnd = false;
-          }
-
-          allNotNullArray[i] = bits == (byte) 0;
+    for (int blockIndex = 0; blockIndex < blockCount; blockIndex++) {
+      int row = blockIndex * ARRAY_SIZE;
+      int byteIndex = row / Byte.SIZE;
+      int byteCount = (Math.min(rowCount - row, ARRAY_SIZE) + Byte.SIZE - 1) / Byte.SIZE;
+      for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+        List<Object> columnValues = values.get(columnIndex);
+        if (columnValues == null || columnValues.get(blockIndex) == null) {
+          continue;
         }
 
-        if (isEnd) {
+        List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(columnIndex);
+        BitMap bitMap = columnBitMaps == null ? null : columnBitMaps.get(blockIndex);
+        if (bitMap == null) {
+          Arrays.fill(rowBitsArr, byteIndex, byteIndex + byteCount, (byte) 0x00);
           break;
+        }
+
+        byte[] bitMapBytes = bitMap.getByteArray();
+        for (int i = 0; i < byteCount; i++) {
+          rowBitsArr[byteIndex + i] &= bitMapBytes[i];
         }
       }
     }
@@ -1861,19 +1830,9 @@ public abstract class AlignedTVList extends TVList {
 
   private int getColumnValueCnt(int columnIndex) {
     int pointNum = 0;
-    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
-      pointNum = rowCount;
-    } else {
-      for (int i = 0; i < rowCount; i++) {
-        int arrayIndex = i / ARRAY_SIZE;
-        if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
-          pointNum++;
-        } else {
-          int elementIndex = i % ARRAY_SIZE;
-          if (!bitMaps.get(columnIndex).get(arrayIndex).isMarked(elementIndex)) {
-            pointNum++;
-          }
-        }
+    for (int i = 0; i < rowCount; i++) {
+      if (!isNullValue(i, columnIndex)) {
+        pointNum++;
       }
     }
     return pointNum;

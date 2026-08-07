@@ -55,7 +55,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -489,7 +488,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
           tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
       }
     } finally {
       // reset the session info to the original one
@@ -507,15 +506,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      LoadTsFile.createUnchecked(
-                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      (isGeneratedByPipe
+                              ? LoadTsFile.createForPipe(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                              : LoadTsFile.createUnchecked(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                      (isGeneratedByPipe
+                              ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                              : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -800,15 +804,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(
-                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                        (isGeneratedByPipe
+                                ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                                : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);

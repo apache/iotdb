@@ -182,6 +182,9 @@ public class StatusUtils {
       case DISK_SPACE_INSUFFICIENT:
         status.setMessage(UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0);
         break;
+      case COPY_TO_WRITE_ERROR:
+        status.setMessage(UtilMessages.MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25);
+        break;
       case START_UP_ERROR:
         status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE);
         break;
