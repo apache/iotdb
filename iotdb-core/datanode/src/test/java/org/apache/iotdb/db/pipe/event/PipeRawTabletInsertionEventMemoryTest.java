@@ -51,14 +51,17 @@ public class PipeRawTabletInsertionEventMemoryTest {
   /** Pipe budget smaller than the test tablet, so forceResize fails without pre-filling memory. */
   private static final long INSUFFICIENT_PIPE_BUDGET_BYTES = 32 * 1024;
 
-  /** Expanded budget large enough for one Raw tablet event. */
-  private static final long SUFFICIENT_PIPE_BUDGET_BYTES = 512 * 1024;
+  /** Expanded budget large enough for one Raw tablet event and its tablet admission headroom. */
+  private static final long SUFFICIENT_PIPE_BUDGET_BYTES = 1024 * 1024;
 
   private static boolean originalPipeMemoryManagementEnabled;
   private static boolean originalConfigPipeMemoryManagementEnabled;
 
   private int originalMaxRetries;
   private long originalRetryIntervalInMs;
+  private double originalFloatingMemoryProportion;
+  private double originalTabletRejectThreshold;
+  private double originalTsFileRejectThreshold;
   private long originalPipeMemoryTotalSize;
   private IMemoryBlock pipeMemoryBlock;
 
@@ -91,8 +94,16 @@ public class PipeRawTabletInsertionEventMemoryTest {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     originalMaxRetries = config.getPipeMemoryAllocateMaxRetries();
     originalRetryIntervalInMs = config.getPipeMemoryAllocateRetryIntervalInMs();
+    originalFloatingMemoryProportion = config.getPipeTotalFloatingMemoryProportion();
+    originalTabletRejectThreshold =
+        config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+    originalTsFileRejectThreshold =
+        config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
     config.setPipeMemoryAllocateMaxRetries(1);
     config.setPipeMemoryAllocateRetryIntervalInMs(1);
+    config.setPipeTotalFloatingMemoryProportion(0.5);
+    config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(0.3);
+    config.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(0.3);
   }
 
   @After
@@ -100,6 +111,11 @@ public class PipeRawTabletInsertionEventMemoryTest {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     config.setPipeMemoryAllocateMaxRetries(originalMaxRetries);
     config.setPipeMemoryAllocateRetryIntervalInMs(originalRetryIntervalInMs);
+    config.setPipeTotalFloatingMemoryProportion(originalFloatingMemoryProportion);
+    config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+        originalTabletRejectThreshold);
+    config.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+        originalTsFileRejectThreshold);
     if (pipeMemoryBlock != null) {
       pipeMemoryBlock.setTotalMemorySizeInBytes(originalPipeMemoryTotalSize);
     }
