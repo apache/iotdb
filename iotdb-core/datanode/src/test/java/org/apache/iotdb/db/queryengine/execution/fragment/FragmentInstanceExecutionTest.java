@@ -328,10 +328,7 @@ public class FragmentInstanceExecutionTest {
         values[j] = (long) i * 100 + j;
       }
       memTable.writeAlignedRow(
-          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
-          schemaList,
-          i,
-          values);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), schemaList, i, values);
     }
     return memTable;
   }
