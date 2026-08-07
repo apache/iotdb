@@ -1487,5 +1487,11 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "初始 allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "跳过设置 {} 为 {}，因为其位于 data 目录下。继续使用原配置：{}。";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "跳过设置 {} 为 {}，因为无法解析其 canonical 路径：{}。继续使用原配置：{}。";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "无法解析 Active Load 监听目录 %s 的 canonical 路径：%s";
 
 }

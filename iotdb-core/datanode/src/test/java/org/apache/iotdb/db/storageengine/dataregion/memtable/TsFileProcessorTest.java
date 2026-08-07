@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -65,6 +66,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -589,9 +591,7 @@ public class TsFileProcessorTest {
 
     Assert.assertEquals(
         expectedProcessor.getWorkMemTable().getTVListsRamCost()
-            - AlignedTVList.valueListArrayMemCost(dataType)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+            - AlignedTVList.valueListArrayMemCost(dataType),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
@@ -620,10 +620,7 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost
-            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -649,10 +646,7 @@ public class TsFileProcessorTest {
         AlignedTVList.alignedTvListArrayMemCost(
             new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
     Assert.assertEquals(
-        denseBlockCost
-            - AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
-            + 2 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -700,10 +694,65 @@ public class TsFileProcessorTest {
         alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(0));
     Assert.assertNull(
         alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(1));
-    for (BitMap bitMap : alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex)) {
-      Assert.assertNotNull(bitMap);
-    }
+    List<BitMap> extendedColumnBitMaps =
+        alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex);
+    Assert.assertNull(extendedColumnBitMaps.get(0));
+    Assert.assertNull(extendedColumnBitMaps.get(1));
+    Assert.assertNotNull(extendedColumnBitMaps.get(2));
     assertAlignedTvListRamCostMatchesActual(deviceId);
+  }
+
+  @Test
+  public void alignedTabletRamCostSnapshotUsesSingleDeviceFastPath() {
+    IMemTable memTable = new PrimitiveMemTable("root.snapshot", "0");
+    IDeviceID firstDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d0");
+    IDeviceID secondDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d1");
+    List<int[]> rangeList = Collections.singletonList(new int[] {0, 2});
+
+    int[] treeSplitCalls = {0};
+    InsertTabletNode treeNode =
+        new InsertTabletNode(new PlanNodeId("tree")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return firstDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            treeSplitCalls[0]++;
+            return Collections.singletonList(new Pair<>(firstDevice, end));
+          }
+        };
+    treeNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, treeNode, rangeList));
+    Assert.assertEquals(0, treeSplitCalls[0]);
+
+    int[] relationalSplitCalls = {0};
+    RelationalInsertTabletNode relationalNode =
+        new RelationalInsertTabletNode(new PlanNodeId("table")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return rowIdx == 0 ? firstDevice : secondDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            relationalSplitCalls[0]++;
+            return Arrays.asList(new Pair<>(firstDevice, 1), new Pair<>(secondDevice, end));
+          }
+        };
+    relationalNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
+
+    relationalNode.setSingleDevice();
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
   }
 
   @Test
@@ -771,7 +820,8 @@ public class TsFileProcessorTest {
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(5269104, memTable.getTVListsRamCost());
+    Assert.assertEquals(
+        5269104 - 3000L * AlignedTVList.bitmapRamCost(), memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
@@ -1069,9 +1119,7 @@ public class TsFileProcessorTest {
     long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
 
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(dataType)
-            - 2 * AlignedTVList.bitmapReferenceRamCost()
-            - AlignedTVList.bitmapRamCost(),
+        AlignedTVList.valueListArrayMemCost(dataType),
         denseRowRamIncrement - sparseRowRamIncrement);
   }
 
