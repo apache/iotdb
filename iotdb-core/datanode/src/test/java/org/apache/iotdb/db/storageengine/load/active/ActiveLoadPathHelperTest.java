@@ -128,6 +128,43 @@ public class ActiveLoadPathHelperTest {
   }
 
   @Test
+  public void testPipeConversionTaskAttributesRoundTrip() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-task").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(
+              null, null, true, true, true, null, true, "root", "task-123", false);
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> parsed = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals("task-123", parsed.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          parsed.get(ActiveLoadPathHelper.PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY));
+
+      final File sharedTargetDir =
+          ActiveLoadPathHelper.resolvePipeTransferTargetDir(pendingDir, attributes);
+      final File taskTransferDir =
+          new File(
+              sharedTargetDir,
+              ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("task-123"));
+      final File taskTsFile = new File(taskTransferDir, "2-0-0-0.tsfile");
+      createFile(taskTsFile);
+      final Map<String, String> taskParsed =
+          ActiveLoadPathHelper.parseAttributes(taskTsFile, pendingDir);
+      Assert.assertEquals(
+          "task-123", taskParsed.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          taskParsed.get(ActiveLoadPathHelper.PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
   public void testAutoCreateSchemaAttributeShouldSurviveActiveLoadPath() throws Exception {
     final File pendingDir = Files.createTempDirectory("active-load-schema").toFile();
     try {

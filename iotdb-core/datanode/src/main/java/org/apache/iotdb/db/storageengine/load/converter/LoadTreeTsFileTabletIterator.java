@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -115,7 +114,9 @@ class LoadTreeTsFileTabletIterator
         if (recoverFromIteratorFailure(e)) {
           continue;
         }
-        close();
+        if (!shouldRethrow(e)) {
+          close();
+        }
         throw toRuntimeException(e);
       }
     }
@@ -137,7 +138,9 @@ class LoadTreeTsFileTabletIterator
         if (recoverFromIteratorFailure(e)) {
           continue;
         }
-        close();
+        if (!shouldRethrow(e)) {
+          close();
+        }
         throw toRuntimeException(e);
       }
     }
@@ -157,6 +160,10 @@ class LoadTreeTsFileTabletIterator
         activeIterator = scanParser.toTabletWithIsAligneds().iterator();
         return;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          scanInitialized = false;
+          throw toRuntimeException(e);
+        }
         if (!switchFromScanToQuery(e)) {
           throw toRuntimeException(e);
         }
@@ -352,6 +359,11 @@ class LoadTreeTsFileTabletIterator
             };
         return true;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          pendingQueryTasks.addFirst(activeQueryTask);
+          activeQueryTask = null;
+          throw toRuntimeException(e);
+        }
         LOGGER.warn(
             StorageEngineMessages
                 .MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_C6F69685,
@@ -386,10 +398,12 @@ class LoadTreeTsFileTabletIterator
   }
 
   private boolean shouldRethrow(final Exception e) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(e)) {
+      return true;
+    }
     Throwable current = e;
     while (Objects.nonNull(current)) {
-      if (current instanceof InterruptedException
-          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+      if (current instanceof InterruptedException) {
         return true;
       }
       current = current.getCause();
