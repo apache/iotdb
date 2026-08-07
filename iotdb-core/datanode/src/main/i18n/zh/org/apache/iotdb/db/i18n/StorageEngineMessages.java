@@ -1171,6 +1171,10 @@ public final class StorageEngineMessages {
       "自动加载 TsFile {} (isGeneratedByPipe = {}) 失败，原因：发生未知异常。文件将被移动到失败目录。";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_HOT_RELOAD_ACTIVE_LOAD_DIRS_CURRENT_673AFC0F =
       "热重载 active load 目录时发生错误。当前 active load 监听目录：{}。";
+  public static final String LOG_ACTIVE_LOAD_LISTENING_DIRECTORY_S_IS_SKIPPED_DURING_HOT_RELOAD_BECAUSE_IT_IS_UNDER_IOTDB_DATA_DIRECTORY_DA90CAE1 =
+      "Active Load 监听目录 {} 位于 data 目录下，热重载时将跳过该目录。";
+  public static final String LOG_FAILED_TO_VALIDATE_ACTIVE_LOAD_LISTENING_DIRECTORY_S_SKIP_SCANNING_ARG_0E6A508E =
+      "无法校验 Active Load 监听目录 {}，将跳过扫描该目录。原因：{}";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_READABLE_SKIP_SCANNING_THIS_DIR_9C8B7E00 =
       "当前目录路径不可读：{}。跳过扫描该目录。请检查权限。";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_WRITABLE_SKIP_SCANNING_THIS_DIR_4885E78F =

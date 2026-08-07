@@ -1227,6 +1227,12 @@ public final class StorageEngineMessages {
           + "File will be moved to fail directory.";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_HOT_RELOAD_ACTIVE_LOAD_DIRS_CURRENT_673AFC0F =
       "Error occurred during hot reload active load dirs. Current active load listening dirs: {}.";
+  public static final String LOG_ACTIVE_LOAD_LISTENING_DIRECTORY_S_IS_SKIPPED_DURING_HOT_RELOAD_BECAUSE_IT_IS_UNDER_IOTDB_DATA_DIRECTORY_DA90CAE1 =
+      "Active load listening directory {} is skipped during hot reload because it is under data "
+          + "directory.";
+  public static final String LOG_FAILED_TO_VALIDATE_ACTIVE_LOAD_LISTENING_DIRECTORY_S_SKIP_SCANNING_ARG_0E6A508E =
+      "Failed to validate active load listening directory {}. Skip scanning this directory. "
+          + "Reason: {}";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_READABLE_SKIP_SCANNING_THIS_DIR_9C8B7E00 =
       "Current dir path is not readable: {}.Skip scanning this dir. Please check the permission.";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_WRITABLE_SKIP_SCANNING_THIS_DIR_4885E78F =
