@@ -687,18 +687,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return status;
       }
 
-      if (isLoadTemporarilyUnavailable(status)) {
-        // Without async takeover, memory pressure only pauses this existing local conversion. A
-        // duplicate seal returns this status and must not create another conversion task.
-        PipeTsFileConversionTaskManager.markPaused(taskId, status);
-      } else {
-        PipeTsFileConversionTaskManager.markFailed(taskId, status);
-      }
+      // Before active-load ownership, pipe loads have always been retried by the sender after any
+      // load failure (for example, while the receiver's schema or permissions are being
+      // established). Keep that behavior with the task manager: a duplicate seal claims the same
+      // task again instead of receiving a terminal copy of the first transient error.
+      // markRetryable deliberately has no effect after active load owns the task; its worker then
+      // decides whether a failure is retryable or terminal.
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
       return status;
     } catch (final Exception e) {
       final TSStatus status =
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
-      PipeTsFileConversionTaskManager.markFailed(taskId, status);
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
       throw e;
     } finally {
       PipeTsFileConversionTaskManager.leave();
