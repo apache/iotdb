@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -230,6 +231,98 @@ public class TsFileInsertionEventParserTest {
       final TabletInsertionEvent event = iterator.next();
       Assert.assertTrue(event instanceof PipeRawTabletInsertionEvent);
       ((PipeRawTabletInsertionEvent) event).clearReferenceCount(getClass().getName());
+    }
+  }
+
+  @Test
+  public void testScanParserRetriesChunkHeaderAfterOutOfMemory() throws Exception {
+    nonalignedTsFile =
+        TsFileGeneratorUtils.generateNonAlignedTsFile(
+            "nonaligned-retry-chunk-header-memory.tsfile", 1, 2, 10, 0, 100, 10, 10);
+
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            nonalignedTsFile,
+            new PrefixTreePattern("root"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null,
+            null,
+            false)) {
+      final AtomicInteger memoryUsageReadCount = new AtomicInteger(0);
+      replaceAllocatedChunkMemory(
+          parser,
+          new PipeMemoryBlock(0) {
+            @Override
+            public long getMemoryUsageInBytes() {
+              if (memoryUsageReadCount.incrementAndGet() == 1) {
+                throw new PipeRuntimeOutOfMemoryCriticalException("expected chunk header oom");
+              }
+              return super.getMemoryUsageInBytes();
+            }
+          });
+
+      final Iterator<Pair<Tablet, Boolean>> iterator = parser.toTabletWithIsAligneds().iterator();
+      Assert.assertTrue(iterator.hasNext());
+      int pointCount = getNonNullSize(iterator.next().getLeft());
+
+      final PipeException exception = Assert.assertThrows(PipeException.class, iterator::hasNext);
+      Assert.assertTrue(LoadTsFileDataTypeConverter.isMemoryPressureException(exception));
+
+      while (iterator.hasNext()) {
+        pointCount += getNonNullSize(iterator.next().getLeft());
+      }
+      Assert.assertEquals(20, pointCount);
+      Assert.assertTrue(memoryUsageReadCount.get() >= 2);
+    }
+  }
+
+  @Test
+  public void testTableParserRetriesDeviceChunkMetadataAfterOutOfMemory() throws Exception {
+    alignedTsFile = new File("table-retry-chunk-metadata-memory.tsfile");
+    generateLargeTableTsFile(alignedTsFile, 1, 2, 1, 1, 4, 4);
+
+    try (final TsFileInsertionEventTableParser parser =
+        new TsFileInsertionEventTableParser(
+            alignedTsFile,
+            new TablePattern(true, null, null),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null,
+            null,
+            null,
+            false)) {
+      final AtomicInteger memoryUsageReadCount = new AtomicInteger(0);
+      replaceAllocatedChunkMetadataMemory(
+          parser,
+          new PipeMemoryBlock(0) {
+            @Override
+            public long getMemoryUsageInBytes() {
+              if (memoryUsageReadCount.incrementAndGet() == 1) {
+                throw new PipeRuntimeOutOfMemoryCriticalException("expected chunk metadata oom");
+              }
+              return super.getMemoryUsageInBytes();
+            }
+          });
+
+      final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+      final PipeException exception = Assert.assertThrows(PipeException.class, iterator::hasNext);
+      Assert.assertTrue(LoadTsFileDataTypeConverter.isMemoryPressureException(exception));
+
+      int rowCount = 0;
+      final Set<Object> deviceIds = new HashSet<>();
+      while (iterator.hasNext()) {
+        final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) iterator.next();
+        final Tablet tablet = event.convertToTablet();
+        rowCount += tablet.getRowSize();
+        for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
+          deviceIds.add(tablet.getValue(rowIndex, 0));
+        }
+        event.clearReferenceCount(getClass().getName());
+      }
+      Assert.assertEquals(8, rowCount);
+      Assert.assertEquals(2, deviceIds.size());
+      Assert.assertTrue(memoryUsageReadCount.get() >= 3);
     }
   }
 
@@ -2188,6 +2281,26 @@ public class TsFileInsertionEventParserTest {
         TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForChunk");
     field.setAccessible(true);
     return (PipeMemoryBlock) field.get(parser);
+  }
+
+  private void replaceAllocatedChunkMemory(
+      final TsFileInsertionEventScanParser parser, final PipeMemoryBlock replacement)
+      throws NoSuchFieldException, IllegalAccessException {
+    final Field field =
+        TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForChunk");
+    field.setAccessible(true);
+    ((PipeMemoryBlock) field.get(parser)).close();
+    field.set(parser, replacement);
+  }
+
+  private void replaceAllocatedChunkMetadataMemory(
+      final TsFileInsertionEventTableParser parser, final PipeMemoryBlock replacement)
+      throws NoSuchFieldException, IllegalAccessException {
+    final Field field =
+        TsFileInsertionEventTableParser.class.getDeclaredField("allocatedMemoryBlockForChunkMeta");
+    field.setAccessible(true);
+    ((PipeMemoryBlock) field.get(parser)).close();
+    field.set(parser, replacement);
   }
 
   private PipeMemoryBlock getAllocatedBatchDataMemory(final TsFileInsertionEventScanParser parser)

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -132,7 +133,8 @@ public class LoadUtil {
       return false;
     }
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     transferFilesToActiveDir(
         targetDir,
@@ -141,7 +143,8 @@ public class LoadUtil {
             new File(getTsFileModsV1Path(file.getAbsolutePath())),
             new File(getTsFileModsV2Path(file.getAbsolutePath())),
             file),
-        isDeleteAfterLoad);
+        isDeleteAfterLoad,
+        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
     return true;
   }
 
@@ -186,50 +189,157 @@ public class LoadUtil {
       return false;
     }
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
       sourceFiles.add(new File(file));
     }
     sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
-    transferFilesToActiveDir(targetDir, sourceFiles, isDeleteAfterLoad);
+    transferFilesToActiveDir(
+        targetDir,
+        sourceFiles,
+        isDeleteAfterLoad,
+        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
     return true;
   }
 
   static void transferFilesToActiveDir(
       final File targetDir, final List<File> sourceFiles, final boolean isDeleteAfterLoad)
       throws IOException {
+    transferFilesToActiveDir(targetDir, sourceFiles, isDeleteAfterLoad, null);
+  }
+
+  static void transferFilesToActiveDir(
+      final File targetDir,
+      final List<File> sourceFiles,
+      final boolean isDeleteAfterLoad,
+      final String deterministicDirectoryName)
+      throws IOException {
+    final File transferDir =
+        new File(
+            targetDir,
+            deterministicDirectoryName == null
+                ? UUID.randomUUID().toString()
+                : ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName(
+                    deterministicDirectoryName));
     final List<File> existingSourceFiles = new ArrayList<>(sourceFiles.size());
     for (final File sourceFile : sourceFiles) {
       if (sourceFile.exists()) {
         existingSourceFiles.add(sourceFile);
       }
     }
+
+    if (deterministicDirectoryName != null && transferDir.exists()) {
+      if (!isExistingTaskComplete(transferDir, sourceFiles)) {
+        throw new IOException(StorageEngineMessages.FAIL_TO_LOAD_TSFILE_TO_ACTIVE_DIR);
+      }
+      if (isDeleteAfterLoad) {
+        deleteSourceFiles(existingSourceFiles);
+      }
+      return;
+    }
     if (existingSourceFiles.isEmpty()) {
+      if (deterministicDirectoryName != null) {
+        // A retry is successful only when either the source or the published deterministic target
+        // proves that the handoff completed. Reporting success for two missing paths would make
+        // the receiver claim ownership of a task whose TsFile was lost.
+        throw new IOException(StorageEngineMessages.FAIL_TO_LOAD_TSFILE_TO_ACTIVE_DIR);
+      }
       return;
     }
 
-    final File transferDir = new File(targetDir, UUID.randomUUID().toString());
+    final File stagingDir =
+        new File(
+            targetDir,
+            ActiveLoadPathHelper.formatTransferStagingDirectoryName(UUID.randomUUID().toString()));
     try {
-      Files.createDirectories(transferDir.toPath());
+      Files.createDirectories(stagingDir.toPath());
       for (final File sourceFile : existingSourceFiles) {
-        final File targetFile = new File(transferDir, sourceFile.getName());
+        final File targetFile = new File(stagingDir, sourceFile.getName());
         RetryUtils.retryOnException(
             () -> {
               transferFile(sourceFile, targetFile, isDeleteAfterLoad);
               return null;
             });
       }
+      try {
+        publishTransferDirectory(stagingDir, transferDir);
+      } catch (final IOException e) {
+        // Another retry may have published the same deterministic task between the existence
+        // check above and this rename. Reuse that complete handoff instead of overwriting it.
+        if (deterministicDirectoryName == null
+            || !isExistingTaskComplete(transferDir, sourceFiles)) {
+          throw e;
+        }
+      }
     } catch (final IOException | RuntimeException e) {
-      if (transferDir.exists()) {
-        FileUtils.deleteFileOrDirectoryWithRetry(transferDir);
+      if (stagingDir.exists()) {
+        FileUtils.deleteFileOrDirectoryWithRetry(stagingDir);
       }
       throw e;
     }
 
+    if (stagingDir.exists()) {
+      FileUtils.deleteFileOrDirectoryWithRetry(stagingDir);
+    }
     if (isDeleteAfterLoad) {
       deleteSourceFiles(existingSourceFiles);
+    }
+  }
+
+  private static boolean isExistingTaskComplete(
+      final File transferDir, final List<File> sourceFiles) {
+    if (!transferDir.isDirectory()) {
+      return false;
+    }
+
+    final File[] targetFiles = transferDir.listFiles(File::isFile);
+    if (targetFiles == null || targetFiles.length == 0) {
+      return false;
+    }
+
+    final List<File> existingSourceFiles =
+        sourceFiles.stream().filter(File::isFile).collect(java.util.stream.Collectors.toList());
+    if (existingSourceFiles.isEmpty()) {
+      // Sources are removed after a successful handoff. An atomically published directory with a
+      // TsFile is therefore sufficient evidence on a retry where the sender regenerated its file
+      // name (the stable task id, rather than the name, is the identity).
+      return Arrays.stream(targetFiles).anyMatch(LoadUtil::isTsFile);
+    }
+
+    if (targetFiles.length != existingSourceFiles.size()) {
+      return false;
+    }
+
+    final boolean[] matched = new boolean[targetFiles.length];
+    for (final File sourceFile : existingSourceFiles) {
+      boolean found = false;
+      for (int i = 0; i < targetFiles.length; i++) {
+        if (!matched[i]
+            && isTsFile(sourceFile) == isTsFile(targetFiles[i])
+            && sourceFile.length() == targetFiles[i].length()) {
+          matched[i] = true;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static void publishTransferDirectory(final File stagingDir, final File transferDir)
+      throws IOException {
+    try {
+      Files.move(stagingDir.toPath(), transferDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+    } catch (final AtomicMoveNotSupportedException e) {
+      // Both directories are created below the same target directory, so the provider's regular
+      // rename is still a single directory-entry publication when atomic moves are unavailable.
+      Files.move(stagingDir.toPath(), transferDir.toPath());
     }
   }
 

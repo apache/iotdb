@@ -107,6 +107,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .filter(file -> !ActiveLoadPathHelper.isTransferStagingFile(file, listeningDirFile))
               .map(file -> new File(LoadUtil.getTsFilePath(file.getAbsolutePath())))
               .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
