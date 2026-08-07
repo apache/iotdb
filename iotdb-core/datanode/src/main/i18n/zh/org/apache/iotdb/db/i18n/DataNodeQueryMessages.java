@@ -3298,8 +3298,8 @@ public final class DataNodeQueryMessages {
 
 
       "查询已中止，因为其请求的内存超过可分配上限，bytesToReserve：%sB，maxBytesCanReserve：%sB";
-  public static final String QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2 =
-      "释放内存时 RelatedMemoryReserved 不能为 null";
+  public static final String EXCEPTION_NO_MEMORY_RESERVATION_IS_REGISTERED_FOR_QUERY_ARG_AND_FRAGMENT_INSTANCE_ARG_06016520 =
+      "查询 %s、FragmentInstance %s 未注册内存预留。";
   public static final String QUERY_EXCEPTION_INTERRUPTED_BY_92FAED2D =
       "被中断，原因：";
   public static final String QUERY_EXCEPTION_DRIVER_WAS_INTERRUPTED_737358E4 =
