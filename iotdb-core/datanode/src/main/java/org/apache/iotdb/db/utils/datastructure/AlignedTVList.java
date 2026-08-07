@@ -100,8 +100,6 @@ public abstract class AlignedTVList extends TVList {
     private final AlignedTVList cloneList;
     private final List<Object>[] valueColumnsToMove;
     private final List<BitMap>[] bitmapColumnsToMove;
-    private final long sourceArrayMemCostWithoutIndex;
-    private final long cloneArrayMemCostWithoutIndex;
     private final long sourceBitmapMemoryCost;
     private final long cloneBitmapMemoryCost;
 
@@ -112,16 +110,12 @@ public abstract class AlignedTVList extends TVList {
         AlignedTVList cloneList,
         List<Object>[] valueColumnsToMove,
         List<BitMap>[] bitmapColumnsToMove,
-        long sourceArrayMemCostWithoutIndex,
-        long cloneArrayMemCostWithoutIndex,
         long sourceBitmapMemoryCost,
         long cloneBitmapMemoryCost) {
       this.sourceList = sourceList;
       this.cloneList = cloneList;
       this.valueColumnsToMove = valueColumnsToMove;
       this.bitmapColumnsToMove = bitmapColumnsToMove;
-      this.sourceArrayMemCostWithoutIndex = sourceArrayMemCostWithoutIndex;
-      this.cloneArrayMemCostWithoutIndex = cloneArrayMemCostWithoutIndex;
       this.sourceBitmapMemoryCost = sourceBitmapMemoryCost;
       this.cloneBitmapMemoryCost = cloneBitmapMemoryCost;
     }
@@ -266,9 +260,7 @@ public abstract class AlignedTVList extends TVList {
   public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
-    cloneList.timeDeletedCnt = this.timeDeletedCnt;
     cloneColumnDataTo(cloneList, null);
-    cloneList.timeColDeletedMap = timeColDeletedMap == null ? null : timeColDeletedMap.clone();
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
@@ -331,8 +323,6 @@ public abstract class AlignedTVList extends TVList {
         cloneList,
         valueColumnsToMove,
         bitmapColumnsToMove,
-        calculateArrayMemCostWithoutIndex(retainedColumns),
-        cloneList.calculateArrayMemCostWithoutIndex(null),
         calculateBitmapRamCost(bitMaps, retainedColumns),
         calculateBitmapRamCost(bitMaps, null));
   }
@@ -990,12 +980,16 @@ public abstract class AlignedTVList extends TVList {
    *    They are moved from the source TVList to cloneList later, and cloneList becomes the new
    *    working list in the memtable.
    *
-   * This method only performs the allocation phase: clone requested value/bitmap arrays and prepare
-   * bitmap containers that will be needed by moved columns. It must not clear or move columns from
+   * This method only performs the allocation phase: copy row-level time deletion state, clone
+   * requested value/bitmap arrays, and prepare bitmap containers that will be needed by moved
+   * columns. It must not clear or move columns from
    * the source TVList here. The destructive move is performed only by PartialClonePlan.commit()
    * after cloneList and the ownership-transfer plan are fully prepared for publication.
    */
   private void cloneColumnDataTo(AlignedTVList cloneList, Set<Integer> columnsToClone) {
+    cloneList.timeDeletedCnt = timeDeletedCnt;
+    cloneList.timeColDeletedMap = timeColDeletedMap == null ? null : timeColDeletedMap.clone();
+
     boolean cloneAllColumns = columnsToClone == null;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
@@ -1444,14 +1438,6 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     return size + calculateBitmapRamCost(bitMaps, columnsToClone);
-  }
-
-  private long calculateArrayMemCostWithoutIndex(Set<Integer> retainedColumns) {
-    long arrayMemCost = alignedTvListArrayMemCost(retainedColumns);
-    if (indices != null) {
-      arrayMemCost -= (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES;
-    }
-    return arrayMemCost;
   }
 
   private static long calculateBitmapRamCost(
