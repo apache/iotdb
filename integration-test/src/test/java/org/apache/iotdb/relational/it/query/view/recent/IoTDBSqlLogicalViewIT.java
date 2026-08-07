@@ -391,6 +391,37 @@ public class IoTDBSqlLogicalViewIT {
   }
 
   @Test
+  public void testCreateSqlLogicalViewWithoutSessionDatabase() throws SQLException {
+    final String qualifiedViewName = DATABASE + ".no_session_database_view";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE VIEW " + qualifiedViewName + " AS SELECT time, s1 FROM " + DATABASE + ".table1");
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT count(*) FROM " + qualifiedViewName)) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(3, resultSet.getLong(1));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testUnqualifiedSourceRequiresSessionDatabase() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      Assert.assertThrows(
+          IoTDBSQLException.class,
+          () ->
+              statement.execute(
+                  "CREATE VIEW "
+                      + DATABASE
+                      + ".no_session_database_invalid_view AS SELECT time, s1 FROM table1"));
+    }
+  }
+
+  @Test
   public void testQuerySqlLogicalViewFromDifferentDatabase() throws SQLException {
     final String otherDb = DATABASE + "_other";
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

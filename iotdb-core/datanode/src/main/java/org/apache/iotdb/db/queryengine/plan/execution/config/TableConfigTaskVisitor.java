@@ -707,18 +707,12 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     accessControl.checkCanCreateTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
-    final String sessionDatabase =
-        context
-            .getSession()
-            .getDatabaseName()
-            .orElseThrow(() -> new SemanticException(DATABASE_NOT_SPECIFIED));
-
     final Query query = node.getQuery();
     final StatementAnalyzerFactory statementAnalyzerFactory =
         new StatementAnalyzerFactory(metadata, new SqlParser(), accessControl, typeManager);
     final Analysis analysis = new Analysis(node, Collections.emptyMap());
     analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
-    analysis.setDatabaseName(sessionDatabase);
+    context.getSession().getDatabaseName().ifPresent(analysis::setDatabaseName);
     final StatementAnalyzer statementAnalyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis,
