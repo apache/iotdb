@@ -54,6 +54,14 @@ public class SessionWindowTest {
     Assert.assertEquals(Long.MAX_VALUE, skippedBlock.getTimeColumn().getLong(0));
   }
 
+  @Test
+  public void containsRejectsOverflowedTimeRange() {
+    SessionWindow sessionWindow = new SessionWindow(Long.MAX_VALUE, true);
+    Column timeColumn = buildTimeColumn(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    Assert.assertFalse(sessionWindow.contains(timeColumn));
+  }
+
   private Column buildTimeColumn(long... timestamps) {
     return buildTsBlock(timestamps).getTimeColumn();
   }

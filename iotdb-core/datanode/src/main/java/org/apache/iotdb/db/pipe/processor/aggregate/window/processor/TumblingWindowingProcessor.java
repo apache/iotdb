@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -80,10 +81,12 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
             ? slidingBoundaryTime
             : windowList.get(windowList.size() - 1).getTimestamp();
 
-    if (timeStamp >= (windowList.isEmpty() ? lastTime : lastTime + slidingInterval)) {
+    if (windowList.isEmpty()
+        ? timeStamp >= lastTime
+        : isTimestampAtOrAfterWindowEnd(timeStamp, lastTime, slidingInterval)) {
       final TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       // Align to the last time + k * slidingInterval, k is a natural number
-      window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval + lastTime);
+      window.setTimestamp(alignWindowStart(timeStamp, lastTime, slidingInterval));
       windowList.add(window);
       return Collections.singleton(window);
     }
@@ -96,12 +99,12 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
     if (timeStamp < window.getTimestamp()) {
       return new Pair<>(WindowState.IGNORE_VALUE, null);
     }
-    if (timeStamp >= window.getTimestamp() + slidingInterval) {
+    if (isTimestampAtOrAfterWindowEnd(timeStamp, window.getTimestamp(), slidingInterval)) {
       return new Pair<>(
           WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
               .setTimestamp(window.getTimestamp())
-              .setProgressTime(window.getTimestamp() + slidingInterval));
+              .setProgressTime(saturatingAdd(window.getTimestamp(), slidingInterval)));
     }
     return new Pair<>(WindowState.COMPUTE, null);
   }
@@ -110,6 +113,33 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   public WindowOutput forceOutput(final TimeSeriesWindow window) {
     return new WindowOutput()
         .setTimestamp(window.getTimestamp())
-        .setProgressTime(window.getTimestamp() + slidingInterval);
+        .setProgressTime(saturatingAdd(window.getTimestamp(), slidingInterval));
+  }
+
+  private static boolean isTimestampAtOrAfterWindowEnd(
+      final long timestamp, final long windowStart, final long interval) {
+    return windowStart <= Long.MAX_VALUE - interval && timestamp >= windowStart + interval;
+  }
+
+  private static long alignWindowStart(
+      final long timestamp, final long baseTime, final long interval) {
+    final BigInteger base = BigInteger.valueOf(baseTime);
+    final BigInteger intervalValue = BigInteger.valueOf(interval);
+    return base.add(
+            BigInteger.valueOf(timestamp)
+                .subtract(base)
+                .divide(intervalValue)
+                .multiply(intervalValue))
+        .longValueExact();
+  }
+
+  private static long saturatingAdd(final long left, final long right) {
+    if (right > 0 && left > Long.MAX_VALUE - right) {
+      return Long.MAX_VALUE;
+    }
+    if (right < 0 && left < Long.MIN_VALUE - right) {
+      return Long.MIN_VALUE;
+    }
+    return left + right;
   }
 }

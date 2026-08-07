@@ -67,7 +67,21 @@ public class DataRegionWatermarkInjector {
   }
 
   private static long calculateNextInjectionTime(long injectionIntervalInMs) {
-    final long currentTime = System.currentTimeMillis();
-    return currentTime / injectionIntervalInMs * injectionIntervalInMs + injectionIntervalInMs;
+    return calculateNextInjectionTime(System.currentTimeMillis(), injectionIntervalInMs);
+  }
+
+  static long calculateNextInjectionTime(long currentTime, long injectionIntervalInMs) {
+    return saturatingAdd(
+        currentTime / injectionIntervalInMs * injectionIntervalInMs, injectionIntervalInMs);
+  }
+
+  private static long saturatingAdd(final long left, final long right) {
+    if (right > 0 && left > Long.MAX_VALUE - right) {
+      return Long.MAX_VALUE;
+    }
+    if (right < 0 && left < Long.MIN_VALUE - right) {
+      return Long.MIN_VALUE;
+    }
+    return left + right;
   }
 }

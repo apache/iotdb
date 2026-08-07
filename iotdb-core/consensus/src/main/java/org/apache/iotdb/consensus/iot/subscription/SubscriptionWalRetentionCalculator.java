@@ -118,9 +118,15 @@ public class SubscriptionWalRetentionCalculator {
       return SubscriptionRetentionBound.retainAll();
     }
 
-    final long cutoffTimeMs = System.currentTimeMillis() - retentionMs;
+    final long cutoffTimeMs = getTimeRetentionCutoffTimeMs(System.currentTimeMillis(), retentionMs);
     final Pair<Long, Long> deletionBound =
         consensusReqReader.getDeletionBoundBeforeTimestamp(cutoffTimeMs);
     return SubscriptionRetentionBound.of(deletionBound.left, deletionBound.right);
+  }
+
+  static long getTimeRetentionCutoffTimeMs(final long currentTimeMs, final long retentionMs) {
+    return retentionMs > 0 && currentTimeMs < Long.MIN_VALUE + retentionMs
+        ? Long.MIN_VALUE
+        : currentTimeMs - retentionMs;
   }
 }

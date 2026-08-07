@@ -108,4 +108,47 @@ public class SeriesPartitionTableTest {
     table1.deserialize(inputStream, protocol);
     Assert.assertEquals(table0, table1);
   }
+
+  @Test
+  public void autoCleanPartitionTableShouldNotExpireOnOverflow() {
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
+
+    SeriesPartitionTable table = new SeriesPartitionTable();
+    TTimePartitionSlot nearMaxSlot = new TTimePartitionSlot(Long.MAX_VALUE - 1);
+    table.putDataPartition(nearMaxSlot, consensusGroupId);
+    Assert.assertTrue(
+        table.autoCleanPartitionTable(0, new TTimePartitionSlot(Long.MAX_VALUE - 1)).isEmpty());
+    Assert.assertTrue(table.getSeriesPartitionMap().containsKey(nearMaxSlot));
+
+    table = new SeriesPartitionTable();
+    TTimePartitionSlot normalSlot = new TTimePartitionSlot(0);
+    table.putDataPartition(normalSlot, consensusGroupId);
+    Assert.assertTrue(
+        table
+            .autoCleanPartitionTable(Long.MAX_VALUE - 1, new TTimePartitionSlot(Long.MAX_VALUE - 1))
+            .isEmpty());
+    Assert.assertTrue(table.getSeriesPartitionMap().containsKey(normalSlot));
+  }
+
+  @Test
+  public void getTimeSlotListShouldIncludeLongMaxSlotWithUnboundedEndTime() {
+    final TConsensusGroupId consensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
+    final TConsensusGroupId allRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
+    final TTimePartitionSlot previousSlot = new TTimePartitionSlot(Long.MAX_VALUE - 1);
+    final TTimePartitionSlot lastSlot = new TTimePartitionSlot(Long.MAX_VALUE);
+
+    final SeriesPartitionTable table = new SeriesPartitionTable();
+    table.putDataPartition(previousSlot, consensusGroupId);
+    table.putDataPartition(lastSlot, consensusGroupId);
+
+    final List<TTimePartitionSlot> expected = new ArrayList<>();
+    expected.add(previousSlot);
+    expected.add(lastSlot);
+
+    Assert.assertEquals(
+        expected, table.getTimeSlotList(allRegionId, Long.MAX_VALUE - 1, Long.MAX_VALUE));
+    Assert.assertEquals(
+        expected, table.getTimeSlotList(consensusGroupId, Long.MAX_VALUE - 1, Long.MAX_VALUE));
+  }
 }

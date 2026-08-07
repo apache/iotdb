@@ -109,12 +109,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
     TimeRange firstTimeRange = aggrWindowIterator.nextTimeRange();
     if (leftCRightO) {
       timeBoundaryHeap.add(firstTimeRange.getMin());
-      timeBoundaryHeap.add(firstTimeRange.getMax() + 1);
+      timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(firstTimeRange.getMax(), 1));
       curStartTimeForIterator = firstTimeRange.getMin();
     } else {
-      timeBoundaryHeap.add(firstTimeRange.getMin() - 1);
+      timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(firstTimeRange.getMin(), -1));
       timeBoundaryHeap.add(firstTimeRange.getMax());
-      curStartTimeForIterator = firstTimeRange.getMin() - 1;
+      curStartTimeForIterator = ITimeRangeIterator.saturatingAdd(firstTimeRange.getMin(), -1);
     }
     tryToExpandHeap();
   }
@@ -125,12 +125,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
       timeRangeToExpand = aggrWindowIterator.nextTimeRange();
       if (leftCRightO) {
         timeBoundaryHeap.add(timeRangeToExpand.getMin());
-        timeBoundaryHeap.add(timeRangeToExpand.getMax() + 1);
+        timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMax(), 1));
         curStartTimeForIterator = timeRangeToExpand.getMin();
       } else {
-        timeBoundaryHeap.add(timeRangeToExpand.getMin() - 1);
+        timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMin(), -1));
         timeBoundaryHeap.add(timeRangeToExpand.getMax());
-        curStartTimeForIterator = timeRangeToExpand.getMin() - 1;
+        curStartTimeForIterator = ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMin(), -1);
       }
     }
   }

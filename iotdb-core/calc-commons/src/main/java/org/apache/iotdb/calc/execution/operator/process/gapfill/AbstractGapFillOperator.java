@@ -39,6 +39,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.saturatingAdd;
 
 abstract class AbstractGapFillOperator implements ProcessOperator {
 
@@ -127,7 +128,9 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       // -1 because we should not include current row, current row will be appended in
       // writeCurrentRow
       long currentEndTime =
-          timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i) - 1;
+          timeColumn.isNull(i)
+              ? endTime
+              : saturatingAdd(block.getColumn(timeColumnIndex).getLong(i), -1);
       fillGaps(block, i, currentEndTime);
       writeCurrentRow(block, i);
     }
@@ -157,8 +160,12 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
 
   private void fillGaps(TsBlock block, int rowIndex, long currentEndTime) {
     while (currentTime <= currentEndTime) {
+      long previousTime = currentTime;
       gapFillRow(currentTime, block, rowIndex);
       nextTime();
+      if (currentTime <= previousTime) {
+        break;
+      }
     }
   }
 

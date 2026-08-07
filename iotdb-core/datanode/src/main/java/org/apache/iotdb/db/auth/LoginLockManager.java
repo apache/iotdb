@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 public class LoginLockManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoginLockManager.class);
@@ -156,7 +157,7 @@ public class LoginLockManager {
       UserLockInfo userIpLock = userIpLocks.get(userIpKey);
       if (userIpLock != null) {
         long now = System.currentTimeMillis();
-        long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
+        long cutoffTime = getLockWindowCutoffTime(now);
         userIpLock.removeOldFailures(cutoffTime);
         if (userIpLock.getFailureCount() >= failedLoginAttempts) {
           return true;
@@ -169,7 +170,7 @@ public class LoginLockManager {
       UserLockInfo userLock = userLocks.get(userId);
       if (userLock != null) {
         long now = System.currentTimeMillis();
-        long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
+        long cutoffTime = getLockWindowCutoffTime(now);
         userLock.removeOldFailures(cutoffTime);
         return userLock.getFailureCount() >= failedLoginAttemptsPerUser;
       }
@@ -200,7 +201,7 @@ public class LoginLockManager {
     }
 
     long now = System.currentTimeMillis();
-    long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
+    long cutoffTime = getLockWindowCutoffTime(now);
 
     // Handle user@ip failures in sliding window
     if (failedLoginAttempts != -1) {
@@ -292,7 +293,7 @@ public class LoginLockManager {
   /** Clean up expired locks (no failures in the sliding window) */
   public void cleanExpiredLocks() {
     long now = System.currentTimeMillis();
-    long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
+    long cutoffTime = getLockWindowCutoffTime(now);
 
     // Clean expired user locks
     userLocks
@@ -332,6 +333,17 @@ public class LoginLockManager {
   // Helper methods
   private String buildUserIpKey(long userId, String ip) {
     return userId + "@" + ip;
+  }
+
+  private long getLockWindowCutoffTime(long currentTimeMillis) {
+    return getLockWindowCutoffTime(currentTimeMillis, passwordLockTimeMinutes);
+  }
+
+  static long getLockWindowCutoffTime(long currentTimeMillis, int passwordLockTimeMinutes) {
+    final long lockWindowMs = TimeUnit.MINUTES.toMillis(passwordLockTimeMinutes);
+    return currentTimeMillis < Long.MIN_VALUE + lockWindowMs
+        ? Long.MIN_VALUE
+        : currentTimeMillis - lockWindowMs;
   }
 
   private void checkForPotentialAttacks(long userId, String ip) {

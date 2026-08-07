@@ -38,6 +38,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -116,7 +117,8 @@ public class SessionTableFunction implements TableFunction {
     private long currentStartIndex = 0;
     private long curIndex = 0;
     private long windowStart = Long.MIN_VALUE;
-    private long windowEnd = Long.MIN_VALUE;
+    private long currentWindowEnd = Long.MIN_VALUE;
+    private BigInteger windowEnd = BigInteger.valueOf(Long.MIN_VALUE);
 
     public SessionDataProcessor(long gap) {
       this.gap = gap;
@@ -128,12 +130,13 @@ public class SessionTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       long timeValue = input.getLong(0);
-      if (timeValue > windowEnd) {
+      if (BigInteger.valueOf(timeValue).compareTo(windowEnd) > 0) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
         currentStartIndex = curIndex;
         windowStart = timeValue;
       }
-      windowEnd = timeValue + gap;
+      currentWindowEnd = timeValue;
+      windowEnd = BigInteger.valueOf(timeValue).add(BigInteger.valueOf(gap));
       curIndex++;
     }
 
@@ -145,7 +148,6 @@ public class SessionTableFunction implements TableFunction {
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      long currentWindowEnd = windowEnd - gap;
       for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowStart);
         properColumnBuilders.get(1).writeLong(currentWindowEnd);
