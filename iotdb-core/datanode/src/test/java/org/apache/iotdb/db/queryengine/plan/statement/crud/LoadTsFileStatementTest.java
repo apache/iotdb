@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,6 +30,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -141,6 +143,16 @@ public class LoadTsFileStatementTest {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
       deleteRecursively(dataNodeDir);
+    }
+  }
+
+  @Test
+  public void testTreeLoadEmptyPathIsRejected() {
+    try {
+      StatementGenerator.createStatement("LOAD TSFILE ''", ZoneId.systemDefault());
+      Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
+    } catch (final RuntimeException e) {
+      Assert.assertTrue(e.getMessage().contains("The LOAD TSFILE path cannot be empty."));
     }
   }
 
