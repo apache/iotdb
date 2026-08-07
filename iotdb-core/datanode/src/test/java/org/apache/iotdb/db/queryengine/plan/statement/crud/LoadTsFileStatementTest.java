@@ -209,7 +209,7 @@ public class LoadTsFileStatementTest {
         Assert.fail("Expected internal IoTDB data directory to be rejected.");
       } catch (final FileNotFoundException e) {
         Assert.assertEquals(
-            "Cannot load files because the specified directory contains IoTDB data.",
+            "Cannot load files because the specified directory contains TimechoDB data.",
             e.getMessage());
         Assert.assertFalse(e.getMessage().contains(dataDir.toString()));
         Assert.assertFalse(e.getMessage().contains(internalTsFile.toString()));

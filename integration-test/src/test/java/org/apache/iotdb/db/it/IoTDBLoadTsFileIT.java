@@ -906,7 +906,7 @@ public class IoTDBLoadTsFileIT {
             e.getMessage(),
             e.getMessage()
                 .contains(
-                    "Cannot load files because the specified directory contains IoTDB data."));
+                    "Cannot load files because the specified directory contains TimechoDB data."));
         Assert.assertFalse(e.getMessage(), e.getMessage().contains(dataDir.getAbsolutePath()));
       }
     }
