@@ -294,43 +294,43 @@ IF "%trigger_lib_dir%"=="" (
 
 set "dirs=%dn_data_dirs%,%dn_consensus_dir%,%dn_system_dir%,%dn_wal_dirs%,%cn_system_dir%,%cn_consensus_dir%,%pipe_lib_dir%,%udf_lib_dir%,%trigger_lib_dir%"
 
-set "spacedirs=%dn_data_dirs% %dn_consensus_dir% %dn_system_dir% %dn_wal_dirs% %cn_system_dir% %cn_consensus_dir% %pipe_lib_dir% %udf_lib_dir% %trigger_lib_dir%"
+set "spacedirs="%dn_data_dirs%" "%dn_consensus_dir%" "%dn_system_dir%" "%dn_wal_dirs%" "%cn_system_dir%" "%cn_consensus_dir%" "%pipe_lib_dir%" "%udf_lib_dir%" "%trigger_lib_dir%""
 
 for %%a in (%spacedirs%) do (
-    set "string=%%a"
+    set "string=%%~a"
     for %%b in ("!string:;=" "!") do (
         set "subString=%%~b"
         for %%c in ("!subString:,=" "!") do (
-            if not exist "%%c\" (
-                    mkdir "%%c" > nul 2>&1
+            if not exist "%%~c\" (
+                    mkdir "%%~c" > nul 2>&1
                     if errorlevel 1 (
                         if defined operation_dirs (
-                            set operation_dirs=!operation_dirs!,%%c lacks write permission
+                            set operation_dirs=!operation_dirs!,%%~c lacks write permission
                         ) else (
-                            set operation_dirs=%%c lacks write permission
+                            set operation_dirs=%%~c lacks write permission
                         )
                     ) else (
                         if defined operation_dirs (
-                            set operation_dirs=!operation_dirs!,%%c has write permission
+                            set operation_dirs=!operation_dirs!,%%~c has write permission
                         ) else (
-                            set operation_dirs=%%c has write permission
+                            set operation_dirs=%%~c has write permission
                         )
                     )
                 ) else (
-                    echo test > "%%c\tempfile.txt"
-                    if EXIST "%%c\tempfile.txt" (
+                    echo test > "%%~c\tempfile.txt"
+                    if EXIST "%%~c\tempfile.txt" (
                         if defined operation_dirs (
-                            set operation_dirs=!operation_dirs!,%%c has write permission
+                            set operation_dirs=!operation_dirs!,%%~c has write permission
                         ) else (
-                            set operation_dirs=%%c has write permission
+                            set operation_dirs=%%~c has write permission
                         )
-                        del "%%c\tempfile.txt" >nul 2>&1
+                        del "%%~c\tempfile.txt" >nul 2>&1
 
                     ) else (
                         if defined operation_dirs (
-                             set operation_dirs=!operation_dirs!,%%c lacks write permission
+                             set operation_dirs=!operation_dirs!,%%~c lacks write permission
                         ) else (
-                             set operation_dirs=%%c lacks write permission
+                             set operation_dirs=%%~c lacks write permission
                         )
                     )
                 )
