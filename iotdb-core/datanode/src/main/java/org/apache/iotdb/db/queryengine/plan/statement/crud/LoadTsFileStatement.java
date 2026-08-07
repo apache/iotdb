@@ -129,15 +129,15 @@ public class LoadTsFileStatement extends Statement {
       throws FileNotFoundException {
     final Path[] internalDataDirCanonicalPaths =
         IoTDBDescriptor.getInstance().getConfig().getInternalDataDirCanonicalPaths();
-    if (validateInternalDataDir) {
-      validateNotLoadingInternalTsFile(file, internalDataDirCanonicalPaths);
-    }
     if (validateSourcePath) {
       validateLoadSourcePath(file);
     }
 
     final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
+      if (validateInternalDataDir) {
+        validateNotLoadingInternalTsFile(file, internalDataDirCanonicalPaths);
+      }
       tsFiles.add(file);
     } else {
       if (file.listFiles() == null) {
