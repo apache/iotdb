@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -85,6 +86,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testDoubleLivingAutoConflict() throws Exception {
     // Double living is two clusters each with a pipe connecting to the other.
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
@@ -239,6 +241,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testDoubleLivingAutoConflictTemplate() throws Exception {
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

@@ -81,6 +81,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
         TableModelUtils.insertTablet("test", "test", 0, 200, senderEnv, true);
       } else if (insertType == InsertType.SQL_INSERT) {
         TableModelUtils.insertData("test", "test", 0, 200, senderEnv, true);
+        TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
       }
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -110,6 +111,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.insertTablet("test", "test", 200, 400, senderEnv, true);
     } else if (insertType == InsertType.SQL_INSERT) {
       TableModelUtils.insertData("test", "test", 200, 400, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
     }
 
     if (withParsing) {
@@ -124,32 +126,32 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
   // ---------------------- //
   @Test
   public void testSQLInsertWithParsingForcedLog() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "forced-log");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "batch");
   }
 
   @Test
   public void testSQLInsertWithoutParsingForcedLog() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "forced-log");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "batch");
   }
 
   @Test
   public void testSQLInsertWithParsingFile() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "file");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "batch");
   }
 
   @Test
   public void testSQLInsertWithoutParsingFile() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "file");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "batch");
   }
 
   @Test
   public void testSQLInsertWithParsingStream() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "stream");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "batch");
   }
 
   @Test
   public void testSQLInsertWithoutParsingStream() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "stream");
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "batch");
   }
 
   // --------------------------------- //
@@ -157,31 +159,31 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
   // --------------------------------- //
   @Test
   public void testSessionInsertTabletWithParsingForcedLog() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "forced-log");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "batch");
   }
 
   @Test
   public void testSessionInsertTabletWithoutParsingForcedLog() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "forced-log");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "batch");
   }
 
   @Test
   public void testSessionInsertTabletWithParsingFile() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "file");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "batch");
   }
 
   @Test
   public void testSessionInsertTabletWithoutParsingFile() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "file");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "batch");
   }
 
   @Test
   public void testSessionInsertTabletWithParsingStream() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "stream");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "batch");
   }
 
   @Test
   public void testSessionInsertTabletWithoutParsingStream() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "stream");
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "batch");
   }
 }

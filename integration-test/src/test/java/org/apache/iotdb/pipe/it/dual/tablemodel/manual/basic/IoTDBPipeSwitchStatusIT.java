@@ -71,8 +71,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "1");
       extractorAttributes.put("end-time", "2");
@@ -170,8 +169,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "1");
       extractorAttributes.put("end-time", "2");
@@ -257,8 +255,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "200");
@@ -325,8 +322,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("start-time", "0");
       extractorAttributes.put("end-time", "200");

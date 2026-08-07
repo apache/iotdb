@@ -120,7 +120,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   private final AtomicReference<Pair<Long, Long>> dataRegionTimePartitionIdBound =
       new AtomicReference<>();
 
-  protected boolean isForwardingPipeRequests;
+  protected boolean isForwardingPipeRequests = true;
 
   private boolean shouldTransferModFile; // Whether to transfer mods
 

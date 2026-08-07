@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,6 +46,40 @@ public class IoTDBDataRegionSourceTest {
                       put(
                           PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
                           PipeSourceConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE);
+                    }
+                  })));
+    } catch (final Exception e) {
+      Assert.fail();
+    }
+  }
+
+  @Test(expected = PipeParameterNotValidException.class)
+  public void testIoTDBDataRegionExtractorRejectsForwardingPipeRequestsFalse() throws Exception {
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY,
+                          Boolean.FALSE.toString());
+                    }
+                  })));
+    }
+  }
+
+  @Test
+  public void testIoTDBDataRegionExtractorIgnoresDoubleLiving() {
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                          Boolean.TRUE.toString());
                     }
                   })));
     } catch (final Exception e) {

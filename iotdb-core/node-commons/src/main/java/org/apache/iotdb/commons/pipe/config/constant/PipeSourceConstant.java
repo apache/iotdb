@@ -217,8 +217,8 @@ public class PipeSourceConstant {
       "extractor.consensus.receiver-dn-id";
 
   public static boolean isDoubleLiving(final PipeParameters sourceParameters) {
-    return sourceParameters.getBooleanOrDefault(
-        DOUBLE_LIVING_KEYS, EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    // Double-living is disabled in the open-source edition. Keep the keys accepted but inert.
+    return false;
   }
 
   public static void removeDoubleLivingAttributes(final Map<String, String> sourceAttributes) {

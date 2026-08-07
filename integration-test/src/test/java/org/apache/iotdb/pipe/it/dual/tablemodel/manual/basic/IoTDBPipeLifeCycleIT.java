@@ -204,7 +204,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
-      sourceAttributes.put("source.mode", "forced-log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -261,7 +261,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
-      sourceAttributes.put("mode.streaming", "false");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -289,59 +289,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
       TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv, handleFailure);
-    }
-  }
-
-  @Test
-  public void testLifeCycleHybridMode() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          executeNonQueryWithRetry(senderEnv, "flush");
-          executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-
-      final Map<String, String> sourceAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> sinkAttributes = new HashMap<>();
-
-      sourceAttributes.put("capture.table", "true");
-      sourceAttributes.put("__system.sql-dialect", "table");
-      sourceAttributes.put("source.mode", "hybrid");
-      sourceAttributes.put("user", "root");
-
-      sinkAttributes.put("sink", "iotdb-thrift-sink");
-      sinkAttributes.put("sink.batch.enable", "false");
-      sinkAttributes.put("sink.ip", receiverIp);
-      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
-
-      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-
-      TableModelUtils.assertCountData("test", "test", 300, receiverEnv, handleFailure);
     }
   }
 
@@ -544,6 +491,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testDoubleLiving() throws Exception {
 
     // Double living is two clusters with pipes connecting each other.

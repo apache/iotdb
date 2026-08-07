@@ -60,7 +60,6 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
   @Override
   @Before
   public void setUp() {
-    // Override to enable air-gap
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
@@ -98,7 +97,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
   @Test
   public void testCompression1() throws Exception {
-    doTest("iotdb-thrift-sink", "stream", true, "snappy");
+    doTest("iotdb-thrift-sink", "batch", true, "snappy");
   }
 
   @Test
@@ -108,22 +107,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
   @Test
   public void testCompression3() throws Exception {
-    doTest("iotdb-thrift-sync-sink", "stream", false, "snappy, snappy");
+    doTest("iotdb-thrift-sync-sink", "batch", false, "snappy, snappy");
   }
 
   @Test
   public void testCompression4() throws Exception {
     doTest("iotdb-thrift-sync-sink", "batch", true, "gzip, zstd");
-  }
-
-  @Test
-  public void testCompression5() throws Exception {
-    doTest("iotdb-air-gap-sink", "stream", false, "lzma2, lz4");
-  }
-
-  @Test
-  public void testCompression6() throws Exception {
-    doTest("iotdb-air-gap-sink", "batch", true, "lzma2");
   }
 
   private void doTest(
@@ -132,10 +121,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort =
-        sinkType.contains("air-gap")
-            ? receiverDataNode.getPipeAirGapReceiverPort()
-            : receiverDataNode.getPort();
+    final int receiverPort = receiverDataNode.getPort();
 
     final Consumer<String> handleFailure =
         o -> {

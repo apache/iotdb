@@ -45,7 +45,7 @@ public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "log");
+      extractorAttributes.put("extractor.realtime.mode", "batch");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", "127.0.0.1");

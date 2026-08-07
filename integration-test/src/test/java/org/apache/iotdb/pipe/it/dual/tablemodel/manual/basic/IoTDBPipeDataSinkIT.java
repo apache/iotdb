@@ -77,6 +77,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -87,7 +88,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.realtime.mode", "log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
@@ -112,6 +113,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -144,11 +146,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
     testSinkFormat("tsfile", true);
   }
 
-  @Test
-  public void testSinkHybridFormat() throws Exception {
-    testSinkFormat("hybrid", false);
-  }
-
   private void testSinkFormat(final String format, final boolean isAsyncLoad) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -165,6 +162,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -178,7 +176,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("capture.table", "true");
       sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
-      sourceAttributes.put("mode.double-living", "true");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -202,6 +199,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TableModelUtils.insertData("test", "test", 50, 150, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -217,9 +215,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
           handleFailure);
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.dropPipeExtended(new TDropPipeReq("testPipe").setIsTableModel(false)).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client.dropPipeExtended(new TDropPipeReq("testPipe").setIsTableModel(true)).getCode());
@@ -244,6 +239,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
           null);
 
       TableModelUtils.insertData("test", "test", 150, 200, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
       TableModelUtils.insertTablet("test", "test", 200, 250, senderEnv, true);
       TableModelUtils.insertTablet("test", "test", 250, 300, senderEnv, true);
       TableModelUtils.insertTablet("test", "test", 300, 350, senderEnv, true);
@@ -272,8 +268,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("capture.tree", "true");
       sourceAttributes.put("mode.double-living", "true");
-      sourceAttributes.put("forwarding-pipe-requests", "false");
-      sourceAttributes.put("source.database-name", "test.*");
+      sourceAttributes.put("source.realtime.mode", "batch");
+      sourceAttributes.put("source.database-name", "test");
       sourceAttributes.put("source.table-name", "test.*");
       sourceAttributes.put("user", "root");
 
@@ -299,6 +295,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertDataNotThrowError("test", "test", 0, 20, senderEnv);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TableModelUtils.insertTablet("test", "test", 20, 200, senderEnv, true);
 

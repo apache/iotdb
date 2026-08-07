@@ -58,7 +58,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // Create pipe
     String sql =
         String.format(
-            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='batch') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -80,8 +80,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -117,8 +116,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -200,7 +198,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // Create pipe
     sql =
         String.format(
-            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='batch') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -234,7 +232,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertFalse(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(

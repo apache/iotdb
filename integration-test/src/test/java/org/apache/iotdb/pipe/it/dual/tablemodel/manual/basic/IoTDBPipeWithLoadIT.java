@@ -155,7 +155,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("extractor.realtime.mode", "batch");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -240,7 +240,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("extractor.realtime.mode", "batch");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -322,7 +322,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("extractor.realtime.mode", "batch");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -396,7 +396,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("extractor.realtime.mode", "batch");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -446,7 +446,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("extractor.realtime.mode", "batch");
     extractorAttributes.put("user", "root");
 
     connectorAttributes.put("connector.batch.enable", "false");

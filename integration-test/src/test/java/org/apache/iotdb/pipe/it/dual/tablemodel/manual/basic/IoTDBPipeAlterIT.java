@@ -63,7 +63,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     // The database & table name will be converted to lower case
     final String sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='Test', 'table-name'='Test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='Test', 'table-name'='Test1', 'source.realtime.mode'='batch') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -88,7 +88,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -146,7 +146,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test1"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test1"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -185,7 +185,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+      Assert.assertFalse(
+          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -443,7 +444,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     // Create pipe
     sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'source.realtime.mode'='batch') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -468,7 +469,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test', 'source.realtime.mode'='batch') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -488,7 +489,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b modify source('source' = 'iotdb-source','database-name'='test1', 'table-name'='test1', 'mode.streaming'='true', 'source.inclusion'='data.insert') modify sink ('batch.enable'='true')");
+          "alter pipe a2b modify source('source' = 'iotdb-source','database-name'='test1', 'table-name'='test1', 'source.realtime.mode'='batch', 'source.inclusion'='data.insert') modify sink ('batch.enable'='true')");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }

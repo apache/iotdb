@@ -78,7 +78,7 @@ public class VisibilityUtilsTest {
   }
 
   @Test
-  public void testLegacyVisibilityKeepsDoubleLivingAndCaptureAttributes() {
+  public void testLegacyVisibilityIgnoresDoubleLivingAndKeepsCaptureAttributes() {
     assertVisibility(Visibility.TREE_ONLY, new HashMap<>(), true, false);
 
     final Map<String, String> tableAttributes = new HashMap<>();
@@ -91,11 +91,11 @@ public class VisibilityUtilsTest {
     doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY, "true");
     doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "false");
     doubleLivingAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "false");
-    assertVisibility(Visibility.BOTH, doubleLivingAttributes, true, true);
+    assertVisibility(Visibility.NONE, doubleLivingAttributes, false, false);
 
     final Map<String, String> directDoubleLivingAttributes = new HashMap<>();
     directDoubleLivingAttributes.put("double-living", "true");
-    assertVisibility(Visibility.BOTH, directDoubleLivingAttributes, true, true);
+    assertVisibility(Visibility.TREE_ONLY, directDoubleLivingAttributes, true, false);
 
     final Map<String, String> captureBothAttributes = new HashMap<>();
     captureBothAttributes.put(PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
@@ -109,13 +109,15 @@ public class VisibilityUtilsTest {
   }
 
   @Test
-  public void testDoubleLivingSugarCanBeNormalizedForStrictPipes() {
+  public void testDoubleLivingSugarIsIgnoredAndCanBeNormalizedForStrictPipes() {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put("double-living", "true");
     attributes.put("mode.double-living", "true");
     attributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
     attributes.put("forwarding-pipe-requests", "true");
     attributes.put(PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, "true");
+
+    Assert.assertFalse(PipeSourceConstant.isDoubleLiving(new PipeParameters(attributes)));
 
     PipeSourceConstant.removeDoubleLivingAttributes(attributes);
     PipeSourceConstant.disableForwardingPipeRequests(attributes);

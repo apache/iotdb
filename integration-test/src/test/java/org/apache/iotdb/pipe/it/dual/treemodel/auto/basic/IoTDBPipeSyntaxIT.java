@@ -140,7 +140,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           String.format(
               "create pipe p1"
                   + " with source ("
-                  + "'source.realtime.mode'='hybrid',"
+                  + "'source.realtime.mode'='batch',"
                   + "'source.history.enable'='false') "
                   + " with sink ("
                   + "'sink.batch.enable'='false', "
@@ -174,7 +174,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
                     + "'sink.ip'='%s',"
                     + "'sink'='iotdb-thrift-sink') "
                     + " with source ("
-                    + "'source.realtime.mode'='hybrid',"
+                    + "'source.realtime.mode'='batch',"
                     + "'source.history.enable'='false')",
                 receiverIp, receiverPort));
         fail();

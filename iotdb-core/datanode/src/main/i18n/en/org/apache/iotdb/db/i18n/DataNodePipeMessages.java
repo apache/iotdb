@@ -2582,6 +2582,9 @@ public final class DataNodePipeMessages {
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
 
+  public static final String EXCEPTION_THE_PARAMETER_ARG_CANNOT_BE_SET_TO_FALSE_111C3408 =
+      "The parameter %s cannot be set to false.";
+
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver requires a logged-in session.";
   public static final String EXCEPTION_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_ARG_IN_CONSUMER_GROUP_ARG_ARG_A7FA88F3 =

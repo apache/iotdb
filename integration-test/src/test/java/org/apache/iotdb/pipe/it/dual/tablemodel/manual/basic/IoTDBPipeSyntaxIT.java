@@ -82,7 +82,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                       + "'capture.table'='true',"
                       + "'database-name'='test',"
                       + "'table-name'='test',"
-                      + "'mode.streaming'='true',"
+                      + "'source.realtime.mode'='batch',"
                       + "'mode.strict'='true',"
                       + "'mode.snapshot'='false',"
                       + "'start-time'='1',"
@@ -145,7 +145,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                   + "'capture.table'='true',"
                   + "'database-name'='test',"
                   + "'table-name'='test',"
-                  + "'mode.streaming'='true',"
+                  + "'source.realtime.mode'='batch',"
                   + "'mode.strict'='true',"
                   + "'mode.snapshot'='false',"
                   + "'start-time'='1',"
@@ -185,7 +185,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                     + "'capture.table'='true',"
                     + "'database-name'='test',"
                     + "'table-name'='test',"
-                    + "'mode.streaming'='true',"
+                    + "'source.realtime.mode'='batch',"
                     + "'mode.strict'='true',"
                     + "'mode.snapshot'='false',"
                     + "'start-time'='1',"
@@ -402,7 +402,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                     + "'capture.table'='true',"
                     + "'database-name'='test',"
                     + "'table-name'='test',"
-                    + "'mode.streaming'='true',"
+                    + "'source.realtime.mode'='batch',"
                     + "'mode.strict'='true',"
                     + "'mode.snapshot'='false',"
                     + "'start-time'='1',"
@@ -429,7 +429,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                     + "'capture.table'='true',"
                     + "'database-name'='test',"
                     + "'table-name'='test',"
-                    + "'mode.streaming'='true',"
+                    + "'source.realtime.mode'='batch',"
                     + "'mode.strict'='true',"
                     + "'mode.snapshot'='false',"
                     + "'start-time'='1',"
@@ -454,7 +454,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
                     + "'capture.table'='true',"
                     + "'database-name'='test',"
                     + "'table-name'='test',"
-                    + "'mode.streaming'='true',"
+                    + "'source.realtime.mode'='batch',"
                     + "'mode.strict'='true',"
                     + "'mode.snapshot'='false',"
                     + "'start-time'='1',"
@@ -579,7 +579,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("extractor.mode.streaming", "true");
+      extractorAttributes.put("extractor.realtime.mode", "batch");
       extractorAttributes.put("extractor.mode.strict", "true");
       extractorAttributes.put("extractor.start-time", "1");
       extractorAttributes.put("extractor.end-time", "2");
