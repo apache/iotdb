@@ -41,6 +41,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   }
 
   private static final String DATABASE_NAME_KEY_PREFIX = "DATABASE_NAME_";
+  private static final String WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY = "WAIT_FOR_SCHEMA_BEFORE_LOAD";
 
   public String getDatabaseNameByTsFileName() {
     return getParameters() == null
@@ -50,15 +51,27 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
                 generateDatabaseNameWithFileNameKey(getFileNames().get(getFileNames().size() - 1)));
   }
 
+  public boolean shouldWaitForSchemaBeforeLoad() {
+    return getParameters() != null
+        && Boolean.parseBoolean(getParameters().get(WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
+  }
+
   private static String generateDatabaseNameWithFileNameKey(final String fileName) {
     return DATABASE_NAME_KEY_PREFIX + fileName;
   }
 
-  private static Map<String, String> generateDatabaseNameParameter(
-      final String tsFileName, final String dataBaseName) {
-    return dataBaseName == null
-        ? new HashMap<>()
-        : Collections.singletonMap(generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName);
+  private static Map<String, String> generateParameters(
+      final String tsFileName,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad) {
+    final Map<String, String> parameters = new HashMap<>();
+    if (dataBaseName != null) {
+      parameters.put(generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName);
+    }
+    if (shouldWaitForSchemaBeforeLoad) {
+      parameters.put(WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY, Boolean.TRUE.toString());
+    }
+    return parameters;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -66,7 +79,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
       String modFileName, long modFileLength, String tsFileName, long tsFileLength)
       throws IOException {
-    return toTPipeTransferReq(modFileName, modFileLength, tsFileName, tsFileLength, null);
+    return toTPipeTransferReq(modFileName, modFileLength, tsFileName, tsFileLength, null, false);
   }
 
   public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
@@ -76,23 +89,44 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
       final long tsFileLength,
       final String dataBaseName)
       throws IOException {
+    return toTPipeTransferReq(
+        modFileName, modFileLength, tsFileName, tsFileLength, dataBaseName, false);
+  }
+
+  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+      final String modFileName,
+      final long modFileLength,
+      final String tsFileName,
+      final long tsFileLength,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad)
+      throws IOException {
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
-                generateDatabaseNameParameter(tsFileName, dataBaseName));
+                generateParameters(tsFileName, dataBaseName, shouldWaitForSchemaBeforeLoad));
   }
 
   public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
       final String tsFileName, final long tsFileLength, final String dataBaseName)
+      throws IOException {
+    return toTPipeTransferReq(tsFileName, tsFileLength, dataBaseName, false);
+  }
+
+  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+      final String tsFileName,
+      final long tsFileLength,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad)
       throws IOException {
     return (PipeTransferTsFileSealWithModReq)
         new PipeTransferTsFileSealWithModReq()
             .convertToTPipeTransferReq(
                 Collections.singletonList(tsFileName),
                 Collections.singletonList(tsFileLength),
-                generateDatabaseNameParameter(tsFileName, dataBaseName));
+                generateParameters(tsFileName, dataBaseName, shouldWaitForSchemaBeforeLoad));
   }
 
   public static PipeTransferTsFileSealWithModReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -105,7 +139,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   public static byte[] toTPipeTransferBytes(
       String modFileName, long modFileLength, String tsFileName, long tsFileLength)
       throws IOException {
-    return toTPipeTransferBytes(modFileName, modFileLength, tsFileName, tsFileLength, null);
+    return toTPipeTransferBytes(modFileName, modFileLength, tsFileName, tsFileLength, null, false);
   }
 
   public static byte[] toTPipeTransferBytes(
@@ -115,21 +149,42 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
       final long tsFileLength,
       final String dataBaseName)
       throws IOException {
+    return toTPipeTransferBytes(
+        modFileName, modFileLength, tsFileName, tsFileLength, dataBaseName, false);
+  }
+
+  public static byte[] toTPipeTransferBytes(
+      final String modFileName,
+      final long modFileLength,
+      final String tsFileName,
+      final long tsFileLength,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad)
+      throws IOException {
     return new PipeTransferTsFileSealWithModReq()
         .convertToTPipeTransferSnapshotSealBytes(
             Arrays.asList(modFileName, tsFileName),
             Arrays.asList(modFileLength, tsFileLength),
-            generateDatabaseNameParameter(tsFileName, dataBaseName));
+            generateParameters(tsFileName, dataBaseName, shouldWaitForSchemaBeforeLoad));
   }
 
   public static byte[] toTPipeTransferBytes(
       final String tsFileName, final long tsFileLength, final String dataBaseName)
       throws IOException {
+    return toTPipeTransferBytes(tsFileName, tsFileLength, dataBaseName, false);
+  }
+
+  public static byte[] toTPipeTransferBytes(
+      final String tsFileName,
+      final long tsFileLength,
+      final String dataBaseName,
+      final boolean shouldWaitForSchemaBeforeLoad)
+      throws IOException {
     return new PipeTransferTsFileSealWithModReq()
         .convertToTPipeTransferSnapshotSealBytes(
             Collections.singletonList(tsFileName),
             Collections.singletonList(tsFileLength),
-            generateDatabaseNameParameter(tsFileName, dataBaseName));
+            generateParameters(tsFileName, dataBaseName, shouldWaitForSchemaBeforeLoad));
   }
 
   /////////////////////////////// Object ///////////////////////////////

@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -178,17 +180,26 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     try {
       receiverFileBaseDir = getReceiverFileBaseDir();
       if (Objects.isNull(receiverFileBaseDir)) {
-        PipeLogger.log(
-            LOGGER::warn,
-            "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.",
-            receiverId.get());
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.")) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.",
+              receiverId.get());
+        }
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
     } catch (Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to create pipe receiver file folder because all disks of folders are full.",
-          receiverId.get(),
-          e);
+      if (LoggerPeriodicalLogReducer.shouldLog(
+          "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full."
+              + e.getClass().getName()
+              + e.getMessage())) {
+        PipeLogger.log(
+            LOGGER::warn,
+            e,
+            "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full.",
+            receiverId.get());
+      }
       return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
     }
 
@@ -425,7 +436,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFilePieceReq req,
       final boolean isRequestThroughAirGap,
       final boolean isSingleFile) {
-    try {
+    try (final AutoCloseable ignored = tryAllocateMemoryForFilePiece(req)) {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
       // If the request is through air gap, the sender will resend the file piece from the beginning
@@ -460,6 +471,22 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.write(req.getFilePiece());
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      final TSStatus status =
+          getReceiverTemporaryUnavailableStatus(
+              "receiving pipe file piece", getFilePieceSizeInBytes(req), e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          "Receiver id = %s: Failed to write file piece from req %s.",
+          receiverId.get(),
+          req);
+      try {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
+      } catch (Exception ex) {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(status);
+      }
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
@@ -480,13 +507,33 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  protected AutoCloseable tryAllocateMemoryForFilePiece(final PipeTransferFilePieceReq req)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return () -> {};
+  }
+
+  protected TSStatus getReceiverTemporaryUnavailableStatus(
+      final String action,
+      final long requestedMemorySizeInBytes,
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+        .setMessage(
+            String.format(
+                "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s",
+                action, requestedMemorySizeInBytes, e.getMessage()));
+  }
+
+  private static long getFilePieceSizeInBytes(final PipeTransferFilePieceReq req) {
+    return req.getFilePiece() == null ? 0 : req.getFilePiece().length;
+  }
+
   protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
       throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
       return;
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         "Receiver id = {}: Writing file {} is not existed or name is not correct, try to create it. "
             + "Current writing file is {}.",
         receiverId.get(),
@@ -504,7 +551,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // This may be useless, because receiver file dir is created when handshake. just in case.
     if (!receiverFileDirWithIdSuffix.get().exists()) {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Receiver file dir {} was created.",
             receiverId.get(),
             receiverFileDirWithIdSuffix.get().getPath());
@@ -519,7 +566,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     writingFile = targetPath.toFile();
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(
+    LOGGER.debug(
         "Receiver id = {}: Writing file {} was created. Ready to write file pieces.",
         receiverId.get(),
         writingFile.getPath());
@@ -693,7 +740,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         shouldDeleteSealedFile = false;
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePath);
       } else {
         PipeLogger.log(
@@ -798,7 +845,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePaths);
       } else {
         PipeLogger.log(

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
 public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
@@ -100,19 +102,39 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  /**
+   * Try to release the TVList. If there are active queries, transfer memory ownership to the first
+   * query. For AlignedTVList, this will release non-query columns before transferring to reduce
+   * memory footprint.
+   */
   private void tryReleaseTvList(TVList tvList) {
-    long tvListRamSize = tvList.calculateRamSize().getRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
         tvList.clear();
       } else {
         QueryContext firstQuery = tvList.getQueryContextSet().iterator().next();
+
+        // For AlignedTVList with active queries, release non-query columns before
+        // transferring memory ownership to reduce memory footprint.
+        if (tvList instanceof AlignedTVList) {
+          AlignedTVList alignedTVList = (AlignedTVList) tvList;
+
+          // Get the union of all columns accessed by queries
+          Set<Integer> accessedColumns = alignedTVList.getAccessedColumnsForQuery();
+
+          if (accessedColumns != null && !accessedColumns.isEmpty()) {
+            // Release non-query columns to reduce memory before ownership transfer
+            alignedTVList.releaseNonQueryColumns(accessedColumns);
+          }
+        }
+
         // transfer memory from write process to read process. Here it reserves read memory and
         // releaseFlushedMemTable will release write memory.
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
           tvList.setReservedMemoryBytes(tvListRamSize);
         }

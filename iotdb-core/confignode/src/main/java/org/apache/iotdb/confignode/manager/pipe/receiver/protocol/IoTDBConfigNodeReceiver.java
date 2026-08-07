@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
@@ -57,6 +58,7 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigSnapshotPieceReq;
@@ -147,14 +149,21 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            resp =
-                handleTransferFilePiece(
+            try {
+              try (final AutoCloseable ignored =
+                  PipeConfigNodeResourceManager.memory()
+                      .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
+                return handleTransferFilePiece(
                     PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
-            return resp;
+              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                return getReceiverTemporaryUnavailableResp(e);
+              }
+            } finally {
+              PipeConfigNodeReceiverMetrics.getInstance()
+                  .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             resp =
                 handleTransferFileSealV2(
@@ -163,7 +172,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
             return resp;
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            try (final AutoCloseable ignored =
+                PipeConfigNodeResourceManager.memory()
+                    .tryAllocateReceiverMemory(
+                        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req))) {
+              return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              return getReceiverTemporaryUnavailableResp(e);
+            }
           default:
             break;
         }
@@ -214,6 +230,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
 
     return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  private static long getRequestBodySizeInBytes(final TPipeTransferReq req) {
+    return req.getBody() == null ? 0 : req.getBody().length;
+  }
+
+  private static TPipeTransferResp getReceiverTemporaryUnavailableResp(
+      final PipeRuntimeOutOfMemoryCriticalException e) {
+    return new TPipeTransferResp(
+        new TSStatus(TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+            .setMessage(e.getMessage()));
   }
 
   private static boolean requiresAuthentication(final PipeRequestType type) {

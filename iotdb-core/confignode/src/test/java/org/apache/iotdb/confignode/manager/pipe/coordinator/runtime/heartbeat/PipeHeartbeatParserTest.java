@@ -208,6 +208,41 @@ public class PipeHeartbeatParserTest {
     verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, false);
   }
 
+  @Test
+  public void testParseHeartbeatDoesNotOverwritePreDeleteStatus() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String pipeName = "preDeletePipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, pipeName, PipeStatus.RUNNING);
+
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    runtimeMeta.getStatus().set(PipeStatus.PRE_DELETE);
+
+    final PipeTaskMeta agentTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    agentTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("fresh failure", 300L));
+    final ConcurrentMap<Integer, PipeTaskMeta> agentPipeTasks = new ConcurrentHashMap<>();
+    agentPipeTasks.put(DATA_NODE_ID, agentTaskMeta);
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(
+                new PipeMeta(pipeMeta.getStaticMeta(), new PipeRuntimeMeta(agentPipeTasks))
+                    .serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0D));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
+
+    Assert.assertEquals(PipeStatus.PRE_DELETE, runtimeMeta.getStatus().get());
+    Assert.assertFalse(
+        runtimeMeta.getConsensusGroupId2TaskMetaMap().get(DATA_NODE_ID).hasExceptionMessages());
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
     return createParserTestContext(registeredDataNodeCount, new PipeTaskInfo());
   }

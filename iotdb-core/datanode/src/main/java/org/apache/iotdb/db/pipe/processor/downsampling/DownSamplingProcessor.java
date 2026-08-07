@@ -36,6 +36,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
@@ -149,32 +150,29 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
     if (shouldSplitFile) {
-      try {
-        if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-          final AtomicReference<Exception> ex = new AtomicReference<>();
-          ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-              .consumeTabletInsertionEventsWithRetry(
-                  event -> {
-                    try {
-                      process(event, eventCollector);
-                    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-                      throw e;
-                    } catch (Exception e) {
-                      ex.set(e);
-                    }
-                  },
-                  "DownSamplingProcessor::process");
-          if (ex.get() != null) {
-            throw ex.get();
-          }
-        } else {
+      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+            .consumeTabletInsertionEventsWithRetry(
+                event -> {
+                  try {
+                    process(event, eventCollector);
+                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+                    throw e;
+                  } catch (Exception e) {
+                    throw new PipeException(e.getMessage(), e);
+                  }
+                },
+                "DownSamplingProcessor::process");
+        tsFileInsertionEvent.close();
+      } else {
+        try {
           for (final TabletInsertionEvent tabletInsertionEvent :
               tsFileInsertionEvent.toTabletInsertionEvents()) {
             process(tabletInsertionEvent, eventCollector);
           }
+        } finally {
+          tsFileInsertionEvent.close();
         }
-      } finally {
-        tsFileInsertionEvent.close();
       }
     } else {
       eventCollector.collect(tsFileInsertionEvent);

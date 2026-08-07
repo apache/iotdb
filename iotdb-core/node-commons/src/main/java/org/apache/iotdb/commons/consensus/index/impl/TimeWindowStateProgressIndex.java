@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -209,7 +210,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof TimeWindowStateProgressIndex)) {
-        return this;
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
       final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
@@ -237,6 +238,14 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.TIME_WINDOW_STATE_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : Optional.empty();
   }
 
   @Override

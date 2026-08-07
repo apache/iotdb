@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.rest.v1.handler;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.rest.handler.QueryRowLimitUtils;
 import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -47,7 +48,7 @@ public class QueryDataSetHandler {
   private QueryDataSetHandler() {}
 
   /**
-   * @param actualRowSizeLimit max number of rows to return. no limit when actualRowSizeLimit <= 0.
+   * @param actualRowSizeLimit max number of rows to return.
    */
   public static Response fillQueryDataSet(
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
@@ -136,7 +137,6 @@ public class QueryDataSetHandler {
       final long timePrecision)
       throws IoTDBException {
     int fetched = 0;
-    int columnNum = queryExecution.getOutputValueColumnCount();
 
     DatasetHeader header = queryExecution.getDatasetHeader();
     List<String> resultColumns = header.getRespColumns();
@@ -147,17 +147,6 @@ public class QueryDataSetHandler {
     }
 
     while (true) {
-      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
-                    .message(
-                        String.format(
-                            "Dataset row size exceeded the given max row size (%d)",
-                            actualRowSizeLimit)))
-            .build();
-      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
         if (fetched == 0) {
@@ -169,6 +158,9 @@ public class QueryDataSetHandler {
       }
       TsBlock tsBlock = optionalTsBlock.get();
       int currentCount = tsBlock.getPositionCount();
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
       // time column
       for (int i = 0; i < currentCount; i++) {
         targetDataSet.addTimestampsItem(
@@ -180,7 +172,6 @@ public class QueryDataSetHandler {
         Column column = tsBlock.getColumn(headerMap.get(resultColumns.get(k)));
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
-          fetched++;
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
@@ -190,10 +181,8 @@ public class QueryDataSetHandler {
                     : column.getObject(i));
           }
         }
-        if (k != columnNum - 1) {
-          fetched -= currentCount;
-        }
       }
+      fetched += currentCount;
     }
     return Response.ok().entity(targetDataSet).build();
   }
@@ -207,17 +196,6 @@ public class QueryDataSetHandler {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
     while (true) {
-      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-        return Response.ok()
-            .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
-                    .message(
-                        String.format(
-                            "Dataset row size exceeded the given max row size (%d)",
-                            actualRowSizeLimit)))
-            .build();
-      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         if (fetched == 0) {
@@ -232,11 +210,13 @@ public class QueryDataSetHandler {
         targetDataSet.setValues(new ArrayList<>());
         return Response.ok().entity(targetDataSet).build();
       }
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
       for (int k = 0; k < columnNum; k++) {
         Column column = tsBlock.getColumn(targetDataSetIndexToSourceDataSetIndex[k]);
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
-          fetched++;
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
@@ -246,53 +226,67 @@ public class QueryDataSetHandler {
                     : column.getObject(i));
           }
         }
-        if (k != columnNum - 1) {
-          fetched -= currentCount;
-        }
       }
+      fetched += currentCount;
     }
     return Response.ok().entity(targetDataSet).build();
   }
 
   public static Response fillGrafanaVariablesResult(
-      IQueryExecution queryExecution, Statement statement) throws IoTDBException {
+      IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
+      throws IoTDBException {
     List<String> results = new ArrayList<>();
-    Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
-    if (!optionalTsBlock.isPresent()) {
-      return Response.ok().entity(results).build();
-    }
-    TsBlock tsBlock = optionalTsBlock.get();
-    int currentCount = tsBlock.getPositionCount();
-    Column column = tsBlock.getColumn(0);
-
-    for (int i = 0; i < currentCount; i++) {
-      String nodePaths = column.getObject(i).toString();
-      if (statement instanceof ShowChildPathsStatement) {
-        String[] nodeSubPath = nodePaths.split("\\.");
-        results.add(nodeSubPath[nodeSubPath.length - 1]);
-      } else {
-        results.add(nodePaths);
+    int fetched = 0;
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
+        return Response.ok().entity(results).build();
       }
+      TsBlock tsBlock = optionalTsBlock.get();
+      int currentCount = tsBlock.getPositionCount();
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
+      Column column = tsBlock.getColumn(0);
+
+      for (int i = 0; i < currentCount; i++) {
+        String nodePaths = column.getObject(i).toString();
+        if (statement instanceof ShowChildPathsStatement) {
+          String[] nodeSubPath = nodePaths.split("\\.");
+          results.add(nodeSubPath[nodeSubPath.length - 1]);
+        } else {
+          results.add(nodePaths);
+        }
+      }
+      fetched += currentCount;
     }
-    return Response.ok().entity(results).build();
   }
 
-  public static Response fillGrafanaNodesResult(IQueryExecution queryExecution)
-      throws IoTDBException {
+  public static Response fillGrafanaNodesResult(
+      IQueryExecution queryExecution, int actualRowSizeLimit) throws IoTDBException {
     List<String> nodes = new ArrayList<>();
-    Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
-    if (!optionalTsBlock.isPresent()) {
+    if (queryExecution == null) {
       return Response.ok().entity(nodes).build();
     }
-    TsBlock tsBlock = optionalTsBlock.get();
-    int currentCount = tsBlock.getPositionCount();
-    Column column = tsBlock.getColumn(0);
+    int fetched = 0;
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
+        return Response.ok().entity(nodes).build();
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+      int currentCount = tsBlock.getPositionCount();
+      if (QueryRowLimitUtils.exceedsLimit(fetched, currentCount, actualRowSizeLimit)) {
+        return QueryRowLimitUtils.buildRowSizeLimitExceededResponse(actualRowSizeLimit);
+      }
+      Column column = tsBlock.getColumn(0);
 
-    for (int i = 0; i < currentCount; i++) {
-      String nodePaths = column.getObject(i).toString();
-      String[] nodeSubPath = nodePaths.split("\\.");
-      nodes.add(nodeSubPath[nodeSubPath.length - 1]);
+      for (int i = 0; i < currentCount; i++) {
+        String nodePaths = column.getObject(i).toString();
+        String[] nodeSubPath = nodePaths.split("\\.");
+        nodes.add(nodeSubPath[nodeSubPath.length - 1]);
+      }
+      fetched += currentCount;
     }
-    return Response.ok().entity(nodes).build();
   }
 }

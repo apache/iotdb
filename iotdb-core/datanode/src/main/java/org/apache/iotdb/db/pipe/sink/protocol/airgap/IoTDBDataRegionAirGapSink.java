@@ -256,19 +256,24 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(tsFile);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+    try {
+      for (final File tsFile : sealedFiles) {
+        doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
+      }
+    } finally {
+      for (final File tsFile : sealedFiles) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(tsFile);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+        }
       }
     }
   }
@@ -401,7 +406,12 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length(), dataBaseName),
+              modFile.getName(),
+              modFile.length(),
+              tsFile.getName(),
+              tsFile.length(),
+              dataBaseName,
+              shouldWaitForSchemaBeforeLoad),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -415,10 +425,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       transferFilePieces(pipe2WeightMap, tsFile, socket, false);
       if (!sendWeighted(
           socket,
-          dataBaseName == null
+          dataBaseName == null && !shouldWaitForSchemaBeforeLoad
               ? PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length())
               : PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-                  tsFile.getName(), tsFile.length(), dataBaseName),
+                  tsFile.getName(), tsFile.length(), dataBaseName, shouldWaitForSchemaBeforeLoad),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -445,11 +455,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payload =
             readLength == readFileBufferSize

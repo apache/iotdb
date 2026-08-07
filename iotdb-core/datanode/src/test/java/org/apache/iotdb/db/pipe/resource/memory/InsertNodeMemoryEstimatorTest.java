@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -148,6 +149,84 @@ public class InsertNodeMemoryEstimatorTest {
     Assert.assertTrue(
         InsertNodeMemoryEstimator.sizeOf(longPlanNodeIdRow)
             > InsertNodeMemoryEstimator.sizeOf(shortPlanNodeIdRow));
+  }
+
+  @Test
+  public void testLeafNodesDoNotDeduplicateRepeatedMeasurementSchemas()
+      throws IllegalPathException {
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"}));
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1));
+  }
+
+  @Test
+  public void testSingleChildCompositesDoNotDeduplicateRepeatedMeasurementSchemas()
+      throws IllegalPathException {
+    final InsertRowNode rowWithDistinctSchemas =
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"});
+    final InsertRowNode rowWithRepeatedSchema =
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"});
+    replaceSecondSchemaWithEquivalentDistinctSchema(rowWithDistinctSchemas);
+    rowWithRepeatedSchema.getMeasurementSchemas()[1] =
+        rowWithRepeatedSchema.getMeasurementSchemas()[0];
+    Assert.assertEquals(
+        InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", rowWithDistinctSchemas)),
+        InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", rowWithRepeatedSchema)));
+
+    final InsertTabletNode tabletWithDistinctSchemas =
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1);
+    final InsertTabletNode tabletWithRepeatedSchema =
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1);
+    replaceSecondSchemaWithEquivalentDistinctSchema(tabletWithDistinctSchemas);
+    tabletWithRepeatedSchema.getMeasurementSchemas()[1] =
+        tabletWithRepeatedSchema.getMeasurementSchemas()[0];
+    Assert.assertEquals(
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode("parent", tabletWithDistinctSchemas)),
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode("parent", tabletWithRepeatedSchema)));
+  }
+
+  @Test
+  public void testMultiChildCompositeDeduplicatesSharedMeasurementSchemas()
+      throws IllegalPathException {
+    final long sizeWithDistinctSchemas =
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode(
+                "parent",
+                createTextInsertTabletNode("tablet-1", "root.sg.d1", 2, 1, 1),
+                createTextInsertTabletNode("tablet-2", "root.sg.d2", 2, 1, 1)));
+
+    final InsertTabletNode firstTablet =
+        createTextInsertTabletNode("tablet-1", "root.sg.d1", 2, 1, 1);
+    final InsertTabletNode secondTablet =
+        createTextInsertTabletNode("tablet-2", "root.sg.d2", 2, 1, 1);
+    secondTablet.setMeasurementSchemas(firstTablet.getMeasurementSchemas());
+
+    Assert.assertTrue(
+        InsertNodeMemoryEstimator.sizeOf(
+                createInsertMultiTabletsNode("parent", firstTablet, secondTablet))
+            < sizeWithDistinctSchemas);
+  }
+
+  private static void assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+      final InsertNode node) {
+    replaceSecondSchemaWithEquivalentDistinctSchema(node);
+    final long sizeWithDistinctSchemas = InsertNodeMemoryEstimator.sizeOf(node);
+    node.getMeasurementSchemas()[1] = node.getMeasurementSchemas()[0];
+
+    Assert.assertEquals(sizeWithDistinctSchemas, InsertNodeMemoryEstimator.sizeOf(node));
+  }
+
+  private static void replaceSecondSchemaWithEquivalentDistinctSchema(final InsertNode node) {
+    final MeasurementSchema firstMeasurementSchema = node.getMeasurementSchemas()[0];
+    node.getMeasurementSchemas()[1] =
+        new MeasurementSchema(
+            firstMeasurementSchema.getMeasurementId(), firstMeasurementSchema.getType());
   }
 
   private static InsertRowsNode createInsertRowsNode(
