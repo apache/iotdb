@@ -30,12 +30,12 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.AlignedSinglePageWholeChunkReader;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.SinglePageWholeChunkReader;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -174,11 +174,22 @@ public class TsFileInsertionEventParserTest {
             false)) {
       replaceAllocatedTabletMemory(
           parser,
-          new PipeMemoryBlock(0) {
+          new TsFileInsertionEventParserMemoryBlock() {
+            private long memoryUsageInBytes;
+
+            @Override
+            public long getMemoryUsageInBytes() {
+              return memoryUsageInBytes;
+            }
+
+            @Override
+            public void forceResize(final long newSizeInBytes) {
+              memoryUsageInBytes = newSizeInBytes;
+            }
+
             @Override
             public void close() {
-              Assert.assertEquals(0, getMemoryUsageInBytes());
-              super.close();
+              Assert.assertEquals(0, memoryUsageInBytes);
             }
           });
 
@@ -211,13 +222,25 @@ public class TsFileInsertionEventParserTest {
       final AtomicInteger memoryUsageReadCount = new AtomicInteger(0);
       replaceAllocatedTabletMemory(
           parser,
-          new PipeMemoryBlock(0) {
+          new TsFileInsertionEventParserMemoryBlock() {
+            private long memoryUsageInBytes;
+
             @Override
             public long getMemoryUsageInBytes() {
               if (memoryUsageReadCount.incrementAndGet() == 2) {
                 throw new PipeRuntimeOutOfMemoryCriticalException("expected oom");
               }
-              return super.getMemoryUsageInBytes();
+              return memoryUsageInBytes;
+            }
+
+            @Override
+            public void forceResize(final long newSizeInBytes) {
+              memoryUsageInBytes = newSizeInBytes;
+            }
+
+            @Override
+            public void close() {
+              memoryUsageInBytes = 0;
             }
           });
 
@@ -2182,37 +2205,40 @@ public class TsFileInsertionEventParserTest {
     return count;
   }
 
-  private PipeMemoryBlock getAllocatedChunkMemory(final TsFileInsertionEventScanParser parser)
+  private TsFileInsertionEventParserMemoryBlock getAllocatedChunkMemory(
+      final TsFileInsertionEventScanParser parser)
       throws NoSuchFieldException, IllegalAccessException {
     final Field field =
         TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForChunk");
     field.setAccessible(true);
-    return (PipeMemoryBlock) field.get(parser);
+    return (TsFileInsertionEventParserMemoryBlock) field.get(parser);
   }
 
-  private PipeMemoryBlock getAllocatedBatchDataMemory(final TsFileInsertionEventScanParser parser)
+  private TsFileInsertionEventParserMemoryBlock getAllocatedBatchDataMemory(
+      final TsFileInsertionEventScanParser parser)
       throws NoSuchFieldException, IllegalAccessException {
     final Field field =
         TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForBatchData");
     field.setAccessible(true);
-    return (PipeMemoryBlock) field.get(parser);
+    return (TsFileInsertionEventParserMemoryBlock) field.get(parser);
   }
 
-  private PipeMemoryBlock getAllocatedTabletMemory(final TsFileInsertionEventParser parser)
-      throws NoSuchFieldException, IllegalAccessException {
+  private TsFileInsertionEventParserMemoryBlock getAllocatedTabletMemory(
+      final TsFileInsertionEventParser parser) throws NoSuchFieldException, IllegalAccessException {
     final Field field =
         TsFileInsertionEventParser.class.getDeclaredField("allocatedMemoryBlockForTablet");
     field.setAccessible(true);
-    return (PipeMemoryBlock) field.get(parser);
+    return (TsFileInsertionEventParserMemoryBlock) field.get(parser);
   }
 
   private void replaceAllocatedTabletMemory(
-      final TsFileInsertionEventParser parser, final PipeMemoryBlock replacement)
+      final TsFileInsertionEventParser parser,
+      final TsFileInsertionEventParserMemoryBlock replacement)
       throws NoSuchFieldException, IllegalAccessException {
     final Field field =
         TsFileInsertionEventParser.class.getDeclaredField("allocatedMemoryBlockForTablet");
     field.setAccessible(true);
-    ((PipeMemoryBlock) field.get(parser)).close();
+    ((TsFileInsertionEventParserMemoryBlock) field.get(parser)).close();
     field.set(parser, replacement);
   }
 
