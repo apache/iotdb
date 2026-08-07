@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 public class PipePluginClassLoaderTest {
@@ -224,6 +225,36 @@ public class PipePluginClassLoaderTest {
     }
   }
 
+  // Verify runtime-selected Multi-Release JAR entries are compared consistently.
+  @Test
+  public void testMultiReleaseJarConflictDetectionUsesRuntimeVersion() throws Exception {
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-multi-release");
+    try {
+      final Path parentJar = tempDir.resolve("parent.jar");
+      final Path samePluginJar = tempDir.resolve("same-plugin.jar");
+      final Path differentPluginJar = tempDir.resolve("different-plugin.jar");
+      createMultiReleaseJar(parentJar, "same");
+      createMultiReleaseJar(samePluginJar, "same");
+      createMultiReleaseJar(differentPluginJar, "different");
+
+      try (final URLClassLoader parentClassLoader =
+          new URLClassLoader(new URL[] {parentJar.toUri().toURL()}, null)) {
+        try (final PipePluginClassLoader ignored =
+            new PipePluginClassLoader(samePluginJar.toString(), parentClassLoader)) {
+          // Identical runtime-selected bytes must not be reported as a conflict.
+        }
+        try {
+          new PipePluginClassLoader(differentPluginJar.toString(), parentClassLoader);
+          Assert.fail("Expected a conflict for different runtime-selected bytes");
+        } catch (IOException expected) {
+          Assert.assertTrue(expected.getMessage().contains("test.dep.Helper"));
+        }
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
   private static Path buildJarWithHelper(Path tempDir, String prefix, String helperValue)
       throws IOException {
     final Path sources = Files.createDirectory(tempDir.resolve(prefix + "-sources"));
@@ -319,6 +350,46 @@ public class PipePluginClassLoaderTest {
       jarOutputStream.putNextEntry(new JarEntry(resourceName));
       jarOutputStream.write(content);
       jarOutputStream.closeEntry();
+    }
+  }
+
+  private static void createMultiReleaseJar(Path jarPath, String versionedValue)
+      throws IOException {
+    final Path baseSources = Files.createTempDirectory("mr-base-sources");
+    final Path baseClasses = Files.createTempDirectory("mr-base-classes");
+    final Path versionSources = Files.createTempDirectory("mr-version-sources");
+    final Path versionClasses = Files.createTempDirectory("mr-version-classes");
+    try {
+      compile(
+          baseSources,
+          baseClasses,
+          createSources(
+              "package test.dep; public class Helper { public static String value() { return \"base\"; } }",
+              true));
+      compile(
+          versionSources,
+          versionClasses,
+          createSources(
+              "package test.dep; public class Helper { public static String value() { return \""
+                  + versionedValue
+                  + "\"; } }",
+              true));
+      final Manifest manifest = new Manifest();
+      manifest.getMainAttributes().putValue("Manifest-Version", "1.0");
+      manifest.getMainAttributes().putValue("Multi-Release", "true");
+      try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jarPath), manifest)) {
+        output.putNextEntry(new JarEntry("test/dep/Helper.class"));
+        output.write(Files.readAllBytes(baseClasses.resolve("test/dep/Helper.class")));
+        output.closeEntry();
+        output.putNextEntry(new JarEntry("META-INF/versions/17/test/dep/Helper.class"));
+        output.write(Files.readAllBytes(versionClasses.resolve("test/dep/Helper.class")));
+        output.closeEntry();
+      }
+    } finally {
+      deleteRecursively(baseSources);
+      deleteRecursively(baseClasses);
+      deleteRecursively(versionSources);
+      deleteRecursively(versionClasses);
     }
   }
 

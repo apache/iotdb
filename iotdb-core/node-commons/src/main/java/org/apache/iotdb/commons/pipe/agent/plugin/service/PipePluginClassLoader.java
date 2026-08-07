@@ -142,14 +142,19 @@ public class PipePluginClassLoader extends URLClassLoader {
 
   private static void collectJarConflicts(Path jarPath, ClassLoader parent, List<String> conflicts)
       throws IOException {
-    try (JarFile jarFile = new JarFile(jarPath.toFile())) {
+    try (JarFile jarFile =
+        new JarFile(jarPath.toFile(), true, JarFile.OPEN_READ, Runtime.version())) {
       final Enumeration<JarEntry> entries = jarFile.entries();
       while (entries.hasMoreElements()) {
         final JarEntry entry = entries.nextElement();
-        if (entry.isDirectory() || !isComparableClassEntry(entry.getName())) {
+        if (entry.isDirectory()
+            || entry.getName().startsWith("META-INF/versions/")
+            || !isComparableClassEntry(entry.getName())) {
           continue;
         }
-        try (InputStream pluginIn = jarFile.getInputStream(entry)) {
+        // Resolve the logical entry through the runtime-aware view of a multi-release JAR.
+        final JarEntry runtimeEntry = jarFile.getJarEntry(entry.getName());
+        try (InputStream pluginIn = jarFile.getInputStream(runtimeEntry)) {
           maybeAddConflict(entry.getName(), readAllBytes(pluginIn), parent, conflicts);
         }
       }
