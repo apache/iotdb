@@ -315,8 +315,7 @@ public class AggregationOperatorTest {
 
     List<Operator> children = new ArrayList<>();
     children.add(
-        new FixedTsBlockOperator(
-            driverContext.getOperatorContexts().get(0), buildEmptyTsBlock()));
+        new FixedTsBlockOperator(driverContext.getOperatorContexts().get(0), buildEmptyTsBlock()));
     children.add(
         new FixedTsBlockOperator(
             driverContext.getOperatorContexts().get(1), buildCountTsBlock(new long[] {0}, 5)));
