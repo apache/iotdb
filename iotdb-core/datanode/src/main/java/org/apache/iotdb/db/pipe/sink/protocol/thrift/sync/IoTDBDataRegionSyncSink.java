@@ -470,7 +470,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName));
+                    dataBaseName,
+                    shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -495,11 +496,14 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                dataBaseName == null
+                dataBaseName == null && !shouldWaitForSchemaBeforeLoad
                     ? PipeTransferTsFileSealReq.toTPipeTransferReq(
                         tsFile.getName(), tsFile.length())
                     : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length(), dataBaseName));
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        shouldWaitForSchemaBeforeLoad));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -547,7 +551,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
       int readLength;
-      while ((readLength = readNextFilePiece(reader, readBuffer, readFileBufferSize)) != -1) {
+      while ((readLength = readNextFilePiece(reader, readBuffer)) != -1) {
         position =
             transferFilePiece(
                 pipe2WeightMap,
@@ -562,11 +566,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     }
   }
 
-  private int readNextFilePiece(
-      final RandomAccessFile reader, final byte[] readBuffer, final int readFileBufferSize)
+  private int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
       throws IOException {
-    mayLimitRateAndRecordIO(readFileBufferSize);
-    return reader.read(readBuffer);
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
   }
 
   private long transferFilePiece(

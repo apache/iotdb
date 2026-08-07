@@ -178,7 +178,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           LOGGER::warn,
           throwable,
           "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
-      super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
+      super.onFailure(
+          new PipeRuntimeSinkCriticalException(
+              throwable.getMessage() != null ? throwable.getMessage() : throwable.toString(),
+              throwable));
     }
   }
 
@@ -186,10 +189,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
    * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
    */
   private boolean onPipeConnectionException(final Throwable throwable) {
-    LOGGER.warn(
-        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+    PipeLogger.log(
+        LOGGER::warn,
+        "PipeConnectionException occurred, {} retries to handshake with the target system. Root cause: {}.",
         outputPipeConnector.getClass().getName(),
-        throwable);
+        ErrorHandlingCommonUtils.getRootCause(throwable).toString());
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
@@ -203,13 +207,14 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         break;
       } catch (final Exception e) {
         retry++;
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
             "{} failed to handshake with the target system for {} times, "
-                + "will retry at most {} times.",
+                + "will retry at most {} times. Root cause: {}.",
             outputPipeConnector.getClass().getName(),
             retry,
             MAX_RETRY_TIMES,
-            e);
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
         try {
           sleepIfNoHighPriorityTask(getHandshakeRetrySleepInterval(e, retry));
         } catch (final InterruptedException interruptedException) {
@@ -229,7 +234,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
-              throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
+              throwable.getMessage() + ", root cause: " + getRootCause(throwable), throwable));
       LOGGER.warn(
           "{} failed to handshake with the target system after {} times, "
               + "stopping current subtask {} (creation time: {}, simple class: {}). "
@@ -344,7 +349,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
                 event instanceof EnrichedEvent
                     ? ((EnrichedEvent) event).coreReportMessage()
                     : event,
-                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).toString()),
             e);
       } else {
         LOGGER.info(

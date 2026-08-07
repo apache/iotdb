@@ -154,6 +154,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final int databaseLevel;
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
+  private final boolean isAutoCreateSchemaRequested;
+  private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
@@ -180,10 +182,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
+  }
+
+  protected boolean isAutoCreateSchemaEnabled() {
+    return isAutoCreateSchemaEnabled;
+  }
+
+  protected boolean isAutoCreateSchemaRequested() {
+    return isAutoCreateSchemaRequested;
   }
 
   public Analysis analyzeFileByFile(Analysis analysis) {
@@ -255,6 +269,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
+              isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe);
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
@@ -435,7 +450,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
 
     final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema;
+        isAutoCreateSchemaEnabled || isVerifySchema;
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
@@ -574,9 +589,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
-    if (!isGeneratedByPipe
-        || !isVerifySchema
-        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchemaEnabled) {
       return false;
     }
 
@@ -793,9 +806,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-        final PartialPath devicePath = new PartialPath(device);
+        final PartialPath devicePath;
+        try {
+          devicePath = new PartialPath(device);
+        } catch (final IllegalPathException e) {
+          throw new LoadAnalyzeException(e.getMessage());
+        }
 
         final String[] devicePrefixNodes = devicePath.getNodes();
+        if (hasEmptyPathNode(devicePath)) {
+          throw new LoadAnalyzeException(
+              new IllegalPathException(devicePath.getFullPath()).getMessage());
+        }
         if (devicePrefixNodes.length < databasePrefixNodesLength) {
           throw new LoadAnalyzeException(
               String.format(
@@ -822,13 +844,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   SchemaConstant.ALL_MATCH_SCOPE.serialize());
           final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-          for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-            schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-            databasesNeededToBeSet.removeIf(
-                database ->
-                    database.startsWith(databaseName)
-                        || databaseName.startsWith(database.getFullPath()));
-          }
+          filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
         } catch (IOException | TException | ClientManagerException e) {
           throw new LoadFileException(e);
         }
@@ -846,6 +862,36 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
         schemaCache.addAlreadySetDatabase(databasePath);
       }
+    }
+
+    private void filterAlreadySetDatabases(
+        final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+      for (final String databaseName : alreadySetDatabaseNames) {
+        final PartialPath databasePath;
+        try {
+          databasePath = new PartialPath(databaseName);
+        } catch (final IllegalPathException e) {
+          // Ignore malformed databases left by older versions so they do not block valid loads.
+          continue;
+        }
+
+        if (hasEmptyPathNode(databasePath)) {
+          continue;
+        }
+
+        schemaCache.addAlreadySetDatabase(databasePath);
+        databasesNeededToBeSet.removeIf(
+            database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
+      }
+    }
+
+    private boolean hasEmptyPathNode(final PartialPath path) {
+      for (final String node : path.getNodes()) {
+        if (node == null || node.isEmpty()) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private void executeSetDatabaseStatement(Statement statement)
@@ -928,6 +974,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           encodingsList,
           compressionTypesList,
           isAlignedList,
+          isAutoCreateSchemaRequested,
           context);
     }
 

@@ -20,11 +20,15 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -43,8 +47,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
+  private static final int SERIALIZATION_VERSION_MAGIC = 0x44505632;
 
   private String pipeName;
+  private PipeMeta pipeMetaToDrop;
 
   public DropPipeProcedureV2() {
     super();
@@ -67,6 +73,10 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return pipeName;
   }
 
+  PipeMeta getPipeMetaToDrop() {
+    return pipeMetaToDrop;
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.DROP_PIPE;
@@ -84,13 +94,41 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
-    // Do nothing
+    pipeMetaToDrop = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
+    if (!restorePipeMetaToDropIfNecessary()) {
+      return;
+    }
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
+    }
+  }
+
+  boolean restorePipeMetaToDropIfNecessary() {
+    if (pipeMetaToDrop == null) {
+      pipeMetaToDrop = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    }
+    return pipeMetaToDrop != null;
+  }
+
+  private void dropPipeOnConfigNode(final ConfigNodeProcedureEnv env) throws PipeException {
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(new DropPipePlanV2(pipeName));
@@ -105,17 +143,34 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, dropSinglePipeOnDataNodes(pipeName, env));
-    if (!exceptionMessage.isEmpty()) {
+    String exceptionMessage;
+    try {
+      if (pipeMetaToDrop == null) {
+        exceptionMessage =
+            parsePushPipeMetaExceptionForPipe(pipeName, dropSinglePipeOnDataNodes(pipeName, env));
+      } else {
+        final PipeMeta droppedPipeMeta = pipeMetaToDrop.deepCopy4TaskAgent();
+        droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+        exceptionMessage =
+            parsePushPipeMetaExceptionForPipe(
+                pipeName,
+                env.pushSinglePipeMetaToDataNodes(
+                    droppedPipeMeta.serialize(), this::setPendingDataNodeIds));
+      }
+    } catch (final IOException e) {
+      exceptionMessage = e.getMessage();
+    }
+    if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
       LOGGER.warn(
           "Failed to drop pipe {}, details: {}, metadata will be synchronized later.",
           pipeName,
           exceptionMessage);
     }
+    updateExecutionStage(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS, false);
+    dropPipeOnConfigNode(env);
   }
 
   @Override
@@ -147,12 +202,28 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(SERIALIZATION_VERSION_MAGIC, stream);
+    ReadWriteIOUtils.write(pipeMetaToDrop != null, stream);
+    if (pipeMetaToDrop != null) {
+      pipeMetaToDrop.serialize(stream);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    if (byteBuffer.remaining() < Integer.BYTES) {
+      return;
+    }
+    final int position = byteBuffer.position();
+    if (ReadWriteIOUtils.readInt(byteBuffer) != SERIALIZATION_VERSION_MAGIC) {
+      byteBuffer.position(position);
+      return;
+    }
+    if (byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeMetaToDrop = PipeMeta.deserialize4Coordinator(byteBuffer);
+    }
   }
 
   @Override

@@ -46,13 +46,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -175,7 +174,7 @@ public class WALNodeWaitForRollFileTest {
    * Verifies that waitForNextReady wakes up when a WAL file roll is triggered concurrently. A
    * background thread rolls the WAL file while the main thread waits on the iterator.
    */
-  @Test(timeout = 30000)
+  @Test
   public void testWaitForNextReadyWakesUpOnConcurrentRoll() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + File.separator + "test.tsfile");
@@ -191,38 +190,32 @@ public class WALNodeWaitForRollFileTest {
 
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
 
-    AtomicBoolean found = new AtomicBoolean(false);
-    AtomicReference<Exception> error = new AtomicReference<>();
     ExecutorService executor = Executors.newSingleThreadExecutor();
-
-    // background: wait for data to become available via waitForNextReady
-    Future<?> waitFuture =
-        executor.submit(
-            () -> {
-              try {
+    CountDownLatch waiterStarted = new CountDownLatch(1);
+    try {
+      // background: wait for data to become available via waitForNextReady
+      Future<Boolean> waitFuture =
+          executor.submit(
+              () -> {
+                waiterStarted.countDown();
                 iterator.waitForNextReady(15, TimeUnit.SECONDS);
-                if (iterator.hasNext()) {
-                  found.set(true);
-                }
-              } catch (Exception e) {
-                error.set(e);
-              }
-            });
+                return iterator.hasNext();
+              });
 
-    // give the waiter thread time to start blocking
-    Thread.sleep(500);
+      assertTrue(waiterStarted.await(10, TimeUnit.SECONDS));
 
-    // trigger WAL file roll — this should signal rollLogWriterCondition and wake up the iterator
-    walNode.rollWALFile();
-    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
+      // trigger WAL file roll — this should signal rollLogWriterCondition and wake up the iterator
+      walNode.rollWALFile();
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> walNode.isAllWALEntriesConsumed());
 
-    waitFuture.get(20, TimeUnit.SECONDS);
-    executor.shutdown();
-
-    if (error.get() != null) {
-      throw error.get();
+      assertTrue(
+          "Iterator should have found data after WAL file roll",
+          waitFuture.get(20, TimeUnit.SECONDS));
+    } finally {
+      shutdownExecutor(executor);
     }
-    assertTrue("Iterator should have found data after WAL file roll", found.get());
   }
 
   /**
@@ -230,10 +223,12 @@ public class WALNodeWaitForRollFileTest {
    * trigger an automatic WAL file roll (file size exceeds threshold). Uses a small WAL file size
    * threshold to trigger the roll quickly.
    */
-  @Test(timeout = 60000)
+  @Test
   public void testWaitForNextReadyWithAutoRollOnSizeThreshold() throws Exception {
     // use small WAL file size to trigger auto-roll
     config.setWalFileSizeThresholdInByte(1024);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountDownLatch waiterStarted = new CountDownLatch(1);
 
     try {
       IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
@@ -250,24 +245,15 @@ public class WALNodeWaitForRollFileTest {
 
       ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
 
-      AtomicBoolean found = new AtomicBoolean(false);
-      AtomicReference<Exception> error = new AtomicReference<>();
-      ExecutorService executor = Executors.newSingleThreadExecutor();
-
-      Future<?> waitFuture =
+      Future<Boolean> waitFuture =
           executor.submit(
               () -> {
-                try {
-                  iterator.waitForNextReady(30, TimeUnit.SECONDS);
-                  if (iterator.hasNext()) {
-                    found.set(true);
-                  }
-                } catch (Exception e) {
-                  error.set(e);
-                }
+                waiterStarted.countDown();
+                iterator.waitForNextReady(30, TimeUnit.SECONDS);
+                return iterator.hasNext();
               });
 
-      Thread.sleep(500);
+      assertTrue(waiterStarted.await(10, TimeUnit.SECONDS));
 
       // write more data to exceed the small threshold and trigger auto-roll
       for (int i = 2; i <= 50; i++) {
@@ -276,15 +262,15 @@ public class WALNodeWaitForRollFileTest {
         walNode.log(memTable.getMemTableId(), node, 0, node.getRowCount());
       }
 
-      waitFuture.get(40, TimeUnit.SECONDS);
-      executor.shutdown();
-
-      if (error.get() != null) {
-        fail("waitForNextReady threw unexpected exception: " + error.get().getMessage());
-      }
-      assertTrue("Iterator should have found data after auto WAL file roll", found.get());
+      assertTrue(
+          "Iterator should have found data after auto WAL file roll",
+          waitFuture.get(40, TimeUnit.SECONDS));
     } finally {
-      config.setWalFileSizeThresholdInByte(2 * 1024 * 1024);
+      try {
+        shutdownExecutor(executor);
+      } finally {
+        config.setWalFileSizeThresholdInByte(2 * 1024 * 1024);
+      }
     }
   }
 
@@ -294,7 +280,7 @@ public class WALNodeWaitForRollFileTest {
    * buffer → waitForRollFile(30s) times out → rollWALFile() called → data moves to closed file →
    * hasNext() returns true → method returns.
    */
-  @Test(timeout = 120000)
+  @Test
   public void testWaitForNextReadyAutoTriggersRollOnTimeout() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + File.separator + "test.tsfile");
@@ -312,8 +298,6 @@ public class WALNodeWaitForRollFileTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
     assertFalse("Data should not be visible before WAL file roll", iterator.hasNext());
 
-    AtomicBoolean found = new AtomicBoolean(false);
-    AtomicReference<Exception> error = new AtomicReference<>();
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
     long startTime = System.currentTimeMillis();
@@ -322,33 +306,32 @@ public class WALNodeWaitForRollFileTest {
     // 1) wait 30s for rollLogWriterCondition (timeout)
     // 2) auto-call rollWALFile()
     // 3) data becomes readable, hasNext() returns true, method returns
-    Future<?> waitFuture =
-        executor.submit(
-            () -> {
-              try {
+    try {
+      Future<Boolean> waitFuture =
+          executor.submit(
+              () -> {
                 iterator.waitForNextReady();
-                if (iterator.hasNext()) {
-                  found.set(true);
-                }
-              } catch (Exception e) {
-                error.set(e);
-              }
-            });
+                return iterator.hasNext();
+              });
 
-    waitFuture.get(90, TimeUnit.SECONDS);
-    executor.shutdown();
+      assertTrue(
+          "Iterator should have found data after auto-triggered WAL file roll",
+          waitFuture.get(90, TimeUnit.SECONDS));
 
-    long elapsed = System.currentTimeMillis() - startTime;
-
-    if (error.get() != null) {
-      fail("waitForNextReady() threw unexpected exception: " + error.get().getMessage());
+      long elapsed = System.currentTimeMillis() - startTime;
+      assertTrue(
+          "Should have waited at least 30s for the timeout to trigger auto-roll, but only waited "
+              + elapsed
+              + "ms",
+          elapsed >= TimeUnit.SECONDS.toMillis(WALNode.WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC - 1));
+    } finally {
+      shutdownExecutor(executor);
     }
-    assertTrue("Iterator should have found data after auto-triggered WAL file roll", found.get());
-    assertTrue(
-        "Should have waited at least 30s for the timeout to trigger auto-roll, but only waited "
-            + elapsed
-            + "ms",
-        elapsed >= TimeUnit.SECONDS.toMillis(WALNode.WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC - 1));
+  }
+
+  private static void shutdownExecutor(final ExecutorService executor) throws InterruptedException {
+    executor.shutdownNow();
+    assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
   }
 
   private InsertTabletNode getInsertTabletNode(String devicePath, long[] times)

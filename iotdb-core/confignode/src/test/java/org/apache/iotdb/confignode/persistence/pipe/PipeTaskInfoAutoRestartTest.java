@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -114,6 +116,50 @@ public class PipeTaskInfoAutoRestartTest {
     Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
     Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
     Assert.assertEquals(exceptionsClearTime, runtimeMeta.getExceptionsClearTime());
+  }
+
+  @Test
+  public void testPreDeletePipeIsNotOverwrittenOrAutoRestarted() {
+    final String pipeName = "droppingPipe";
+    createPipe(pipeName, PipeStatus.STOPPED);
+    pipeTaskInfo.setPipeStatus(new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE));
+
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
+
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    Assert.assertEquals(PipeStatus.PRE_DELETE, runtimeMeta.getStatus().get());
+    Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertFalse(pipeTaskInfo.autoRestart());
+    Assert.assertEquals(PipeStatus.PRE_DELETE, runtimeMeta.getStatus().get());
+  }
+
+  @Test
+  public void testPreDeletePipeRejectsAlterStartAndStop() {
+    final String pipeName = "droppingPipe";
+    createPipe(pipeName, PipeStatus.STOPPED);
+    pipeTaskInfo.setPipeStatus(new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE));
+
+    final TAlterPipeReq alterPipeRequest =
+        new TAlterPipeReq(pipeName, new HashMap<>(), new HashMap<>(), false, false);
+    alterPipeRequest.setExtractorAttributes(new HashMap<>());
+    alterPipeRequest.setIsReplaceAllExtractorAttributes(false);
+
+    assertPipeBeingDropped(
+        pipeName, () -> pipeTaskInfo.checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest));
+    assertPipeBeingDropped(pipeName, () -> pipeTaskInfo.checkBeforeStartPipe(pipeName));
+    assertPipeBeingDropped(pipeName, () -> pipeTaskInfo.checkBeforeStopPipe(pipeName));
+  }
+
+  private static void assertPipeBeingDropped(final String pipeName, final Runnable pipeOperation) {
+    try {
+      pipeOperation.run();
+      Assert.fail();
+    } catch (final PipeException e) {
+      Assert.assertTrue(e.getMessage().contains(pipeName));
+      Assert.assertTrue(e.getMessage().contains("being dropped"));
+    }
   }
 
   private Map<Integer, TPushPipeMetaResp> createErrorRespMap(final String pipeName) {

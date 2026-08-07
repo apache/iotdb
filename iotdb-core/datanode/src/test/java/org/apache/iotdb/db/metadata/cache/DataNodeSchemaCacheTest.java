@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
@@ -270,36 +271,47 @@ public class DataNodeSchemaCacheTest {
   }
 
   @Test
-  public void testUpdateLastCacheWithAliasDoesNotCopyMeasurements() throws IllegalPathException {
+  public void testUpdateLastCacheLazilyWithAlias() throws IllegalPathException {
     final String database = "root.db";
     final PartialPath device = new PartialPath("root.db.d_alias");
     final MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT32);
+    final MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT32);
     final MeasurementPath s1Path = new MeasurementPath(device.concatNode("s1"), s1);
+    final AtomicInteger composedValueCount = new AtomicInteger();
 
     dataNodeSchemaCache.declareLastCache(database, s1Path);
 
     final InsertRowNode insertRowNode =
         new InsertRowNode(
-            new PlanNodeId("testUpdateLastCacheWithAliasDoesNotCopyMeasurements"),
+            new PlanNodeId("testUpdateLastCacheLazilyWithAlias"),
             device,
             false,
-            new String[] {"alias"},
-            new TSDataType[] {TSDataType.INT32},
-            new MeasurementSchema[] {s1},
+            new String[] {"alias", "uncachedAlias"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT32},
+            new MeasurementSchema[] {s1, s2},
             1L,
-            new Object[] {1},
+            new Object[] {1, 2},
             false) {
           @Override
           public String[] getRawMeasurements() {
             throw new AssertionError("Last cache update should not copy raw measurements");
           }
+
+          @Override
+          public TimeValuePair composeTimeValuePair(final int columnIndex) {
+            composedValueCount.incrementAndGet();
+            return super.composeTimeValuePair(columnIndex);
+          }
         };
 
     insertRowNode.updateLastCache(database);
 
+    Assert.assertEquals(1, composedValueCount.get());
     Assert.assertEquals(
         new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)),
         dataNodeSchemaCache.getLastCache(new MeasurementPath(device.concatNode("s1"), s1)));
+    Assert.assertNull(
+        dataNodeSchemaCache.getLastCache(new MeasurementPath(device.concatNode("s2"), s2)));
     Assert.assertNull(
         dataNodeSchemaCache.getLastCache(
             new MeasurementPath(

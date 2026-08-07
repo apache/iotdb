@@ -218,7 +218,7 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               isReadyForReadAndWrite.set(true);
               LOGGER.info(
-                  "Storage Engine recover cost: {}s.",
+                  "Storage Engine local recovery tasks finished in {}s.",
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -247,7 +247,7 @@ public class StorageEngine implements IService {
               }
               dataRegionMap.put(dataRegionId, dataRegion);
               LOGGER.info(
-                  "Data regions have been recovered {}/{}",
+                  "Local DataRegion loading progress: {}/{}.",
                   readyDataRegionNum.incrementAndGet(),
                   recoverDataRegionNum);
               return null;

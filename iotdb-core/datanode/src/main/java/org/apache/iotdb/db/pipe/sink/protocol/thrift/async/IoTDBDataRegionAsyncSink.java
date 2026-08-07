@@ -128,8 +128,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       new ConcurrentHashMap<>();
 
   private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
-  private final Map<String, ReceiverTemporaryUnavailableBackoff> receiverBackoffMap =
-      new ConcurrentHashMap<>();
+  private final Map<String, ReceiverRetryBackoff> receiverBackoffMap = new ConcurrentHashMap<>();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -740,13 +739,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     return enableSendTsFileLimit;
   }
 
-  public void waitIfReceiverTemporarilyUnavailable(final TEndPoint endPoint) {
+  public void waitIfReceiverRetryIsBackedOff(final TEndPoint endPoint) {
     final String endPointKey = format(endPoint);
     if (Objects.isNull(endPointKey)) {
       return;
     }
 
-    final ReceiverTemporaryUnavailableBackoff backoff = receiverBackoffMap.get(endPointKey);
+    final ReceiverRetryBackoff backoff = receiverBackoffMap.get(endPointKey);
     if (Objects.isNull(backoff)) {
       return;
     }
@@ -782,8 +781,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   private void throwIfReceiverProbeIsDelayed() {
-    for (final Map.Entry<String, ReceiverTemporaryUnavailableBackoff> entry :
-        receiverBackoffMap.entrySet()) {
+    for (final Map.Entry<String, ReceiverRetryBackoff> entry : receiverBackoffMap.entrySet()) {
       final long probeDelayInMs = entry.getValue().getRemainingProbeDelayInMs();
       if (probeDelayInMs <= 0) {
         continue;
@@ -795,10 +793,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   private static PipeRuntimeSinkNonReportTimeConfigurableException
       createReceiverProbeDelayException(
-          final String endPointKey, final ReceiverTemporaryUnavailableBackoff backoff) {
+          final String endPointKey, final ReceiverRetryBackoff backoff) {
     return new PipeRuntimeSinkNonReportTimeConfigurableException(
         String.format(
-            "Receiver %s remained temporarily unavailable for more than %d ms, pause regular retries and probe every %d ms.",
+            "Receiver %s has required retries for more than %d ms, pause regular retries and probe every %d ms.",
             endPointKey, backoff.getRetryMaxDurationInMs(), backoff.getRetryProbeIntervalInMs()),
         Long.MAX_VALUE);
   }
@@ -809,14 +807,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       return;
     }
 
-    if (isReceiverTemporarilyUnavailable(status)) {
+    if (isReceiverRetryNeeded(status)) {
       final long backoffTimeInMs =
           receiverBackoffMap
-              .computeIfAbsent(endPointKey, key -> new ReceiverTemporaryUnavailableBackoff())
-              .markTemporarilyUnavailable();
+              .computeIfAbsent(endPointKey, key -> new ReceiverRetryBackoff())
+              .markRetryNeeded();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}",
+            "Receiver {} requires a retry, throttle requests for {} ms. Status: {}",
             endPointKey,
             backoffTimeInMs,
             status);
@@ -834,20 +832,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     }
   }
 
-  private static boolean isReceiverTemporarilyUnavailable(final TSStatus status) {
+  private static boolean isReceiverRetryNeeded(final TSStatus status) {
     if (Objects.isNull(status)) {
       return false;
     }
 
-    final int statusCode = status.getCode();
-    if (statusCode == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+    if (!isSuccess(status)) {
       return true;
     }
 
     return status.isSetSubStatus()
-        && status.getSubStatus().stream()
-            .anyMatch(IoTDBDataRegionAsyncSink::isReceiverTemporarilyUnavailable);
+        && status.getSubStatus().stream().anyMatch(IoTDBDataRegionAsyncSink::isReceiverRetryNeeded);
   }
 
   private static boolean isSuccess(final TSStatus status) {
@@ -1036,7 +1031,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     }
   }
 
-  private static class ReceiverTemporaryUnavailableBackoff {
+  private static class ReceiverRetryBackoff {
 
     private final long maxBackoffTimeInMs =
         Math.max(0, PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs());
@@ -1050,17 +1045,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
         Math.max(1, PipeConfig.getInstance().getPipeAsyncSinkRetryProbeIntervalMs());
 
     private boolean active = false;
-    private long firstUnavailableTimeInMs = 0;
+    private long firstRetryTimeInMs = 0;
     private long currentBackoffTimeInMs = initialBackoffTimeInMs;
     private long failureBackoffUntilInMs = 0;
     private long nextReservedRetryTimeInMs = 0;
     private long nextProbeTimeInMs = 0;
 
-    private synchronized long markTemporarilyUnavailable() {
+    private synchronized long markRetryNeeded() {
       final long currentTimeInMs = System.currentTimeMillis();
       if (!active) {
         active = true;
-        firstUnavailableTimeInMs = currentTimeInMs;
+        firstRetryTimeInMs = currentTimeInMs;
         currentBackoffTimeInMs = initialBackoffTimeInMs;
         failureBackoffUntilInMs = 0;
         nextReservedRetryTimeInMs = 0;
@@ -1082,7 +1077,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     private synchronized boolean isRetryMaxDurationExceeded() {
       return active
           && retryMaxDurationInMs >= 0
-          && System.currentTimeMillis() - firstUnavailableTimeInMs >= retryMaxDurationInMs;
+          && System.currentTimeMillis() - firstRetryTimeInMs >= retryMaxDurationInMs;
     }
 
     private synchronized long reserveNextRetryTimeInMs() {
