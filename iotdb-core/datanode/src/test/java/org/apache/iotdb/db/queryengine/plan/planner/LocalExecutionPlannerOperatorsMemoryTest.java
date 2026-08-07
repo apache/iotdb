@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 
 import org.junit.After;
