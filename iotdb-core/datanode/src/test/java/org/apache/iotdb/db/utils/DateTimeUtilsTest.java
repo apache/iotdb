@@ -28,6 +28,9 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -48,7 +51,7 @@ public class DateTimeUtilsTest {
   /** Test convertDatetimeStrToLong() method with different time precision. */
   @Test
   public void convertDatetimeStrToLongTest1() {
-    zoneOffset = ZonedDateTime.now().getOffset();
+    zoneOffset = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).getOffset();
     zoneId = ZoneId.systemDefault();
     if (zoneOffset.toString().equals("Z")) {
       delta = 8 * 3600000;
@@ -84,11 +87,11 @@ public class DateTimeUtilsTest {
   public void convertDatetimeStrToLongTest4() {
     zoneOffset = ZoneOffset.UTC;
     try {
-      DateTimeUtils.convertDatetimeStrToLong("1999-02-29T00:00:00.000", zoneOffset, 0, "ms");
+      DateTimeUtils.convertDatetimeStrToLong("1999-02-29T00:00:00.000", (ZoneId) zoneOffset, "ms");
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Text '1999-02-29T00:00:00.000+00:00' could not be parsed: Invalid date 'February 29' as '1999' is not a leap year",
+          "Text '1999-02-29T00:00:00.000' could not be parsed: Invalid date 'February 29' as '1999' is not a leap year",
           e.getMessage());
     }
   }
@@ -258,7 +261,8 @@ public class DateTimeUtilsTest {
           "2019.01.02T15:13:27" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      Assert.assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      Assert.assertEquals(
+          res, DateTimeUtils.convertDatetimeStrToLong(str, (ZoneId) zoneOffset, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -283,7 +287,7 @@ public class DateTimeUtilsTest {
           "2019.01.02T15:13:27.689" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, (ZoneId) zoneOffset, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -322,7 +326,7 @@ public class DateTimeUtilsTest {
           "2019.01.02T15:13:27.68" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, (ZoneId) zoneOffset, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -336,7 +340,7 @@ public class DateTimeUtilsTest {
           "2019-01-02", "2019/01/02", "2019.01.02",
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, (ZoneId) zoneOffset, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -372,5 +376,174 @@ public class DateTimeUtilsTest {
 
     timeDuration = DataNodeDateTimeUtils.constructTimeDuration("10000000000ms");
     Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
+  }
+
+  @Test
+  public void convertWinterTimeShouldUseUtcPlus1() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long winter = DateTimeUtils.convertDatetimeStrToLong("2024-01-15 12:00:00", zoneId, "ms");
+    assertEquals(
+        ZonedDateTime.of(LocalDateTime.parse("2024-01-15T12:00:00"), zoneId)
+            .toInstant()
+            .toEpochMilli(),
+        winter);
+  }
+
+  @Test
+  public void convertSummerTimeShouldUseUtcPlus2() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long summer = DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 6, 15, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, summer);
+  }
+
+  @Test
+  public void convertJustBeforeSpringDstShouldKeepWinterOffset() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long before = DateTimeUtils.convertDatetimeStrToLong("2024-03-31 01:59:59", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 3, 31, 1, 59, 59, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, before);
+  }
+
+  @Test
+  public void convertJustAfterSpringDstShouldUseSummerOffset() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long after = DateTimeUtils.convertDatetimeStrToLong("2024-03-31 03:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 3, 31, 3, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, after);
+  }
+
+  @Test
+  public void convertAutumnOverlapShouldResolveToEarlierOffset() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long overlap = DateTimeUtils.convertDatetimeStrToLong("2024-10-27 02:30:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 10, 27, 2, 30, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, overlap);
+  }
+
+  @Test
+  public void convertAfterAutumnTransitionShouldUseWinterOffset() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long after = DateTimeUtils.convertDatetimeStrToLong("2024-10-27 03:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 10, 27, 3, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, after);
+  }
+
+  @Test
+  public void historicalDateBeforeStandardizedOffsetShouldUseLMT() {
+    ZoneId shanghaiId = ZoneId.of("Asia/Shanghai");
+    long oldTime = DateTimeUtils.convertDatetimeStrToLong("1900-01-01 00:00:00", shanghaiId, "ms");
+    ZoneOffset offset = shanghaiId.getRules().getOffset(Instant.ofEpochMilli(oldTime));
+    long expected = ZonedDateTime.of(1900, 1, 1, 0, 0, 0, 0, shanghaiId).toInstant().toEpochMilli();
+    assertEquals(expected, oldTime);
+  }
+
+  @Test
+  public void explicitOffsetInStringOverridesZoneId() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long withMs = DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00Z", zoneId, "ms");
+    long withoutMs = DateTimeUtils.convertDatetimeStrToLong("2024-06-15 14:00:00", zoneId, "ms");
+    assertEquals(withoutMs, withMs);
+
+    long withUs =
+        DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00.123456Z", zoneId, "us");
+    long withoutUs =
+        DateTimeUtils.convertDatetimeStrToLong("2024-06-15 14:00:00.123456", zoneId, "us");
+    assertEquals(withoutUs, withUs);
+
+    long withNs =
+        DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00.123456789Z", zoneId, "ns");
+    long withoutNs =
+        DateTimeUtils.convertDatetimeStrToLong("2024-06-15 14:00:00.123456789", zoneId, "ns");
+    assertEquals(withoutNs, withNs);
+  }
+
+  @Test
+  public void springGapShouldShiftForwardInWarsaw() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long gap = DateTimeUtils.convertDatetimeStrToLong("2024-03-31 02:30:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 3, 31, 2, 30, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, gap);
+    long expectedMoved =
+        ZonedDateTime.of(2024, 3, 31, 3, 30, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expectedMoved, gap);
+  }
+
+  @Test
+  public void shouldAcceptOneDigitMonthAndDayWithSpace() {
+    ZoneId zoneId = ZoneId.systemDefault();
+    long result = DateTimeUtils.convertDatetimeStrToLong("2024-6-5 12:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 6, 5, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void shouldAcceptOneDigitMonthAndDayWithSpaceAndOffset() {
+    ZoneId zoneId = ZoneId.systemDefault();
+    long result = DateTimeUtils.convertDatetimeStrToLong("2024-6-5 12:00:00+02:00", zoneId, "ms");
+    long expected =
+        ZonedDateTime.of(2024, 6, 5, 12, 0, 0, 0, ZoneOffset.ofHours(2)).toInstant().toEpochMilli();
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void shouldParseLowercaseZAsUtc() {
+    ZoneId sessionZone = ZoneId.of("Europe/Warsaw");
+    long result = DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00z", sessionZone, "ms");
+    long expected =
+        ZonedDateTime.of(2024, 6, 15, 12, 0, 0, 0, ZoneOffset.UTC).toInstant().toEpochMilli();
+    assertEquals(expected, result);
+  }
+
+  @Test(expected = DateTimeException.class)
+  public void shouldRejectNegativeYearWithSpace() {
+    DateTimeUtils.convertDatetimeStrToLong(
+        "-0004-06-15 12:00:00", ZoneId.of("Europe/Warsaw"), "ms");
+  }
+
+  @Test(expected = DateTimeException.class)
+  public void shouldRejectNegativeYearWithSpaceAndOffset() {
+    DateTimeUtils.convertDatetimeStrToLong(
+        "-0004-06-15 12:00:00+01:00", ZoneId.of("Europe/Warsaw"), "ms");
+  }
+
+  @Test
+  public void shouldAcceptLowercaseTWithSpace() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long result = DateTimeUtils.convertDatetimeStrToLong("2024-06-15t12:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(2024, 6, 15, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void shouldAcceptFiveDigitYearWithSpace() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long result = DateTimeUtils.convertDatetimeStrToLong("12024-06-15 12:00:00", zoneId, "ms");
+    long expected = ZonedDateTime.of(12024, 6, 15, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, result);
+  }
+
+  @Test(expected = DateTimeException.class)
+  public void shouldRejectPositiveSignedYearWithSpace() {
+    DateTimeUtils.convertDatetimeStrToLong(
+        "+12024-06-15 12:00:00", ZoneId.of("Europe/Warsaw"), "ms");
+  }
+
+  @Test(expected = DateTimeException.class)
+  public void shouldRejectPositiveSignedYearWithSpaceAndOffset() {
+    DateTimeUtils.convertDatetimeStrToLong(
+        "+12024-06-15 12:00:00+02:00", ZoneId.of("Europe/Warsaw"), "ms");
+  }
+
+  @Test
+  public void explicitPositiveOffsetInStringShouldOverrideZoneId() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    long withOffset =
+        DateTimeUtils.convertDatetimeStrToLong("2024-06-15 12:00:00+04:00", zoneId, "ms");
+    long expected =
+        ZonedDateTime.of(2024, 6, 15, 12, 0, 0, 0, ZoneOffset.ofHours(4))
+            .toInstant()
+            .toEpochMilli();
+    assertEquals(expected, withOffset);
   }
 }

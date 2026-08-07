@@ -227,8 +227,6 @@ public final class QueryMessages {
       "ExtractTimestampUsPart is null";
   public static final String EXTRACT_TIMESTAMP_NS_PART_NULL =
       "ExtractTimestampNsPart is null";
-  public static final String DATETIME_CONVERT_FAILED =
-      "Failed to convert %s to millisecond, zone offset is %s, please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00";
   public static final String DATETIME_TIME_REGION_NOT_SUPPORTED =
       "%s with [time-region] at end is not supported now, please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00";
   public static final String UNSUPPORTED_TIME_PRECISION =
