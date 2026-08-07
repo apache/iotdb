@@ -1404,6 +1404,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
 
           @Override
+          public boolean handlePipeMetaChanges(
+              final List<ByteBuffer> pipeMetas,
+              final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+            final List<TPushPipeMetaRespExceptionMessage> exceptionMessagesFromAgent =
+                PipeDataNodeAgent.task()
+                    .handlePipeMetaChanges(
+                        pipeMetas.stream()
+                            .map(PipeMeta::deserialize4TaskAgent)
+                            .collect(Collectors.toList()));
+            if (exceptionMessagesFromAgent == null) {
+              return false;
+            }
+            exceptionMessages.addAll(exceptionMessagesFromAgent);
+            return true;
+          }
+
+          @Override
           public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
             return PipeDataNodeAgent.task()
                 .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
