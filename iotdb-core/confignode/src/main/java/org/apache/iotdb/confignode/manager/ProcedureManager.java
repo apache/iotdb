@@ -2298,6 +2298,7 @@ public class ProcedureManager {
     return status.getCode() == TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode();
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private static String wrapTimeoutMessageForPipeProcedure(final TSStatus status) {
     if (isProcedureTimeout(status)) {
       return String.format(
