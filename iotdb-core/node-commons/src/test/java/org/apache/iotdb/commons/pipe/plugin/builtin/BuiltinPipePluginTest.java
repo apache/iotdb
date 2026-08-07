@@ -41,37 +41,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class BuiltinPipePluginTest {
   @Test
   public void testBuildInPipePlugin() {
-    PipeExtractor extractor = new IoTDBSource();
-    try {
-      extractor.validate(mock(PipeParameterValidator.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      extractor.customize(
-          mock(PipeParameters.class), mock(PipeExtractorRuntimeConfiguration.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      extractor.start();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      extractor.supply();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      extractor.close();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
+    testExtractorAllThrow(new IoTDBSource());
 
     PipeProcessor processor = new DoNothingProcessor();
     try {
@@ -85,18 +60,26 @@ public class BuiltinPipePluginTest {
     } catch (Exception ignored) {
       Assert.fail();
     }
+
+    final EventCollector collector = mock(EventCollector.class);
+    final TabletInsertionEvent tabletInsertionEvent = mock(TabletInsertionEvent.class);
+    final TsFileInsertionEvent tsFileInsertionEvent = mock(TsFileInsertionEvent.class);
+    final Event event = mock(Event.class);
     try {
-      processor.process(mock(TabletInsertionEvent.class), mock(EventCollector.class));
+      processor.process(tabletInsertionEvent, collector);
+      verify(collector).collect(tabletInsertionEvent);
     } catch (Exception ignored) {
       Assert.fail();
     }
     try {
-      processor.process(mock(TsFileInsertionEvent.class), mock(EventCollector.class));
+      processor.process(tsFileInsertionEvent, collector);
+      verify(collector).collect(tsFileInsertionEvent);
     } catch (Exception ignored) {
       Assert.fail();
     }
     try {
-      processor.process(mock(Event.class), mock(EventCollector.class));
+      processor.process(event, collector);
+      verify(collector).collect(event);
     } catch (Exception ignored) {
       Assert.fail();
     }
@@ -125,47 +108,39 @@ public class BuiltinPipePluginTest {
     testConnectorAllThrow(new IoTDBThriftSink());
   }
 
-  private void testConnectorAllThrow(PipeConnector connector) {
-    try {
-      connector.validate(mock(PipeParameterValidator.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.customize(
-          mock(PipeParameters.class), mock(PipeConnectorRuntimeConfiguration.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.handshake();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.heartbeat();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.transfer(mock(TabletInsertionEvent.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.transfer(mock(TsFileInsertionEvent.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.transfer(mock(Event.class));
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
-    try {
-      connector.close();
-      Assert.fail();
-    } catch (Exception ignored) {
-    }
+  private void testExtractorAllThrow(final PipeExtractor extractor) {
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () -> extractor.validate(mock(PipeParameterValidator.class)));
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            extractor.customize(
+                mock(PipeParameters.class), mock(PipeExtractorRuntimeConfiguration.class)));
+    Assert.assertThrows(UnsupportedOperationException.class, extractor::start);
+    Assert.assertThrows(UnsupportedOperationException.class, extractor::supply);
+    Assert.assertThrows(UnsupportedOperationException.class, extractor::close);
+  }
+
+  private void testConnectorAllThrow(final PipeConnector connector) {
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () -> connector.validate(mock(PipeParameterValidator.class)));
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            connector.customize(
+                mock(PipeParameters.class), mock(PipeConnectorRuntimeConfiguration.class)));
+    Assert.assertThrows(UnsupportedOperationException.class, connector::handshake);
+    Assert.assertThrows(UnsupportedOperationException.class, connector::heartbeat);
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () -> connector.transfer(mock(TabletInsertionEvent.class)));
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () -> connector.transfer(mock(TsFileInsertionEvent.class)));
+    Assert.assertThrows(
+        UnsupportedOperationException.class, () -> connector.transfer(mock(Event.class)));
+    Assert.assertThrows(UnsupportedOperationException.class, connector::close);
   }
 }

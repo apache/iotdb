@@ -233,81 +233,63 @@ public class PipeStatementEventSorterTest {
   }
 
   @Test
-  public void testTableModelSort1() throws Exception {
-    doTableModelTest1();
+  public void testTableModelSortedDeduplicated() throws Exception {
+    doTableModelTest(false, false);
   }
 
-  public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted)
+  @Test
+  public void testTableModelSortByTimestamp() throws Exception {
+    doTableModelSortByTimestampTest();
+  }
+
+  private static void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted)
       throws Exception {
     final Tablet tablet =
         PipeTabletEventSorterTest.generateTablet("test", 10, hasDuplicates, isUnSorted);
 
-    // Convert Tablet to Statement
-    InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
+    final InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
 
-    // Sort using Statement
     new PipeTableModelTabletEventSorter(statement).sortAndDeduplicateByDevIdTimestamp();
-
-    long[] timestamps = statement.getTimes();
-    final Object[] columns = statement.getColumns();
-    for (int i = 1; i < statement.getRowCount(); i++) {
-      long time = timestamps[i];
-      Assert.assertTrue(time > timestamps[i - 1]);
-      Assert.assertEquals(
-          ((Binary[]) columns[0])[i],
-          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(((long[]) columns[1])[i], (long) i);
-      Assert.assertEquals(((float[]) columns[2])[i], i * 1.0f, 0.001f);
-      Assert.assertEquals(
-          ((Binary[]) columns[3])[i],
-          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(((long[]) columns[4])[i], (long) i);
-      Assert.assertEquals(((int[]) columns[5])[i], i);
-      Assert.assertEquals(((double[]) columns[6])[i], i * 0.1, 0.0001);
-      // DATE is stored as int[] in Statement, not LocalDate[]
-      LocalDate expectedDate = PipeTabletEventSorterTest.getDate(i);
-      int expectedDateInt =
-          org.apache.tsfile.utils.DateUtils.parseDateExpressionToInt(expectedDate);
-      Assert.assertEquals(((int[]) columns[7])[i], expectedDateInt);
-      Assert.assertEquals(
-          ((Binary[]) columns[8])[i],
-          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
-    }
+    assertSortedTableModelStatement(statement);
   }
 
-  public void doTableModelTest1() throws Exception {
+  private static void doTableModelSortByTimestampTest() throws Exception {
     final Tablet tablet = PipeTabletEventSorterTest.generateTablet("test", 10, false, true);
 
-    // Convert Tablet to Statement
-    InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
+    final InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
 
-    // Sort using Statement
     new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+    assertSortedTableModelStatement(statement);
+  }
 
-    long[] timestamps = statement.getTimes();
+  private static void assertSortedTableModelStatement(final InsertTabletStatement statement)
+      throws Exception {
+    final long[] timestamps = statement.getTimes();
     final Object[] columns = statement.getColumns();
-    for (int i = 1; i < statement.getRowCount(); i++) {
-      long time = timestamps[i];
-      Assert.assertTrue(time > timestamps[i - 1]);
+    for (int i = 0; i < statement.getRowCount(); i++) {
+      final long time = timestamps[i];
+      if (i > 0) {
+        Assert.assertTrue(time > timestamps[i - 1]);
+      }
+      Assert.assertEquals(i, time);
       Assert.assertEquals(
-          ((Binary[]) columns[0])[i],
-          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(((long[]) columns[1])[i], (long) i);
-      Assert.assertEquals(((float[]) columns[2])[i], i * 1.0f, 0.001f);
+          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)),
+          ((Binary[]) columns[0])[i]);
+      Assert.assertEquals((long) i, ((long[]) columns[1])[i]);
+      Assert.assertEquals(i * 1.0f, ((float[]) columns[2])[i], 0.001f);
       Assert.assertEquals(
-          ((Binary[]) columns[3])[i],
-          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(((long[]) columns[4])[i], (long) i);
-      Assert.assertEquals(((int[]) columns[5])[i], i);
-      Assert.assertEquals(((double[]) columns[6])[i], i * 0.1, 0.0001);
-      // DATE is stored as int[] in Statement, not LocalDate[]
-      LocalDate expectedDate = PipeTabletEventSorterTest.getDate(i);
-      int expectedDateInt =
+          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)),
+          ((Binary[]) columns[3])[i]);
+      Assert.assertEquals((long) i, ((long[]) columns[4])[i]);
+      Assert.assertEquals(i, ((int[]) columns[5])[i]);
+      Assert.assertEquals(i * 0.1, ((double[]) columns[6])[i], 0.0001);
+      final LocalDate expectedDate = PipeTabletEventSorterTest.getDate(i);
+      final int expectedDateInt =
           org.apache.tsfile.utils.DateUtils.parseDateExpressionToInt(expectedDate);
-      Assert.assertEquals(((int[]) columns[7])[i], expectedDateInt);
+      Assert.assertEquals(expectedDateInt, ((int[]) columns[7])[i]);
       Assert.assertEquals(
-          ((Binary[]) columns[8])[i],
-          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)),
+          ((Binary[]) columns[8])[i]);
     }
   }
 }

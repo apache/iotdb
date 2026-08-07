@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBTreePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -67,6 +68,10 @@ public class PipePlanTreePatternParseVisitorTest {
           Arrays.asList(
               new IoTDBTreePattern("root.db.device.s1"),
               new IoTDBTreePattern("root.db.device.s2")));
+  private final IoTDBTreePatternOperations exclusionPattern =
+      new WithExclusionIoTDBTreePattern(
+          new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**")),
+          new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.s2")));
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
@@ -186,6 +191,50 @@ public class PipePlanTreePatternParseVisitorTest {
                         Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap())),
                 multiplePathPattern)
             .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId("2024-04-30-3"),
+            new PartialPath("root.db.device"),
+            Arrays.asList("s1", "s3"),
+            Arrays.asList(TSDataType.FLOAT, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
+            Arrays.asList("a1", "a3"),
+            Arrays.asList(Collections.emptyMap(), Collections.emptyMap()),
+            Arrays.asList(Collections.emptyMap(), Collections.emptyMap())),
+        IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .visitCreateAlignedTimeSeries(
+                new CreateAlignedTimeSeriesNode(
+                    new PlanNodeId("2024-04-30-3"),
+                    new PartialPath("root.db.device"),
+                    Arrays.asList("s1", "s2", "s3"),
+                    Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN, TSDataType.INT32),
+                    Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN, TSEncoding.RLE),
+                    Arrays.asList(
+                        CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY),
+                    Arrays.asList("a1", "a2", "a3"),
+                    Arrays.asList(
+                        Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap()),
+                    Arrays.asList(
+                        Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap())),
+                exclusionPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .visitCreateAlignedTimeSeries(
+                new CreateAlignedTimeSeriesNode(
+                    new PlanNodeId("2024-04-30-4"),
+                    new PartialPath("root.db.device"),
+                    Collections.singletonList("s2"),
+                    Collections.singletonList(TSDataType.BOOLEAN),
+                    Collections.singletonList(TSEncoding.PLAIN),
+                    Collections.singletonList(CompressionType.SNAPPY),
+                    Collections.singletonList("a2"),
+                    Collections.singletonList(Collections.emptyMap()),
+                    Collections.singletonList(Collections.emptyMap())),
+                exclusionPattern)
+            .isPresent());
   }
 
   @Test
@@ -635,5 +684,35 @@ public class PipePlanTreePatternParseVisitorTest {
                     Long.MAX_VALUE),
                 multiplePathPattern)
             .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        new DeleteDataNode(
+            new PlanNodeId("2024-04-30-3"),
+            Arrays.asList(
+                new MeasurementPath("root.db.device.s1"), new MeasurementPath("root.db.device.s3")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE),
+        IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .visitDeleteData(
+                new DeleteDataNode(
+                    new PlanNodeId("2024-04-30-3"),
+                    Arrays.asList(
+                        new MeasurementPath("root.db.device.s1"),
+                        new MeasurementPath("root.db.device.s2"),
+                        new MeasurementPath("root.db.device.s3")),
+                    Long.MIN_VALUE,
+                    Long.MAX_VALUE),
+                exclusionPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .visitDeleteData(
+                new DeleteDataNode(
+                    new PlanNodeId("2024-04-30-4"),
+                    Collections.singletonList(new MeasurementPath("root.db.device.s2")),
+                    Long.MIN_VALUE,
+                    Long.MAX_VALUE),
+                exclusionPattern)
+            .isPresent());
   }
 }
