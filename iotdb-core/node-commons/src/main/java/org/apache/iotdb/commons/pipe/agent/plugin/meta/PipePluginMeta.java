@@ -170,7 +170,7 @@ public class PipePluginMeta {
 
   @Override
   public int hashCode() {
-    return pluginName.hashCode();
+    return Objects.hash(pluginName, className, isBuiltin, jarName, jarMD5);
   }
 
   @Override
