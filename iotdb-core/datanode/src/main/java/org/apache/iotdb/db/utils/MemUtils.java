@@ -63,14 +63,16 @@ public class MemUtils {
    * memory before insertion
    */
   public static long getRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
-    int emptyRecordCount = 0;
+    if (dataTypes == null) {
+      return 0L;
+    }
+    int dataTypeIndex = 0;
     long memSize = 0L;
-    for (int i = 0; i < value.length; i++) {
+    for (int i = 0; value != null && i < value.length && dataTypeIndex < dataTypes.size(); i++) {
       if (value[i] == null) {
-        emptyRecordCount++;
         continue;
       }
-      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], false);
+      memSize += getRecordSize(dataTypes.get(dataTypeIndex++), value[i], false);
     }
     return memSize;
   }
@@ -80,13 +82,20 @@ public class MemUtils {
    * memory before insertion
    */
   public static long getAlignedRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
+    if (dataTypes == null) {
+      return 8L + 4L;
+    }
     // time and index size
     long memSize = 8L + 4L;
-    for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null || dataTypes.get(i).isBinary()) {
+    int dataTypeIndex = 0;
+    for (int i = 0; value != null && i < value.length && dataTypeIndex < dataTypes.size(); i++) {
+      if (value[i] == null) {
         continue;
       }
-      memSize += dataTypes.get(i).getDataTypeSize();
+      TSDataType dataType = dataTypes.get(dataTypeIndex++);
+      if (!dataType.isBinary()) {
+        memSize += dataType.getDataTypeSize();
+      }
     }
     return memSize;
   }
@@ -99,7 +108,9 @@ public class MemUtils {
     long memSize = 0;
     memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
-      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      if (column[i] != null) {
+        memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      }
     }
     return memSize;
   }
@@ -113,13 +124,22 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (insertTabletNode.getMeasurements()[i] == null) {
+    String[] measurements = insertTabletNode.getMeasurements();
+    TSDataType[] dataTypes = insertTabletNode.getDataTypes();
+    Object[] columns = insertTabletNode.getColumns();
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (measurements[i] == null
+          || dataTypes == null
+          || i >= dataTypes.length
+          || dataTypes[i] == null
+          || columns == null
+          || i >= columns.length
+          || columns[i] == null) {
         continue;
       }
       // Time column memSize
       memSize += (end - start) * 8L;
-      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      memSize += (long) (end - start) * dataTypes[i].getDataTypeSize();
     }
     return memSize;
   }
@@ -129,11 +149,20 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (insertTabletNode.getMeasurements()[i] == null) {
+    String[] measurements = insertTabletNode.getMeasurements();
+    TSDataType[] dataTypes = insertTabletNode.getDataTypes();
+    Object[] columns = insertTabletNode.getColumns();
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (measurements[i] == null
+          || dataTypes == null
+          || i >= dataTypes.length
+          || dataTypes[i] == null
+          || columns == null
+          || i >= columns.length
+          || columns[i] == null) {
         continue;
       }
-      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      memSize += (long) (end - start) * dataTypes[i].getDataTypeSize();
     }
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);
