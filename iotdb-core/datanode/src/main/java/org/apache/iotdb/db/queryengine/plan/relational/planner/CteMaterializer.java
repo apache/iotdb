@@ -83,17 +83,13 @@ public class CteMaterializer {
             (tableRef, query) -> {
               Table table = tableRef.getNode();
               if (query.isMaterialized()) {
-                if (!query.isExecuted()) {
+                if (!context.isCteMaterializationAttempted(query)) {
                   CteDataStore dataStore =
                       fetchCteQueryResult(context, table, query, analysis.getWith());
-                  query.setExecuted(true);
-                  if (dataStore == null) {
-                    // CTE query execution failed. Use inline instead of materialization
-                    // in the outer query
-                    query.setCteDataStore(null);
-                    return;
-                  }
-                  query.setCteDataStore(dataStore);
+                  // Record a null result as well. A failed materialization falls back to inline
+                  // planning and must not be attempted again for another reference in this
+                  // execution.
+                  context.recordCteMaterializationResult(query, dataStore);
                 }
                 context.addCteQuery(table, query);
               }
@@ -112,11 +108,7 @@ public class CteMaterializer {
         List<Identifier> tables = context.getTables(query);
         List<WithQuery> withQueries =
             with.getQueries().stream()
-                .filter(
-                    x ->
-                        tables.contains(x.getName())
-                            && !x.getQuery().isMaterialized()
-                            && !x.getQuery().isDone())
+                .filter(x -> tables.contains(x.getName()) && !x.getQuery().isMaterialized())
                 .collect(Collectors.toList());
 
         if (!withQueries.isEmpty()) {
@@ -140,7 +132,7 @@ public class CteMaterializer {
               sessionManager.getSessionInfoOfTableModel(sessionManager.getCurrSession()),
               String.format("Materialize query for CTE '%s'", table.getName()),
               LocalExecutionPlanner.getInstance().metadata,
-              context.getCteQueries(),
+              context.getCteMaterializationContext(),
               context.getExplainType(),
               context.getExplainOutputFormat(),
               context.getTimeOut(),
