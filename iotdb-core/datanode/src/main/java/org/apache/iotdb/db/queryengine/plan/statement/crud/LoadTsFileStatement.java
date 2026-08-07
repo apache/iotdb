@@ -151,6 +151,14 @@ public class LoadTsFileStatement extends Statement {
           findAllTsFile(
               file, validateSourcePath, validateInternalDataDir, internalDataDirCanonicalPaths));
     }
+    if (tsFiles.isEmpty()) {
+      throw new FileNotFoundException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
+              file.getPath()));
+    }
+
     sortTsFiles(tsFiles);
     return tsFiles;
   }
