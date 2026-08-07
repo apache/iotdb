@@ -78,7 +78,7 @@ public class SubscriptionBroker {
 
     this.consumerIdToSubscriptionStates =
         Caffeine.newBuilder()
-            // TODO: make the subscription state cache TTL configurable.
+            // The subscription state cache currently uses a fixed 60-second TTL.
             .expireAfterAccess(60L, TimeUnit.SECONDS)
             .build(consumerId -> new SubscriptionStates());
   }

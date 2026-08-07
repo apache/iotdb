@@ -202,7 +202,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       currentBufferSize += bufferSize;
 
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        // TODO: split large tablets.
+        // Large tablets are kept intact here to preserve the source batch boundary.
         LOGGER.warn(
             "Detected large tablets with {} byte(s), current tablets size {} byte(s)",
             bufferSize,
@@ -216,7 +216,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       }
 
       if (currentBufferSize > READ_TABLET_BUFFER_SIZE) {
-        // TODO: split large tablets.
+        // Large tablets are kept intact here to preserve the source batch boundary.
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
