@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -309,7 +307,7 @@ public class FragmentInstanceExecutionTest {
     int rows = 100;
     for (int i = 0; i < 100; i++) {
       memTable.write(
-          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
           Collections.singletonList(
               new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.PLAIN)),
           rows - i - 1,
@@ -330,7 +328,7 @@ public class FragmentInstanceExecutionTest {
         values[j] = (long) i * 100 + j;
       }
       memTable.writeAlignedRow(
-          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
           schemaList,
           i,
           values);

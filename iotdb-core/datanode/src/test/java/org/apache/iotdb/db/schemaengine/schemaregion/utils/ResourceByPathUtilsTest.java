@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -70,7 +72,9 @@ public class ResourceByPathUtilsTest {
 
     ResourceByPathUtils resourceByPathUtils =
         ResourceByPathUtils.getResourceInstance(
-            new MeasurementPath("root.test.d.s", TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"),
+                new MeasurementSchema("s", TSDataType.INT64)));
     QueryContext currentQuery = new QueryContext(2, false);
     ExecutorService executor = Executors.newSingleThreadExecutor();
     Future<Map<TVList, Integer>> result = null;
