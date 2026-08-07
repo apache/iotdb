@@ -36,7 +36,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -585,5 +588,163 @@ public class AlignedTVListTest {
     tvList.clear();
     Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
+  }
+
+  @Test
+  public void testMovesUnclonedColumns() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    tvList.putAlignedValue(0, new Object[] {1L, 2L, null});
+
+    Set<Integer> columnsToClone = Collections.singleton(1);
+    long retainedRamSize = tvList.calculateRamSize(columnsToClone).getRamSize();
+    AlignedTVList.PartialClonePlan partialClonePlan = tvList.preparePartialClone(columnsToClone);
+    AlignedTVList clonedTvList = partialClonePlan.getCloneList();
+
+    Assert.assertNotNull(tvList.getValues().get(0));
+    Assert.assertNotNull(tvList.getValues().get(2));
+    Assert.assertEquals(1L, tvList.getLongByValueIndex(0, 0));
+    Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
+
+    partialClonePlan.commit();
+
+    Assert.assertNull(tvList.getValues().get(0));
+    Assert.assertNull(tvList.getValues().get(2));
+    Assert.assertTrue(tvList.isNullValue(0, 0));
+    Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertEquals(1L, clonedTvList.getLongByValueIndex(0, 0));
+    Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
+    Assert.assertTrue(clonedTvList.isNullValue(0, 2));
+    Assert.assertEquals(retainedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  @Test
+  public void testPartialRamSizeScalesWithRetainedColumns() {
+    int columnCount = 256;
+    List<TSDataType> dataTypes = new ArrayList<>(columnCount);
+    Object[] values = new Object[columnCount];
+    for (int i = 0; i < columnCount; i++) {
+      dataTypes.add(TSDataType.INT64);
+      values[i] = (long) i;
+    }
+
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    tvList.putAlignedValue(1, values);
+    Set<Integer> retainedColumns = Collections.singleton(0);
+    long retainedRamSize = tvList.calculateRamSize(retainedColumns).getRamSize();
+    long fullRamSize = tvList.calculateRamSize().getRamSize();
+
+    // Only the retained column's materialized arrays are charged, so keeping 1 of 256 columns
+    // must cost far less than the full list.
+    Assert.assertTrue(retainedRamSize < fullRamSize / 64);
+
+    AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(retainedColumns);
+    plan.commit();
+    Assert.assertEquals(retainedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  @Test
+  public void testPartialReservationMatchesCleanupCalculation() {
+    for (boolean createIndices : new boolean[] {false, true}) {
+      for (boolean retainValueColumn : new boolean[] {false, true}) {
+        AlignedTVList tvList =
+            AlignedTVList.newAlignedList(
+                new ArrayList<>(
+                    Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64)));
+        for (int i = 0; i <= ARRAY_SIZE; i++) {
+          long time = createIndices ? ARRAY_SIZE - i : i;
+          tvList.putAlignedValue(
+              time, new Object[] {(long) i, i % 2 == 0 ? null : (long) i, (long) i});
+        }
+        if (createIndices) {
+          Assert.assertFalse(tvList.isSorted());
+          tvList.sort();
+          Assert.assertNotNull(tvList.getIndices());
+        } else {
+          Assert.assertNull(tvList.getIndices());
+        }
+
+        Set<Integer> retainedColumns =
+            retainValueColumn ? Collections.singleton(1) : Collections.emptySet();
+        long reservedMemoryBytes = tvList.calculateRamSize(retainedColumns).getRamSize();
+        tvList.setReservedMemoryBytes(reservedMemoryBytes);
+
+        AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(retainedColumns);
+        plan.commit();
+
+        long cleanupMemoryBytes = tvList.calculateRamSize().getRamSize();
+        String scenario =
+            String.format(
+                "createIndices=%s, retainValueColumn=%s", createIndices, retainValueColumn);
+        Assert.assertEquals(scenario, reservedMemoryBytes, cleanupMemoryBytes);
+        Assert.assertEquals(scenario, tvList.getReservedMemoryBytes(), cleanupMemoryBytes);
+      }
+    }
+  }
+
+  @Test
+  public void testPartialCloneFailureLeavesSourceUntouched() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64));
+    tvList.putAlignedValue(0, new Object[] {null, 2L, 3L});
+
+    List<Object> firstColumnValues = tvList.getValues().get(0);
+    List<Object> secondColumnValues = tvList.getValues().get(1);
+    List<Object> thirdColumnValues = tvList.getValues().get(2);
+    List<BitMap> firstColumnBitMaps = tvList.getBitMaps().get(0);
+    Object invalidThirdColumnArray = new int[ARRAY_SIZE];
+    thirdColumnValues.set(0, invalidThirdColumnArray);
+
+    Set<Integer> columnsToClone = new HashSet<>(Arrays.asList(0, 1, 2));
+    Assert.assertThrows(ClassCastException.class, () -> tvList.preparePartialClone(columnsToClone));
+
+    Assert.assertSame(firstColumnValues, tvList.getValues().get(0));
+    Assert.assertSame(secondColumnValues, tvList.getValues().get(1));
+    Assert.assertSame(thirdColumnValues, tvList.getValues().get(2));
+    Assert.assertSame(invalidThirdColumnArray, tvList.getValues().get(2).get(0));
+    Assert.assertSame(firstColumnBitMaps, tvList.getBitMaps().get(0));
+    Assert.assertTrue(tvList.isNullValue(0, 0));
+    Assert.assertEquals(2L, tvList.getLongByValueIndex(0, 1));
+  }
+
+  @Test
+  public void testReleaseNonQueryColumnsWithBitmaps() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    for (int i = 0; i < 100; i++) {
+      Object[] values = new Object[3];
+      values[0] = (long) i;
+      values[1] = null; // This will create a bitmap
+      values[2] = (long) (i * 100);
+      tvList.putAlignedValue(i, values);
+    }
+
+    // Verify bitmaps were created for column 1
+    Assert.assertNotNull(tvList.getBitMaps());
+    Assert.assertNotNull(tvList.getBitMaps().get(1));
+
+    // Keep only column 0 and 2, release column 1
+    Set<Integer> columnsToKeep = new HashSet<>(Arrays.asList(0, 2));
+    tvList.releaseNonQueryColumns(columnsToKeep);
+
+    // Verify column 1 is released
+    Assert.assertNull(tvList.getValues().get(1));
+    Assert.assertNull(tvList.getBitMaps().get(1));
+
+    // Verify columns 0 and 2 are intact
+    Assert.assertFalse(tvList.getValues().get(0).isEmpty());
+    Assert.assertFalse(tvList.getValues().get(2).isEmpty());
+    for (int i = 0; i < 100; i++) {
+      Assert.assertEquals((long) i, tvList.getLongByValueIndex(i, 0));
+      Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
+    }
   }
 }

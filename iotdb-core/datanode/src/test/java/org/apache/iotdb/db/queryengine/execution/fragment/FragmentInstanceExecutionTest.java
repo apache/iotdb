@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -50,6 +48,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -308,11 +307,28 @@ public class FragmentInstanceExecutionTest {
     int rows = 100;
     for (int i = 0; i < 100; i++) {
       memTable.write(
-          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
           Collections.singletonList(
               new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.PLAIN)),
           rows - i - 1,
           new Object[] {i + 10});
+    }
+    return memTable;
+  }
+
+  private IMemTable createMemTable(String deviceId, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "1");
+
+    // Insert data in reverse order to make it unsorted
+    int rows = 100;
+    for (int i = rows - 1; i >= 0; i--) {
+      Object[] values = new Object[5];
+      for (int j = 0; j < 5; j++) {
+        values[j] = (long) i * 100 + j;
+      }
+      memTable.writeAlignedRow(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), schemaList, i, values);
     }
     return memTable;
   }

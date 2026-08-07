@@ -824,6 +824,16 @@ public abstract class TVList implements WALEntryValue {
     return queryContextSet;
   }
 
+  /**
+   * Get the union of all columns accessed by queries on this TVList. For non-AlignedTVList, returns
+   * empty set. This method should be called with queryListLock held for thread safety.
+   *
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
+  public Set<Integer> getAccessedColumnsForQuery() {
+    return null;
+  }
+
   public List<BitMap> getBitMap() {
     return bitMap;
   }
