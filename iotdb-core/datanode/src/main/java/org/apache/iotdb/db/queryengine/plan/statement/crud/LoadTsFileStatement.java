@@ -94,6 +94,10 @@ public class LoadTsFileStatement extends Statement {
   private LoadTsFileStatement(
       String filePath, boolean validateSourcePath, boolean validateInternalDataDir)
       throws FileNotFoundException {
+    if (filePath == null || filePath.isEmpty()) {
+      throw new FileNotFoundException(
+          DataNodeQueryMessages.EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181);
+    }
     this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
@@ -151,14 +155,6 @@ public class LoadTsFileStatement extends Statement {
           findAllTsFile(
               file, validateSourcePath, validateInternalDataDir, internalDataDirCanonicalPaths));
     }
-    if (tsFiles.isEmpty()) {
-      throw new FileNotFoundException(
-          String.format(
-              DataNodeQueryMessages
-                  .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
-              file.getPath()));
-    }
-
     sortTsFiles(tsFiles);
     return tsFiles;
   }

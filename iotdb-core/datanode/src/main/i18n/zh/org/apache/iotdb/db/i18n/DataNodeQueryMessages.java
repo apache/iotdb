@@ -4420,6 +4420,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName 不能为空";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString 不能为空";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath 不能为空";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "LOAD TSFILE 路径不能为空。";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details 不能为空";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory 不能为空";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName 不能为空";

@@ -145,7 +145,7 @@ public class LoadTsFileStatementTest {
   }
 
   @Test
-  public void testLoadEmptyInternalDataDirIsRejected() throws Exception {
+  public void testLoadEmptyInternalDataDirDoesNotThrow() throws Exception {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final String[][] originalTierDataDirs = config.getTierDataDirs();
     final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
@@ -156,16 +156,22 @@ public class LoadTsFileStatementTest {
       config.setTierDataDirs(new String[][] {{dataDir.toString()}});
       config.setLoadTsFileSourcePathCheckEnabled(false);
 
-      try {
-        new LoadTsFileStatement(dataDir.toString());
-        Assert.fail("Expected empty internal IoTDB data directory to be rejected.");
-      } catch (final FileNotFoundException e) {
-        Assert.assertTrue(e.getMessage().contains("Can not find"));
-      }
+      final LoadTsFileStatement statement = new LoadTsFileStatement(dataDir.toString());
+      Assert.assertTrue(statement.getTsFiles().isEmpty());
     } finally {
       config.setTierDataDirs(originalTierDataDirs);
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
       deleteRecursively(dataNodeDir);
+    }
+  }
+
+  @Test
+  public void testLoadEmptyPathIsRejected() throws Exception {
+    try {
+      new LoadTsFileStatement("");
+      Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
+    } catch (final FileNotFoundException e) {
+      Assert.assertEquals("The LOAD TSFILE path cannot be empty.", e.getMessage());
     }
   }
 
