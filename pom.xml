@@ -29,7 +29,7 @@
         </repository>
         <repository>
             <id>ratis-snapshot</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheratis-1181</url>
+            <url>https://repository.apache.org/content/repositories/orgapacheratis-1182</url>
         </repository>
     </repositories>
     <parent>
