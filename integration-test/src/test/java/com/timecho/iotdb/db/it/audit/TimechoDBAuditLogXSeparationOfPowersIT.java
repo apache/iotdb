@@ -189,7 +189,20 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
               "",
               "",
               "is closing"),
-          // Activate separation of powers, TODO: Implement audit for SET CONFIGURATION
+          // Activate separation of powers
+          Arrays.asList(
+              "node_1",
+              "u_0",
+              "root",
+              "127.0.0.1",
+              "OBJECT_AUTHENTICATION",
+              "CONTROL",
+              "[SYSTEM]",
+              "GLOBAL",
+              "true",
+              "null",
+              "set configuration enable_separation_of_powers='true'",
+              "User root (ID=0) requests authority on object  with result true"),
           Arrays.asList(
               "node_1",
               "u_0",
@@ -1556,7 +1569,19 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
               "LOGOUT",
               "127.0.0.1",
               "root"),
-          // Activate separation of powers, TODO: Audit set configuration
+          // Activate separation of powers
+          Arrays.asList(
+              "root.__audit.log.node_1.u_0",
+              "true",
+              "GLOBAL",
+              "[SYSTEM]",
+              "null",
+              "CONTROL",
+              "User root (ID=0) requests authority on object  with result true",
+              "set configuration enable_separation_of_powers='true'",
+              "OBJECT_AUTHENTICATION",
+              "127.0.0.1",
+              "root"),
           Arrays.asList(
               "root.__audit.log.node_1.u_0",
               "true",
