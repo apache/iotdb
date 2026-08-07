@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.consensus.response.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -178,6 +179,27 @@ public class PipeTableRespTest {
         pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
 
     Assert.assertEquals(PipeStatus.PRE_DELETE.name(), showPipeResult.get(0).getState());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespKeepsExceptionHistoryAfterRestart() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    final PipeRuntimeMeta runtimeMeta = pipeTableResp.getAllPipeMeta().get(0).getRuntimeMeta();
+    runtimeMeta.setExceptionsClearTime(200L);
+    runtimeMeta
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(1, new PipeRuntimeCriticalException("historical node failure", 100L));
+    runtimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .get(1)
+        .trackExceptionMessage(new PipeRuntimeCriticalException("historical task failure", 100L));
+
+    final String exceptionMessage =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0).getExceptionMessage();
+
+    Assert.assertTrue(exceptionMessage.contains("exceptionTime:"));
+    Assert.assertTrue(exceptionMessage.contains("historical node failure"));
+    Assert.assertTrue(exceptionMessage.contains("historical task failure"));
   }
 
   @Test

@@ -206,7 +206,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         try (final ResultSet set = statement.executeQuery("show pipe user_sink_pipe")) {
           Assert.assertTrue(set.next());
           try {
-            Assert.assertEquals("0", set.getString(8));
+            Assert.assertEquals("0", set.getString(9));
             return;
           } catch (final Throwable t) {
             // Retry

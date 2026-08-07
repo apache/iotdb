@@ -40,6 +40,7 @@ public class ShowPipeTaskTest {
   public void testBuildTSBlockWritesDegradedColumn() throws Exception {
     final TShowPipeInfo degradedPipe = createPipeInfo("degraded_pipe");
     degradedPipe.setIsDegraded(true);
+    degradedPipe.setExceptionMessage("Authentication failed");
     final TShowPipeInfo normalPipe = createPipeInfo("normal_pipe");
     normalPipe.setIsDegraded(false);
     final TShowPipeInfo unknownPipe = createPipeInfo("unknown_pipe");
@@ -52,11 +53,19 @@ public class ShowPipeTaskTest {
 
     assertEquals(TSStatusCode.SUCCESS_STATUS, result.getStatusCode());
     assertEquals(
-        ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(9));
+        ColumnHeaderConstant.SUGGESTED_ACTION, result.getResultSetHeader().getRespColumns().get(7));
+    assertEquals(
+        ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(10));
     assertEquals(3, resultSet.getPositionCount());
-    assertTrue(resultSet.getColumn(9).getBoolean(0));
-    assertFalse(resultSet.getColumn(9).getBoolean(1));
-    assertTrue(resultSet.getColumn(9).isNull(2));
+    assertTrue(
+        resultSet
+            .getColumn(7)
+            .getBinary(0)
+            .toString()
+            .contains("Please check whether the source's or sink's password is right."));
+    assertTrue(resultSet.getColumn(10).getBoolean(0));
+    assertFalse(resultSet.getColumn(10).getBoolean(1));
+    assertTrue(resultSet.getColumn(10).isNull(2));
   }
 
   private TShowPipeInfo createPipeInfo(final String pipeName) {

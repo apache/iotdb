@@ -221,6 +221,9 @@ public class InformationSchema {
             ColumnHeaderConstant.EXCEPTION_MESSAGE_TABLE_MODEL, TSDataType.STRING));
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.SUGGESTED_ACTION_TABLE_MODEL, TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.REMAINING_EVENT_COUNT_TABLE_MODEL, TSDataType.INT64));
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
