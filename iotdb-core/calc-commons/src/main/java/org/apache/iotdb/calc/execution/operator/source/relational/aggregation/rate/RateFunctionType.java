@@ -17,24 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate;
 
-import org.apache.ratis.conf.Parameters;
-import org.apache.ratis.grpc.GrpcFactory;
-import org.apache.ratis.server.RaftServer;
-import org.apache.ratis.server.leader.FollowerInfo;
-import org.apache.ratis.server.leader.LeaderState;
-import org.apache.ratis.server.leader.LogAppender;
+public enum RateFunctionType {
+  RATE("rate", true, true),
+  INCREASE("increase", true, true),
+  IRATE("irate", true, false),
+  DELTA("delta", false, true);
 
-class RateLimitedGrpcFactory extends GrpcFactory {
+  private final String functionName;
+  private final boolean counter;
+  private final boolean windowed;
 
-  RateLimitedGrpcFactory(Parameters parameters) {
-    super(parameters);
+  RateFunctionType(String functionName, boolean counter, boolean windowed) {
+    this.functionName = functionName;
+    this.counter = counter;
+    this.windowed = windowed;
   }
 
-  @Override
-  public LogAppender newLogAppender(
-      RaftServer.Division server, LeaderState leaderState, FollowerInfo follower) {
-    return new RateLimitedGrpcLogAppender(server, leaderState, follower);
+  public String getFunctionName() {
+    return functionName;
+  }
+
+  public boolean isCounter() {
+    return counter;
+  }
+
+  public boolean isWindowed() {
+    return windowed;
   }
 }

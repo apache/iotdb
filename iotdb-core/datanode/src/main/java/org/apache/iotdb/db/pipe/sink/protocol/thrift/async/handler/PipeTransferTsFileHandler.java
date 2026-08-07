@@ -202,9 +202,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName)
+                    dataBaseName,
+                    sink.shouldWaitForSchemaBeforeLoad())
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName,
+                    sink.shouldWaitForSchemaBeforeLoad());
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(

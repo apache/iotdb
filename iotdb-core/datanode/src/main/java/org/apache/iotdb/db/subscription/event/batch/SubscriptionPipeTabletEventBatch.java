@@ -259,7 +259,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
       final TopicConfig topicConfig =
           SubscriptionAgent.topic()
-              .getTopicConfigs(Collections.singleton(prefetchingQueue.getTopicName()))
+              .getTopicConfigs(
+                  Collections.singleton(prefetchingQueue.getTopicName()),
+                  SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()))
               .get(prefetchingQueue.getTopicName());
       if (Objects.isNull(topicConfig)) {
         return false;
@@ -331,7 +333,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
 
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                prefetchingQueue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()));
 
     final List<Tablet> prunedTablets = new ArrayList<>(tablets.right.size());
     for (final Tablet tablet : tablets.right) {

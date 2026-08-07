@@ -1015,7 +1015,7 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       final String columnFilter)
       throws Exception {
     createTopic(
-        topicName, database, tableName, TopicConstant.MODE_LIVE_VALUE, format, columnFilter);
+        topicName, database, tableName, TopicConstant.MODE_INITIAL_VALUE, format, columnFilter);
   }
 
   private void createTopic(
@@ -1032,7 +1032,8 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   private void createTopicWithoutColumnFilter(
       final String topicName, final String database, final String tableName, final String format)
       throws Exception {
-    createTopic(topicName, database, tableName, TopicConstant.MODE_LIVE_VALUE, format, "", false);
+    createTopic(
+        topicName, database, tableName, TopicConstant.MODE_INITIAL_VALUE, format, "", false);
   }
 
   private void createTopic(
