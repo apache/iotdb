@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -1447,7 +1449,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
-        exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
+        exceptionMessage =
+            req.isSetIsTableModel()
+                ? SubscriptionAgent.topic()
+                    .handleDropTopic(req.getTopicNameToDrop(), req.isIsTableModel())
+                : SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
       } else if (req.isSetTopicMeta()) {
         exceptionMessage =
             SubscriptionAgent.topic()
@@ -2292,6 +2298,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req) throws TException {
     TDataNodeHeartbeatResp resp = new TDataNodeHeartbeatResp();
 
+    // Update the fence threshold if the ConfigNode has sent a new value,
+    // then renew the metadata lease based on the latest threshold.
+    if (req.isSetFenceThresholdMs()) {
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(req.getFenceThresholdMs());
+    }
+
     // Renew the metadata lease: receiving a ConfigNode heartbeat means this DataNode is still in
     // contact with the cluster and may keep trusting its ConfigNode-pushed metadata caches.
     MetadataLeaseManager.getInstance().triggerCheckWithHeartBeat();
@@ -2349,19 +2361,38 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());
     }
+    MetadataLeaseFencedException schemaUsageCollectionException = null;
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setRegionDeviceUsageMap(
-          schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setRegionSeriesUsageMap(
-          schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+      try {
+        resp.setRegionDeviceUsageMap(
+            schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+        resp.setRegionSeriesUsageMap(
+            schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+      } catch (final MetadataLeaseFencedException e) {
+        schemaUsageCollectionException = e;
+      }
     }
     if (req.getDataRegionIds() != null) {
       spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     // Update schema quota if necessary
-    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
+    try {
+      SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
+    } catch (final MetadataLeaseFencedException e) {
+      if (schemaUsageCollectionException == null) {
+        schemaUsageCollectionException = e;
+      }
+    }
+    if (schemaUsageCollectionException != null) {
+      resp.unsetRegionDeviceUsageMap();
+      resp.unsetRegionSeriesUsageMap();
+      LOGGER.warn(
+          DataNodeSchemaMessages
+              .LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975,
+          schemaUsageCollectionException);
+    }
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {
@@ -2797,6 +2828,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
+    boolean consensusGroupDeleted = true;
     if (consensusGroupId instanceof DataRegionId) {
       try {
         DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2804,8 +2836,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteDataRegion((DataRegionId) consensusGroupId), consensusGroupDeleted);
     } else {
       try {
         SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2813,9 +2847,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId),
+          consensusGroupDeleted);
     }
+  }
+
+  private TSStatus getDeleteRegionStatus(
+      TSStatus localRegionStatus, boolean consensusGroupDeleted) {
+    if (consensusGroupDeleted
+        && localRegionStatus.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode()) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return localRegionStatus;
   }
 
   @Override

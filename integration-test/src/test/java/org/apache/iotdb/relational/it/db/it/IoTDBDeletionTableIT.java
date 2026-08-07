@@ -81,6 +81,7 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -3198,5 +3199,118 @@ public class IoTDBDeletionTableIT {
       String deleteAllTemplate = "DROP TABLE IF EXISTS vehicle%d";
       statement.execute(String.format(deleteAllTemplate, testNum));
     }
+  }
+
+  // A global aggregation without GROUP BY over zero matching rows must return exactly one row
+  // whose value is NULL (SQL standard, matching e.g. Trino), not zero rows. These cover the two
+  // empty-input shapes: a device that was never written, and a device whose data was deleted.
+
+  @Test
+  public void testLastByOverNeverWrittenDeviceReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty0(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty0(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      // 'nope' was never written, so its device set resolves to zero devices.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty0 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testThreeArgLastByOverNeverWrittenDeviceReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table last_empty4(deviceId string tag, s0 int32 field, s1 int32 field)");
+      statement.execute("insert into last_empty4(time, deviceId, s0, s1) values (1, 'd0', 1, 2)");
+      statement.execute("flush");
+
+      // 3-arg last_by(target, ordering, time) over a never-written device -> one NULL row.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, s1, time) from last_empty4 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testMultipleLastAggregatesOverNeverWrittenDeviceReturnSingleAllNullRow()
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table last_empty1(deviceId string tag, s0 int32 field, s1 int64 field)");
+      statement.execute("insert into last_empty1(time, deviceId, s0, s1) values (1, 'd0', 1, 2)");
+      statement.execute("flush");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time), last_by(s1, time) from last_empty1 where deviceId = 'nope'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testLastByOverNeverWrittenDeviceWithGroupByReturnsNoRows() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty2(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty2(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      // The one-NULL-row rule is for no-GROUP-BY only; an empty group produces no rows.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select deviceId, last_by(s0, time) from last_empty2 where deviceId = 'nope' group by deviceId")) {
+        assertFalse("GROUP BY over an empty group must return no rows", resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testLastByOverDeletedDeviceStillReturnsSingleNullRow() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_empty3(deviceId string tag, s0 int32 field)");
+      statement.execute("insert into last_empty3(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+      statement.execute("delete from last_empty3 where deviceId = 'd0'");
+
+      // The deleted device still exists in the schema; last_by must return one NULL row. Query
+      // twice to cover both the last-value-cache path and the recomputed path.
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty3 where deviceId = 'd0'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_empty3 where deviceId = 'd0'")) {
+        assertSingleAllNullRow(resultSet);
+      }
+    }
+  }
+
+  private void assertSingleAllNullRow(ResultSet resultSet) throws SQLException {
+    assertTrue("Expected exactly one result row, but got none", resultSet.next());
+    int columnCount = resultSet.getMetaData().getColumnCount();
+    for (int i = 1; i <= columnCount; i++) {
+      Object value = resultSet.getObject(i);
+      assertNull("Expected column " + i + " to be NULL, but got: " + value, value);
+    }
+    assertFalse("Expected exactly one result row, but got more than one", resultSet.next());
   }
 }

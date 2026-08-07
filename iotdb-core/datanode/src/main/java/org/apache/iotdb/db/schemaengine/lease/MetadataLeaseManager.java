@@ -21,8 +21,8 @@ package org.apache.iotdb.db.schemaengine.lease;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
@@ -74,7 +74,7 @@ public class MetadataLeaseManager {
   private final List<MetadataAction> pullMetaList;
 
   private final LongSupplier nanoClock;
-  private final LongSupplier fenceThresholdMs;
+  private volatile long fenceThresholdMs = 20000;
 
   private volatile long lastConfigNodeHeartbeatNanos;
 
@@ -95,7 +95,6 @@ public class MetadataLeaseManager {
   private MetadataLeaseManager() {
     this(
         System::nanoTime,
-        () -> CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs(),
         defaultClearCacheList(),
         defaultPullMetaList(),
         IoTDBThreadPoolFactory.newCachedThreadPool(RELOAD_TABLE_METADATA_CACHE.getName()),
@@ -117,14 +116,12 @@ public class MetadataLeaseManager {
 
   MetadataLeaseManager(
       final LongSupplier nanoClock,
-      final LongSupplier fenceThresholdMs,
       final List<MetadataAction> clearCacheList,
       final List<MetadataAction> pullMetaList,
       final ExecutorService pullExecutorService,
       final long checkDnLeaseStatusIntervalMs,
       final ScheduledExecutorService checkLeaseStatusExecutor) {
     this.nanoClock = nanoClock;
-    this.fenceThresholdMs = fenceThresholdMs;
     this.clearCacheList = new ArrayList<>(clearCacheList);
     this.pullMetaList = new ArrayList<>(pullMetaList);
     // Startup registration performs a full re-sync, so treat construction time as a fresh contact.
@@ -251,7 +248,7 @@ public class MetadataLeaseManager {
   }
 
   private boolean hasOutOfLease() {
-    return getMillisSinceLastConfigNodeHeartbeat() > fenceThresholdMs.getAsLong();
+    return getMillisSinceLastConfigNodeHeartbeat() > fenceThresholdMs;
   }
 
   /** Milliseconds elapsed since the last ConfigNode heartbeat was received (never negative). */
@@ -282,10 +279,19 @@ public class MetadataLeaseManager {
    * refuse to serve it rather than risk validating writes/queries against stale schema and
    * producing dirty data.
    */
-  public void failIfMetadataLeaseFenced() {
+  public void failIfMetadataLeaseFenced(final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     if (isFenced()) {
-      throw new MetadataLeaseFencedException(DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED);
+      throw new MetadataLeaseFencedException(
+          DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED, leaseFencedRetryPolicy);
     }
+  }
+
+  /**
+   * Update the fence threshold from the ConfigNode. Called during startup (from
+   * TRuntimeConfiguration), heartbeat, and lease recovery.
+   */
+  public void updateFenceThresholdMs(final long newValue) {
+    this.fenceThresholdMs = newValue;
   }
 
   /** Force the lease to appear expired, for tests that exercise fail-closed behavior. */
@@ -296,7 +302,7 @@ public class MetadataLeaseManager {
       metadataStateRef.set(MetadataState.NORMAL, 0);
     } else {
       this.lastConfigNodeHeartbeatNanos =
-          nanoClock.getAsLong() - (fenceThresholdMs.getAsLong() + 1_000L) * 1_000_000L;
+          nanoClock.getAsLong() - (fenceThresholdMs + 1_000L) * 1_000_000L;
     }
   }
 

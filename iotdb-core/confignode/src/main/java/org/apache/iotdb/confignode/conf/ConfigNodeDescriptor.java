@@ -312,6 +312,11 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
+    conf.setMetadataLeaseFenceMs(
+        Long.parseLong(
+            properties.getProperty(
+                "metadata_lease_fence_ms", String.valueOf(conf.getMetadataLeaseFenceMs()))));
+
     conf.setEnableTopologyProbing(
         Boolean.parseBoolean(
             properties.getProperty(

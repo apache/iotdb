@@ -27,7 +27,10 @@ import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
+import org.eclipse.milo.opcua.stack.core.util.EndpointUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +40,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Security;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
@@ -54,6 +60,7 @@ public class ClientRunner {
   private final Path securityDir;
   private final String password;
   private final long timeoutSeconds;
+  private final boolean allowEndpointRedirect;
 
   // For conflict checking
   private final String user;
@@ -64,11 +71,22 @@ public class ClientRunner {
       final String password,
       final String user,
       final long timeoutSeconds) {
+    this(configurableUaClient, securityDir, password, user, timeoutSeconds, false);
+  }
+
+  public ClientRunner(
+      final IoTDBOpcUaClient configurableUaClient,
+      final String securityDir,
+      final String password,
+      final String user,
+      final long timeoutSeconds,
+      final boolean allowEndpointRedirect) {
     this.configurableUaClient = configurableUaClient;
     this.securityDir = Paths.get(securityDir);
     this.password = password;
     this.user = user;
     this.timeoutSeconds = timeoutSeconds;
+    this.allowEndpointRedirect = allowEndpointRedirect;
     configurableUaClient.setRunner(this);
   }
 
@@ -93,7 +111,12 @@ public class ClientRunner {
 
     return OpcUaClient.create(
         configurableUaClient.getNodeUrl(),
-        endpoints -> endpoints.stream().filter(configurableUaClient.endpointFilter()).findFirst(),
+        endpoints ->
+            selectEndpoint(
+                endpoints,
+                configurableUaClient.getNodeUrl(),
+                configurableUaClient.getSecurityPolicy(),
+                allowEndpointRedirect),
         configBuilder ->
             configBuilder
                 .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA client"))
@@ -107,6 +130,66 @@ public class ClientRunner {
                 .setConnectTimeout(uint(timeoutSeconds * 1000L))
                 .setMaxResponseMessageSize(uint(0))
                 .build());
+  }
+
+  static Optional<EndpointDescription> selectEndpoint(
+      final List<EndpointDescription> endpoints,
+      final String configuredNodeUrl,
+      final SecurityPolicy securityPolicy,
+      final boolean allowEndpointRedirect) {
+    final String configuredScheme = normalizeScheme(EndpointUtil.getScheme(configuredNodeUrl));
+
+    return endpoints.stream()
+        .filter(endpoint -> securityPolicy.getUri().equals(endpoint.getSecurityPolicyUri()))
+        .filter(endpoint -> matchesConfiguredTransport(endpoint, configuredScheme))
+        .findFirst()
+        .map(
+            advertisedEndpoint -> {
+              final EndpointDescription effectiveEndpoint =
+                  allowEndpointRedirect
+                      ? advertisedEndpoint
+                      : EndpointUtil.updateUrl(
+                          advertisedEndpoint,
+                          EndpointUtil.getHost(configuredNodeUrl),
+                          EndpointUtil.getPort(configuredNodeUrl));
+              logger.info(
+                  DataNodePipeMessages
+                      .LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB,
+                  configuredNodeUrl,
+                  advertisedEndpoint.getEndpointUrl(),
+                  effectiveEndpoint.getEndpointUrl(),
+                  allowEndpointRedirect);
+              return effectiveEndpoint;
+            });
+  }
+
+  private static boolean matchesConfiguredTransport(
+      final EndpointDescription endpoint, final String configuredScheme) {
+    if (Objects.isNull(configuredScheme)
+        || !Objects.equals(
+            configuredScheme, normalizeScheme(EndpointUtil.getScheme(endpoint.getEndpointUrl())))) {
+      return false;
+    }
+
+    final String transportProfileUri = endpoint.getTransportProfileUri();
+    if (Objects.isNull(transportProfileUri)) {
+      return true;
+    }
+    try {
+      return Objects.equals(
+          configuredScheme,
+          normalizeScheme(TransportProfile.fromUri(transportProfileUri).getScheme()));
+    } catch (final IllegalArgumentException ignored) {
+      // Preserve compatibility with servers that advertise a custom transport profile. The
+      // endpoint URL scheme still has to match the configured URL.
+      return true;
+    }
+  }
+
+  private static String normalizeScheme(final String scheme) {
+    return Objects.nonNull(scheme) && scheme.equalsIgnoreCase("opc.https")
+        ? "https"
+        : Objects.isNull(scheme) ? null : scheme.toLowerCase(Locale.ROOT);
   }
 
   public void run() {
@@ -143,7 +226,8 @@ public class ClientRunner {
       final String user,
       final String password,
       final Path securityDir,
-      final SecurityPolicy securityPolicy) {
+      final SecurityPolicy securityPolicy,
+      final boolean allowEndpointRedirect) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(
@@ -151,6 +235,7 @@ public class ClientRunner {
         FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
         FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("securityPolicy", configurableUaClient.getSecurityPolicy(), securityPolicy);
+    checkEquals("allow endpoint redirect", this.allowEndpointRedirect, allowEndpointRedirect);
   }
 
   private void checkEquals(final String attrName, Object thisAttr, Object thatAttr) {

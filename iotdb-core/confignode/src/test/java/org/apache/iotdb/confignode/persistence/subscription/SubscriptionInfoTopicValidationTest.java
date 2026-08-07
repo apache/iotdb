@@ -38,7 +38,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testValidateColumnFilterOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name IN (\"id1\", \"m1\")");
 
     Assert.assertTrue(
@@ -58,7 +58,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testColumnFilterKeyIsCaseInsensitiveOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put("Column-Filter", "column_name = \"id1\"");
 
     Assert.assertTrue(
@@ -69,7 +69,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectDuplicateColumnFilterKeys() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
     attributes.put("Column-Filter", "column_name = \"m1\"");
 
@@ -88,16 +88,16 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectDuplicateTopicConfigKeys() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put("Mode", TopicConstant.MODE_SNAPSHOT_VALUE);
 
     assertCreateRejected(subscriptionInfo, attributes, "duplicate mode");
   }
 
   @Test
-  public void testAcceptColumnFilterOnLiveTsFileTableTopic() throws Exception {
+  public void testAcceptColumnFilterOnInitialTsFileTableTopic() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
 
@@ -107,18 +107,57 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectLegacyTsFileAliasOnConsensusTopic() {
+  public void testRejectLegacyTsFileAliasOnIncrementalTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.FORMAT_KEY, "TsFileHandler");
 
-    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=incremental only supports format");
+  }
+
+  @Test
+  public void testRejectUnsupportedAttributesOnIncrementalTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=incremental does not support topic attributes [processor, start-time, strict]");
+  }
+
+  @Test
+  public void testRejectUnknownAttributeOnIncrementalTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put("unknown-attribute", "value");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=incremental does not support topic attributes [unknown-attribute]");
+  }
+
+  @Test
+  public void testAllowPipeAttributesOnInitialTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
   }
 
   @Test
   public void testRejectEmptyColumnFilter() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, " ");
 
     assertCreateRejected(subscriptionInfo, attributes, "column-filter should not be empty");
@@ -127,12 +166,12 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testAcceptAlteringColumnFilter() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> originalAttributes = newConsensusTableTopicAttributes();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
     originalAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
     subscriptionInfo.createTopic(
         new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
 
-    final Map<String, String> updatedAttributes = newConsensusTableTopicAttributes();
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
     updatedAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"m1\"");
 
     subscriptionInfo.validateBeforeAlteringTopic(
@@ -142,7 +181,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testValidateRetentionConfigOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1048576");
     attributes.put(TopicConstant.RETENTION_MS_KEY, "-1");
 
@@ -154,17 +193,17 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectRetentionOnTsFileTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
-    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=incremental only supports format");
   }
 
   @Test
   public void testRejectIllegalRetentionValue() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "0");
 
     assertCreateRejected(subscriptionInfo, attributes, "expected -1 or a positive long value");
@@ -173,7 +212,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectIllegalRetentionFormat() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_MS_KEY, "1h");
 
     assertCreateRejected(subscriptionInfo, attributes, "expected a long value");
@@ -182,12 +221,12 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectAlteringRetentionConfig() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> originalAttributes = newConsensusTableTopicAttributes();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
     originalAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
     subscriptionInfo.createTopic(
         new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
 
-    final Map<String, String> updatedAttributes = newConsensusTableTopicAttributes();
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
     updatedAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "2048");
 
     try {
@@ -208,10 +247,41 @@ public class SubscriptionInfoTopicValidationTest {
     assertCreateRejected(subscriptionInfo, attributes, "unsupported mode");
   }
 
+  @SuppressWarnings("deprecation")
   @Test
-  public void testAcceptColumnFilterOnLiveTableTopic() throws Exception {
+  public void testAcceptLegacyModeValues() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+
+    final Map<String, String> liveAttributes = newInitialTableTopicAttributes();
+    liveAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("live_topic").setTopicAttributes(liveAttributes)));
+
+    final Map<String, String> consensusAttributes = newIncrementalTableTopicAttributes();
+    consensusAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("consensus_topic").setTopicAttributes(consensusAttributes)));
+  }
+
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testAllowAlteringModeFromLegacyAliasToCanonicalValue() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newInitialTableTopicAttributes();
+    originalAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, newInitialTableTopicAttributes()));
+  }
+
+  @Test
+  public void testAcceptColumnFilterOnInitialTableTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
 
     Assert.assertTrue(
@@ -220,12 +290,12 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectConsensusOnlyRetentionOnLiveTopic() {
+  public void testRejectIncrementalOnlyRetentionOnInitialTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
-    assertCreateRejected(subscriptionInfo, attributes, "only supported for consensus topics");
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
   }
 
   @Test
@@ -255,18 +325,18 @@ public class SubscriptionInfoTopicValidationTest {
             new TCreateTopicReq("owner_topic").setTopicAttributes(attributes)));
   }
 
-  private static Map<String, String> newConsensusTableTopicAttributes() {
+  private static Map<String, String> newIncrementalTableTopicAttributes() {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
     return attributes;
   }
 
-  private static Map<String, String> newLiveTableTopicAttributes() {
+  private static Map<String, String> newInitialTableTopicAttributes() {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
     return attributes;
   }

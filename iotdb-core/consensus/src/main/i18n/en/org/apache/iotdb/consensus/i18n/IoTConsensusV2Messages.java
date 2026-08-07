@@ -39,9 +39,6 @@ public final class IoTConsensusV2Messages {
       "Failed to recover consensus from {} for {}, ignore it and continue recover other group, async backend checker thread will automatically deregister related pipe side effects for this failed consensus group.";
   public static final String FAILED_RECOVER_CONSENSUS_READ_DIR =
       "Failed to recover consensus from {} because read dir failed";
-  public static final String FAILED_RECOVER_CONSENSUS_SHORT =
-      "Failed to recover consensus from {}";
-
   // ===================== IoTConsensusV2 peer operations =====================
 
   public static final String START_DELETE_LOCAL_PEER =

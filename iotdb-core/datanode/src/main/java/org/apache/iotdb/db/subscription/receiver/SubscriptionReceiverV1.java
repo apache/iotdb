@@ -373,7 +373,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
+        SubscriptionAgent.topic()
+            .getTopicConfigs(subscribedTopicNames, isTableModel(consumerConfig));
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -462,7 +463,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
@@ -508,7 +510,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
@@ -658,9 +661,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                         SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                             commitContext.getConsumerGroupId(), commitContext.getTopicName());
                     if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
-                        commitContext.getTopicName())) {
+                        commitContext.getTopicName(), isTableModel(consumerConfig))) {
                       ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
-                          .mark(queueId, size);
+                          .mark(queueId, commitContext.getRegionId(), size);
                     } else {
                       SubscriptionPrefetchingQueueMetrics.getInstance().mark(queueId, size);
                     }
@@ -1069,7 +1072,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig));
 
     // fetch topics should be unsubscribed
     final List<String> topicNamesToUnsubscribe =
@@ -1273,5 +1277,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return Math.max(
         SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs(),
         consumerConfig.getHeartbeatIntervalMs() * HEARTBEAT_TIMEOUT_MULTIPLIER);
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(consumerConfig.getSqlDialect());
   }
 }

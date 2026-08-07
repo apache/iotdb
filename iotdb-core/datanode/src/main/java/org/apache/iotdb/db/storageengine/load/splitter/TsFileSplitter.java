@@ -44,6 +44,7 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.reader.BufferedTsFileInput;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
@@ -97,7 +98,8 @@ public class TsFileSplitter {
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
       throws IOException, LoadFileException, IllegalStateException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(new BufferedTsFileInput(tsFile.toPath()), true, false, null)) {
       getAllModification(deletions);
 
       if (!checkMagic(reader)) {

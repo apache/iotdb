@@ -289,6 +289,7 @@ struct TDataNodeHeartbeatReq {
   // Using 8 bit to represent 8 bool
   // lowest bit: enable separation of admin powers
   16: optional byte booleanVariables1
+  17: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeActivation {
@@ -566,6 +567,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -593,6 +595,7 @@ struct TTopicOwnerLeaseEntry {
   2: required string ownerId
   3: required i64 ownerEpoch
   4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
 }
 
 struct TPushTopicOwnerLeaseReq {

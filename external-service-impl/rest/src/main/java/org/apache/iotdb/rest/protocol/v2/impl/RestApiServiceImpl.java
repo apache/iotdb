@@ -185,7 +185,9 @@ public class RestApiServiceImpl extends RestApiService {
     } catch (Exception e) {
       finish = true;
       t = e;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long endTime = System.nanoTime();
       long costTime = endTime - startTime;
@@ -265,7 +267,8 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response =
+          authorizationHandler.checkAuthority(securityContext, statement, sql.getSql());
       if (response != null) {
         return response;
       }
@@ -284,7 +287,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       if (statement != null) {
@@ -368,7 +373,9 @@ public class RestApiServiceImpl extends RestApiService {
       }
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -418,7 +425,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertRowsStatement)
@@ -472,7 +481,9 @@ public class RestApiServiceImpl extends RestApiService {
               false);
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)

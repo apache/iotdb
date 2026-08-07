@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -156,9 +155,6 @@ public class AbstractCompactionTest {
   private final long oldLongestExpiredTime =
       IoTDBDescriptor.getInstance().getConfig().getMaxExpiredTime();
 
-  private final long oldMetadataLeaseFenceMs =
-      CommonDescriptor.getInstance().getConfig().getMetadataLeaseFenceMs();
-
   protected static File STORAGE_GROUP_DIR =
       new File(
           TestConstant.BASE_OUTPUT_PATH
@@ -205,7 +201,7 @@ public class AbstractCompactionTest {
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
-    CommonDescriptor.getInstance().getConfig().setMetadataLeaseFenceMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
     MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     fileCount = 0;
     if (!SEQ_DIRS.exists()) {
@@ -502,7 +498,7 @@ public class AbstractCompactionTest {
         .getConfig()
         .setInnerCompactionTaskSelectionModsFileThreshold(oldModsFileSize);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(oldLongestExpiredTime);
-    CommonDescriptor.getInstance().getConfig().setMetadataLeaseFenceMs(oldMetadataLeaseFenceMs);
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
     MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 

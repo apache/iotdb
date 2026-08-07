@@ -36,6 +36,9 @@ public final class DataNodeSchemaMessages {
       "SchemaRegion(id = {}) has been deleted, skiped";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "Metadata lease is fenced. Skip reporting schema usage in this heartbeat.";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "The table %s.%s is a view from tree, cannot be written or deleted from";
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";
@@ -574,6 +577,8 @@ public final class DataNodeSchemaMessages {
       "commit delete table {}.{} successfully.";
   public static final String FAILED_TO_REFRESH_CACHE_FROM_CN =
       "Failed to refresh DataNodeTableCache from ConfigNode";
+  public static final String FAILED_TO_GET_FENCE_THRESHOLD_FROM_CN =
+      "Failed to get fence threshold from ConfigNode during lease recovery";
   public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
       "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
@@ -604,6 +609,8 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_PULL_OR_INIT_METADATA = "Failed to pull or init metadata.";
   public static final String METADATA_LEASE_IS_FENCED =
       "Metadata lease is fenced. The local metadata cache is unavailable.";
+  public static final String UPDATED_METADATA_LEASE_FENCE_THRESHOLD =
+      "Updated metadata lease fence threshold to {} ms";
 
   // ======================== ClusterTemplateManager ========================
 
@@ -726,6 +733,7 @@ public final class DataNodeSchemaMessages {
       "This view contains aggregation function(s) named [%s]";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext is null";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator is null";
+  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "Failed to create state machine for consensus group %s, because schema region does not exist";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";

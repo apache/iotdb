@@ -239,7 +239,8 @@ public class StorageEngine implements IService {
               checkResults(futures, StorageEngineMessages.STORAGE_ENGINE_FAILED_TO_RECOVER);
               isReadyForReadAndWrite.set(true);
               LOGGER.info(
-                  StorageEngineMessages.STORAGE_LOG_STORAGE_ENGINE_RECOVER_COST_S_C8AEE9D9,
+                  StorageEngineMessages
+                      .STORAGE_LOG_STORAGE_ENGINE_LOCAL_RECOVERY_TASKS_FINISHED_IN_ARGS_03F9135F,
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -269,7 +270,8 @@ public class StorageEngine implements IService {
               }
               dataRegionMap.put(dataRegionId, dataRegion);
               LOGGER.info(
-                  StorageEngineMessages.STORAGE_LOG_DATA_REGIONS_HAVE_BEEN_RECOVERED_D5BD3A80,
+                  StorageEngineMessages
+                      .STORAGE_LOG_LOCAL_DATAREGION_LOADING_PROGRESS_ARG_ARG_8146929B,
                   readyDataRegionNum.incrementAndGet(),
                   recoverDataRegionNum);
               return null;
@@ -821,9 +823,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
     if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+      return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
     }
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
@@ -880,10 +882,13 @@ public class StorageEngine implements IService {
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
+        return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
       } finally {
         deletingDataRegionMap.remove(regionId);
       }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+    return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
   }
 
   /**

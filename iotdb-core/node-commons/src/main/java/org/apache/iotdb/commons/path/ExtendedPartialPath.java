@@ -21,12 +21,15 @@ package org.apache.iotdb.commons.path;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class ExtendedPartialPath extends PartialPath {
   private final Map<Integer, List<Function<String, Boolean>>> matchFunctions = new HashMap<>();
+  private final Map<Integer, Set<String>> multiExactMatchNodes = new HashMap<>();
   private final boolean isRestrict;
 
   public ExtendedPartialPath(final String[] nodes, final boolean isRestrict) {
@@ -39,6 +42,10 @@ public class ExtendedPartialPath extends PartialPath {
   }
 
   public boolean match(final int index, final String value) {
+    if (multiExactMatchNodes.containsKey(index)
+        && !multiExactMatchNodes.get(index).contains(value)) {
+      return false;
+    }
     if (!matchFunctions.containsKey(index)) {
       return true;
     }
@@ -49,8 +56,31 @@ public class ExtendedPartialPath extends PartialPath {
     matchFunctions.computeIfAbsent(index, k -> new ArrayList<>()).add(matchFunction);
   }
 
+  public void addMultiExactMatch(final int index, final Set<String> values) {
+    multiExactMatchNodes.compute(
+        index,
+        (key, existingValues) -> {
+          if (existingValues == null) {
+            final Set<String> copiedValues = new HashSet<>(values);
+            copiedValues.remove(null);
+            return copiedValues;
+          }
+          existingValues.retainAll(values);
+          existingValues.remove(null);
+          return existingValues;
+        });
+  }
+
+  public boolean hasMultiExactMatch(final int index) {
+    return multiExactMatchNodes.containsKey(index);
+  }
+
+  public Set<String> getMultiExactMatch(final int index) {
+    return multiExactMatchNodes.get(index);
+  }
+
   public boolean isNormalPath() {
-    return matchFunctions.isEmpty();
+    return matchFunctions.isEmpty() && multiExactMatchNodes.isEmpty();
   }
 
   @Override
@@ -60,6 +90,8 @@ public class ExtendedPartialPath extends PartialPath {
         + getFullPath()
         + ", matchFunctions="
         + matchFunctions
+        + ", multiExactMatchNodes="
+        + multiExactMatchNodes
         + ", isRestrict="
         + isRestrict
         + '}';

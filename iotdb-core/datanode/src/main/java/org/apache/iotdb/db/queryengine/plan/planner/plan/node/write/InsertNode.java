@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -150,6 +152,12 @@ public abstract class InsertNode extends SearchNode {
 
   public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
+  }
+
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    setDataRegionReplicaSet(null);
   }
 
   public PartialPath getTargetPath() {
@@ -277,6 +285,43 @@ public abstract class InsertNode extends SearchNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException(
         DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
+  }
+
+  /**
+   * Returns the exact number of bytes written by {@link #serializeToByteBuffer()}.
+   *
+   * @return the serialized buffer size
+   */
+  public final int serializeToByteBufferSize() {
+    // InsertNode has no children, so PlanNode.serialize only writes the child count here.
+    return serializedAttributesSize() + serializedPlanNodeIdSize() + Integer.BYTES;
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS(serializeToByteBufferSize());
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (final IOException e) {
+      throw new SerializationRunTimeException(e);
+    }
+  }
+
+  /**
+   * Returns the exact number of bytes written by the attribute serializer.
+   *
+   * @return the serialized attribute size
+   */
+  protected abstract int serializedAttributesSize();
+
+  /**
+   * Returns the exact number of bytes written by the plan node id serializer.
+   *
+   * @return the serialized plan node id size
+   */
+  protected int serializedPlanNodeIdSize() {
+    return ReadWriteIOUtils.sizeToWrite(getPlanNodeId().getId());
   }
 
   // region Serialization methods for WAL

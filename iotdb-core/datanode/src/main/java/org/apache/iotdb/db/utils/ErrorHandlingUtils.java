@@ -134,7 +134,9 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
             || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
             || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_READ_TSFILE.getStatusCode()
+            || status.getCode() == TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);

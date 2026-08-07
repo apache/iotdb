@@ -434,6 +434,8 @@ public final class DataNodePipeMessages {
       "Failed to send request {} (watermark = {}) to {}";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "Failed to trigger combine. watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "Failed to initialize StateProgressIndex from progress index %s.";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "Failure occurred when trying to commit progress index. timestamp={}, count={}, "
           + "progressIndex={}";
@@ -651,8 +653,8 @@ public final class DataNodePipeMessages {
       "When '{}' ('{}') is set to false, specifying {} and {} is invalid.";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "When '{}' ('{}', '{}', '{}') is set to true, specifying {} and {} is invalid.";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "When {}, {}, {} or {} is specified, specifying {}, {}, {} or {} is invalid.";
 
   // ===================== SINK =====================
 
@@ -945,6 +947,9 @@ public final class DataNodePipeMessages {
       "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
+  public static final String
+      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
+          "OPC UA endpoint selected: configured={}, advertised={}, effective={}, allowEndpointRedirect={}.";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "When %s or %s is true, specify a complete trust-store pair under the same "
           + "alias: %s and %s, %s and %s, or %s and %s";
@@ -1315,8 +1320,6 @@ public final class DataNodePipeMessages {
       "Receiver id = {}: Failure status encountered while executing statement {}: {}";
   public static final String RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT =
       "Receiver id = {}: Exception encountered while executing statement {}: ";
-  public static final String RECEIVER_ID_STATEMENT_EXCEPTION_MESSAGE =
-      "Receiver id = {}, statement = {}, exception = {}, message = {}";
   public static final String UNKNOWN_PIPEREQUESTTYPE = "Unknown PipeRequestType %s.";
   public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST =
       "Exception %s encountered while handling request %s.";
@@ -1535,6 +1538,14 @@ public final class DataNodePipeMessages {
   public static final String UNABLE_CREATE_SECURITY_DIR = "Unable to create security dir: ";
   public static final String OPC_UA_SECURITY_DIR = "Security dir: {}";
   public static final String OPC_UA_SECURITY_PKI_DIR = "Security pki dir: {}";
+  public static final String
+      EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
+          "The advertised host must be a hostname or IP address without a scheme, port, or path.";
+  public static final String
+      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
+          "Advertised host {} is not present in the loaded OPC UA server certificate subject "
+              + "alternative names. Secured clients may reject it; replace or regenerate the "
+              + "certificate and establish trust again.";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -2009,10 +2020,15 @@ public final class DataNodePipeMessages {
           + "runtimeVersion {} -> {}, runtimeState={} (route hint)";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "Failed to check if topic [{}] is consensus-based, defaulting to false";
-  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
       "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
-          + "mode=consensus only supports data_region_consensus_protocol_class={}, but current "
+          + "mode=incremental only supports data_region_consensus_protocol_class={}, but current "
           + "configured value is {} (runtime consensus implementation: {})";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67 =
+          "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
+              + "mode=incremental only supports data_region_consensus_protocol_class=%s, but "
+              + "current configured value is %s (runtime consensus implementation: %s)";
   public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
       "Topic config not found for topic [{}], cannot set up consensus queue";
   public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =
@@ -2541,8 +2557,10 @@ public final class DataNodePipeMessages {
       "Incomplete column values in current tablet format deserialization.";
   public static final String EXCEPTION_INCOMPLETE_TIMESTAMPS_IN_CURRENT_TABLET_FORMAT_DESERIALIZATION_FE212461 =
       "Incomplete timestamps in current tablet format deserialization.";
-  public static final String MESSAGE_RECEIVER_ARG_IS_TEMPORARILY_UNAVAILABLE_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_F37192D9 =
-      "Receiver {} is temporarily unavailable, throttle requests for {} ms. Status: {}";
+  public static final String MESSAGE_RECEIVER_ARG_REQUIRES_A_RETRY_THROTTLE_REQUESTS_FOR_ARG_MS_STATUS_ARG_0B3B14F6 =
+      "Receiver {} requires a retry, throttle requests for {} ms. Status: {}";
+  public static final String EXCEPTION_RECEIVER_ARG_HAS_REQUIRED_RETRIES_FOR_MORE_THAN_ARG_MS_PAUSE_REGULAR_RETRIES_AND_PROBE_EVERY_ARG_MS_550475C2 =
+      "Receiver %s has required retries for more than %d ms, pause regular retries and probe every %d ms.";
   public static final String MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C =
       "Successfully transferred batched schema events, batch size {}.";
   public static final String EXCEPTION_AUTO_CREATE_TREE_DATABASE_FAILED_ARG_STATUS_CODE_ARG_C6175C27 =
@@ -2572,4 +2590,6 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
+      "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
 }

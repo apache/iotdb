@@ -80,6 +80,7 @@ import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -99,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPla
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -188,6 +190,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private volatile boolean schemaRegionConsensusStarted = false;
   private volatile boolean dataRegionConsensusStarted = false;
+  private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
   protected DataNodeContext context;
 
@@ -531,6 +534,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store superuser name */
     AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
+
+    /* Store metadata lease fence threshold from ConfigNode */
+    MetadataLeaseManager.getInstance()
+        .updateFenceThresholdMs(runtimeConfiguration.getFenceThresholdMs());
+    logger.info(
+        DataNodeSchemaMessages.UPDATED_METADATA_LEASE_FENCE_THRESHOLD,
+        runtimeConfiguration.getFenceThresholdMs());
   }
 
   /**
@@ -808,12 +818,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error(DataNodeMiscMessages.MEET_ERROR_STARTING_UP, e);
       throw e;
     }
-    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
-
     try {
       long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, schemaEngineRecoveryTimeInMs);
       logger.info(
           DataNodeMiscMessages
               .MISC_LOG_SCHEMAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_3D1B8523,
@@ -831,6 +840,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (IOException e) {
       throw new StartupException(e);
     }
+    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
   }
 
   void processPid() {
@@ -890,7 +900,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
     }
     long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.WAIT_DATABASES_READY, (endTime - startTime));
+    logger.info(
+        DataNodeMiscMessages
+            .MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C,
+        (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -1324,8 +1337,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void initSchemaEngine() {
     long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, (endTime - startTime));
+    schemaEngineRecoveryTimeInMs = System.currentTimeMillis() - startTime;
   }
 
   private void classLoader() {

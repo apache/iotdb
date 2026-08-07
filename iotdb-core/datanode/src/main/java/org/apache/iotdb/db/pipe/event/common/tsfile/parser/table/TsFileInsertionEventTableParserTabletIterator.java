@@ -58,12 +58,12 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -137,9 +137,12 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
     fileMetadata = this.metadataQuerier.getWholeFileMetadata();
     final List<Map.Entry<String, TableSchema>> tableSchemaList =
-        fileMetadata.getTableSchemaMap().entrySet().stream()
-            .filter(predicate)
-            .collect(Collectors.toList());
+        new ArrayList<>(fileMetadata.getTableSchemaMap().size());
+    for (final Map.Entry<String, TableSchema> entry : fileMetadata.getTableSchemaMap().entrySet()) {
+      if (predicate.test(entry)) {
+        tableSchemaList.add(entry);
+      }
+    }
 
     this.allocatedMemoryBlockForTablet = allocatedMemoryBlockForTablet;
     this.allocatedMemoryBlockForBatchData = allocatedMemoryBlockForBatchData;
@@ -250,10 +253,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
               final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-              dataTypeList = new ArrayList<>();
-              columnTypes = new ArrayList<>();
-              measurementList = new ArrayList<>();
-              fieldSchemaList = new ArrayList<>();
+              dataTypeList = new ArrayList<>(columnSchemaSize);
+              columnTypes = new ArrayList<>(columnSchemaSize);
+              measurementList = new ArrayList<>(columnSchemaSize);
+              fieldSchemaList = new ArrayList<>(columnSchemaSize);
 
               for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
@@ -364,28 +367,27 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     timeChunk.getData().rewind();
     long size = timeChunkSize;
 
-    final List<Chunk> valueChunkList = new ArrayList<>();
+    final int fieldSchemaSize = fieldSchemaList.size();
+    final List<Chunk> valueChunkList = new ArrayList<>(fieldSchemaSize);
     final Map<String, IChunkMetadata> valueChunkMetadataMap =
-        alignedChunkMetadata.getValueChunkMetadataList().stream()
-            .filter(Objects::nonNull)
-            .filter(
-                metadata ->
-                    !isFieldDeletedByMods(
-                        metadata.getMeasurementUid(),
-                        alignedChunkMetadata.getStartTime(),
-                        alignedChunkMetadata.getEndTime()))
-            .collect(
-                Collectors.toMap(
-                    IChunkMetadata::getMeasurementUid,
-                    metadata -> metadata,
-                    (left, right) -> left));
+        new HashMap<>((int) (fieldSchemaSize / 0.75f) + 1);
+    for (final IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (metadata != null
+          && !isFieldDeletedByMods(
+              metadata.getMeasurementUid(),
+              alignedChunkMetadata.getStartTime(),
+              alignedChunkMetadata.getEndTime())) {
+        // Keep the first metadata entry to preserve the former merge-function behavior.
+        valueChunkMetadataMap.putIfAbsent(metadata.getMeasurementUid(), metadata);
+      }
+    }
 
     // To ensure that the Tablet has the same alignedChunk column as the current one,
     // you need to create a new Tablet to fill in the data.
     isSameDeviceID = false;
 
     // Need to ensure that columnTypes recreates an array
-    final List<ColumnCategory> categories = new ArrayList<>(deviceIdSize);
+    final List<ColumnCategory> categories = new ArrayList<>(deviceIdSize + fieldSchemaSize);
     for (int i = 0; i < deviceIdSize; i++) {
       categories.add(ColumnCategory.TAG);
     }
