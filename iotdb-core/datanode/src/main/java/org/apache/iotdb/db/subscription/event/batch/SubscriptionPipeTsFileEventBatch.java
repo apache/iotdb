@@ -158,7 +158,10 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   private Tablet pruneTableModelTablet(final String databaseName, final Tablet tablet) {
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                prefetchingQueue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()));
     return TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, matcher);
   }
 }

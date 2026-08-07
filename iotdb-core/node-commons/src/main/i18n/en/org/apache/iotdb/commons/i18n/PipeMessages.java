@@ -925,6 +925,7 @@ public final class PipeMessages {
   public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 =
       "Failed to remove subscription from consumer group meta: consumer %s does not exist in"
       + " consumer group %s";
+  public static final String EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 = "Failed to create consumer %s because inconsistent sql dialect under the same consumer group, expected %s, actual %s";
   public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
   public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "capture.tree can not be specified to false when double living is enabled";
   public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "capture.table can not be specified to false when double living is enabled";

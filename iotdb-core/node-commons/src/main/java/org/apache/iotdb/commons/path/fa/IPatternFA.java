@@ -59,6 +59,14 @@ public interface IPatternFA {
   int getFuzzyMatchTransitionSize(IFAState state);
 
   /**
+   * @param state the source state of the transitions
+   * @return whether the precise transitions from this state represent a multi-exact match
+   */
+  default boolean hasMultiExactMatchTransitions(IFAState state) {
+    return false;
+  }
+
+  /**
    * @param sourceState source state
    * @param transition transition that the source state has
    * @return next state
