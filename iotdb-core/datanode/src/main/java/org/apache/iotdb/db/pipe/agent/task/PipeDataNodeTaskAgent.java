@@ -642,7 +642,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     persistThread.setDaemon(true);
 
     LOGGER.info(
-        "Start to persist all pipe progress indexes during shutdown, pipe count {}, timeout {} ms.",
+        "Start to persist all pipe progress indexes during shutdown, pipe count: {}, timeout: {} ms.",
         getPipeCount(),
         normalizedTimeoutInMs);
     persistThread.start();
@@ -693,7 +693,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               .mapToInt(ByteBuffer::remaining)
               .sum();
       LOGGER.info(
-          "Collected pipe metas for shutdown progress persist, pipe count {}, pipe meta count {}, pipe meta size {} bytes, cost {} ms.",
+          "Collected pipe metas for shutdown progress persist, local pipe count: {}, "
+              + "collected pipe meta count: {}, total serialized size: {} bytes, cost: {} ms.",
           pipeCount,
           pipeMetaCount,
           pipeMetaSizeInBytes,
@@ -702,7 +703,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       if (resp.getPipeMetaList().isEmpty()) {
         if (pipeCount != 0) {
           LOGGER.info(
-              "Collected empty pipe metas during shutdown while pipe count is {}.", pipeCount);
+              "Collected empty pipe metas during shutdown while local pipe count is {}.",
+              pipeCount);
           return false;
         }
         return true;
@@ -711,7 +713,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       try (final ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         LOGGER.info(
-            "Start to push heartbeat shutdown pipe meta to ConfigNode, data node id {}, pipe count {}, pipe meta count {}, pipe meta size {} bytes.",
+            "Start to push shutdown pipe meta heartbeat to ConfigNode, dataNodeId: {}, "
+                + "local pipe count: {}, collected pipe meta count: {}, total serialized size: {} bytes.",
             IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
             pipeCount,
             pipeMetaCount,
@@ -722,20 +725,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
         final long pushCostTime = System.currentTimeMillis() - pushStartTime;
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-          LOGGER.warn("Failed to persist progress index to ConfigNode, status: {}", result);
+          LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
           LOGGER.warn(
-              "Failed to push heartbeat shutdown pipe meta to ConfigNode, status {}, cost {} ms.",
+              "Failed to push shutdown pipe meta heartbeat to ConfigNode, status: {}, cost {} ms.",
               result,
               pushCostTime);
           return false;
         } else {
           LOGGER.info(
-              "Successfully finished pushing heartbeat shutdown pipe meta to ConfigNode, pipe count {}, pipe meta count {}, pipe meta size {} bytes, cost {} ms.",
+              "Successfully pushed shutdown pipe meta heartbeat to ConfigNode, local pipe count: {}, "
+                  + "collected pipe meta count: {}, total serialized size: {} bytes, cost {} ms.",
               pipeCount,
               pipeMetaCount,
               pipeMetaSizeInBytes,
               pushCostTime);
-          LOGGER.info("Successfully persisted all pipe's info to ConfigNode.");
+          LOGGER.info("Successfully persisted all pipe's info to configNode.");
           return true;
         }
       }
