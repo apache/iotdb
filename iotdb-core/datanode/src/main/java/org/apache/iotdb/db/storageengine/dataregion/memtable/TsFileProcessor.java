@@ -1611,10 +1611,28 @@ public class TsFileProcessor {
 
   /** async close one tsfile, register and close it by another thread */
   public Future<?> asyncClose() {
+    return asyncClose(false);
+  }
+
+  /**
+   * Tries to close this TsFile after any previous ordinary flush has finished.
+   *
+   * <p>If an ordinary flush is still being managed by the flush manager, this method only returns
+   * that flush's future. The caller must wait for it and retry until {@link
+   * #alreadyMarkedClosing()} becomes {@code true}. This avoids adding a close signal while the old
+   * flush task is about to leave the flush manager.
+   */
+  public Future<?> asyncCloseForFullFlush() {
+    return asyncClose(true);
+  }
+
+  private Future<?> asyncClose(final boolean ignorePreviousFlushFuture) {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
-      if (closeFuture != null) {
+      if (shouldClose
+          || managedByFlushManager
+          || (!ignorePreviousFlushFuture && closeFuture != null)) {
         return closeFuture;
       }
 
@@ -1665,12 +1683,12 @@ public class TsFileProcessor {
             dataRegionName,
             tsFileResource.getTsFile().getName(),
             e);
+        return CompletableFuture.failedFuture(e);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();
     }
-    return CompletableFuture.completedFuture(null);
   }
 
   /** Put the working memtable into flushing list and set the working memtable to null */
@@ -2117,9 +2135,27 @@ public class TsFileProcessor {
   }
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
-    this.managedByFlushManager = managedByFlushManager;
+    flushQueryLock.writeLock().lock();
+    try {
+      this.managedByFlushManager = managedByFlushManager;
+      if (!managedByFlushManager) {
+        closeFuture = CompletableFuture.completedFuture(null);
+      }
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
     if (!managedByFlushManager) {
-      closeFuture = CompletableFuture.completedFuture(null);
+      synchronized (this) {
+        notifyAll();
+      }
+    }
+  }
+
+  public void waitUntilFlushManagerReleased() throws InterruptedException {
+    synchronized (this) {
+      while (managedByFlushManager) {
+        wait();
+      }
     }
   }
 

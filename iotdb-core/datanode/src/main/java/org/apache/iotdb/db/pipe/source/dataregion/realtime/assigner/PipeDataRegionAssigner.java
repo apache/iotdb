@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
@@ -49,10 +50,14 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 public class PipeDataRegionAssigner implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
+  private static final AtomicLong ASSIGNER_EPOCH_GENERATOR = new AtomicLong(0);
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the source based on the
@@ -64,6 +69,11 @@ public class PipeDataRegionAssigner implements Closeable {
   private final DisruptorQueue disruptor;
 
   private final int dataRegionId;
+  private final long assignerEpoch = ASSIGNER_EPOCH_GENERATOR.incrementAndGet();
+  private final AtomicLong publishedDataGeneration = new AtomicLong(0);
+  private final AtomicLong publicationFailureEpoch = new AtomicLong(0);
+  private final AtomicLong completionInvalidationEpoch = new AtomicLong(0);
+  private final ReentrantLock publicationLock = new ReentrantLock();
 
   private Boolean isTableModel;
 
@@ -94,39 +104,186 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
+    publicationLock.lock();
+    try {
+      final EnrichedEvent innerEvent = event.getEvent();
+      final boolean isDataEvent = !(innerEvent instanceof PipeHeartbeatEvent);
+      if (isDataEvent) {
+        publishedDataGeneration.incrementAndGet();
+      }
+      publishToAssignInternal(event, isDataEvent);
+    } finally {
+      publicationLock.unlock();
+    }
+  }
+
+  public void publishDataEventToAssign(final Supplier<PipeRealtimeEvent> eventSupplier) {
+    publishDataEventToAssign(eventSupplier, false);
+  }
+
+  public void publishInsertDataEventToAssign(final Supplier<PipeRealtimeEvent> eventSupplier) {
+    publishDataEventToAssign(eventSupplier, true);
+  }
+
+  private void publishDataEventToAssign(
+      final Supplier<PipeRealtimeEvent> eventSupplier, final boolean invalidateCompletionBarrier) {
+    publicationLock.lock();
+    try {
+      publishedDataGeneration.incrementAndGet();
+      if (invalidateCompletionBarrier) {
+        completionInvalidationEpoch.incrementAndGet();
+      }
+      final PipeRealtimeEvent event;
+      try {
+        event = eventSupplier.get();
+      } catch (final RuntimeException | Error e) {
+        markPublicationFailed();
+        throw e;
+      }
+      if (event != null) {
+        publishToAssignInternal(event, true);
+      } else {
+        markPublicationFailed();
+      }
+    } finally {
+      publicationLock.unlock();
+    }
+  }
+
+  private void publishToAssignInternal(final PipeRealtimeEvent event, final boolean isDataEvent) {
+    final EnrichedEvent innerEvent = event.getEvent();
     if (!event.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+      if (isDataEvent) {
+        markPublicationFailed();
+      }
       LOGGER.warn(DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_REALTIME_EVENT, event);
       return;
     }
 
-    final EnrichedEvent innerEvent = event.getEvent();
     eventCounter.increaseEventCount(innerEvent);
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).onPublished();
     }
 
-    synchronized (this) {
-      if (disruptor.isClosed()) {
-        onAssignedHook(event);
-        return;
-      }
-      inFlightPublishCount++;
-    }
-
+    boolean shouldReleaseDirectly = false;
     boolean isPublished = false;
     try {
-      isPublished = disruptor.publishOrDrop(event);
-    } finally {
-      synchronized (this) {
-        inFlightPublishCount--;
-        if (inFlightPublishCount == 0) {
-          notifyAll();
+      if (innerEvent instanceof PipeHeartbeatEvent) {
+        final PipeHeartbeatEvent heartbeatEvent = (PipeHeartbeatEvent) innerEvent;
+        if (heartbeatEvent.isCompletionBarrier()) {
+          heartbeatEvent.bindCompletionBarrier(assignerEpoch, publishedDataGeneration.get());
         }
       }
+
+      synchronized (this) {
+        if (disruptor.isClosed()) {
+          shouldReleaseDirectly = true;
+        } else {
+          inFlightPublishCount++;
+        }
+      }
+
+      if (!shouldReleaseDirectly) {
+        try {
+          isPublished = disruptor.publishOrDrop(event);
+        } finally {
+          synchronized (this) {
+            inFlightPublishCount--;
+            if (inFlightPublishCount == 0) {
+              notifyAll();
+            }
+          }
+        }
+      }
+    } catch (final RuntimeException | Error e) {
+      if (isDataEvent) {
+        markPublicationFailed();
+      }
+      throw e;
     }
 
-    if (!isPublished) {
+    if (shouldReleaseDirectly || !isPublished) {
+      if (isDataEvent) {
+        markPublicationFailed();
+      }
       onAssignedHook(event);
+    }
+  }
+
+  private void markPublicationFailed() {
+    publicationFailureEpoch.incrementAndGet();
+  }
+
+  /**
+   * Advances the published data generation for a data event that was ignored before publication.
+   * This deliberately keeps the current completion token valid: full-flush close callbacks may be
+   * ignored when no source listens to TsFile events, but their generations still need to be covered
+   * by the barrier for that flush.
+   */
+  public void invalidateCompletion() {
+    invalidateCompletion(false);
+  }
+
+  /**
+   * Advances the published data generation and invalidates the current completion token for an
+   * ignored insert. The insert may create a working TsFile processor that the in-progress full
+   * flush does not cover, so its barrier must not be published.
+   */
+  public void invalidateCompletionBarrier() {
+    invalidateCompletion(true);
+  }
+
+  private void invalidateCompletion(final boolean invalidateCompletionBarrier) {
+    publicationLock.lock();
+    try {
+      publishedDataGeneration.incrementAndGet();
+      if (invalidateCompletionBarrier) {
+        completionInvalidationEpoch.incrementAndGet();
+      }
+    } finally {
+      publicationLock.unlock();
+    }
+  }
+
+  /**
+   * Atomically advances the generation, invalidates any prior token, and returns the token for a
+   * new full flush. The corresponding completion barrier is accepted only if no insert invalidates
+   * this token before the flush finishes.
+   */
+  public CompletionToken invalidateCompletionAndGetToken() {
+    publicationLock.lock();
+    try {
+      publishedDataGeneration.incrementAndGet();
+      return new CompletionToken(assignerEpoch, completionInvalidationEpoch.incrementAndGet());
+    } finally {
+      publicationLock.unlock();
+    }
+  }
+
+  public boolean publishCompletionBarrier(final CompletionToken token) {
+    publicationLock.lock();
+    try {
+      if (token == null
+          || token.assignerEpoch != assignerEpoch
+          || token.completionInvalidationEpoch != completionInvalidationEpoch.get()) {
+        return false;
+      }
+      publishToAssignInternal(
+          PipeRealtimeEventFactory.createCompletionBarrierEvent(dataRegionId), false);
+      return true;
+    } finally {
+      publicationLock.unlock();
+    }
+  }
+
+  public static final class CompletionToken {
+
+    private final long assignerEpoch;
+    private final long completionInvalidationEpoch;
+
+    private CompletionToken(final long assignerEpoch, final long completionInvalidationEpoch) {
+      this.assignerEpoch = assignerEpoch;
+      this.completionInvalidationEpoch = completionInvalidationEpoch;
     }
   }
 
@@ -148,6 +305,17 @@ public class PipeDataRegionAssigner implements Closeable {
       return;
     }
 
+    try {
+      assignToSourceInternal(event);
+    } catch (final RuntimeException | Error e) {
+      if (!(event.getEvent() instanceof PipeHeartbeatEvent)) {
+        markPublicationFailed();
+      }
+      throw e;
+    }
+  }
+
+  private void assignToSourceInternal(final PipeRealtimeEvent event) {
     final Pair<Set<PipeRealtimeDataRegionSource>, Set<PipeRealtimeDataRegionSource>>
         matchedAndUnmatched = matcher.match(event);
 
@@ -165,6 +333,7 @@ public class PipeDataRegionAssigner implements Closeable {
                         source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                  markPublicationFailed();
                   LOGGER.warn(
                       DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, reportEvent);
                   return;
@@ -187,6 +356,12 @@ public class PipeDataRegionAssigner implements Closeable {
                       source.getRealtimeDataExtractionStartTime(),
                       source.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
+
+              if (innerEvent instanceof PipeHeartbeatEvent
+                  && ((PipeHeartbeatEvent) innerEvent).isCompletionBarrier()) {
+                ((PipeHeartbeatEvent) innerEvent)
+                    .bindCompletionSource(source.getCompletionSourceId());
+              }
 
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
@@ -211,6 +386,9 @@ public class PipeDataRegionAssigner implements Closeable {
               }
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                if (!(event.getEvent() instanceof PipeHeartbeatEvent)) {
+                  markPublicationFailed();
+                }
                 LOGGER.warn(
                     DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, copiedEvent);
                 return;
@@ -234,6 +412,7 @@ public class PipeDataRegionAssigner implements Closeable {
                         source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                  markPublicationFailed();
                   LOGGER.warn(
                       DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, reportEvent);
                   return;
@@ -244,7 +423,13 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public synchronized void startAssignTo(final PipeRealtimeDataRegionSource source) {
-    matcher.register(source);
+    PipeDataNodeSinglePipeMetrics.getInstance().register(source, this);
+    try {
+      matcher.register(source);
+    } catch (final RuntimeException | Error e) {
+      PipeDataNodeSinglePipeMetrics.getInstance().deregister(source, this);
+      throw e;
+    }
     if (source.isNeedListenToTsFile()) {
       listenToTsFileSourceCount++;
     }
@@ -256,6 +441,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public synchronized void stopAssignTo(final PipeRealtimeDataRegionSource source) {
     matcher.deregister(source);
+    PipeDataNodeSinglePipeMetrics.getInstance().deregister(source, this);
     if (source.isNeedListenToTsFile()) {
       listenToTsFileSourceCount--;
     }
@@ -347,5 +533,17 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public Boolean isTableModel() {
     return isTableModel;
+  }
+
+  public long getAssignerEpoch() {
+    return assignerEpoch;
+  }
+
+  public long getPublishedDataGeneration() {
+    return publishedDataGeneration.get();
+  }
+
+  public long getPublicationFailureEpoch() {
+    return publicationFailureEpoch.get();
   }
 }
