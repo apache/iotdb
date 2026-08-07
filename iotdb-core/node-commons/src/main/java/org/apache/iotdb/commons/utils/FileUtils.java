@@ -35,6 +35,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
@@ -42,17 +43,21 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+import java.util.function.LongConsumer;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int BUFFER_SIZE = 1024;
+  private static final long FILE_REMOVE_COST_IN_BYTES = 64 * 1024L;
+  private static final long DIRECTORY_REMOVE_COST_IN_BYTES = 4 * 1024L;
 
   private FileUtils() {}
 
@@ -89,6 +94,19 @@ public class FileUtils {
     }
   }
 
+  /**
+   * Truncate a file through its NIO file system provider.
+   *
+   * <p>Using {@link FileChannel#open(Path, java.nio.file.OpenOption...)} allows a configured
+   * default {@link java.nio.file.spi.FileSystemProvider} to intercept the truncation.
+   */
+  public static void truncateFile(File file, long size) throws IOException {
+    try (FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(size);
+      channel.force(true);
+    }
+  }
+
   public static void createLink(Path link, Path existing, boolean fallBackToCopy)
       throws IOException {
     try {
@@ -111,15 +129,31 @@ public class FileUtils {
   }
 
   public static void deleteFileOrDirectory(File file, boolean quietForNoSuchFile) {
+    deleteFileOrDirectory(file, quietForNoSuchFile, null);
+  }
+
+  public static void deleteFileOrDirectoryWithRateLimiter(
+      File file, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(file, false, deleteRateLimiter);
+  }
+
+  public static void deleteFileOrDirectoryWithRateLimiter(
+      File file, boolean quietForNoSuchFile, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(file, quietForNoSuchFile, deleteRateLimiter);
+  }
+
+  private static void deleteFileOrDirectory(
+      File file, boolean quietForNoSuchFile, LongConsumer deleteRateLimiter) {
     if (file.isDirectory()) {
       File[] files = file.listFiles();
       if (files != null) {
         for (File subfile : files) {
-          deleteFileOrDirectory(subfile, quietForNoSuchFile);
+          deleteFileOrDirectory(subfile, quietForNoSuchFile, deleteRateLimiter);
         }
       }
     }
     try {
+      acquireRemovePermit(file, deleteRateLimiter);
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
       if (!quietForNoSuchFile) {
@@ -161,13 +195,36 @@ public class FileUtils {
   }
 
   public static void deleteDirectoryAndEmptyParent(File folder) {
-    deleteFileOrDirectory(folder);
+    deleteDirectoryAndEmptyParent(folder, null);
+  }
+
+  public static void deleteDirectoryAndEmptyParentWithRateLimiter(
+      File folder, LongConsumer deleteRateLimiter) {
+    deleteDirectoryAndEmptyParent(folder, deleteRateLimiter);
+  }
+
+  private static void deleteDirectoryAndEmptyParent(File folder, LongConsumer deleteRateLimiter) {
+    deleteFileOrDirectory(folder, false, deleteRateLimiter);
     final File parentFolder = folder.getParentFile();
+    if (parentFolder == null) {
+      return;
+    }
     File[] files = parentFolder.listFiles();
     if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
-      if (!parentFolder.delete()) {
+      acquireRemovePermit(parentFolder, deleteRateLimiter);
+      if (!deleteFileIfExist(parentFolder)) {
         LOGGER.warn(UtilMessages.DELETE_FOLDER_FAILED, parentFolder.getAbsolutePath());
       }
+    }
+  }
+
+  public static long estimateFileOrDirectoryRemoveCost(File file) {
+    return file.isDirectory() ? DIRECTORY_REMOVE_COST_IN_BYTES : FILE_REMOVE_COST_IN_BYTES;
+  }
+
+  private static void acquireRemovePermit(File file, LongConsumer deleteRateLimiter) {
+    if (deleteRateLimiter != null && file.exists()) {
+      deleteRateLimiter.accept(estimateFileOrDirectoryRemoveCost(file));
     }
   }
 

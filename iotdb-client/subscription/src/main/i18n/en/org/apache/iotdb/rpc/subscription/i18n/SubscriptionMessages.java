@@ -140,6 +140,8 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTREEREADER_TABLE_MODEL_TSFILE_68621ECF = "%s does not support openTreeReader() for table model tsfile.";
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTABLEREADER_TREE_MODEL_TSFILE_CEC27860 = "%s does not support openTableReader() for tree model tsfile.";
   public static final String EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B = "Unknown column category: ";
+  public static final String EXCEPTION_RESULTSET_COLUMN_INDEX_OUT_OF_BOUND_ARG_2D8CC5A3 =
+      "ResultSet column index out of bound: %d";
   public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
   public static final String LOG_SUBSCRIPTIONPUSHCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_741801C2 = "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)";
   public static final String LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D = "Consumer listener raised an exception while consuming message: {}";
@@ -268,7 +270,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "Cluster has no available subscription providers when %s fetch all endpoints";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password and encryptedPassword are mutually exclusive; encryptedPassword is already set";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password and encryptedPassword are mutually exclusive; password is already set";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode topic should not generate pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "Incremental mode topic should not generate pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "Unsupported SubscriptionCommitContext version: ";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "outdated subscription event";
   public static final String FIELD_SEPARATOR = ", ";

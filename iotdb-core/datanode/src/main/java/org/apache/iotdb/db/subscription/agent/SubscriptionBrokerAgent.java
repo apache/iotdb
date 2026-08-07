@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -29,18 +30,24 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -70,12 +77,19 @@ public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
 
+  private static final ColumnFilterMatcher EMPTY_COLUMN_FILTER_MATCHER =
+      ColumnFilterMatcher.ofSelectedColumnNames(Collections.emptySet());
+
   /** Subscription brokers grouped by consumer group. */
   private final Map<String, List<ISubscriptionBroker>> consumerGroupIdToBrokers =
       new ConcurrentHashMap<>();
 
   private final Cache<Integer> prefetchingQueueCount =
       new Cache<>(this::getPrefetchingQueueCountInternal);
+
+  private final Map<String, ColumnFilterMatcher> topicNameToColumnFilterMatcher =
+      new ConcurrentHashMap<>();
+  private final ColumnFilterBinder columnFilterBinder = new ColumnFilterBinder();
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -91,7 +105,8 @@ public class SubscriptionBrokerAgent {
       final Map<String, TopicProgress> progressByTopic) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
-    final List<String> unsupportedConsensusTopics = getUnsupportedConsensusTopics(topicNames);
+    final List<String> unsupportedConsensusTopics =
+        getUnsupportedConsensusTopics(consumerGroupId, topicNames);
     if (!unsupportedConsensusTopics.isEmpty()) {
       final String errorMessage =
           buildUnsupportedConsensusRuntimeMessage(
@@ -224,7 +239,8 @@ public class SubscriptionBrokerAgent {
         continue;
       }
       final String topicName = commitContext.getTopicName();
-      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, isTableModel(consumerConfig))) {
         continue;
       }
       final String regionId = commitContext.getRegionId();
@@ -333,7 +349,8 @@ public class SubscriptionBrokerAgent {
 
   private ConsensusSubscriptionBroker getConsensusBrokerForSeekOrNoOp(
       final String consumerGroupId, final String topicName, final String operation) {
-    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+        topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
       final String errorMessage =
           String.format(
               "Subscription: %s is only supported for consensus-based subscriptions, "
@@ -380,18 +397,24 @@ public class SubscriptionBrokerAgent {
     }
   }
 
-  private List<String> getUnsupportedConsensusTopics(final Set<String> topicNames) {
+  private List<String> getUnsupportedConsensusTopics(
+      final String consumerGroupId, final Set<String> topicNames) {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       return Collections.emptyList();
     }
 
     final List<String> unsupportedConsensusTopics = new ArrayList<>();
     for (final String topicName : topicNames) {
-      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
         unsupportedConsensusTopics.add(topicName);
       }
     }
     return unsupportedConsensusTopics;
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SubscriptionAgent.consumer().isTableModel(consumerConfig.getConsumerGroupId());
   }
 
   private String buildUnsupportedConsensusRuntimeMessage(
@@ -408,9 +431,8 @@ public class SubscriptionBrokerAgent {
     final String runtimeConsensusImplementation =
         Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
     return String.format(
-        "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
-            + "mode=consensus only supports data_region_consensus_protocol_class=%s, but current "
-            + "configured value is %s (runtime consensus implementation: %s)",
+        DataNodePipeMessages
+            .EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67,
         operation,
         topicNames,
         consumerGroupId,
@@ -604,7 +626,7 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
-  public void bindConsensusPrefetchingQueue(
+  public ConsensusPrefetchingQueue bindConsensusPrefetchingQueue(
       final String consumerGroupId,
       final String topicName,
       final String orderMode,
@@ -617,39 +639,156 @@ public class SubscriptionBrokerAgent {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
-    getOrCreateBroker(
-            consumerGroupId,
-            ConsensusSubscriptionBroker.class,
-            id -> {
-              LOGGER.info(
-                  DataNodeMiscMessages.SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING,
-                  consumerGroupId);
-              return new ConsensusSubscriptionBroker(consumerGroupId);
-            })
-        .bindConsensusPrefetchingQueue(
-            topicName,
-            orderMode,
-            consensusGroupId,
-            serverImpl,
-            retentionPolicy,
-            converter,
-            commitManager,
-            fallbackCommittedRegionProgress,
-            tailStartSearchIndex,
-            initialRuntimeVersion,
-            initialActive);
+    final ConsensusPrefetchingQueue queue =
+        getOrCreateBroker(
+                consumerGroupId,
+                ConsensusSubscriptionBroker.class,
+                id -> {
+                  LOGGER.info(
+                      DataNodeMiscMessages.SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING,
+                      consumerGroupId);
+                  return new ConsensusSubscriptionBroker(consumerGroupId);
+                })
+            .bindConsensusPrefetchingQueue(
+                topicName,
+                orderMode,
+                consensusGroupId,
+                serverImpl,
+                retentionPolicy,
+                converter,
+                commitManager,
+                fallbackCommittedRegionProgress,
+                tailStartSearchIndex,
+                initialRuntimeVersion,
+                initialActive);
     prefetchingQueueCount.invalidate();
+    return queue;
   }
 
-  public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
+  public void refreshConsensusQueueOrderMode(
+      final String topicName, final boolean isTableModel, final String orderMode) {
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_REFRESHING_CONSENSUS_QUEUE_ORDER_1886704D,
         topicName,
         orderMode);
-    for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
-      broker.refreshConsensusQueueOrderMode(topicName, orderMode);
+    for (final Map.Entry<String, List<ISubscriptionBroker>> entry :
+        consumerGroupIdToBrokers.entrySet()) {
+      if (SubscriptionAgent.consumer().isTableModel(entry.getKey()) != isTableModel) {
+        continue;
+      }
+      final ConsensusSubscriptionBroker broker =
+          getBroker(entry.getValue(), ConsensusSubscriptionBroker.class);
+      if (Objects.nonNull(broker)) {
+        broker.refreshConsensusQueueOrderMode(topicName, orderMode);
+      }
     }
+  }
+
+  public void refreshColumnFilter(final String topicName, final TopicConfig topicConfig) {
+    final ColumnFilterMatcher matcher;
+    try {
+      final Map<String, Map<String, TsTable>> bindingTables =
+          getColumnFilterBindingTables(topicConfig);
+      if (Objects.isNull(bindingTables)) {
+        topicNameToColumnFilterMatcher.remove(topicName);
+        LOGGER.info(
+            DataNodeMiscMessages.SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE, topicName);
+        return;
+      }
+      matcher =
+          ColumnFilterMatcher.fromBoundColumnFilter(
+              columnFilterBinder.bind(topicConfig, bindingTables));
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
+      topicNameToColumnFilterMatcher.put(topicName, EMPTY_COLUMN_FILTER_MATCHER);
+      return;
+    }
+    topicNameToColumnFilterMatcher.put(topicName, matcher);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS, topicName);
+  }
+
+  public ColumnFilterMatcher getColumnFilterMatcher(final String topicName) {
+    return getColumnFilterMatcher(topicName, true);
+  }
+
+  public ColumnFilterMatcher getColumnFilterMatcher(
+      final String topicName, final boolean isTableModel) {
+    if (!isTableModel) {
+      return ColumnFilterMatcher.matchAll();
+    }
+
+    final ColumnFilterMatcher matcher = topicNameToColumnFilterMatcher.get(topicName);
+    if (Objects.nonNull(matcher)) {
+      return matcher;
+    }
+
+    final TopicConfig topicConfig =
+        SubscriptionAgent.topic()
+            .getTopicConfigs(Collections.singleton(topicName), true)
+            .get(topicName);
+    if (Objects.isNull(topicConfig)) {
+      return ColumnFilterMatcher.matchAll();
+    }
+
+    try {
+      refreshColumnFilter(topicName, topicConfig);
+      return topicNameToColumnFilterMatcher.getOrDefault(
+          topicName, getDefaultColumnFilterMatcher(topicConfig));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodeMiscMessages.SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED, topicName, e);
+      return EMPTY_COLUMN_FILTER_MATCHER;
+    }
+  }
+
+  private static ColumnFilterMatcher getDefaultColumnFilterMatcher(final TopicConfig topicConfig) {
+    return Objects.nonNull(topicConfig)
+            && topicConfig.isTableTopic()
+            && !topicConfig.isColumnFilterTrivial()
+        ? EMPTY_COLUMN_FILTER_MATCHER
+        : ColumnFilterMatcher.matchAll();
+  }
+
+  private static Map<String, Map<String, TsTable>> getColumnFilterBindingTables(
+      final TopicConfig topicConfig) {
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isColumnFilterTrivial()) {
+      return Collections.emptyMap();
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return DataNodeTableCache.getInstance().getTableSnapshot();
+    }
+
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    return Objects.isNull(table)
+        ? null
+        : Collections.singletonMap(database, Collections.singletonMap(tableName, table));
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
+  }
+
+  public void dropColumnFilter(final String topicName) {
+    topicNameToColumnFilterMatcher.remove(topicName);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_COLUMN_FILTER, topicName);
   }
 
   public void unbindConsensusPrefetchingQueue(

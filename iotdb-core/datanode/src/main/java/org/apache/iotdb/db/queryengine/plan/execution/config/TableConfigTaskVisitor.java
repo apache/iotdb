@@ -52,6 +52,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
+import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -260,8 +263,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -300,6 +306,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {
 
   public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+
+  private static final ColumnFilterParser COLUMN_FILTER_PARSER = new ColumnFilterParser();
 
   private final IClientSession clientSession;
 
@@ -1066,6 +1074,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           setConfigurationStatement.getNeededPrivileges(),
           context);
     } catch (IOException e) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              context.setResult(false).setAuditLogOperation(AuditLogOperation.CONTROL), () -> "");
       throw new AccessDeniedException(DataNodeQueryMessages.FAILED_TO_CHECK_CONFIG_ITEM_PERMISSION);
     }
     setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
@@ -1476,6 +1487,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     // Inject table model into the topic attributes
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    validateAndNormalizeColumnFilter(node.getTopicAttributes());
 
     return new CreateTopicTask(node);
   }
@@ -1487,8 +1499,43 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     node.getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    validateAndNormalizeColumnFilter(node.getTopicAttributes());
 
     return new AlterTopicTask(node);
+  }
+
+  private static void validateAndNormalizeColumnFilter(final Map<String, String> topicAttributes) {
+    String columnFilterKey = null;
+    String columnFilter = null;
+    boolean hasColumnFilter = false;
+    for (final Map.Entry<String, String> entry : topicAttributes.entrySet()) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(entry.getKey())) {
+        if (hasColumnFilter) {
+          throw new SemanticException(
+              String.format(
+                  "Failed to create or alter topic, duplicate %s attributes are not allowed",
+                  TopicConstant.COLUMN_FILTER_KEY));
+        }
+        hasColumnFilter = true;
+        columnFilterKey = entry.getKey();
+        columnFilter = entry.getValue();
+      }
+    }
+
+    if (!hasColumnFilter) {
+      return;
+    }
+
+    if (!TopicConstant.COLUMN_FILTER_KEY.equals(columnFilterKey)) {
+      topicAttributes.remove(columnFilterKey);
+      topicAttributes.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+    }
+
+    try {
+      COLUMN_FILTER_PARSER.parseAndValidate(columnFilter);
+    } catch (final SubscriptionException e) {
+      throw new SemanticException(e.getMessage());
+    }
   }
 
   @Override
@@ -1585,18 +1632,35 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
-    context.setQueryType(node.getQueryType());
-    node.setExecutedByUserId(context.getUserId());
-    TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AccessDeniedException(status.getMessage());
+    PasswordChangeAuditContext passwordAuditContext =
+        PasswordChangeAuditContext.forTableStatement(node, context.getSession());
+    UserRoleModificationAuditContext userRoleAuditContext =
+        UserRoleModificationAuditContext.forTableStatement(
+            node, context.getSession(), context.getSql());
+    boolean executionDelegated = false;
+    try {
+      context.setQueryType(node.getQueryType());
+      node.setExecutedByUserId(context.getUserId());
+      TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AccessDeniedException(status.getMessage());
+      }
+      accessControl.checkUserCanRunRelationalAuthorStatement(
+          context.getSession().getUserName(), node, context);
+      if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
+        visitUpdateUser(node);
+      }
+      IConfigTask task =
+          PasswordChangeAuditTask.wrap(
+              new RelationalAuthorizerTask(node, userRoleAuditContext), passwordAuditContext);
+      executionDelegated = true;
+      return task;
+    } finally {
+      if (!executionDelegated) {
+        passwordAuditContext.log(null);
+        userRoleAuditContext.log(null);
+      }
     }
-    accessControl.checkUserCanRunRelationalAuthorStatement(
-        context.getSession().getUserName(), node, context);
-    if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
-      visitUpdateUser(node);
-    }
-    return new RelationalAuthorizerTask(node);
   }
 
   private void visitUpdateUser(RelationalAuthorStatement node) {
@@ -1618,7 +1682,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1638,7 +1702,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 

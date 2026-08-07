@@ -38,9 +38,6 @@ public final class IoTConsensusV2Messages {
       "从 {} 恢复共识组 {} 失败，忽略并继续恢复其他组，异步后台检查线程将自动注销该失败共识组的 pipe 副作用。";
   public static final String FAILED_RECOVER_CONSENSUS_READ_DIR =
       "从 {} 恢复共识失败，因为读取目录失败";
-  public static final String FAILED_RECOVER_CONSENSUS_SHORT =
-      "从 {} 恢复共识失败";
-
   // ===================== IoTConsensusV2 peer 操作 =====================
 
   public static final String START_DELETE_LOCAL_PEER =

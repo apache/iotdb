@@ -204,6 +204,8 @@ public class IoTDBConfig {
 
   private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
+  private volatile long checkDnLeaseStatusIntervalMs = 500;
+
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
@@ -307,6 +309,8 @@ public class IoTDBConfig {
   private CanonicalPaths loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
 
   private CanonicalPaths loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+
+  private volatile CanonicalPaths internalDataDirCanonicalPaths = new CanonicalPaths(new Path[0]);
 
   private boolean loadTsFileSourcePathCheckEnabled = false;
 
@@ -579,6 +583,12 @@ public class IoTDBConfig {
   private int compactionScheduleThreadNum = 4;
 
   private volatile boolean enableTsFileValidation = false;
+
+  /**
+   * Whether to enable the TopK runtime filter optimization for table-model {@code ORDER BY time
+   * LIMIT k} queries. Hot-reloadable; set false to fall back to the original execution path.
+   */
+  private volatile boolean enableTopKRuntimeFilter = true;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -1101,6 +1111,7 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
+  private long regionMigrationFileRemoveSpeedLimitBytesPerSecond = 16 * 1024 * 1024L;
   // Throttle the per-file snapshot-transmission progress log in IoTConsensus to at most once per
   // this interval (ms). A value <= 0 logs every file.
   private long dataRegionIotSnapshotTransmissionProgressLogIntervalMs = 5000L;
@@ -1278,6 +1289,16 @@ public class IoTDBConfig {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
+  public long getRegionMigrationFileRemoveSpeedLimitBytesPerSecond() {
+    return regionMigrationFileRemoveSpeedLimitBytesPerSecond;
+  }
+
+  public void setRegionMigrationFileRemoveSpeedLimitBytesPerSecond(
+      long regionMigrationFileRemoveSpeedLimitBytesPerSecond) {
+    this.regionMigrationFileRemoveSpeedLimitBytesPerSecond =
+        regionMigrationFileRemoveSpeedLimitBytesPerSecond;
+  }
+
   public long getDataRegionIotSnapshotTransmissionProgressLogIntervalMs() {
     return dataRegionIotSnapshotTransmissionProgressLogIntervalMs;
   }
@@ -1416,6 +1437,7 @@ public class IoTDBConfig {
     queryDir = addDataHomeDir(queryDir);
     sortTmpDir = addDataHomeDir(sortTmpDir);
     formulateDataDirs(tierDataDirs);
+    formulateInternalDataDirs(tierDataDirs);
   }
 
   private void formulateDataDirs(String[][] tierDataDirs) {
@@ -1467,6 +1489,7 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = newTierDataDirs;
+    formulateInternalDataDirs(newTierDataDirs);
     reloadSystemMetrics();
   }
 
@@ -1543,6 +1566,54 @@ public class IoTDBConfig {
         .toArray(String[]::new);
   }
 
+  public Path[] getInternalDataDirCanonicalPaths() throws FileNotFoundException {
+    return internalDataDirCanonicalPaths.getPaths();
+  }
+
+  public boolean isUnderInternalDataDir(final String dirPath) {
+    try {
+      final Path sourcePath = new File(dirPath).getCanonicalFile().toPath();
+      for (final Path internalDataDirCanonicalPath : getInternalDataDirCanonicalPaths()) {
+        if (sourcePath.startsWith(internalDataDirCanonicalPath)
+            || internalDataDirCanonicalPath.startsWith(sourcePath)) {
+          return true;
+        }
+      }
+      return false;
+    } catch (final Exception e) {
+      return true;
+    }
+  }
+
+  private static final String LOAD_ACTIVE_LISTENING_DIRS_CONFIG_KEY = "load_active_listening_dirs";
+  private static final String LOAD_ACTIVE_LISTENING_PIPE_DIR_CONFIG_KEY =
+      "load_active_listening_pipe_dir";
+
+  private boolean tryAcceptActiveLoadListeningDir(
+      final String configKey, final String dirPath, final String currentConfigValue) {
+    try {
+      if (isUnderInternalDataDir(dirPath)) {
+        logger.warn(
+            DataNodeMiscMessages
+                .LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9,
+            configKey,
+            dirPath,
+            currentConfigValue);
+        return false;
+      }
+      return true;
+    } catch (final IllegalArgumentException e) {
+      logger.warn(
+          DataNodeMiscMessages
+              .LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09,
+          configKey,
+          dirPath,
+          e.getMessage(),
+          currentConfigValue);
+      return false;
+    }
+  }
+
   public String[][] getTierDataDirs() {
     return tierDataDirs;
   }
@@ -1551,6 +1622,7 @@ public class IoTDBConfig {
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
+    formulateInternalDataDirs(tierDataDirs);
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
@@ -1648,6 +1720,19 @@ public class IoTDBConfig {
     // and cause the undefined behavior.
     this.loadTsFileDirs = newLoadTsFileDirs;
     this.loadTsFileDirCanonicalPaths = canonicalPaths(newLoadTsFileDirs);
+  }
+
+  private void formulateInternalDataDirs(final String[][] tierDataDirs) {
+    final List<String> internalDataDirs = new ArrayList<>();
+    internalDataDirs.add(addDataHomeDir("data"));
+    for (final String[] tierDataDir : tierDataDirs) {
+      for (final String dataDir : tierDataDir) {
+        if (FSUtils.isLocal(dataDir)) {
+          internalDataDirs.add(dataDir);
+        }
+      }
+    }
+    internalDataDirCanonicalPaths = canonicalPaths(internalDataDirs.toArray(new String[0]));
   }
 
   private static CanonicalPaths canonicalPaths(final String[] dirs) {
@@ -2079,6 +2164,14 @@ public class IoTDBConfig {
       return;
     }
     this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public long getCheckDnLeaseStatusIntervalMs() {
+    return checkDnLeaseStatusIntervalMs;
+  }
+
+  public void setCheckDnLeaseStatusIntervalMs(long checkDnLeaseStatusIntervalMs) {
+    this.checkDnLeaseStatusIntervalMs = checkDnLeaseStatusIntervalMs;
   }
 
   public int getDeviceSchemaRequestCacheMaxSize() {
@@ -4197,7 +4290,14 @@ public class IoTDBConfig {
   }
 
   public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
-    this.loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
+    final String normalizedDir = addDataHomeDir(loadActiveListeningPipeDir);
+    if (!tryAcceptActiveLoadListeningDir(
+        LOAD_ACTIVE_LISTENING_PIPE_DIR_CONFIG_KEY,
+        normalizedDir,
+        getLoadActiveListeningPipeDir())) {
+      return;
+    }
+    this.loadActiveListeningPipeDir = normalizedDir;
   }
 
   public String[] getLoadActiveListeningDirs() {
@@ -4214,10 +4314,16 @@ public class IoTDBConfig {
   }
 
   public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
+    final String currentConfigValue = Arrays.toString(getLoadActiveListeningDirs());
+    final String[] normalizedDirs = new String[loadActiveListeningDirs.length];
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
-      loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+      normalizedDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+      if (!tryAcceptActiveLoadListeningDir(
+          LOAD_ACTIVE_LISTENING_DIRS_CONFIG_KEY, normalizedDirs[i], currentConfigValue)) {
+        return;
+      }
     }
-    this.loadActiveListeningDirs = loadActiveListeningDirs;
+    this.loadActiveListeningDirs = normalizedDirs;
   }
 
   public boolean getLoadActiveListeningEnable() {
@@ -4395,6 +4501,14 @@ public class IoTDBConfig {
 
   public void setEnableTsFileValidation(boolean enableTsFileValidation) {
     this.enableTsFileValidation = enableTsFileValidation;
+  }
+
+  public boolean isEnableTopKRuntimeFilter() {
+    return enableTopKRuntimeFilter;
+  }
+
+  public void setEnableTopKRuntimeFilter(boolean enableTopKRuntimeFilter) {
+    this.enableTopKRuntimeFilter = enableTopKRuntimeFilter;
   }
 
   public long getInnerCompactionTaskSelectionModsFileThreshold() {

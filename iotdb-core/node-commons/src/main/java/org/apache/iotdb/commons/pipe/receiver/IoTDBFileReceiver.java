@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -181,13 +182,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       try {
         receiverFileBaseDir = getReceiverFileBaseDir();
         if (Objects.isNull(receiverFileBaseDir)) {
-          PipeLogger.log(
-              LOGGER::warn, PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL, receiverId.get());
+          if (LoggerPeriodicalLogReducer.shouldLog(PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL)) {
+            PipeLogger.log(
+                LOGGER::warn, PipeMessages.RECEIVER_FAILED_INIT_FOLDER_FULL, receiverId.get());
+          }
           return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
         }
       } catch (Exception e) {
-        PipeLogger.log(
-            LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL, receiverId.get());
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL
+                + e.getClass().getName()
+                + e.getMessage())) {
+          PipeLogger.log(
+              LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_CREATE_FOLDER_FULL, receiverId.get());
+        }
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
 
@@ -426,7 +434,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        writingFileWriter.setLength(req.getStartWritingOffset());
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+            writingFile, req.getStartWritingOffset());
+        writingFileWriter.seek(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -434,7 +444,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          writingFileWriter.setLength(0);
+          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+          writingFileWriter.seek(0);
         }
 
         final TSStatus status =
@@ -508,7 +519,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return;
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         PipeMessages.RECEIVER_WRITING_FILE_NOT_EXIST,
         receiverId.get(),
         fileName,
@@ -525,7 +536,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // This may be useless, because receiver file dir is created when handshake. just in case.
     if (!receiverFileDirWithIdSuffix.get().exists()) {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
+        LOGGER.debug(
             PipeMessages.RECEIVER_FILE_DIR_CREATED,
             receiverId.get(),
             receiverFileDirWithIdSuffix.get().getPath());
@@ -540,7 +551,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     writingFile = targetPath.toFile();
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(
+    LOGGER.debug(
         PipeMessages.RECEIVER_WRITING_FILE_CREATED, receiverId.get(), writingFile.getPath());
   }
 
@@ -697,7 +708,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         shouldDeleteSealedFile = false;
-        LOGGER.info(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePath);
+        LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePath);
       } else {
         PipeLogger.log(
             LOGGER::warn,
@@ -805,7 +816,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
+        LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
       } else {
         PipeLogger.log(
             LOGGER::warn,

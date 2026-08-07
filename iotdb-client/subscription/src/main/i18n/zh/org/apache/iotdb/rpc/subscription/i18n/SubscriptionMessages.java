@@ -132,6 +132,8 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTREEREADER_TABLE_MODEL_TSFILE_68621ECF = "%s 不支持对表模型 TsFile 调用 openTreeReader()。";
   public static final String EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTABLEREADER_TREE_MODEL_TSFILE_CEC27860 = "%s 不支持对树模型 TsFile 调用 openTableReader()。";
   public static final String EXCEPTION_UNKNOWN_COLUMN_CATEGORY_4F49F64B = "未知的列 category: ";
+  public static final String EXCEPTION_RESULTSET_COLUMN_INDEX_OUT_OF_BOUND_ARG_2D8CC5A3 =
+      "ResultSet 列索引越界: %d";
   public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "不支持的数据类型 %s。";
   public static final String LOG_SUBSCRIPTIONPUSHCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_741801C2 = "SubscriptionPushConsumer {} 从主题 {} poll 到空消息，耗时 {} 毫秒";
   public static final String LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D = "消费者 listener 消费消息时抛出异常：{}";
@@ -217,7 +219,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "%s 获取所有 endpoint 时，集群没有可用的 SubscriptionProvider";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password 与 encryptedPassword 互斥；已设置 encryptedPassword";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password 与 encryptedPassword 互斥；已设置 password";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode 主题不应生成 pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "incremental mode 的 topic 不应生成 pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "不支持的 SubscriptionCommitContext 版本：";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "过期的订阅事件";
   public static final String FIELD_SEPARATOR = "，";

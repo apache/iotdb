@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDev
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -98,7 +99,7 @@ public class TableMetadataImpl implements Metadata {
 
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
-  private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+  private final ITableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
   public TableFunction getTableFunction(String functionName) {
@@ -1438,6 +1439,24 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
+      case SqlConstant.IRATE:
+        validateRateFunctionArguments(
+            functionName,
+            argumentTypes,
+            2,
+            DataNodeQueryMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08);
+        break;
+      case SqlConstant.RATE:
+      case SqlConstant.INCREASE:
+      case SqlConstant.DELTA:
+        validateRateFunctionArguments(
+            functionName,
+            argumentTypes,
+            4,
+            DataNodeQueryMessages
+                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B);
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -1479,6 +1498,10 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.SKEWNESS:
       case SqlConstant.KURTOSIS:
+      case SqlConstant.RATE:
+      case SqlConstant.INCREASE:
+      case SqlConstant.IRATE:
+      case SqlConstant.DELTA:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;
@@ -1606,6 +1629,33 @@ public class TableMetadataImpl implements Metadata {
     }
 
     throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FUNCTION + functionName);
+  }
+
+  private static void validateRateFunctionArguments(
+      String functionName,
+      List<? extends Type> argumentTypes,
+      int expectedArgumentCount,
+      String argumentCountError) {
+    if (argumentTypes.size() != expectedArgumentCount) {
+      throw new SemanticException(String.format(argumentCountError, functionName));
+    }
+    if (!CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0))) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434,
+              functionName));
+    }
+    for (int i = 1; i < argumentTypes.size(); i++) {
+      Type argumentType = argumentTypes.get(i);
+      if (!INT64.equals(argumentType) && !TIMESTAMP.equals(argumentType)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3,
+                functionName));
+      }
+    }
   }
 
   @Override

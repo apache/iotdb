@@ -176,7 +176,10 @@ public class TableDistributedPlanner {
         .forEach((k, v) -> mppQueryContext.getTypeProvider().putTableModelType(k, v));
 
     // add exchange node for distributed plan
-    return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+    PlanNode planWithExchange =
+        new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
+
+    return planWithExchange;
   }
 
   private DistributedQueryPlan generateDistributedPlan(

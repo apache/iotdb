@@ -2669,8 +2669,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(req.getMeasurementsList());
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2736,8 +2735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention (only for tree model)
       if (!req.isWriteToTable()) {
-        req.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+        PathUtils.checkIsLegalSingleMeasurementsAndUpdateInPlace(req.getMeasurements());
       }
 
       // Step 1: transfer from TSInsertTabletReq to Statement
@@ -3441,7 +3439,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfoOfTreeModel(SESSION_MANAGER.getCurrSession()));
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
@@ -3709,7 +3710,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
@@ -3791,7 +3795,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }

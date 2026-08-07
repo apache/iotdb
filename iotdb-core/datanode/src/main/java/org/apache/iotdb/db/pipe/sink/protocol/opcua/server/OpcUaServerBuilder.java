@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.google.common.net.InetAddresses;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
@@ -78,9 +79,11 @@ public class OpcUaServerBuilder implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
+  private static final int BACKSLASH = 0x5c;
 
   private int tcpBindPort;
   private int httpsBindPort;
+  private String advertisedHost;
   private String user;
   private String password;
   private Path securityDir;
@@ -97,6 +100,54 @@ public class OpcUaServerBuilder implements Closeable {
   public OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
+  }
+
+  /** Configures the host published in endpoint URLs without changing the wildcard bind address. */
+  public OpcUaServerBuilder setAdvertisedHost(final String advertisedHost) {
+    this.advertisedHost = normalizeAdvertisedHost(advertisedHost);
+    return this;
+  }
+
+  private static String normalizeAdvertisedHost(final String advertisedHost) {
+    if (Objects.isNull(advertisedHost)) {
+      return null;
+    }
+
+    String normalizedAdvertisedHost = advertisedHost.trim();
+    if (normalizedAdvertisedHost.isEmpty()) {
+      throw invalidAdvertisedHost();
+    }
+    final boolean bracketed =
+        normalizedAdvertisedHost.startsWith("[") || normalizedAdvertisedHost.endsWith("]");
+    if (bracketed) {
+      if (!normalizedAdvertisedHost.startsWith("[") || !normalizedAdvertisedHost.endsWith("]")) {
+        throw invalidAdvertisedHost();
+      }
+      normalizedAdvertisedHost =
+          normalizedAdvertisedHost.substring(1, normalizedAdvertisedHost.length() - 1);
+    }
+
+    final boolean isIpAddress = InetAddresses.isInetAddress(normalizedAdvertisedHost);
+    if (normalizedAdvertisedHost.isEmpty()
+        || (bracketed && !isIpAddress)
+        || normalizedAdvertisedHost.chars().anyMatch(Character::isWhitespace)
+        || normalizedAdvertisedHost.contains("/")
+        || normalizedAdvertisedHost.indexOf(BACKSLASH) >= 0
+        || normalizedAdvertisedHost.contains("?")
+        || normalizedAdvertisedHost.contains("#")
+        || normalizedAdvertisedHost.contains("@")
+        || normalizedAdvertisedHost.contains("[")
+        || normalizedAdvertisedHost.contains("]")
+        || (!isIpAddress && normalizedAdvertisedHost.contains(":"))) {
+      throw invalidAdvertisedHost();
+    }
+    return normalizedAdvertisedHost;
+  }
+
+  private static IllegalArgumentException invalidAdvertisedHost() {
+    return new IllegalArgumentException(
+        DataNodePipeMessages
+            .EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A);
   }
 
   public OpcUaServerBuilder setUser(final String user) {
@@ -147,8 +198,10 @@ public class OpcUaServerBuilder implements Closeable {
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info(DataNodePipeMessages.OPC_UA_SECURITY_PKI_DIR, pkiDir.getAbsolutePath());
 
+    final Set<String> endpointHostnames = getEndpointHostnames();
+    final Set<String> certificateHostnames = getCertificateHostnames(endpointHostnames);
     final OpcUaKeyStoreLoader loader =
-        new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
+        new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray(), certificateHostnames);
 
     final DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
@@ -165,8 +218,15 @@ public class OpcUaServerBuilder implements Closeable {
 
     final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
         new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-    httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+    httpsCertificateBuilder.setCommonName(certificateHostnames.iterator().next());
+    certificateHostnames.forEach(
+        hostname -> {
+          if (InetAddresses.isInetAddress(hostname)) {
+            httpsCertificateBuilder.addIpAddress(hostname);
+          } else {
+            httpsCertificateBuilder.addDnsName(hostname);
+          }
+        });
     final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
     final DefaultServerCertificateValidator certificateValidator =
@@ -190,6 +250,13 @@ public class OpcUaServerBuilder implements Closeable {
                         StatusCodes.Bad_ConfigurationError,
                         DataNodePipeMessages.NO_CERTIFICATE_FOUND));
 
+    if (Objects.nonNull(advertisedHost) && !isAdvertisedHostInCertificate(certificate)) {
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF,
+          advertisedHost);
+    }
+
     final String applicationUri =
         CertificateUtil.getSanUri(certificate)
             .orElseThrow(
@@ -199,7 +266,7 @@ public class OpcUaServerBuilder implements Closeable {
                         DataNodePipeMessages.CERTIFICATE_MISSING_APPLICATION_URI));
 
     final Set<EndpointConfiguration> endpointConfigurations =
-        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort, endpointHostnames);
 
     serverConfig =
         OpcUaServerConfig.builder()
@@ -233,19 +300,71 @@ public class OpcUaServerBuilder implements Closeable {
     return server;
   }
 
-  private Set<EndpointConfiguration> createEndpointConfigurations(
-      final X509Certificate certificate, final int tcpBindPort, final int httpsBindPort) {
+  private Set<String> getEndpointHostnames() {
+    if (Objects.nonNull(advertisedHost)) {
+      final Set<String> hostnames = new LinkedHashSet<>();
+      hostnames.add(toEndpointHostname(advertisedHost));
+      return hostnames;
+    }
+    final Set<String> hostnames = new LinkedHashSet<>();
+    hostnames.add(toEndpointHostname(HostnameUtil.getHostname()));
+    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).stream()
+        .map(OpcUaServerBuilder::toEndpointHostname)
+        .forEach(hostnames::add);
+    return hostnames;
+  }
+
+  private static Set<String> getCertificateHostnames(final Set<String> endpointHostnames) {
+    final Set<String> certificateHostnames = new LinkedHashSet<>();
+    endpointHostnames.stream()
+        .map(OpcUaServerBuilder::removeIpv6Brackets)
+        .forEach(certificateHostnames::add);
+    return certificateHostnames;
+  }
+
+  private static String toEndpointHostname(final String hostname) {
+    return InetAddresses.isInetAddress(hostname) && hostname.indexOf(':') >= 0
+        ? '[' + hostname + ']'
+        : hostname;
+  }
+
+  private static String removeIpv6Brackets(final String hostname) {
+    return hostname.startsWith("[") && hostname.endsWith("]")
+        ? hostname.substring(1, hostname.length() - 1)
+        : hostname;
+  }
+
+  private boolean isAdvertisedHostInCertificate(final X509Certificate certificate) {
+    if (InetAddresses.isInetAddress(advertisedHost)) {
+      return CertificateUtil.getSanIpAddresses(certificate).stream()
+          .filter(InetAddresses::isInetAddress)
+          .map(InetAddresses::forString)
+          .anyMatch(InetAddresses.forString(advertisedHost)::equals);
+    }
+    return CertificateUtil.getSanDnsNames(certificate).stream()
+        .anyMatch(hostname -> hostname.equalsIgnoreCase(advertisedHost));
+  }
+
+  Set<EndpointConfiguration> createEndpointConfigurations(
+      final X509Certificate certificate,
+      final int tcpBindPort,
+      final int httpsBindPort,
+      final Set<String> hostnames) {
     final Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
+    final Set<String> effectiveHostnames = new LinkedHashSet<>();
+    if (Objects.nonNull(advertisedHost)) {
+      effectiveHostnames.add(toEndpointHostname(advertisedHost));
+    } else {
+      hostnames.stream()
+          .map(OpcUaServerBuilder::toEndpointHostname)
+          .forEach(effectiveHostnames::add);
+    }
 
     final List<String> bindAddresses = newArrayList();
     bindAddresses.add(WILD_CARD_ADDRESS);
 
-    final Set<String> hostnames = new LinkedHashSet<>();
-    hostnames.add(HostnameUtil.getHostname());
-    hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
-
     for (final String bindAddress : bindAddresses) {
-      for (final String hostname : hostnames) {
+      for (final String hostname : effectiveHostnames) {
         final EndpointConfiguration.Builder builder =
             EndpointConfiguration.newBuilder()
                 .setBindAddress(bindAddress)
@@ -322,12 +441,14 @@ public class OpcUaServerBuilder implements Closeable {
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final Path securityDir,
       final boolean enableAnonymousAccess,
       final Set<SecurityPolicy> securityPolicies,
       final long debounceTimeMs) {
+    checkEquals("advertised host", this.advertisedHost, normalizeAdvertisedHost(advertisedHost));
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(

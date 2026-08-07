@@ -38,6 +38,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -156,9 +157,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                   DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
                   sink.isClosed() ? "CLOSED" : "NOT CLOSED",
                   tsFile),
-          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
+          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
+      onError(
+          new PipeConnectionException(DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL));
       return;
     }
 
@@ -176,11 +179,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (sink.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
-    }
-    final int readLength = reader.read(readBuffer);
+    final int readLength = readNextFilePiece(reader, readBuffer);
 
     if (readLength == -1) {
       if (currentFile == modFile) {
@@ -203,9 +202,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    dataBaseName)
+                    dataBaseName,
+                    sink.shouldWaitForSchemaBeforeLoad())
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName,
+                    sink.shouldWaitForSchemaBeforeLoad());
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -248,6 +251,22 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     position += readLength;
+  }
+
+  protected int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
+      throws IOException {
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
+  }
+
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    PipeResourceMetrics.getInstance().recordDiskIO(requiredBytes);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(requiredBytes);
+    }
   }
 
   @Override
@@ -375,7 +394,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         PipeLogger.log(
             LOGGER::warn,
             exception,
-            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY_COMMIT_ID,
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
             events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()));
@@ -383,7 +402,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         PipeLogger.log(
             LOGGER::warn,
             exception,
-            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).",
+            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_BATCHED_TABLE_EVENTS,
             tsFile);
       }
     } catch (final Exception e) {
@@ -460,7 +479,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                   DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
                   sink.isClosed() ? "CLOSED" : "NOT CLOSED",
                   tsFile),
-          "Client has been returned to the pool. Connector is %s. TsFile: %s.",
+          DataNodePipeMessages.CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL,
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
@@ -476,8 +495,26 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   @Override
   public void close() {
-    super.close();
-    releaseReadBufferMemoryBlock();
+    try {
+      if (reader != null) {
+        reader.close();
+        reader = null;
+      }
+
+      if (currentFile.exists()
+          && events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
+    } finally {
+      super.close();
+      releaseReadBufferMemoryBlock();
+    }
   }
 
   private void releaseReadBufferMemoryBlock() {

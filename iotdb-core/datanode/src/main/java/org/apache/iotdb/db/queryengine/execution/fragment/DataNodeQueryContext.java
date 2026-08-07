@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -74,6 +75,26 @@ public class DataNodeQueryContext {
   // TODO consider more fine-grained locks, now the AtomicInteger in uncachedPathToSeriesScanInfo is
   // unnecessary
   private final ReentrantLock lock = new ReentrantLock();
+
+  /**
+   * TopK runtime filters shared across fragment instances on this DataNode for the same query.
+   *
+   * <p>Key: root TopK plan node id. Value: filter instance produced by the TopK operator and
+   * consumed by Scan operators referencing the same id via {@code topKRuntimeFilterSourceId}.
+   */
+  private final Map<String, TopKRuntimeFilter> runtimeFilters = new ConcurrentHashMap<>();
+
+  /**
+   * Registers a TopK runtime filter for the given root TopK id. If multiple fragment instances bind
+   * the same id, they share one filter instance.
+   */
+  public TopKRuntimeFilter registerTopKRuntimeFilter(String filterId, TopKRuntimeFilter filter) {
+    return runtimeFilters.computeIfAbsent(filterId, id -> filter);
+  }
+
+  public TopKRuntimeFilter getTopKRuntimeFilter(String filterId) {
+    return runtimeFilters.get(filterId);
+  }
 
   public DataNodeQueryContext(int dataNodeFINum) {
     this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();

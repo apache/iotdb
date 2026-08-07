@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -38,7 +39,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -464,7 +464,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
-              String.format("Unknown PipeRequestType %s.", rawRequestType));
+              String.format(DataNodePipeMessages.UNKNOWN_PIPEREQUESTTYPE, rawRequestType));
       LOGGER.warn(
           DataNodePipeMessages.RECEIVER_ID_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS,
           receiverId.get(),
@@ -472,8 +472,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
       final String error =
-          String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
-      PipeLogger.log(LOGGER::warn, e, "Receiver id = %s: %s", receiverId.get(), error);
+          String.format(
+              DataNodePipeMessages.EXCEPTION_ENCOUNTERED_WHILE_HANDLING_REQUEST,
+              e.getMessage(),
+              req);
+      PipeLogger.log(LOGGER::warn, e, DataNodePipeMessages.RECEIVER_ID, receiverId.get(), error);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -607,34 +610,42 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath))
-        : loadTsFileSync(null, fileAbsolutePath);
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false)
+        : loadTsFileSync(null, fileAbsolutePath, false);
   }
 
   @Override
   protected TSStatus loadFileV2(
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException {
-    return req instanceof PipeTransferTsFileSealWithModReq
-        // TsFile's absolute path will be the second element
-        ? (isUsingAsyncLoadTsFileStrategy.get()
-            ? loadTsFileAsync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
-                fileAbsolutePaths)
-            : loadTsFileSync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
-                fileAbsolutePaths.get(req.getFileNames().size() - 1)))
-        : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
+    if (!(req instanceof PipeTransferTsFileSealWithModReq)) {
+      return loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
+    }
+
+    final PipeTransferTsFileSealWithModReq tsFileSealReq = (PipeTransferTsFileSealWithModReq) req;
+    final String databaseName = tsFileSealReq.getDatabaseNameByTsFileName();
+    final boolean shouldWaitForSchemaBeforeLoad = tsFileSealReq.shouldWaitForSchemaBeforeLoad();
+    // TsFile's absolute path will be the second element when the request contains a mod file.
+    return isUsingAsyncLoadTsFileStrategy.get()
+        ? loadTsFileAsync(databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad)
+        : loadTsFileSync(
+            databaseName,
+            fileAbsolutePaths.get(req.getFileNames().size() - 1),
+            shouldWaitForSchemaBeforeLoad);
   }
 
-  private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
+  private TSStatus loadTsFileAsync(
+      final String dataBaseName,
+      final List<String> absolutePaths,
+      final boolean shouldWaitForSchemaBeforeLoad)
       throws IOException {
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
             shouldConvertDataTypeOnTypeMismatch,
             validateTsFile.get(),
-            shouldMarkAsPipeRequest.get());
+            shouldMarkAsPipeRequest.get(),
+            shouldWaitForSchemaBeforeLoad);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -647,23 +658,43 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldConvertDataTypeOnTypeMismatch,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest) {
+    return buildLoadTsFileAttributesForAsync(
+        dataBaseName,
+        shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile,
+        shouldMarkAsPipeRequest,
+        false);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
         shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile || shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
+        !shouldWaitForSchemaBeforeLoad,
         null,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        AuthorityChecker.SUPER_USER);
   }
 
-  private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
+  private TSStatus loadTsFileSync(
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean shouldWaitForSchemaBeforeLoad)
       throws FileNotFoundException {
     return executeStatementAndClassifyExceptions(
         buildLoadTsFileStatementForSync(
             dataBaseName,
             fileAbsolutePath,
             validateTsFile.get(),
-            shouldConvertDataTypeOnTypeMismatch));
+            shouldConvertDataTypeOnTypeMismatch,
+            shouldWaitForSchemaBeforeLoad));
   }
 
   static LoadTsFileStatement buildLoadTsFileStatementForSync(
@@ -672,10 +703,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean validateTsFile,
       final boolean shouldConvertDataTypeOnTypeMismatch)
       throws FileNotFoundException {
-    final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(fileAbsolutePath);
+    return buildLoadTsFileStatementForSync(
+        dataBaseName, fileAbsolutePath, validateTsFile, shouldConvertDataTypeOnTypeMismatch, false);
+  }
+
+  static LoadTsFileStatement buildLoadTsFileStatementForSync(
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean validateTsFile,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean shouldWaitForSchemaBeforeLoad)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement = LoadTsFileStatement.createForPipe(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(shouldConvertDataTypeOnTypeMismatch);
-    statement.setVerifySchema(validateTsFile || shouldConvertDataTypeOnTypeMismatch);
+    statement.setVerifySchema(
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad);
+    statement.setAutoCreateSchema(!shouldWaitForSchemaBeforeLoad);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
@@ -828,7 +872,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
+            DataNodePipeMessages.RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
             receiverId.get(),
             StatementType.ALTER_LOGICAL_VIEW.name(),
             username,
@@ -1057,7 +1101,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         if (code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
           PipeLogger.log(
               LOGGER::warn,
-              "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+              DataNodePipeMessages.RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT,
               receiverId.get(),
               statement.getPipeLoggingString(),
               result);
@@ -1076,26 +1120,35 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private void logStatementExceptionIfNecessary(final Statement statement, final Exception e) {
-    if (shouldLogStatementException(receiverId.get(), statement, e)) {
+    if (shouldLogStatementException(statement, e)) {
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Receiver id = %s: Exception encountered while executing statement %s: ",
+          DataNodePipeMessages.RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT,
           receiverId.get(),
           Objects.isNull(statement) ? null : statement.getPipeLoggingString());
     }
   }
 
-  static boolean shouldLogStatementException(
-      final long receiverId, final Statement statement, final Exception e) {
-    // Use the reducer cache as a gate. The actual stack trace is logged only when it passes.
-    return PipePeriodicalLogReducer.log(
-        message -> {},
-        "Receiver id = %s, statement = %s, exception = %s, message = %s",
-        receiverId,
-        Objects.isNull(statement) ? null : statement.getPipeLoggingString(),
-        e.getClass().getName(),
-        e.getMessage());
+  static boolean shouldLogStatementException(final Statement statement, final Exception e) {
+    final Throwable rootCause = getRootCause(e);
+    final StackTraceElement[] rootCauseStackTrace = rootCause.getStackTrace();
+    final StackTraceElement rootCauseLocation =
+        rootCauseStackTrace.length > 0 ? rootCauseStackTrace[0] : null;
+
+    // Reduce exceptions raised from the same code location regardless of receiver, statement
+    // content, or dynamic exception message. Different statement types and failure locations are
+    // still logged independently.
+    return LoggerPeriodicalLogReducer.shouldLog(
+        IoTDBDataNodeReceiver.class.getName()
+            + '|'
+            + (Objects.isNull(statement)
+                ? Statement.class.getName()
+                : statement.getClass().getName())
+            + '|'
+            + rootCause.getClass().getName()
+            + '|'
+            + rootCauseLocation);
   }
 
   private TSStatus executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(
@@ -1149,7 +1202,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failed to check authority for statement %s, username = %s, response = %s.",
+            DataNodePipeMessages.RECEIVER_ID_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
             receiverId.get(),
             statement.getType().name(),
             username,
@@ -1500,7 +1553,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
         PipeLogger.log(
             LOGGER::warn,
-            "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+            DataNodePipeMessages.RECEIVER_ID_FAILURE_STATUS_WHILE_EXECUTING_STATEMENT,
             receiverId.get(),
             statement,
             result);
@@ -1510,7 +1563,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Receiver id = %s: Exception encountered while executing statement %s: ",
+          DataNodePipeMessages.RECEIVER_ID_EXCEPTION_WHILE_EXECUTING_STATEMENT,
           receiverId.get(),
           statement);
       return new TSStatus(TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR.getStatusCode())

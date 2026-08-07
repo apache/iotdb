@@ -95,6 +95,7 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
     req.dataNodeId = thisDataNodeId;
     req.version = IoTConsensusV2RequestVersion.VERSION_1.getVersion();
     req.type = IoTConsensusV2RequestType.TRANSFER_TABLET_INSERT_NODE.getType();
+    // InsertNode preallocates this buffer with its manually calculated Pipe serialization size.
     req.body = insertNode.serializeToByteBuffer();
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -107,6 +108,11 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
     }
 
     return req;
+  }
+
+  /** Returns the exact serialized size of an InsertNode request body. */
+  public static int calculateSerializedSize(final InsertNode insertNode) {
+    return insertNode.serializeToByteBufferSize();
   }
 
   public static IoTConsensusV2TabletInsertNodeReq fromTIoTConsensusV2TransferReq(

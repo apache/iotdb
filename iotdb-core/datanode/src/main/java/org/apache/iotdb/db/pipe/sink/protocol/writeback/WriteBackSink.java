@@ -345,10 +345,10 @@ public class WriteBackSink implements PipeConnector {
     // runtime model. Normalize one configured target database to both model names, and later use
     // the one matching the incoming event model.
     if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      // Table-model database names are case-insensitive, while tree-model paths are case-sensitive.
       targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
       targetTreeModelDatabaseName =
-          validateAndNormalizeTreeModelDatabaseName(
-              PathUtils.qualifyDatabaseName(targetTableModelDatabaseName));
+          validateAndNormalizeTreeModelDatabaseName(PathUtils.qualifyDatabaseName(targetDatabase));
       return;
     }
 
@@ -856,7 +856,7 @@ public class WriteBackSink implements PipeConnector {
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       PipeLogger.log(
           LOGGER::warn,
-          "Session {}: Failed to check authority for statement {}, username = {}, response = {}.",
+          DataNodePipeMessages.SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT,
           session.getClientAddress() + ":" + session.getClientPort(),
           statement.getType().name(),
           session.getUsername(),

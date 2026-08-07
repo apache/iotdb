@@ -120,7 +120,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(insertNode, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       insertNode.serialize(outputStream);
       ReadWriteIOUtils.write(req.dataBaseName, outputStream);
@@ -150,7 +151,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
   public static byte[] toTPipeTransferBytes(final InsertNode insertNode, final String dataBaseName)
       throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(insertNode, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(
@@ -159,6 +161,16 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final InsertNode insertNode, final String dataBaseName) {
+    return PipeTransferTabletInsertNodeReq.calculateSerializedSize(insertNode)
+        + ReadWriteIOUtils.sizeToWrite(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final InsertNode insertNode, final String dataBaseName) {
+    return PipeTransferTabletInsertNodeReq.calculateAirGapSerializedSize(
+        calculateSerializedSize(insertNode, dataBaseName));
   }
 
   /////////////////////////////// Object ///////////////////////////////

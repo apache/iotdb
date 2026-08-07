@@ -435,8 +435,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       isHoldingWriteLock[i] = true;
     }
 
-    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
-        filesView.sourceFilesInLog, filesView.sequence);
+    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(filesView.sourceFilesInLog);
     updateTableSizeCache();
     CompactionMetrics.getInstance().recordSummaryInfo(summary);
   }
@@ -599,7 +598,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(filesView.sequence, filesView.sourceFilesInLog);
+      FileMetrics.getInstance().deleteTsFile(filesView.sourceFilesInLog);
     }
   }
 

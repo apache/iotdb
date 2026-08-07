@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -518,11 +519,22 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     heartBeatTimeStamp = currentTime;
   }
 
-  private void checkCacheAvailable() {
-    if (cacheOutDate) {
+  // Package-private for testing (ClusterAuthorityFetcherLeaseTest).
+  void checkCacheAvailable() {
+    // cacheOutDate is set by refreshToken() only when a heartbeat finally arrives after a long gap,
+    // so it cannot catch an *ongoing* ConfigNode partition (no heartbeat arrives, refreshToken() is
+    // never called). isFenced() is evaluated on this DataNode's own clock and fires without any
+    // heartbeat: while fenced we drop the permission cache and force a re-fetch from the
+    // ConfigNode,
+    // which fails closed while partitioned, so a missed REVOKE cannot keep authorizing a privilege.
+    if (cacheOutDate || isMetadataLeaseFenced()) {
       iAuthorCache.invalidAllCache();
     }
     cacheOutDate = false;
+  }
+
+  boolean isMetadataLeaseFenced() {
+    return MetadataLeaseManager.getInstance().isFenced();
   }
 
   @TestOnly

@@ -81,8 +81,47 @@ public final class DataNodeMiscMessages {
   public static final String FAILED_TO_PROCESS_TSFILE =
       "处理 TsFile {} 失败，{}";
 
+  public static final String INVALID_COLUMN_FILTER_FMT = "无效的 column-filter：%s";
+  public static final String COLUMN_FILTER_SHOULD_NOT_BE_EMPTY =
+      "column-filter 不应为空";
+  public static final String EXPECTED_COLUMN_PREDICATE_OPERATOR =
+      "预期 column 谓词操作符";
+  public static final String EXPECTED_STRING_LITERAL = "预期字符串字面量";
+  public static final String UNSUPPORTED_COMPARISON_OPERATOR_FMT =
+      "不支持的比较操作符 '%s'";
+  public static final String UNEXPECTED_CHARACTER_FMT = "非预期字符 '%s'";
+  public static final String UNSUPPORTED_COLUMN_FILTER_PREDICATE =
+      "不支持的 column-filter 谓词";
+  public static final String UNSUPPORTED_EXPRESSION_FMT = "不支持的表达式：%s";
+  public static final String ONLY_COLUMN_FILTER_COMPARISONS_SUPPORTED =
+      "column-filter 仅支持 =、!= 和 <> 比较";
+  public static final String IN_PREDICATE_MUST_USE_STRING_LITERAL_LIST =
+      "IN 谓词必须使用字符串字面量列表";
+  public static final String ONLY_REGEXP_SUPPORTED_AS_REGEXP_LIKE =
+      "仅支持作为 regexp_like(field, pattern) 的 REGEXP";
+  public static final String ILLEGAL_REGEXP_PATTERN_FMT =
+      "非法 REGEXP 模式：%s";
+  public static final String LEFT_OPERAND_MUST_BE_COLUMN_METADATA_FIELD =
+      "左操作数必须是 column 元数据字段之一";
+  public static final String UNSUPPORTED_COLUMN_METADATA_FIELD_FMT =
+      "不支持的 column 元数据字段：%s";
+  public static final String MUST_BE_STRING_LITERAL_FMT = "%s 必须是字符串字面量";
+  public static final String LIKE_ESCAPE_MUST_BE_SINGLE_CHARACTER =
+      "LIKE 转义符必须为单个字符";
+  public static final String LIKE_PATTERN_ENDS_WITH_ESCAPE_CHARACTER =
+      "LIKE 模式以转义符结尾";
+  public static final String UNSUPPORTED_TABLE_COLUMN_CATEGORY_FMT =
+      "不支持的表列类别：%s";
+  public static final String COLUMN_FILTER_COMPARISON_RIGHT_OPERAND =
+      "比较右操作数";
+  public static final String COLUMN_FILTER_IN_ELEMENT = "IN 元素";
+  public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE 模式";
+  public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE 转义符";
+  public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP 模式";
+
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "用户：%s，角色：%s";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -332,8 +371,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "正在配置 IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "正在恢复 Schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode 启动失败。";
-  public static final String WAIT_DATABASES_READY =
-      "等待所有数据库就绪，耗时 {} 毫秒。";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "等待本地 DataRegion 恢复任务结束，耗时 {} 毫秒。";
   public static final String PREPARE_PIPE_RESOURCES =
       "Pipe 资源准备完成，耗时 {} 毫秒。";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =
@@ -764,6 +804,16 @@ public final class DataNodeMiscMessages {
       "订阅：绑定到消费者组 [{}] 的共识 Broker 不存在，为绑定共识预取队列创建新 Broker";
   public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
       "ConsensusPrefetchingQueue %s：消费者 %s 的处理中响应不符合预期，提交上下文 %s，偏移量 %s";
+  public static final String SUBSCRIPTION_COLUMN_FILTER_SCHEMA_NOT_AVAILABLE =
+      "\u8ba2\u9605\uff1a\u5ef6\u8fdf\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\uff0c\u56e0\u4e3a\u672c\u5730\u8868\u7ed3\u6784\u4e0d\u53ef\u7528";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_FAILED =
+      "\u8ba2\u9605\uff1a\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25\uff0c\u4f7f\u7528\u7a7a\u5339\u914d\u5668\u4ee5\u5b89\u5168\u5931\u8d25";
+  public static final String SUBSCRIPTION_REFRESH_COLUMN_FILTER_SUCCESS =
+      "\u8ba2\u9605\uff1a\u5df2\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
+  public static final String SUBSCRIPTION_LAZY_REFRESH_COLUMN_FILTER_FAILED =
+      "\u8ba2\u9605\uff1a\u61d2\u52a0\u8f7d\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25";
+  public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
+      "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "不支持的共识订阅进度文件版本 %s";
 
@@ -1314,6 +1364,15 @@ public final class DataNodeMiscMessages {
       "无法重新加载配置文件 %s，原因：%s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "配置项 udf_reader_transformer_collector_memory_proportion 的每个子项都应为整数，当前为 %s";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941 =
+          "查询内存比例必须包含 8 个或 9 个以冒号分隔的值，但实际有 %d 个";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75 =
+          "查询内存比例中第 %d 个值必须为非负数，但实际为 %d";
+  public static final String
+      EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6 =
+          "查询内存比例之和必须为正数，但实际为 %d";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2 =
       "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
@@ -1428,5 +1487,11 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "初始 allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "跳过设置 {} 为 {}，因为其位于 data 目录下。继续使用原配置：{}。";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "跳过设置 {} 为 {}，因为无法解析其 canonical 路径：{}。继续使用原配置：{}。";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "无法解析 Active Load 监听目录 %s 的 canonical 路径：%s";
 
 }

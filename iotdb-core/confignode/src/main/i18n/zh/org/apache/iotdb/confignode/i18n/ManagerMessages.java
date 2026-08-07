@@ -49,6 +49,17 @@ public final class ManagerMessages {
       "[CreateRegionGroups] 开始创建以下 RegionGroup：";
   public static final String CREATE_DATAPARTITION_FAILED_BECAUSE =
       "创建 DataPartition 失败，原因：";
+  public static final String
+      DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED =
+          "DataPartitionTableIntegrityCheckProcedure 已提交。";
+  public static final String
+      LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES =
+          "获取或创建数据库的数据分区时缺少 %d/%d 个 DataPartition 分配结果，数据库：%s";
+  public static final String NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE =
+      "没有正在运行的 DataPartitionTable 完整性检查流程";
+  public static final String
+      LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES =
+          "获取或创建数据库的模式分区时缺少 %d/%d 个 SchemaPartition 分配结果，数据库：%s";
   public static final String CREATE_SCHEMAPARTITION_FAILED_BECAUSE =
       "创建 SchemaPartition 失败，原因：";
   public static final String DATABASE_DOESN_T_EXIST = "Database: {} 不存在";
@@ -62,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s 不存在。";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "减少快照 {} 的引用计数失败。";
+  public static final String DELETING_REGIONS_COSTS_MS = "删除 region 耗时 {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "检测到来自 DataNode {} 的历史 pipe 完成上报，pipe {}。remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -275,6 +287,8 @@ public final class ManagerMessages {
       "LoadStatistics 服务已成功停止。";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
+  public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
+      "提交 RegionMigrateProcedure 失败，因为 RegionGroup：%s 不存在";
   public static final String MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO =
       "反序列化 service info 时 CRC32 码不匹配。";
   public static final String NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE =
@@ -352,6 +366,10 @@ public final class ManagerMessages {
       "Receiver id = {}: 执行计划 {} 时遇到失败状态：{}";
   public static final String RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN =
       "Receiver id = {}: 执行计划 {} 时权限检查失败：{}";
+  public static final String UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE =
+      "ConfigNode 上不支持的 PipeRequestType %s。";
+  public static final String EXCEPTION_ENCOUNTERED_WHILE_HANDLING_PIPE_TRANSFER_REQUEST =
+      "处理 pipe transfer 请求时遇到异常。根因：%s";
   public static final String RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS =
       "Receiver id = {}: ConfigNode 上不支持的 PipeRequestType，响应状态 = {}。";
   public static final String RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY =
@@ -418,6 +436,8 @@ public final class ManagerMessages {
       "开始在 DataNode: {} 上创建 Region：{}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "开始在 Data Nodes 上创建 UDF [{}]，needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "开始在 DataNode: {} 上删除 Region：{}";
   public static final String START_TRANSFER_OF = "开始传输 {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "停止提交 CQ {}，原因：{}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -500,8 +520,6 @@ public final class ManagerMessages {
       "等待 configNode leader 就绪过程中发生意外中断。";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "等待获取 cluster id 过程中发生意外中断。";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "RegionMaintainer 队列中出现意外的非 create 任务；跳过处理（该队列目前仅用于重建 region 副本，region 删除由 RemoveRegionGroupProcedure 处理）。";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "waitingProcedureFinished 的 procedure 参数为空";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -529,6 +547,9 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "移除 ConfigNode 失败，该 ConfigNode 不在当前集群中。";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "成功移除 ConfigNode。";
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "移除 ConfigNode 失败，转移 ConfigNode leader 失败。";
+  public static final String LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92 = "将 ConfigNode leader 从 {} 转移到 {} 失败，将尝试其他候选节点。";
+  public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "无法确认存在除 ConfigNode {} 以外的 leader；此前尝试的转移目标为 {}，将尝试其他候选节点。";
+  public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "剩余 RPC 超时时间不足，停止重试 ConfigNode leader 转移。";
 
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
@@ -656,5 +677,8 @@ public final class ManagerMessages {
   public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer 已成功停止。";
   public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
       "数据库 {} 没有可用的 {} RegionGroup。PartitionInfo 中可见的 RegionGroup 及其 LoadCache 状态：{}";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s 请稍后手动检查该 Procedure 是否执行成功。";
 
 }

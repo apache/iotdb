@@ -168,7 +168,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
     // For the topic that needs to be detected, there are two scenarios to consider:
-    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
+    //   1. Initial topics are unbounded and cannot be fully consumed.
     //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
     // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
     // topics, then it has not been fully consumed.
@@ -1104,7 +1104,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 new SubscriptionMessage(
                     commitContext,
                     file.getAbsolutePath(),
-                    ((FileSealPayload) payload).getDatabaseName()));
+                    ((FileSealPayload) payload).getDatabaseName(),
+                    response.isTimeSelected()));
           }
         case ERROR:
           {
@@ -1165,6 +1166,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final Map<String, List<Tablet>> tablets =
         ((TabletsPayload) initialResponse.getPayload()).getTabletsWithDBInfo();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
+    boolean timeSelected = initialResponse.isTimeSelected();
+    final Map<String, Map<String, Boolean>> timeSelectedByTable = new HashMap<>();
+    mergeTimeSelectedByTable(timeSelectedByTable, initialResponse.getTimeSelectedByTable());
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
@@ -1178,7 +1182,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
-        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+        return Optional.of(
+            new SubscriptionMessage(commitContext, tablets, timeSelected, timeSelectedByTable));
       }
 
       timer.update();
@@ -1234,6 +1239,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
 
             // update offset
+            timeSelected = timeSelected && response.isTimeSelected();
+            mergeTimeSelectedByTable(timeSelectedByTable, response.getTimeSelectedByTable());
             nextOffset = ((TabletsPayload) payload).getNextOffset();
             break;
           }
@@ -1266,6 +1273,21 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
     }
+  }
+
+  private static void mergeTimeSelectedByTable(
+      final Map<String, Map<String, Boolean>> target,
+      final Map<String, Map<String, Boolean>> source) {
+    if (Objects.isNull(source) || source.isEmpty()) {
+      return;
+    }
+    source.forEach(
+        (databaseName, tableMap) -> {
+          if (Objects.isNull(tableMap) || tableMap.isEmpty()) {
+            return;
+          }
+          target.computeIfAbsent(databaseName, ignored -> new HashMap<>()).putAll(tableMap);
+        });
   }
 
   private List<SubscriptionPollResponse> pollInternal(

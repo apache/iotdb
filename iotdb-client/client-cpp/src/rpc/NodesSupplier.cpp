@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "NodesSupplier.h"
+#include "RpcCommon.h"
 #include "Session.h"
 #include "SessionDataSet.h"
 #include <algorithm>
@@ -188,7 +189,7 @@ std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
           port = record->fields.at(columnPortIdx).intV.value();
         }
 
-        if (ip == "0.0.0.0") {
+        if (UrlUtils::isWildcardAddress(ip)) {
           log_warn("Skipping invalid node: " + ip + ":" + std::to_string(port));
           continue;
         }

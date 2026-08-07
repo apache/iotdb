@@ -40,7 +40,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -108,21 +107,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .map(file -> new File(LoadUtil.getTsFilePath(file.getAbsolutePath())))
+              .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
-              .map(file -> LoadUtil.getTsFilePath(file.getAbsolutePath()))
-              .filter(this::isTsFileCompleted)
+              .filter(file -> isTsFileCompleted(file.getAbsolutePath()))
               .limit(currentAllowedPendingSize)
               .forEach(
-                  filePath -> {
-                    final File tsFile = new File(filePath);
+                  tsFile -> {
                     final Map<String, String> attributes =
                         ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
 
                     final File parentFile = tsFile.getParentFile();
                     final boolean isTableModel =
                         ActiveLoadPathHelper.containsDatabaseName(attributes)
-                            || (parentFile != null
+                            || (attributes.isEmpty()
+                                && parentFile != null
                                 && !Objects.equals(
                                     parentFile.getAbsoluteFile(),
                                     listeningDirFile.getAbsoluteFile()));
@@ -198,7 +198,9 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               listeningDirs.clear();
 
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
-              listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
+              for (final String dir : IOTDB_CONFIG.getLoadActiveListeningDirs()) {
+                addActiveLoadListeningDirIfAllowed(dir);
+              }
               LoadUtil.updateLoadDiskSelector();
             }
           }
@@ -220,7 +222,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       }
 
       // Active load is always enabled for pipe data sync.
-      listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+      addActiveLoadListeningDirIfAllowed(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
       // Create directories if not exists
       listeningDirs.forEach(this::createDirectoriesIfNotExists);
@@ -241,6 +243,28 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       FileUtils.forceMkdir(new File(dirPath));
     } catch (final IOException e) {
       LOGGER.warn(StorageEngineMessages.ERROR_CREATING_DIR_FOR_ACTIVE_LOAD, dirPath, e);
+    }
+  }
+
+  private void addActiveLoadListeningDirIfAllowed(final String dirPath) {
+    if (dirPath == null || dirPath.isEmpty()) {
+      return;
+    }
+    try {
+      if (IOTDB_CONFIG.isUnderInternalDataDir(dirPath)) {
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_ACTIVE_LOAD_LISTENING_DIRECTORY_S_IS_SKIPPED_DURING_HOT_RELOAD_BECAUSE_IT_IS_UNDER_IOTDB_DATA_DIRECTORY_DA90CAE1,
+            dirPath);
+        return;
+      }
+      listeningDirs.add(dirPath);
+    } catch (final IllegalArgumentException e) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_FAILED_TO_VALIDATE_ACTIVE_LOAD_LISTENING_DIRECTORY_S_SKIP_SCANNING_ARG_0E6A508E,
+          dirPath,
+          e.getMessage());
     }
   }
 

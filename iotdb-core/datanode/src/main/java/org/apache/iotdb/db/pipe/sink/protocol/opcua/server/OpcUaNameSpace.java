@@ -292,7 +292,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         PipeLogger.log(
             LOGGER::warn,
-            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+            DataNodePipeMessages.WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME);
         continue;
       }
       final UaVariableNode measurementNode;
@@ -703,6 +703,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   public void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final String securityDir,
@@ -710,6 +711,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final Set<SecurityPolicy> securityPolicies,
       final long debounceTimeMs) {
     builder.checkEquals(
+        advertisedHost,
         user,
         password,
         Paths.get(securityDir),
