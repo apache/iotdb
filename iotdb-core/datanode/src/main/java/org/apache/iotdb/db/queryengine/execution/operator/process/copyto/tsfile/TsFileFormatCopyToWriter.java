@@ -136,7 +136,12 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
 
   @Override
   public void write(TsBlock tsBlock) throws Exception {
-    tsFileWriter.get().write(tsBlock);
+    try {
+      tsFileWriter.get().write(tsBlock);
+    } catch (Exception e) {
+      tsFileWriter = null;
+      throw e;
+    }
   }
 
   @Override
@@ -145,11 +150,14 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
       return;
     }
     TableTsBlock2TsFileWriter writer = tsFileWriter.get();
-    writer.close();
-    // should call these methods after writer.close()
-    deviceCount = writer.getDeviceCount();
-    rowCount = writer.getRowCount();
-    tsFileWriter = null;
+    try {
+      writer.close();
+      // should call these methods after writer.close()
+      deviceCount = writer.getDeviceCount();
+      rowCount = writer.getRowCount();
+    } finally {
+      tsFileWriter = null;
+    }
   }
 
   @Override
