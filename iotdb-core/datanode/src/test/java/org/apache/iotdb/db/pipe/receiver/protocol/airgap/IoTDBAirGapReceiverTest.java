@@ -33,11 +33,13 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,6 +47,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.zip.CRC32;
 
 public class IoTDBAirGapReceiverTest {
 
@@ -121,6 +125,19 @@ public class IoTDBAirGapReceiverTest {
     }
   }
 
+  @Test
+  public void testReceiveAirGapPayloadWithSpecifiedReceiverKey() throws Exception {
+    final RecordingSocket socket = new RecordingSocket();
+    final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 4L);
+    final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+    stubAgent.setStubReceiver(
+        "udp-client", new StubReceiver(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    setField(receiver, "agent", stubAgent);
+
+    Assert.assertTrue(receiver.receive(toAirGapData(toRawRequestBytes()), "udp-client"));
+    Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
+  }
+
   private static void setField(final Object target, final String fieldName, final Object value)
       throws Exception {
     final Field field = IoTDBAirGapReceiver.class.getDeclaredField(fieldName);
@@ -147,6 +164,10 @@ public class IoTDBAirGapReceiverTest {
     void setStubReceiver(final IoTDBReceiver receiver) {
       setReceiverWithSpecifiedClient(null, receiver);
     }
+
+    void setStubReceiver(final String key, final IoTDBReceiver receiver) {
+      setReceiverWithSpecifiedClient(key, receiver);
+    }
   }
 
   private static class StubReceiver implements IoTDBReceiver {
@@ -171,5 +192,21 @@ public class IoTDBAirGapReceiverTest {
     public IoTDBSinkRequestVersion getVersion() {
       return IoTDBSinkRequestVersion.VERSION_1;
     }
+  }
+
+  private static byte[] toRawRequestBytes() throws IOException {
+    try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write((short) 0, outputStream);
+      return byteArrayOutputStream.toByteArray();
+    }
+  }
+
+  private static byte[] toAirGapData(final byte[] rawRequestBytes) {
+    final CRC32 crc32 = new CRC32();
+    crc32.update(rawRequestBytes, 0, rawRequestBytes.length);
+    return BytesUtils.concatByteArrayList(
+        Arrays.asList(BytesUtils.longToBytes(crc32.getValue()), rawRequestBytes));
   }
 }
