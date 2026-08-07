@@ -46,6 +46,27 @@ final class PushMultiPipeMetaHelper {
     TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) throws Exception;
 
     TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(ByteBuffer pipeMeta) throws Exception;
+
+    /**
+     * Handles all pipe metadata in one agent invocation. Alter pipe sends the old dropped metadata
+     * and the new metadata together, so they must be visible to the agent at the same time when it
+     * decides whether the old task's local progress can be reused.
+     *
+     * <p>The default implementation preserves the per-metadata behavior for handlers that do not
+     * need batch processing.
+     */
+    default boolean handlePipeMetaChanges(
+        final List<ByteBuffer> pipeMetas,
+        final List<TPushPipeMetaRespExceptionMessage> exceptionMessages)
+        throws Exception {
+      for (final ByteBuffer pipeMeta : pipeMetas) {
+        final TPushPipeMetaRespExceptionMessage message = handleSinglePipeMeta(pipeMeta);
+        if (message != null) {
+          exceptionMessages.add(message);
+        }
+      }
+      return true;
+    }
   }
 
   static TPushPipeMetaResp pushMultiPipeMeta(
@@ -60,11 +81,9 @@ final class PushMultiPipeMetaHelper {
           }
         }
       } else if (req.isSetPipeMetas()) {
-        for (final ByteBuffer pipeMeta : req.getPipeMetas()) {
-          final TPushPipeMetaRespExceptionMessage message = handler.handleSinglePipeMeta(pipeMeta);
-          if (message != null) {
-            exceptionMessages.add(message);
-          }
+        if (!handler.handlePipeMetaChanges(req.getPipeMetas(), exceptionMessages)) {
+          return new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()));
         }
       } else {
         throw new Exception(DataNodeMiscMessages.INVALID_PUSH_MULTI_PIPE_META_REQ);
