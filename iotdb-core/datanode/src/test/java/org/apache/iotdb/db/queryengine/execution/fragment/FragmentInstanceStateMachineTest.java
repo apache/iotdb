@@ -28,7 +28,10 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.junit.Assert.assertEquals;
@@ -116,5 +119,33 @@ public class FragmentInstanceStateMachineTest {
     } finally {
       instanceNotificationExecutor.shutdown();
     }
+  }
+
+  @Test
+  public void testFinalStateChangeListenerIsSynchronousAndCalledOnce() {
+    Executor stalledNotificationExecutor = command -> {};
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 0), "0");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, stalledNotificationExecutor);
+    AtomicInteger invocationCount = new AtomicInteger();
+    AtomicReference<FragmentInstanceState> notifiedState = new AtomicReference<>();
+
+    stateMachine.addFinalStateChangeListener(
+        state -> {
+          invocationCount.incrementAndGet();
+          notifiedState.set(state);
+        });
+    stateMachine.failed(new RuntimeException("Unknown"));
+
+    assertEquals(FragmentInstanceState.FAILED, notifiedState.get());
+    assertEquals(1, invocationCount.get());
+
+    stateMachine.abort();
+    assertEquals(1, invocationCount.get());
+
+    AtomicReference<FragmentInstanceState> lateNotifiedState = new AtomicReference<>();
+    stateMachine.addFinalStateChangeListener(lateNotifiedState::set);
+    assertEquals(FragmentInstanceState.FAILED, lateNotifiedState.get());
   }
 }
