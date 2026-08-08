@@ -951,16 +951,17 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     expectedHashset = new HashSet<>(expectedList);
     actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
-    // CASE 11. show devices root.** where device contains 'laptop.d' limit 2 offset 0
+    // CASE 11. show devices root.** where device contains 'laptop.d' (all devices, no limit)
     expectedList =
         Arrays.asList(
             new ShowDevicesResult("root.laptop.d1", false, -1),
-            new ShowDevicesResult("root.laptop.d1.s2", false, -1));
+            new ShowDevicesResult("root.laptop.d1.s2", false, -1),
+            new ShowDevicesResult("root.laptop.d2", false, -1));
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             new PartialPath("root.**"),
-            2,
+            0,
             0,
             false,
             SchemaFilterFactory.createPathContainsFilter("laptop.d"));
