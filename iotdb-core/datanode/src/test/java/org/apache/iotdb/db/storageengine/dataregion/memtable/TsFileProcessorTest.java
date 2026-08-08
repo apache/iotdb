@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
@@ -74,6 +75,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +83,7 @@ import java.util.concurrent.ExecutionException;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -736,7 +739,7 @@ public class TsFileProcessorTest {
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10]);
     Assert.assertEquals(4152728, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10]);
-    Assert.assertEquals(7537280, memTable.getTVListsRamCost());
+    Assert.assertEquals(5953280, memTable.getTVListsRamCost());
     processor.insertTablet(genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10]);
     Assert.assertEquals(7705280, memTable.getTVListsRamCost());
 
@@ -760,6 +763,7 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1923360, memTable.memSize());
   }
 
+  // Bitmap accounting follows the blocks that actually contain nulls, including a new column.
   @Test
   public void alignedBitmapMemoryAccountingMatchesActualAllocations()
       throws MetadataException, WriteProcessException, IOException, IllegalPathException {
@@ -803,10 +807,113 @@ public class TsFileProcessorTest {
     processor.insert(extendedColumnRow, new long[4]);
 
     int extendedColumnIndex = alignedMemChunk.getWorkingTVList().getBitMaps().size() - 1;
-    for (BitMap bitMap : alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex)) {
-      Assert.assertNotNull(bitMap);
-    }
+    List<BitMap> extendedColumnBitMaps =
+        alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex);
+    Assert.assertNull(extendedColumnBitMaps.get(0));
+    Assert.assertNull(extendedColumnBitMaps.get(1));
+    Assert.assertNotNull(extendedColumnBitMaps.get(2));
     assertAlignedTvListRamCostMatchesActual(denseTablet.getDeviceID());
+  }
+
+  // Measurement mapping and the target block determine which primitive arrays are charged.
+  @Test
+  public void alignedWriteMemCostUsesMeasurementMapping() {
+    AlignedWritableMemChunk memChunk =
+        new AlignedWritableMemChunk(
+            Arrays.asList(
+                new MeasurementSchema("s0", TSDataType.INT64),
+                new MeasurementSchema("s1", TSDataType.INT32)));
+    memChunk.putAlignedRow(0, new Object[] {1L, null});
+
+    long estimatedMemCost =
+        memChunk.alignedWriteRowMemCost(
+            new String[] {"s1", "s0"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT64},
+            new Object[] {1, 1L},
+            0);
+
+    Assert.assertEquals(
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT32) - NUM_BYTES_OBJECT_REF,
+        estimatedMemCost);
+
+    InsertRowNode reorderedRow = new InsertRowNode(new PlanNodeId(""));
+    reorderedRow.setMeasurements(new String[] {"s1", "s0"});
+    reorderedRow.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.INT64});
+    reorderedRow.setValues(new Object[] {1, 1L});
+    int rowsInSameBlock = 2;
+    Assert.assertEquals(
+        AlignedTVList.valueListArrayMemCost(TSDataType.INT32) - NUM_BYTES_OBJECT_REF,
+        memChunk.alignedWriteRowsMemCost(Collections.nCopies(rowsInSameBlock, reorderedRow)));
+
+    int remainingRowsInBlock = PrimitiveArrayManager.ARRAY_SIZE - 1;
+    memChunk.putAlignedTablet(
+        new long[remainingRowsInBlock],
+        new Object[] {new long[remainingRowsInBlock], null},
+        null,
+        0,
+        remainingRowsInBlock);
+    Assert.assertEquals(
+        memChunk.getWorkingTVList().alignedTvListArrayMemCost(),
+        memChunk.alignedWriteArrayMemCost(
+            new String[] {"s1", "s0"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT64},
+            new Object[] {new int[1], new long[1]},
+            0,
+            1));
+
+    int rowsAcrossTwoBlocks = PrimitiveArrayManager.ARRAY_SIZE + 1;
+    Assert.assertEquals(
+        2 * memChunk.getWorkingTVList().alignedTvListArrayMemCost(),
+        memChunk.alignedWriteRowsMemCost(Collections.nCopies(rowsAcrossTwoBlocks, reorderedRow)));
+  }
+
+  // The incremental estimator must retain new-column state when row schemas change at a block
+  // boundary, while an all-null occurrence must not materialize the new column in the old block.
+  @Test
+  public void alignedWriteRowsMemCostHandlesChangingMeasurementOrders() {
+    AlignedWritableMemChunk memChunk =
+        new AlignedWritableMemChunk(
+            Arrays.asList(
+                new MeasurementSchema("s0", TSDataType.INT64),
+                new MeasurementSchema("s1", TSDataType.INT32)));
+    int existingRows = PrimitiveArrayManager.ARRAY_SIZE - 1;
+    memChunk.putAlignedTablet(
+        new long[existingRows],
+        new Object[] {new long[existingRows], new int[existingRows]},
+        null,
+        0,
+        existingRows);
+
+    InsertRowNode firstRow = new InsertRowNode(new PlanNodeId(""));
+    firstRow.setMeasurements(new String[] {"s1", "s0", "s2"});
+    firstRow.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.INT64, TSDataType.DOUBLE});
+    firstRow.setValues(new Object[] {1, 1L, null});
+
+    InsertRowNode secondRow = new InsertRowNode(new PlanNodeId(""));
+    secondRow.setMeasurements(new String[] {"s2", "s0", "s1"});
+    secondRow.setDataTypes(
+        new TSDataType[] {TSDataType.DOUBLE, TSDataType.INT64, TSDataType.INT32});
+    secondRow.setValues(new Object[] {2D, 2L, 2});
+
+    InsertRowNode thirdRow = new InsertRowNode(new PlanNodeId(""));
+    thirdRow.setMeasurements(new String[] {"s2", "s0", "s1"});
+    thirdRow.setDataTypes(new TSDataType[] {TSDataType.DOUBLE, TSDataType.INT64, TSDataType.INT32});
+    thirdRow.setValues(new Object[] {3D, 3L, 3});
+
+    List<InsertRowNode> rows = Arrays.asList(firstRow, secondRow, thirdRow);
+    long denseArrayMemCost =
+        memChunk.alignedWriteArrayMemCost(
+            secondRow.getMeasurements(),
+            secondRow.getDataTypes(),
+            new Object[] {new double[3], new long[3], new int[3]},
+            0,
+            3);
+    long expectedMemCost =
+        denseArrayMemCost
+            - AlignedTVList.valueListArrayMemCost(TSDataType.DOUBLE)
+            + NUM_BYTES_OBJECT_REF;
+
+    Assert.assertEquals(expectedMemCost, memChunk.alignedWriteRowsMemCost(rows));
   }
 
   @Test
@@ -1246,8 +1353,7 @@ public class TsFileProcessorTest {
   private void assertAlignedTvListRamCostMatchesActual(IDeviceID targetDeviceId) {
     AlignedWritableMemChunk alignedMemChunk = getAlignedMemChunk(targetDeviceId);
     long actualRamCost = alignedMemChunk.getWorkingTVList().getRamSize();
-    for (org.apache.iotdb.db.utils.datastructure.AlignedTVList sortedTVList :
-        alignedMemChunk.getSortedList()) {
+    for (AlignedTVList sortedTVList : alignedMemChunk.getSortedList()) {
       actualRamCost += sortedTVList.getRamSize();
     }
     Assert.assertEquals(actualRamCost, processor.getWorkMemTable().getTVListsRamCost());
