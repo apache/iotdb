@@ -81,6 +81,8 @@ public abstract class AlignedTVList extends TVList {
 
   private long materializedBitmapMemoryCost;
   private long arrayMemCostWithoutIndex;
+  private int[] materializedValueArrayCounts;
+  private long materializedValueArrayMemCost;
 
   /**
    * A fully prepared partial clone. All allocations and validations are completed before this plan
@@ -150,6 +152,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
+    materializedValueArrayCounts = new int[dataTypes.size()];
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
@@ -199,6 +202,8 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.rowCount = this.rowCount;
     alignedTvList.allValueColDeletedMap = getAllValueColDeletedMap();
     alignedTvList.materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, null);
+    alignedTvList.refreshArrayMemCostWithoutIndex();
+    alignedTvList.refreshMaterializedValueArrayMemoryCost();
     return alignedTvList;
   }
 
@@ -210,6 +215,9 @@ public abstract class AlignedTVList extends TVList {
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
     cloneList.materializedBitmapMemoryCost = materializedBitmapMemoryCost;
+    cloneList.materializedValueArrayCounts =
+        Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
+    cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
     return cloneList;
   }
 
@@ -304,6 +312,8 @@ public abstract class AlignedTVList extends TVList {
     plan.cloneList.arrayMemCostWithoutIndex = plan.cloneArrayMemCostWithoutIndex;
     materializedBitmapMemoryCost = plan.sourceBitmapMemoryCost;
     plan.cloneList.materializedBitmapMemoryCost = plan.cloneBitmapMemoryCost;
+    refreshMaterializedValueArrayMemoryCost();
+    plan.cloneList.refreshMaterializedValueArrayMemoryCost();
   }
 
   /**
@@ -331,7 +341,9 @@ public abstract class AlignedTVList extends TVList {
 
       // Release memory for non-query columns
       for (Object dataArray : columnValues) {
-        PrimitiveArrayManager.release(dataArray);
+        if (dataArray != null) {
+          PrimitiveArrayManager.release(dataArray);
+        }
       }
       values.set(i, null);
       memoryBinaryChunkSize[i] = 0;
@@ -345,6 +357,7 @@ public abstract class AlignedTVList extends TVList {
     materializedBitmapMemoryCost = calculateBitmapRamCost(bitMaps, columnsToKeep);
     // Refresh per-block memory cost after releasing columns
     refreshArrayMemCostWithoutIndex();
+    refreshMaterializedValueArrayMemoryCost();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -360,44 +373,37 @@ public abstract class AlignedTVList extends TVList {
       Object columnValue = value[i];
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
+        continue;
       }
       List<Object> columnValues = values.get(i);
       if (columnValues == null) {
         throw new IllegalStateException(
             String.format("Missing value arrays for aligned column index %d during append", i));
       }
+      Object valueArray = getOrCreateValueArray(i, arrayIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
         case STRING:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          memoryBinaryChunkSize[i] +=
-              columnValue != null
-                  ? getBinarySize((Binary) columnValue)
-                  : getBinarySize(Binary.EMPTY_VALUE);
+          ((Binary[]) valueArray)[elementIndex] = (Binary) columnValue;
+          memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
+          ((float[]) valueArray)[elementIndex] = (float) columnValue;
           break;
         case INT32:
         case DATE:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
+          ((int[]) valueArray)[elementIndex] = (int) columnValue;
           break;
         case INT64:
         case TIMESTAMP:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
+          ((long[]) valueArray)[elementIndex] = (long) columnValue;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
+          ((double[]) valueArray)[elementIndex] = (double) columnValue;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null && (boolean) columnValue;
+          ((boolean[]) valueArray)[elementIndex] = (boolean) columnValue;
           break;
         default:
           break;
@@ -517,66 +523,16 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void extendColumn(TSDataType dataType) {
-    if (bitMaps == null) {
-      List<List<BitMap>> localBitMaps = new ArrayList<>(values.size());
-      for (int i = 0; i < values.size(); i++) {
-        localBitMaps.add(null);
-      }
-      bitMaps = localBitMaps;
-    }
     List<Object> columnValue = new ArrayList<>();
-    List<BitMap> columnBitMaps = new ArrayList<>();
     for (int i = 0; i < timestamps.size(); i++) {
-      switch (dataType) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
-          break;
-        case FLOAT:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
-          break;
-        case INT32:
-        case DATE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
-          break;
-        case DOUBLE:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.DOUBLE));
-          break;
-        case BOOLEAN:
-          columnValue.add(getPrimitiveArraysByType(TSDataType.BOOLEAN));
-          break;
-        default:
-          break;
-      }
-      BitMap bitMap = new BitMap(ARRAY_SIZE);
-      // The following code is for these 2 kinds of scenarios.
-
-      // Eg1: If rowCount=5 and ARRAY_SIZE=2, we need to supply 3 bitmaps for the extending column.
-      // The first 2 bitmaps should mark all bits to represent 4 nulls and the 3rd bitmap should
-      // mark
-      // the 1st bit to represent 1 null value.
-
-      // Eg2: If rowCount=4 and ARRAY_SIZE=2, we need to supply 2 bitmaps for the extending column.
-      // These 2 bitmaps should mark all bits to represent 4 nulls.
-      if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
-        for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
-          bitMap.mark(j);
-        }
-      } else {
-        bitMap.markAll();
-      }
-      columnBitMaps.add(bitMap);
+      columnValue.add(null);
     }
-    this.bitMaps.add(columnBitMaps);
+    if (bitMaps != null) {
+      bitMaps.add(null);
+    }
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
-    materializedBitmapMemoryCost +=
-        (long) columnBitMaps.size() * (bitmapReferenceRamCost() + bitmapRamCost());
+    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
     refreshArrayMemCostWithoutIndex();
 
     long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
@@ -690,7 +646,7 @@ public abstract class AlignedTVList extends TVList {
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
         || bitMaps.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null) {
-      return false;
+      return values.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null;
     }
     int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
     int elementIndex = unsortedRowIndex % ARRAY_SIZE;
@@ -816,6 +772,9 @@ public abstract class AlignedTVList extends TVList {
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
+    if (value == null) {
+      return null;
+    }
     switch (type) {
       case TEXT:
       case BLOB:
@@ -910,6 +869,7 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     cloneList.materializedBitmapMemoryCost = materializedBitmapMemoryCost;
+    cloneList.refreshMaterializedValueArrayMemoryCost();
 
     if (hasBitMapsToMove && cloneList.bitMaps == null) {
       cloneList.bitMaps = new ArrayList<>(dataTypes.size());
@@ -925,12 +885,36 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
         for (Object dataArray : columnValues) {
-          PrimitiveArrayManager.release(dataArray);
+          if (dataArray != null) {
+            PrimitiveArrayManager.release(dataArray);
+          }
         }
         columnValues.clear();
       }
       memoryBinaryChunkSize[i] = 0;
     }
+    Arrays.fill(materializedValueArrayCounts, 0);
+    materializedValueArrayMemCost = 0;
+  }
+
+  private Object getOrCreateValueArray(int columnIndex, int arrayIndex) {
+    List<Object> columnValues = values.get(columnIndex);
+    if (columnValues == null) {
+      throw new IllegalStateException(
+          String.format("Missing value arrays for aligned column index %d", columnIndex));
+    }
+    Object array = columnValues.get(arrayIndex);
+    if (array == null) {
+      array = getPrimitiveArraysByType(dataTypes.get(columnIndex));
+      columnValues.set(arrayIndex, array);
+      materializedValueArrayCounts[columnIndex]++;
+      materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
+      int existingRows = Math.min(rowCount - arrayIndex * ARRAY_SIZE, ARRAY_SIZE);
+      if (existingRows > 0) {
+        getBitMap(columnIndex, arrayIndex).markRange(0, existingRows);
+      }
+    }
+    return array;
   }
 
   @Override
@@ -957,7 +941,7 @@ public abstract class AlignedTVList extends TVList {
         throw new IllegalStateException(
             String.format("Missing value arrays for aligned column index %d during expand", i));
       }
-      columnValues.add(getPrimitiveArraysByType(dataTypes.get(i)));
+      columnValues.add(null);
       if (bitMaps != null && bitMaps.get(i) != null) {
         bitMaps.get(i).add(null);
         materializedBitmapMemoryCost += bitmapReferenceRamCost();
@@ -1078,7 +1062,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
-    for (int i = 0; i < values.size(); i++) {
+    for (int i = 0; i < Math.min(values.size(), value.length); i++) {
       if (value[i] == null) {
         continue;
       }
@@ -1087,11 +1071,12 @@ public abstract class AlignedTVList extends TVList {
         throw new IllegalStateException(
             String.format("Missing value arrays for aligned column index %d during arrayCopy", i));
       }
+      Object valueArray = getOrCreateValueArray(i, arrayIndex);
       switch (dataTypes.get(i)) {
         case TEXT:
         case BLOB:
         case STRING:
-          Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
+          Binary[] arrayT = ((Binary[]) valueArray);
           System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
           // update raw size of Text chunk
@@ -1101,25 +1086,25 @@ public abstract class AlignedTVList extends TVList {
           }
           break;
         case FLOAT:
-          float[] arrayF = ((float[]) columnValues.get(arrayIndex));
+          float[] arrayF = ((float[]) valueArray);
           System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
         case DATE:
-          int[] arrayI = ((int[]) columnValues.get(arrayIndex));
+          int[] arrayI = ((int[]) valueArray);
           System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
         case TIMESTAMP:
-          long[] arrayL = ((long[]) columnValues.get(arrayIndex));
+          long[] arrayL = ((long[]) valueArray);
           System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
-          double[] arrayD = ((double[]) columnValues.get(arrayIndex));
+          double[] arrayD = ((double[]) valueArray);
           System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
-          boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
+          boolean[] arrayB = ((boolean[]) valueArray);
           System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
           break;
         default:
@@ -1198,26 +1183,62 @@ public abstract class AlignedTVList extends TVList {
     return timestamps.size()
             * (arrayMemCostWithoutIndex
                 + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0))
+        + materializedValueArrayMemCost
         + materializedBitmapMemoryCost
         + calculateContainerRamCost(null);
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {
-    return timestamps.size() * alignedTvListArrayMemCost(columnsToClone)
+    return timestamps.size()
+            * (calculateArrayMemCostWithoutIndex(columnsToClone)
+                + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0))
+        + calculateMaterializedValueArrayMemCost(columnsToClone)
         + calculateBitmapRamCost(bitMaps, columnsToClone)
         + calculateContainerRamCost(columnsToClone);
   }
 
   private long calculateArrayMemCostWithoutIndex(Set<Integer> retainedColumns) {
-    long arrayMemCost = alignedTvListArrayMemCost(retainedColumns);
-    if (indices != null) {
-      arrayMemCost -= (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES;
+    long arrayMemCost =
+        (long) PrimitiveArrayManager.ARRAY_SIZE * Long.BYTES
+            + 2L * NUM_BYTES_ARRAY_HEADER
+            + 2L * NUM_BYTES_OBJECT_REF;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if ((retainedColumns == null || retainedColumns.contains(i)) && values.get(i) != null) {
+        arrayMemCost += NUM_BYTES_OBJECT_REF;
+      }
     }
     return arrayMemCost;
   }
 
+  private long calculateMaterializedValueArrayMemCost(Set<Integer> retainedColumns) {
+    long size = 0;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if ((retainedColumns == null || retainedColumns.contains(i)) && values.get(i) != null) {
+        size += (long) materializedValueArrayCounts[i] * primitiveArrayMemCost(dataTypes.get(i));
+      }
+    }
+    return size;
+  }
+
   private void refreshArrayMemCostWithoutIndex() {
     arrayMemCostWithoutIndex = calculateArrayMemCostWithoutIndex(null);
+  }
+
+  private void refreshMaterializedValueArrayMemoryCost() {
+    Arrays.fill(materializedValueArrayCounts, 0);
+    materializedValueArrayMemCost = 0;
+    for (int i = 0; i < values.size(); i++) {
+      List<Object> columnValues = values.get(i);
+      if (columnValues == null) {
+        continue;
+      }
+      for (Object valueArray : columnValues) {
+        if (valueArray != null) {
+          materializedValueArrayCounts[i]++;
+          materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(i));
+        }
+      }
+    }
   }
 
   /**
@@ -1324,6 +1345,228 @@ public abstract class AlignedTVList extends TVList {
     return size;
   }
 
+  /** Initial list-container memory before the first aligned row is written. */
+  public static long alignedTvListInitialMemCost(int measurementColumnCount) {
+    long arrayListShallowSize = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+    long listWithReferencesSize =
+        arrayListShallowSize + RamUsageEstimator.sizeOfObjectArray(measurementColumnCount);
+    return 2 * listWithReferencesSize
+        + RamUsageEstimator.sizeOfLongArray(measurementColumnCount)
+        + arrayListShallowSize
+        + (long) measurementColumnCount * arrayListShallowSize;
+  }
+
+  /** Memory of one aligned block excluding all lazily materialized value arrays. */
+  public static long alignedTvListArrayMemCostWithoutPrimitiveArrays(int measurementColumnCount) {
+    return (long) ARRAY_SIZE * Long.BYTES
+        + 2L * NUM_BYTES_ARRAY_HEADER
+        + (2L + measurementColumnCount) * NUM_BYTES_OBJECT_REF;
+  }
+
+  /**
+   * Estimate memory allocated by an aligned tablet after its measurements are mapped to TVList
+   * columns. A negative mapped index denotes a column that will be appended before the write.
+   */
+  public synchronized long alignedWriteArrayMemCost(
+      int[] tvListColumnIndexes,
+      TSDataType[] incomingDataTypes,
+      Object[] columns,
+      int start,
+      int end) {
+    if (start >= end) {
+      return 0;
+    }
+    int columnCount =
+        Math.min(tvListColumnIndexes.length, Math.min(columns.length, incomingDataTypes.length));
+    int newColumnCount =
+        countNewColumns(tvListColumnIndexes, incomingDataTypes, columns, columnCount);
+    long size = 0;
+    int block = rowCount / ARRAY_SIZE;
+    int elementIndex = rowCount % ARRAY_SIZE;
+    int inputIndex = start;
+    while (inputIndex < end) {
+      if (block >= timestamps.size()) {
+        size +=
+            arrayMemCostWithoutIndex
+                + (long) newColumnCount * NUM_BYTES_OBJECT_REF
+                + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0);
+      }
+      for (int inputColumn = 0; inputColumn < columnCount; inputColumn++) {
+        TSDataType incomingDataType = incomingDataTypes[inputColumn];
+        if (incomingDataType == null || columns[inputColumn] == null) {
+          continue;
+        }
+        int tvListColumnIndex = tvListColumnIndexes[inputColumn];
+        if (tvListColumnIndex < 0 || !isValueArrayMaterialized(tvListColumnIndex, block)) {
+          size += primitiveArrayMemCost(incomingDataType);
+        }
+      }
+      int written = Math.min(end - inputIndex, ARRAY_SIZE - elementIndex);
+      inputIndex += written;
+      block++;
+      elementIndex = 0;
+    }
+    return size + columnExtensionMemCost(newColumnCount);
+  }
+
+  public synchronized AlignedWriteRowsMemCostEstimator newAlignedWriteRowsMemCostEstimator() {
+    return new AlignedWriteRowsMemCostEstimator();
+  }
+
+  /** Incrementally estimates a row batch without retaining per-row input or column mappings. */
+  public final class AlignedWriteRowsMemCostEstimator {
+    private final int initialRowCount = rowCount;
+    private final int existingBlockCount = timestamps.size();
+    private final int existingColumnCount = dataTypes.size();
+    private final long existingArrayMemCostWithoutIndex = arrayMemCostWithoutIndex;
+    private final boolean hasIndices = indices != null;
+    private boolean[] newColumns = new boolean[Math.max(1, existingColumnCount)];
+    private int[] materializedColumnBlocks = new int[Math.max(1, existingColumnCount)];
+
+    private int estimatedRowCount;
+    private int currentBlock = -1;
+    private int newColumnCount;
+    private long materializedArrayMemCost;
+
+    private AlignedWriteRowsMemCostEstimator() {
+      Arrays.fill(materializedColumnBlocks, -1);
+    }
+
+    public void startRow() {
+      currentBlock = (int) ((initialRowCount + (long) estimatedRowCount) / ARRAY_SIZE);
+      estimatedRowCount++;
+    }
+
+    public void addValue(int tvListColumnIndex, TSDataType incomingDataType, Object value) {
+      if (tvListColumnIndex < 0 || incomingDataType == null) {
+        return;
+      }
+      ensureColumnCapacity(tvListColumnIndex + 1);
+      if (tvListColumnIndex >= existingColumnCount && !newColumns[tvListColumnIndex]) {
+        newColumns[tvListColumnIndex] = true;
+        newColumnCount++;
+      }
+      if (value != null
+          && !isValueArrayMaterialized(tvListColumnIndex, currentBlock)
+          && materializedColumnBlocks[tvListColumnIndex] != currentBlock) {
+        materializedColumnBlocks[tvListColumnIndex] = currentBlock;
+        materializedArrayMemCost += primitiveArrayMemCost(incomingDataType);
+      }
+    }
+
+    private void ensureColumnCapacity(int requiredCapacity) {
+      if (requiredCapacity <= newColumns.length) {
+        return;
+      }
+      int oldCapacity = newColumns.length;
+      int newCapacity = Math.max(requiredCapacity, oldCapacity << 1);
+      newColumns = Arrays.copyOf(newColumns, newCapacity);
+      materializedColumnBlocks = Arrays.copyOf(materializedColumnBlocks, newCapacity);
+      Arrays.fill(materializedColumnBlocks, oldCapacity, newCapacity, -1);
+    }
+
+    public long getMemoryCost() {
+      if (estimatedRowCount == 0) {
+        return 0;
+      }
+      long finalBlockCount =
+          (initialRowCount + (long) estimatedRowCount + ARRAY_SIZE - 1) / ARRAY_SIZE;
+      long newBlockCount = Math.max(0, finalBlockCount - existingBlockCount);
+      long newBlockMemCost =
+          existingArrayMemCostWithoutIndex
+              + (long) newColumnCount * NUM_BYTES_OBJECT_REF
+              + (hasIndices ? (long) ARRAY_SIZE * Integer.BYTES : 0);
+      return materializedArrayMemCost
+          + columnExtensionMemCost(newColumnCount)
+          + newBlockCount * newBlockMemCost;
+    }
+  }
+
+  /**
+   * Estimate memory allocated by one aligned row after its measurements are mapped to TVList
+   * columns. {@code rowOffset} is the number of preceding rows in the same pending batch.
+   */
+  public synchronized long alignedWriteRowMemCost(
+      int[] tvListColumnIndexes,
+      TSDataType[] incomingDataTypes,
+      Object[] rowValues,
+      int rowOffset) {
+    int columnCount =
+        Math.min(tvListColumnIndexes.length, Math.min(rowValues.length, incomingDataTypes.length));
+    int newColumnCount =
+        countNewColumns(tvListColumnIndexes, incomingDataTypes, rowValues, columnCount);
+    long size = 0;
+    int block = (rowCount + rowOffset) / ARRAY_SIZE;
+    if (block >= timestamps.size()) {
+      size +=
+          arrayMemCostWithoutIndex
+              + (long) newColumnCount * NUM_BYTES_OBJECT_REF
+              + (indices != null ? (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES : 0);
+    }
+    for (int inputColumn = 0; inputColumn < columnCount; inputColumn++) {
+      TSDataType incomingDataType = incomingDataTypes[inputColumn];
+      if (incomingDataType == null || rowValues[inputColumn] == null) {
+        continue;
+      }
+      int tvListColumnIndex = tvListColumnIndexes[inputColumn];
+      if (tvListColumnIndex < 0 || !isValueArrayMaterialized(tvListColumnIndex, block)) {
+        size += primitiveArrayMemCost(incomingDataType);
+      }
+    }
+    return size + columnExtensionMemCost(newColumnCount);
+  }
+
+  private static int countNewColumns(
+      int[] tvListColumnIndexes,
+      TSDataType[] incomingDataTypes,
+      Object[] inputValues,
+      int columnCount) {
+    int count = 0;
+    for (int i = 0; i < columnCount; i++) {
+      if (tvListColumnIndexes[i] < 0 && incomingDataTypes[i] != null && inputValues[i] != null) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private boolean isValueArrayMaterialized(int columnIndex, int arrayIndex) {
+    if (columnIndex >= values.size()) {
+      return false;
+    }
+    List<Object> columnValues = values.get(columnIndex);
+    return columnValues != null
+        && arrayIndex < columnValues.size()
+        && columnValues.get(arrayIndex) != null;
+  }
+
+  private long columnExtensionMemCost(int newColumnCount) {
+    if (newColumnCount == 0) {
+      return 0;
+    }
+    int oldColumnCount = dataTypes.size();
+    int newTotalColumnCount = oldColumnCount + newColumnCount;
+    long size = (long) timestamps.size() * NUM_BYTES_OBJECT_REF * newColumnCount;
+    size +=
+        RamUsageEstimator.sizeOfObjectArray(newTotalColumnCount)
+            - RamUsageEstimator.sizeOfObjectArray(oldColumnCount);
+    size +=
+        RamUsageEstimator.sizeOfLongArray(newTotalColumnCount)
+            - RamUsageEstimator.sizeOfLongArray(oldColumnCount);
+    size +=
+        RamUsageEstimator.sizeOfObjectArray(newTotalColumnCount)
+            - RamUsageEstimator.sizeOfObjectArray(oldColumnCount);
+    if (bitMaps != null) {
+      size +=
+          RamUsageEstimator.sizeOfObjectArray(newTotalColumnCount)
+              - RamUsageEstimator.sizeOfObjectArray(oldColumnCount);
+    }
+    long newColumnContainerCost =
+        RamUsageEstimator.shallowSizeOf(new ArrayList<>())
+            + (timestamps.isEmpty() ? 0 : RamUsageEstimator.sizeOfObjectArray(0));
+    return size + newColumnCount * newColumnContainerCost;
+  }
+
   /**
    * Get the single alignedTVList array mem cost by give types.
    *
@@ -1369,6 +1612,12 @@ public abstract class AlignedTVList extends TVList {
     return (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize()
         + NUM_BYTES_ARRAY_HEADER
         + NUM_BYTES_OBJECT_REF;
+  }
+
+  /** Memory cost of one materialized primitive array, excluding its ArrayList reference. */
+  private static long primitiveArrayMemCost(TSDataType type) {
+    return (long) PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize()
+        + NUM_BYTES_ARRAY_HEADER;
   }
 
   public static long bitmapRamCost() {
