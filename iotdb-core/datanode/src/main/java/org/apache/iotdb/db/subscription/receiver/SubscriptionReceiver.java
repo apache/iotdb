@@ -27,6 +27,8 @@ public interface SubscriptionReceiver {
 
   TPipeSubscribeResp handle(TPipeSubscribeReq req);
 
+  void setAuthenticatedUsername(final String username);
+
   PipeSubscribeRequestVersion getVersion();
 
   void handleExit();
