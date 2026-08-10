@@ -57,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -66,6 +67,11 @@ public class MigrationTaskManager implements IService, IMigrationManager {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final TierManager tierManager = TierManager.getInstance();
   private static final long CHECK_INTERVAL_IN_SECONDS = 10;
+  // Keep a bounded backlog while allowing every migration worker to remain busy.
+  private static final int MIGRATION_TASK_QUEUE_LIMIT = 50;
+
+  /** Slots for migration tasks that have been submitted but not completed. */
+  private volatile Semaphore migrationTaskSlots;
 
   /** enable or not */
   private boolean enable = false;
@@ -86,6 +92,8 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     MetricService.getInstance().addMetricSet(MigrationMetrics.getInstance());
     // threads and tasks
     reloadMigrateSpeedLimit();
+    migrationTaskSlots =
+        new Semaphore(iotdbConfig.getMigrateThreadCount() + MIGRATION_TASK_QUEUE_LIMIT);
     scheduler =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.MIGRATION_SCHEDULER.getName());
@@ -313,6 +321,9 @@ public class MigrationTaskManager implements IService, IMigrationManager {
                 tsfile,
                 tierManager.getNextFolderForTsFile(nextTier, tsfile.isSeq()));
           }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return;
         } catch (Exception e) {
           logger.error(
               "An error occurred when check and try to migrate TsFileResource {}", tsfile, e);
@@ -322,12 +333,21 @@ public class MigrationTaskManager implements IService, IMigrationManager {
 
     private void trySubmitMigrationTask(
         int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir)
-        throws IOException {
+        throws IOException, InterruptedException {
+      acquireMigrationTaskSlot();
       if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
+        releaseMigrationTaskSlot();
         return;
       }
+      try {
+        MigrationTask task = MigrationTask.newTask(cause, sourceTsFile, targetDir);
+        workers.submit(task);
+      } catch (RuntimeException | IOException e) {
+        releaseMigrationTaskSlot();
+        sourceTsFile.setStatus(TsFileResourceStatus.NORMAL);
+        throw e;
+      }
       releaseDiskUsage(tierLevel, sourceTsFile.getTsFileSize());
-      workers.submit(MigrationTask.newTask(cause, sourceTsFile, targetDir));
     }
 
     private int compareMigrationPriority(TsFileResource f1, TsFileResource f2) {
@@ -350,6 +370,17 @@ public class MigrationTaskManager implements IService, IMigrationManager {
         res = Long.compare(f1.getVersion(), f2.getVersion());
       }
       return res;
+    }
+  }
+
+  void acquireMigrationTaskSlot() throws InterruptedException {
+    migrationTaskSlots.acquire();
+  }
+
+  void releaseMigrationTaskSlot() {
+    Semaphore taskSlots = migrationTaskSlots;
+    if (taskSlots != null) {
+      taskSlots.release();
     }
   }
 

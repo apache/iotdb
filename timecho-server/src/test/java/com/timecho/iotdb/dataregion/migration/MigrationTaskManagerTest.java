@@ -41,9 +41,14 @@ import org.junit.Test;
 import java.io.File;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class MigrationTaskManagerTest {
@@ -152,5 +157,61 @@ public class MigrationTaskManagerTest {
     assertFalse(destModsFile.exists());
     assertEquals(1, tsfile.getTierLevel());
     assertEquals(srcFile, tsfile.getTsFile());
+  }
+
+  @Test
+  public void testMigrationTaskSlotWaitsForCompletion() throws Exception {
+    int migrationTaskLimit = config.getMigrateThreadCount() + 50;
+    // Exhaust every slot so the next submission must wait for a completed migration task.
+    for (int i = 0; i < migrationTaskLimit; i++) {
+      MigrationTaskManager.getInstance().acquireMigrationTaskSlot();
+    }
+
+    CountDownLatch waiterStarted = new CountDownLatch(1);
+    AtomicBoolean waiterAcquiredSlot = new AtomicBoolean(false);
+    AtomicReference<Throwable> waiterError = new AtomicReference<>();
+    boolean slotReleasedForWaiter = false;
+    Thread waiter =
+        new Thread(
+            () -> {
+              waiterStarted.countDown();
+              try {
+                MigrationTaskManager.getInstance().acquireMigrationTaskSlot();
+                waiterAcquiredSlot.set(true);
+              } catch (Throwable t) {
+                waiterError.set(t);
+              }
+            });
+    waiter.start();
+
+    try {
+      assertTrue(waiterStarted.await(5, TimeUnit.SECONDS));
+      long waitDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (waiter.getState() != Thread.State.WAITING && System.nanoTime() < waitDeadline) {
+        Thread.yield();
+      }
+      assertEquals(Thread.State.WAITING, waiter.getState());
+
+      MigrationTaskManager.getInstance().releaseMigrationTaskSlot();
+      slotReleasedForWaiter = true;
+      waiter.join(TimeUnit.SECONDS.toMillis(5));
+
+      assertFalse(waiter.isAlive());
+      assertTrue(waiterAcquiredSlot.get());
+      assertNull(waiterError.get());
+    } finally {
+      if (waiter.isAlive()) {
+        waiter.interrupt();
+        waiter.join(TimeUnit.SECONDS.toMillis(5));
+      }
+      int heldSlots = migrationTaskLimit - (slotReleasedForWaiter ? 1 : 0);
+      if (waiterAcquiredSlot.get()) {
+        heldSlots++;
+      }
+      // Restore the singleton manager's permits for other tests and the service tear-down.
+      for (int i = 0; i < heldSlots; i++) {
+        MigrationTaskManager.getInstance().releaseMigrationTaskSlot();
+      }
+    }
   }
 }
