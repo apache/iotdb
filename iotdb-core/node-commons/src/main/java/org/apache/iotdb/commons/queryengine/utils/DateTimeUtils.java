@@ -31,7 +31,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -610,16 +609,6 @@ public class DateTimeUtils {
     } catch (NumberFormatException e) {
       return DateTimeUtils.convertDatetimeStrToLong(timeStr, ZoneId.systemDefault());
     }
-  }
-
-  /**
-   * @deprecated The {@code depth} parameter is ignored. Use {@link
-   *     #convertDatetimeStrToLong(String, ZoneId, String)} instead.
-   */
-  @Deprecated
-  public static long convertDatetimeStrToLong(
-      String str, ZoneOffset offset, int depth, String timestampPrecision) {
-    return convertDatetimeStrToLong(str, (ZoneId) offset, timestampPrecision);
   }
 
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {

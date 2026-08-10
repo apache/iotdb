@@ -834,8 +834,7 @@ public class ValueConverter {
   private static int parseDateTimeToDate(final String value) {
     try {
       return DateUtils.parseDateExpressionToInt(
-          Instant.ofEpochMilli(
-                  DateTimeUtils.convertDatetimeStrToLong(value, ZoneOffset.UTC, 0, "ms"))
+          Instant.ofEpochMilli(DateTimeUtils.convertDatetimeStrToLong(value, ZoneOffset.UTC, "ms"))
               .atZone(ZoneOffset.UTC)
               .toLocalDate());
     } catch (final Exception e) {

@@ -30,7 +30,6 @@ import org.junit.Test;
 
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -378,15 +377,13 @@ public class DateTimeUtilsTest {
     Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
   }
 
+  // Winter and summer tests are both required to catch regressions year-round.
   @Test
   public void convertWinterTimeShouldUseUtcPlus1() {
     ZoneId zoneId = ZoneId.of("Europe/Warsaw");
     long winter = DateTimeUtils.convertDatetimeStrToLong("2024-01-15 12:00:00", zoneId, "ms");
-    assertEquals(
-        ZonedDateTime.of(LocalDateTime.parse("2024-01-15T12:00:00"), zoneId)
-            .toInstant()
-            .toEpochMilli(),
-        winter);
+    long expected = ZonedDateTime.of(2024, 1, 15, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+    assertEquals(expected, winter);
   }
 
   @Test
@@ -397,6 +394,7 @@ public class DateTimeUtilsTest {
     assertEquals(expected, summer);
   }
 
+  // Before and after DST tests are both required to catch regressions year-round.
   @Test
   public void convertJustBeforeSpringDstShouldKeepWinterOffset() {
     ZoneId zoneId = ZoneId.of("Europe/Warsaw");
@@ -433,7 +431,6 @@ public class DateTimeUtilsTest {
   public void historicalDateBeforeStandardizedOffsetShouldUseLMT() {
     ZoneId shanghaiId = ZoneId.of("Asia/Shanghai");
     long oldTime = DateTimeUtils.convertDatetimeStrToLong("1900-01-01 00:00:00", shanghaiId, "ms");
-    ZoneOffset offset = shanghaiId.getRules().getOffset(Instant.ofEpochMilli(oldTime));
     long expected = ZonedDateTime.of(1900, 1, 1, 0, 0, 0, 0, shanghaiId).toInstant().toEpochMilli();
     assertEquals(expected, oldTime);
   }
