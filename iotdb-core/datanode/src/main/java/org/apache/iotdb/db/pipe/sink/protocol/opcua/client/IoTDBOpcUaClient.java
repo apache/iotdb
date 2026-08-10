@@ -28,6 +28,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
@@ -121,6 +124,16 @@ public class IoTDBOpcUaClient {
   public void transfer(final Tablet tablet, final OpcUaSink sink) throws Exception {
     OpcUaNameSpace.transferTabletForClientServerModel(
         tablet, false, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<IMeasurementSchema, TimeValuePair>> lastValues,
+      final boolean isTableModel,
+      final OpcUaSink sink)
+      throws Exception {
+    OpcUaNameSpace.transferLastValues(
+        deviceID, lastValues, isTableModel, sink, this::transferTabletRowForClientServerModel);
   }
 
   private void transferTabletRowForClientServerModel(
