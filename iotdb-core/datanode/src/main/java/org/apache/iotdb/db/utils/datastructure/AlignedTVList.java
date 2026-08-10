@@ -349,7 +349,7 @@ public abstract class AlignedTVList extends TVList {
       plan.cloneList.materializedValueArrayCounts[i] = materializedCount;
       if (materializedCount > 0) {
         plan.cloneList.materializedValueArrayMemCost +=
-            (long) materializedCount * valueListArrayMemCost(dataTypes.get(i));
+            (long) materializedCount * primitiveArrayMemCost(dataTypes.get(i));
       }
     }
     for (int i = 0; i < plan.valueColumnsToMove.length; i++) {
@@ -374,7 +374,7 @@ public abstract class AlignedTVList extends TVList {
       materializedValueArrayCounts[i] = 0;
       if (materializedCount > 0) {
         materializedValueArrayMemCost -=
-            (long) materializedCount * valueListArrayMemCost(dataTypes.get(i));
+            (long) materializedCount * primitiveArrayMemCost(dataTypes.get(i));
       }
     }
 
@@ -430,7 +430,7 @@ public abstract class AlignedTVList extends TVList {
       materializedValueArrayCounts[i] = 0;
       if (materializedCount > 0) {
         materializedValueArrayMemCost -=
-            (long) materializedCount * valueListArrayMemCost(dataTypes.get(i));
+            (long) materializedCount * primitiveArrayMemCost(dataTypes.get(i));
       }
     }
 
@@ -1361,7 +1361,7 @@ public abstract class AlignedTVList extends TVList {
       valueArray = getPrimitiveArraysByType(dataTypes.get(columnIndex));
       columnValues.set(arrayIndex, valueArray);
       materializedValueArrayCounts[columnIndex]++;
-      materializedValueArrayMemCost += valueListArrayMemCost(dataTypes.get(columnIndex));
+      materializedValueArrayMemCost += primitiveArrayMemCost(dataTypes.get(columnIndex));
       if (elementIndex > 0) {
         getBitMap(columnIndex, arrayIndex).markRange(0, elementIndex);
       }
@@ -1462,7 +1462,7 @@ public abstract class AlignedTVList extends TVList {
       }
       TSDataType dataType = dataTypes.get(i);
       if (dataType != null) {
-        size += (long) materializedValueArrayCounts[i] * valueListArrayMemCost(dataType);
+        size += (long) materializedValueArrayCounts[i] * primitiveArrayMemCost(dataType);
       }
     }
     return size
@@ -1471,11 +1471,19 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /**
-   * Calculate the one-time container memory retained by this list. Primitive-array references in
-   * the time/index/value lists and bitmap lists are already charged by the per-block accounting, so
-   * only their list objects and backing-array headers are added here. In contrast, references in
-   * the outer column containers (and the N-wide accounting arrays kept after a partial clone) are
-   * not charged elsewhere and are counted in full.
+   * Calculate the one-time container memory retained by this list.
+   *
+   * <p>The outer N-wide containers (the {@code values}/{@code bitMaps} ArrayLists, the {@code
+   * dataTypes} list and the accounting arrays kept after a partial clone) are not charged anywhere
+   * else and are counted in full, including all their slot references.
+   *
+   * <p>For a retained column, the inner value list is charged with the references of all its slots
+   * (including null placeholders for blocks that were never materialized), so each slot reference
+   * is counted exactly once; the materialized primitive array payload and header are charged once
+   * per materialized block by {@code materializedValueArrayMemCost}. The timestamps/indices inner
+   * lists only contribute their list object and backing-array header here, since their primitive
+   * arrays are already charged per block by {@code
+   * alignedTvListArrayMemCostWithoutPrimitiveArrays}.
    */
   long calculateContainerRamCost(Set<Integer> retainedColumns) {
     long size = 0;
@@ -1495,7 +1503,7 @@ public abstract class AlignedTVList extends TVList {
       }
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
-        size += listRamCostWithoutReferences(columnValues);
+        size += listRamCostWithReferences(columnValues);
       }
     }
 
