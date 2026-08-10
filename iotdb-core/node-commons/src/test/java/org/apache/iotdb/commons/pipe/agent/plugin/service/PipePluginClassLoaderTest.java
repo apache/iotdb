@@ -397,11 +397,30 @@ public class PipePluginClassLoaderTest {
     if (path == null || !Files.exists(path)) {
       return;
     }
-    try (final Stream<Path> stream = Files.walk(path)) {
-      for (final Path subPath :
-          (Iterable<Path>) stream.sorted(Comparator.reverseOrder())::iterator) {
-        Files.deleteIfExists(subPath);
+    // On Windows a closed URLClassLoader may not release its JAR file handle immediately,
+    // so the deletion can transiently fail with a FileSystemException. Retry to avoid
+    // flaky failures in the plugin-jar tests.
+    IOException lastException = null;
+    for (int attempt = 0; attempt < 5; attempt++) {
+      try {
+        try (final Stream<Path> stream = Files.walk(path)) {
+          for (final Path subPath :
+              (Iterable<Path>) stream.sorted(Comparator.reverseOrder())::iterator) {
+            Files.deleteIfExists(subPath);
+          }
+        }
+        return;
+      } catch (final IOException e) {
+        lastException = e;
+        System.gc();
+        try {
+          Thread.sleep(100L * (attempt + 1));
+        } catch (final InterruptedException interrupted) {
+          Thread.currentThread().interrupt();
+          break;
+        }
       }
     }
+    throw lastException;
   }
 }
