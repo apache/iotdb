@@ -543,4 +543,18 @@ public class DateTimeUtilsTest {
             .toEpochMilli();
     assertEquals(expected, withOffset);
   }
+
+  @Test
+  public void shouldConvertBareDateWithoutTime() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+
+    String[] bareDates = new String[] {"2014-04-04", "2014-4-4", "2014/4/4", "2014.4.4"};
+
+    long expected = ZonedDateTime.of(2014, 4, 4, 0, 0, 0, 0, zoneId).toInstant().toEpochMilli();
+
+    for (String dateStr : bareDates) {
+      long result = DateTimeUtils.convertDatetimeStrToLong(dateStr, zoneId, "ms");
+      Assert.assertEquals("Failed to parse bare date: " + dateStr, expected, result);
+    }
+  }
 }

@@ -651,7 +651,7 @@ public class DateTimeUtils {
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(
           str.substring(0, str.indexOf('Z')) + "+00:00", zoneId, timestampPrecision);
-    } else if (str.length() == 10) {
+    } else if (!str.contains(":")) {
       return convertDatetimeStrToLong(str + "T00:00:00", zoneId, timestampPrecision);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
