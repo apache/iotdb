@@ -273,7 +273,10 @@ public abstract class AlignedTVList extends TVList {
    */
   public synchronized PartialClonePlan preparePartialClone(Set<Integer> columnsToClone) {
     Set<Integer> retainedColumns =
-        new HashSet<>(Objects.requireNonNull(columnsToClone, "columnsToClone cannot be null"));
+        new HashSet<>(
+            Objects.requireNonNull(
+                columnsToClone,
+                DataNodeMiscMessages.EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37));
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
     cloneColumnDataTo(cloneList, retainedColumns);
@@ -282,11 +285,13 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("unchecked")
   private PartialClonePlan prepareMovePlan(AlignedTVList cloneList, Set<Integer> retainedColumns) {
-    Objects.requireNonNull(cloneList, "cloneList cannot be null");
+    Objects.requireNonNull(
+        cloneList, DataNodeMiscMessages.EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F);
     int columnCount = values.size();
     if (cloneList.values.size() != columnCount
         || cloneList.memoryBinaryChunkSize.length != memoryBinaryChunkSize.length) {
-      throw new IllegalStateException("Target AlignedTVList has incompatible column containers");
+      throw new IllegalStateException(
+          DataNodeMiscMessages.EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613);
     }
 
     List<Object>[] valueColumnsToMove = (List<Object>[]) new List<?>[columnCount];
@@ -299,11 +304,15 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues == null) {
         throw new IllegalStateException(
-            String.format("Missing value arrays for aligned column index %d during move", i));
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037,
+                i));
       }
       if (cloneList.values.get(i) == null || !cloneList.values.get(i).isEmpty()) {
         throw new IllegalStateException(
-            String.format("Target value column index %d is not ready for move", i));
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F,
+                i));
       }
       valueColumnsToMove[i] = columnValues;
 
@@ -312,7 +321,9 @@ public abstract class AlignedTVList extends TVList {
             || cloneList.bitMaps.size() != bitMaps.size()
             || cloneList.bitMaps.get(i) != null) {
           throw new IllegalStateException(
-              String.format("Target bitmap column index %d is not ready for move", i));
+              String.format(
+                  DataNodeMiscMessages.EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88,
+                  i));
         }
         bitmapColumnsToMove[i] = bitMaps.get(i);
       }
@@ -999,7 +1010,9 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues == null) {
         throw new IllegalStateException(
-            String.format("Missing value arrays for aligned column index %d during clone", i));
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5,
+                i));
       }
       boolean shouldCloneColumn = cloneAllColumns || columnsToClone.contains(i);
       if (!shouldCloneColumn) {
@@ -1078,7 +1091,9 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValues == null) {
         throw new IllegalStateException(
-            String.format("Missing value arrays for aligned column index %d during expand", i));
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6,
+                i));
       }
       columnValues.add(null);
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -1348,7 +1363,7 @@ public abstract class AlignedTVList extends TVList {
     if (columnValues == null) {
       throw new IllegalStateException(
           String.format(
-              "Missing value arrays for aligned column index %d during mark null value",
+              DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E,
               columnIndex));
     }
 

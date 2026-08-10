@@ -1494,4 +1494,23 @@ public final class DataNodeMiscMessages {
   public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
       "无法解析 Active Load 监听目录 %s 的 canonical 路径：%s";
 
+  public static final String EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37 =
+      "columnsToClone 不能为 null";
+  public static final String EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F =
+      "cloneList 不能为 null";
+  public static final String EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613 =
+      "目标 AlignedTVList 的列容器不兼容";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037 =
+      "移动过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F =
+      "目标值列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88 =
+      "目标 bitmap 列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5 =
+      "克隆过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6 =
+      "扩容过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
+      "标记空值过程中缺少对齐列索引 %d 的值数组";
+
 }
