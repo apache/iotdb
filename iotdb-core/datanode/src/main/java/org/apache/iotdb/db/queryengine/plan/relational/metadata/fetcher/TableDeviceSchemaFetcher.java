@@ -365,7 +365,6 @@ public class TableDeviceSchemaFetcher {
               integerListMap.values().stream()
                   .flatMap(Collection::stream)
                   .collect(Collectors.toList()));
-          Collection<List<SchemaFilter>> values = integerListMap.values();
         }
       }
       statement.setTagDeterminedFilterList(tagPredicateForFetch);

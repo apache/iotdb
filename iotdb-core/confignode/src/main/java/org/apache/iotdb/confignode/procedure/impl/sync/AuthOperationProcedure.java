@@ -114,7 +114,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
             LOGGER.info(ProcedureMessages.AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY);
             return Flow.NO_MORE_STATE;
           }
-          LOGGER.error(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED);
+          LOGGER.warn(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED);
           setFailure(
               new ProcedureException(
                   new IoTDBException(
@@ -127,7 +127,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
         LOGGER.error(ProcedureMessages.FAIL_WHEN_EXECUTE, plan);
         setFailure(new ProcedureException(e));
       } else {
-        LOGGER.error(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED, e);
+        LOGGER.warn(ProcedureMessages.AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED, e);
         setFailure(
             new ProcedureException(
                 new IoTDBException(
