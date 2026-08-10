@@ -30,9 +30,9 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -74,10 +74,37 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final TablePattern tablePattern;
   private final boolean isWithMod;
 
-  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
-  private final PipeMemoryBlock allocatedMemoryBlockForTableSchemas;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunkMeta;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTableSchemas;
+
+  public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
+      throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        false,
+        false);
+  }
 
   public TsFileInsertionEventTableParser(
       final String pipeName,
@@ -93,6 +120,66 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean objectPathsOnly,
       final boolean collectObjectColumnModEntries)
       throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        objectPathsOnly,
+        collectObjectColumnModEntries,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        false,
+        false,
+        memoryManager);
+  }
+
+  public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException {
     super(
         tsFile,
         pipeName,
@@ -107,7 +194,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         sourceEvent,
         null,
         objectPathsOnly,
-        isWithMod);
+        isWithMod,
+        memoryManager);
 
     this.collectObjectColumnModEntries = collectObjectColumnModEntries;
     this.isWithMod = isWithMod;
@@ -137,16 +225,11 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                 : PatternTreeMapFactory.getModsPatternTreeMap();
       }
       allocatedMemoryBlockForModifications =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
-      this.allocatedMemoryBlockForChunk =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForBatchData =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForChunkMeta =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForTableSchemas =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+      this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForChunkMeta = memoryManager.forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForTableSchemas = memoryManager.forceAllocateForTabletWithRetry(0);
 
       this.startTime = startTime;
       this.endTime = endTime;
@@ -157,6 +240,19 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventTableParser(
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
+      throws IOException {
+    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent, isWithMod, false);
   }
 
   public TsFileInsertionEventTableParser(
@@ -182,7 +278,35 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         sourceEvent,
         isWithMod,
         objectPathsOnly,
-        false);
+        false,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventTableParser(
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException {
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        false,
+        false,
+        memoryManager);
   }
 
   private void recordTableObjectMeasurements(final Map<String, TableSchema> tableSchemaMap) {

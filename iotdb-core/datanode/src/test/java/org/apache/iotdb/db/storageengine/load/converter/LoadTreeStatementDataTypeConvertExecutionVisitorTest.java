@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -109,6 +111,29 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
     Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
     Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testLoadScanParserUsesQueryMemoryPoolInsteadOfPipeMemory() throws Exception {
+    tsFile = new File("load-tree-parser-query-memory.tsfile");
+    writeTsFile(tsFile);
+
+    final long pipeMemoryBefore = PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+    final LoadTsFileMemoryManager loadMemoryManager = LoadTsFileMemoryManager.getInstance();
+    final long loadMemoryBefore = loadMemoryManager.getUsedMemorySizeInBytes();
+
+    try (final LoadTreeTsFileTabletIterator tabletIterator =
+        new LoadTreeTsFileTabletIterator(tsFile, true)) {
+      Assert.assertTrue(tabletIterator.hasNext());
+      Assert.assertNotNull(tabletIterator.next());
+      Assert.assertTrue(loadMemoryManager.getUsedMemorySizeInBytes() > loadMemoryBefore);
+      Assert.assertEquals(
+          pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
+    }
+
+    Assert.assertEquals(loadMemoryBefore, loadMemoryManager.getUsedMemorySizeInBytes());
+    Assert.assertEquals(
+        pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
   }
 
   @Test
