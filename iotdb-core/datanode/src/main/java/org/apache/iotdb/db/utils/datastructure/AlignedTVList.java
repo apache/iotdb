@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -291,7 +290,8 @@ public abstract class AlignedTVList extends TVList {
     if (cloneList.values.size() != columnCount
         || cloneList.memoryBinaryChunkSize.length != memoryBinaryChunkSize.length) {
       throw new IllegalStateException(
-          DataNodeMiscMessages.EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613);
+          DataNodeMiscMessages
+              .EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613);
     }
 
     List<Object>[] valueColumnsToMove = (List<Object>[]) new List<?>[columnCount];
@@ -305,13 +305,15 @@ public abstract class AlignedTVList extends TVList {
       if (columnValues == null) {
         throw new IllegalStateException(
             String.format(
-                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037,
+                DataNodeMiscMessages
+                    .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037,
                 i));
       }
       if (cloneList.values.get(i) == null || !cloneList.values.get(i).isEmpty()) {
         throw new IllegalStateException(
             String.format(
-                DataNodeMiscMessages.EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F,
+                DataNodeMiscMessages
+                    .EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F,
                 i));
       }
       valueColumnsToMove[i] = columnValues;
@@ -322,7 +324,8 @@ public abstract class AlignedTVList extends TVList {
             || cloneList.bitMaps.get(i) != null) {
           throw new IllegalStateException(
               String.format(
-                  DataNodeMiscMessages.EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88,
+                  DataNodeMiscMessages
+                      .EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88,
                   i));
         }
         bitmapColumnsToMove[i] = bitMaps.get(i);
@@ -386,10 +389,13 @@ public abstract class AlignedTVList extends TVList {
    * transfer from write process to read process to reduce memory footprint. Only columns that are
    * accessed by active queries are retained; all other columns are released.
    *
-   * @param columnsToKeep set of column indices that are accessed by queries and should be kept
+   * @param columnsToKeep set of column indices that are accessed by queries and should be kept. A
+   *     null set means no access information is available and nothing is released. An empty set
+   *     means all queries are tracked but only access the time column, so all value columns are
+   *     released.
    */
   public synchronized void releaseNonQueryColumns(Set<Integer> columnsToKeep) {
-    if (columnsToKeep == null || columnsToKeep.isEmpty()) {
+    if (columnsToKeep == null) {
       return;
     }
 
@@ -807,17 +813,19 @@ public abstract class AlignedTVList extends TVList {
    * Get the union of all columns accessed by queries on this AlignedTVList. This method should be
    * called with queryListLock held for thread safety.
    *
-   * @return set of accessed column indices, or empty set if no columns are tracked or no queries
-   *     are present
+   * @return set of accessed column indices, or null if any query on this TVList is untracked or
+   *     does not record accessed columns. An empty (non-null) set means all queries are tracked but
+   *     only access the time column (e.g. a time-only scan), so all value columns can be released.
    */
   @Override
   public Set<Integer> getAccessedColumnsForQuery() {
     Set<Integer> accessedColumns = new HashSet<>();
     for (QueryContext queryContext : getQueryContextSet()) {
-      if (queryContext instanceof FragmentInstanceContext) {
-        accessedColumns.addAll(
-            ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(this));
+      Set<Integer> columns = queryContext.getAccessedAlignedColumns(this);
+      if (columns == null) {
+        return null;
       }
+      accessedColumns.addAll(columns);
     }
     return accessedColumns;
   }
@@ -1011,7 +1019,8 @@ public abstract class AlignedTVList extends TVList {
       if (columnValues == null) {
         throw new IllegalStateException(
             String.format(
-                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5,
+                DataNodeMiscMessages
+                    .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5,
                 i));
       }
       boolean shouldCloneColumn = cloneAllColumns || columnsToClone.contains(i);
@@ -1092,7 +1101,8 @@ public abstract class AlignedTVList extends TVList {
       if (columnValues == null) {
         throw new IllegalStateException(
             String.format(
-                DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6,
+                DataNodeMiscMessages
+                    .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6,
                 i));
       }
       columnValues.add(null);
@@ -1363,7 +1373,8 @@ public abstract class AlignedTVList extends TVList {
     if (columnValues == null) {
       throw new IllegalStateException(
           String.format(
-              DataNodeMiscMessages.EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E,
+              DataNodeMiscMessages
+                  .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E,
               columnIndex));
     }
 

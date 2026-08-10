@@ -129,10 +129,12 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         if (tvList instanceof AlignedTVList) {
           AlignedTVList alignedTVList = (AlignedTVList) tvList;
 
-          // Get the union of all columns accessed by queries
+          // Get the union of all columns accessed by queries. An empty (non-null) set means all
+          // queries are tracked but only access the time column, so all value columns are
+          // released; null means some query is untracked and releaseNonQueryColumns keeps
+          // everything.
           Set<Integer> accessedColumns = alignedTVList.getAccessedColumnsForQuery();
-
-          if (accessedColumns != null && !accessedColumns.isEmpty()) {
+          if (accessedColumns != null) {
             // Release non-query columns to reduce memory before ownership transfer
             alignedTVList.releaseNonQueryColumns(accessedColumns);
           }

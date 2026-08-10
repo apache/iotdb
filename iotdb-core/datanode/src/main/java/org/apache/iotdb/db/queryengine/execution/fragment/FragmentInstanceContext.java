@@ -291,13 +291,14 @@ public class FragmentInstanceContext extends QueryContext {
    * change accessed columns for the same TVList concurrently.
    *
    * @param tvList the TVList being accessed
-   * @return set of column indices being accessed
+   * @return set of column indices being accessed, or null if the TVList is not tracked by this
+   *     query. An empty (non-null) set means the TVList is tracked but only the time column is
+   *     accessed (e.g. a time-only scan), which is different from being untracked.
    */
+  @Override
   public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
     Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
-    return accessedColumns == null
-        ? Collections.emptySet()
-        : Collections.unmodifiableSet(accessedColumns);
+    return accessedColumns == null ? null : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly

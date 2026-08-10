@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -58,6 +59,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -68,6 +70,8 @@ import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -184,6 +188,55 @@ public class FragmentInstanceExecutionTest {
               + capturedOutput,
           capturedOutput.contains(
               "The memory cost to be released is larger than the memory cost of memory block"));
+    }
+  }
+
+  @Test
+  public void testTVListOwnerTransferTimeOnlyAlignedReleasesAllValueColumns()
+      throws InterruptedException {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      List<IMeasurementSchema> schemas =
+          new ArrayList<>(
+              Arrays.asList(
+                  new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+                  new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
+                  new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN)));
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+      for (int i = 0; i < 100; i++) {
+        memChunk.putAlignedRow(i, new Object[] {(long) i, (long) i * 2, (long) i * 3});
+      }
+      AlignedTVList tvList = memChunk.getWorkingTVList();
+
+      // A table-model time-only query: tracked on the TVList with an empty column list. The empty
+      // set must be distinguished from "untracked" so the flush-time ownership transfer releases
+      // all value columns.
+      FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 1), "1");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(id, instanceNotificationExecutor);
+      FragmentInstanceContext queryContext = createFragmentInstanceContext(id, stateMachine);
+      queryContext.addTVListToSet(ImmutableSet.of(tvList));
+      tvList.lockQueryList();
+      try {
+        tvList.getQueryContextSet().add(queryContext);
+        queryContext.putAccessedColumns(tvList, Collections.emptyList());
+      } finally {
+        tvList.unlockQueryList();
+      }
+
+      // Flush-time ownership transfer: the TVList is handed over to the only (time-only) query.
+      memChunk.release();
+
+      // All value columns must have been released, while timestamps remain readable.
+      assertNull(tvList.getValues().get(0));
+      assertNull(tvList.getValues().get(1));
+      assertNull(tvList.getValues().get(2));
+      assertEquals(100, tvList.rowCount());
+      assertEquals(99L, tvList.getTime(99));
+      assertSame(queryContext, tvList.getOwnerQuery());
+    } finally {
+      shutdownAndAwaitTermination(instanceNotificationExecutor);
     }
   }
 
