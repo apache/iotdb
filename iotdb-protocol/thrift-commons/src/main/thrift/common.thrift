@@ -203,6 +203,7 @@ struct TPipeHeartbeatResp {
   3: optional list<i64> pipeRemainingEventCountList
   4: optional list<double> pipeRemainingTimeList
   5: optional list<i32> pipeDegradedStatusList
+  6: optional list<map<string, i64>> pipeRecentFailureList
 }
 
 struct TLicense {

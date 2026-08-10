@@ -3338,7 +3338,8 @@ public class ConfigManager implements IManager {
             resp.getPipeCompletedList(),
             resp.getPipeRemainingEventCountList(),
             resp.getPipeRemainingTimeList(),
-            resp.getPipeDegradedStatusList());
+            resp.getPipeDegradedStatusList(),
+            resp.getPipeRecentFailureList());
     return StatusUtils.OK;
   }
 
