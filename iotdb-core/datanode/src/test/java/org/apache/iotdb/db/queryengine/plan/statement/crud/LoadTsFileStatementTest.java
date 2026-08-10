@@ -149,7 +149,7 @@ public class LoadTsFileStatementTest {
   @Test
   public void testTreeLoadEmptyPathIsRejected() {
     try {
-      StatementGenerator.createStatement("LOAD TSFILE ''", ZoneId.systemDefault());
+      StatementGenerator.createStatement("LOAD ''", ZoneId.systemDefault());
       Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
     } catch (final RuntimeException e) {
       Assert.assertTrue(e.getMessage().contains("The LOAD TSFILE path cannot be empty."));
