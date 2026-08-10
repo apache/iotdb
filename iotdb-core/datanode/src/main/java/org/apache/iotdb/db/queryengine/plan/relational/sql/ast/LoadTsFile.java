@@ -117,6 +117,7 @@ public class LoadTsFile extends Statement {
     initAttributes();
 
     try {
+      LoadTsFileStatement.validateLoadTsFilePath(filePath);
       this.tsFiles =
           validateInternalDataDir
               ? LoadTsFileStatement.processTsFile(new File(filePath), validateSourcePath)
