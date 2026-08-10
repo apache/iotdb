@@ -3485,7 +3485,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInPipeSubscribeResp();
       }
 
-      return SubscriptionAgent.receiver().handle(req);
+      return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
