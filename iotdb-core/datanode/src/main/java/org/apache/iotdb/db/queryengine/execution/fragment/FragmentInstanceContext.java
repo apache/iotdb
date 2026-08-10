@@ -187,7 +187,7 @@ public class FragmentInstanceContext extends QueryContext {
   private boolean highestPriority = false;
 
   // accessed value columns on each referenced AlignedTVList.
-  private final Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
+  private Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
@@ -1178,7 +1178,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
-    alignedTVListColumnAccessMap.clear();
+    alignedTVListColumnAccessMap = null;
 
     fileModCache = null;
     tables = null;
