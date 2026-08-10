@@ -691,7 +691,9 @@ public class AlignedTVListTest {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(
             Arrays.asList(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64));
-    tvList.putAlignedValue(0, new Object[] {null, 2L, 3L});
+    // Materialize the first column before writing a null so master creates its lazy bitmap.
+    tvList.putAlignedValue(0, new Object[] {1L, 2L, 3L});
+    tvList.putAlignedValue(1, new Object[] {null, 4L, 5L});
 
     List<Object> firstColumnValues = tvList.getValues().get(0);
     List<Object> secondColumnValues = tvList.getValues().get(1);
@@ -708,7 +710,7 @@ public class AlignedTVListTest {
     Assert.assertSame(thirdColumnValues, tvList.getValues().get(2));
     Assert.assertSame(invalidThirdColumnArray, tvList.getValues().get(2).get(0));
     Assert.assertSame(firstColumnBitMaps, tvList.getBitMaps().get(0));
-    Assert.assertTrue(tvList.isNullValue(0, 0));
+    Assert.assertTrue(tvList.isNullValue(1, 0));
     Assert.assertEquals(2L, tvList.getLongByValueIndex(0, 1));
   }
 
@@ -722,7 +724,9 @@ public class AlignedTVListTest {
     for (int i = 0; i < 100; i++) {
       Object[] values = new Object[3];
       values[0] = (long) i;
-      values[1] = null; // This will create a bitmap
+      // Alternate non-null and null values so the lazily allocated value array and bitmap both
+      // exist in every block.
+      values[1] = i % 2 == 0 ? (long) i : null;
       values[2] = (long) (i * 100);
       tvList.putAlignedValue(i, values);
     }

@@ -1535,9 +1535,6 @@ public abstract class AlignedTVList extends TVList {
 
   private long alignedTvListArrayMemCostWithoutPrimitiveArrays(Set<Integer> retainedColumns) {
     long size = alignedTvListArrayMemCost(retainedColumns);
-    if (indices != null) {
-      size -= (long) PrimitiveArrayManager.ARRAY_SIZE * Integer.BYTES;
-    }
     for (int i = 0; i < dataTypes.size(); i++) {
       TSDataType dataType = dataTypes.get(i);
       if (dataType != null
