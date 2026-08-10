@@ -47,7 +47,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
-  private AtomicLong referenceCnt = new AtomicLong();
+  private long retainedMemorySize = 0;
+  private boolean serializedRequestsBuilt = false;
+  private final AtomicLong referenceCnt = new AtomicLong();
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
@@ -64,13 +66,18 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     this.serializedRequests = new ArrayList<>(requests.size());
   }
 
-  public void buildSerializedRequests() {
+  public synchronized void buildSerializedRequests() {
+    if (serializedRequestsBuilt) {
+      return;
+    }
     this.requests.forEach(
         r -> {
           ByteBuffer buffer = r.serializeToByteBuffer();
           this.serializedRequests.add(buffer);
           this.memorySize += Long.max(buffer.capacity(), r.getMemorySize());
+          this.retainedMemorySize += buffer.capacity() + r.getMemorySize();
         });
+    serializedRequestsBuilt = true;
   }
 
   @Override
@@ -88,6 +95,20 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long getMemorySize() {
     return memorySize;
+  }
+
+  /**
+   * Returns the memory retained while this request object is alive.
+   *
+   * <p>Before replication serialization, the request only retains its original request objects.
+   * Afterwards it retains both the originals and the serialized buffers. Batch memory continues to
+   * use {@link #getMemorySize()} because a batch no longer owns the original requests.
+   */
+  public synchronized long getRetainedMemorySize() {
+    if (serializedRequestsBuilt) {
+      return retainedMemorySize;
+    }
+    return requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
   }
 
   public long getSearchIndex() {

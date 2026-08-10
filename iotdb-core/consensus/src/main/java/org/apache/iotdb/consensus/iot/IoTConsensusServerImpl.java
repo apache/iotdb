@@ -157,7 +157,6 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
-  private IndexedConsensusRequest lastConsensusRequest;
 
   // Subscription queues receive IndexedConsensusRequest in real-time from write(),
   // similar to LogDispatcher, enabling in-memory data delivery without waiting for WAL flush.
@@ -284,14 +283,13 @@ public class IoTConsensusServerImpl {
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       indexedConsensusRequest.setRoutingEpoch(currentRoutingEpoch);
-      lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
             IoTConsensusMessages.DATA_REGION_INDEX_AFTER_BUILD,
             thisNode.getGroupId(),
             getMinSyncIndex(),
             indexedConsensusRequest.getSearchIndex(),
-            lastConsensusRequest.getSerializedRequests());
+            indexedConsensusRequest.getSerializedRequests());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
