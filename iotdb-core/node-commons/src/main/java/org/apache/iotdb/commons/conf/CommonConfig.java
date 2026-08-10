@@ -224,6 +224,9 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 16 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
+
+  // Maximum proportion for floating memory retained by InsertNode queues. Unused floating memory
+  // can be borrowed by non-floating Pipe allocations.
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   // Check if memory check is enabled for Pipe
