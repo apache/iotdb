@@ -17,8 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.commons.pipe.resource;
 
-public enum RemoveRegionGroupState {
-  DELETE_REGION_REPLICAS,
+public enum PipeResourceFailureType {
+  NETWORK_TIMEOUT("network_timeout"),
+  MEMORY_TIMEOUT("memory_timeout"),
+  RECEIVER_UNAVAILABLE("receiver_unavailable");
+
+  private final String displayName;
+
+  PipeResourceFailureType(final String displayName) {
+    this.displayName = displayName;
+  }
+
+  public String getDisplayName() {
+    return displayName;
+  }
 }

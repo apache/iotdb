@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -78,11 +77,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   // For memory control
-  private final PipeMemoryBlock allocatedMemoryBlockForTablet;
-  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
-  private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTablet;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunkMeta;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTableSchema;
 
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
@@ -119,11 +118,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   public TsFileInsertionEventTableParserTabletIterator(
       final TsFileSequenceReader tsFileSequenceReader,
       final Predicate<Map.Entry<String, TableSchema>> predicate,
-      final PipeMemoryBlock allocatedMemoryBlockForTablet,
-      final PipeMemoryBlock allocatedMemoryBlockForBatchData,
-      final PipeMemoryBlock allocatedMemoryBlockForChunk,
-      final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
-      final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTablet,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunkMeta,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTableSchema,
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
       final long endTime)
@@ -156,8 +155,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           tableSchemaEntry.getKey().length()
               + PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(tableSchemaEntry.getValue());
       if (tableSchemaSize > allocatedMemoryBlockForTableSchema.getMemoryUsageInBytes()) {
-        PipeDataNodeResourceManager.memory()
-            .forceResize(this.allocatedMemoryBlockForTableSchema, tableSchemaSize);
+        this.allocatedMemoryBlockForTableSchema.forceResize(tableSchemaSize);
       }
     }
 
@@ -179,8 +177,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               batchData = chunkReader.nextPageData();
               final long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData);
               if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
-                PipeDataNodeResourceManager.memory()
-                    .forceResize(allocatedMemoryBlockForBatchData, size);
+                allocatedMemoryBlockForBatchData.forceResize(size);
               }
               state = State.CHECK_DATA;
               break;
@@ -230,8 +227,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 size +=
                     PipeMemoryWeightUtil.calculateAlignedChunkMetaBytesUsed(alignedChunkMetadata);
                 if (allocatedMemoryBlockForChunkMeta.getMemoryUsageInBytes() < size) {
-                  PipeDataNodeResourceManager.memory()
-                      .forceResize(allocatedMemoryBlockForChunkMeta, size);
+                  allocatedMemoryBlockForChunkMeta.forceResize(size);
                 }
               }
 
@@ -317,8 +313,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(batchData);
           if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
               < rowCountAndMemorySize.getRight()) {
-            PipeDataNodeResourceManager.memory()
-                .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+            allocatedMemoryBlockForTablet.forceResize(rowCountAndMemorySize.getRight());
           }
 
           tablet =
@@ -360,8 +355,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       timeChunk = reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
       timeChunkSize = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
       if (allocatedMemoryBlockForChunk.getMemoryUsageInBytes() < timeChunkSize) {
-        PipeDataNodeResourceManager.memory()
-            .forceResize(allocatedMemoryBlockForChunk, timeChunkSize);
+        allocatedMemoryBlockForChunk.forceResize(timeChunkSize);
       }
     }
     timeChunk.getData().rewind();
@@ -418,7 +412,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           if (!hasSelectedNonNullChunk) {
             // If the first chunk exceeds the memory limit, we need to allocate more memory
             size = newSize;
-            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+            allocatedMemoryBlockForChunk.forceResize(size);
           } else {
             break;
           }

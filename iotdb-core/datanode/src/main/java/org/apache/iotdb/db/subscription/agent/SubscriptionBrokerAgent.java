@@ -105,7 +105,8 @@ public class SubscriptionBrokerAgent {
       final Map<String, TopicProgress> progressByTopic) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
-    final List<String> unsupportedConsensusTopics = getUnsupportedConsensusTopics(topicNames);
+    final List<String> unsupportedConsensusTopics =
+        getUnsupportedConsensusTopics(consumerGroupId, topicNames);
     if (!unsupportedConsensusTopics.isEmpty()) {
       final String errorMessage =
           buildUnsupportedConsensusRuntimeMessage(
@@ -238,7 +239,8 @@ public class SubscriptionBrokerAgent {
         continue;
       }
       final String topicName = commitContext.getTopicName();
-      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, isTableModel(consumerConfig))) {
         continue;
       }
       final String regionId = commitContext.getRegionId();
@@ -347,7 +349,8 @@ public class SubscriptionBrokerAgent {
 
   private ConsensusSubscriptionBroker getConsensusBrokerForSeekOrNoOp(
       final String consumerGroupId, final String topicName, final String operation) {
-    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+        topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
       final String errorMessage =
           String.format(
               "Subscription: %s is only supported for consensus-based subscriptions, "
@@ -394,18 +397,24 @@ public class SubscriptionBrokerAgent {
     }
   }
 
-  private List<String> getUnsupportedConsensusTopics(final Set<String> topicNames) {
+  private List<String> getUnsupportedConsensusTopics(
+      final String consumerGroupId, final Set<String> topicNames) {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       return Collections.emptyList();
     }
 
     final List<String> unsupportedConsensusTopics = new ArrayList<>();
     for (final String topicName : topicNames) {
-      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
         unsupportedConsensusTopics.add(topicName);
       }
     }
     return unsupportedConsensusTopics;
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SubscriptionAgent.consumer().isTableModel(consumerConfig.getConsumerGroupId());
   }
 
   private String buildUnsupportedConsensusRuntimeMessage(
@@ -656,14 +665,23 @@ public class SubscriptionBrokerAgent {
     return queue;
   }
 
-  public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
+  public void refreshConsensusQueueOrderMode(
+      final String topicName, final boolean isTableModel, final String orderMode) {
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_REFRESHING_CONSENSUS_QUEUE_ORDER_1886704D,
         topicName,
         orderMode);
-    for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
-      broker.refreshConsensusQueueOrderMode(topicName, orderMode);
+    for (final Map.Entry<String, List<ISubscriptionBroker>> entry :
+        consumerGroupIdToBrokers.entrySet()) {
+      if (SubscriptionAgent.consumer().isTableModel(entry.getKey()) != isTableModel) {
+        continue;
+      }
+      final ConsensusSubscriptionBroker broker =
+          getBroker(entry.getValue(), ConsensusSubscriptionBroker.class);
+      if (Objects.nonNull(broker)) {
+        broker.refreshConsensusQueueOrderMode(topicName, orderMode);
+      }
     }
   }
 
@@ -691,13 +709,24 @@ public class SubscriptionBrokerAgent {
   }
 
   public ColumnFilterMatcher getColumnFilterMatcher(final String topicName) {
+    return getColumnFilterMatcher(topicName, true);
+  }
+
+  public ColumnFilterMatcher getColumnFilterMatcher(
+      final String topicName, final boolean isTableModel) {
+    if (!isTableModel) {
+      return ColumnFilterMatcher.matchAll();
+    }
+
     final ColumnFilterMatcher matcher = topicNameToColumnFilterMatcher.get(topicName);
     if (Objects.nonNull(matcher)) {
       return matcher;
     }
 
     final TopicConfig topicConfig =
-        SubscriptionAgent.topic().getTopicConfigs(Collections.singleton(topicName)).get(topicName);
+        SubscriptionAgent.topic()
+            .getTopicConfigs(Collections.singleton(topicName), true)
+            .get(topicName);
     if (Objects.isNull(topicConfig)) {
       return ColumnFilterMatcher.matchAll();
     }

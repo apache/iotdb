@@ -123,6 +123,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
+  private volatile String authenticatedUsername;
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
@@ -181,6 +182,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
+  public void setAuthenticatedUsername(final String username) {
+    authenticatedUsername = username;
+  }
+
+  @Override
   public void handleExit() {
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.nonNull(consumerConfig)) {
@@ -197,6 +203,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       consumerConfigThreadLocal.remove();
     }
     clearSharedConsumerState();
+    authenticatedUsername = null;
   }
 
   @Override
@@ -369,11 +376,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
     }
 
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic()
+            .checkTopicReadPermissions(authenticatedUsername, consumerConfig, subscribedTopicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
+
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
+        SubscriptionAgent.topic()
+            .getTopicConfigs(subscribedTopicNames, isTableModel(consumerConfig));
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -452,6 +467,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(ownerStatus);
     }
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic()
+            .checkTopicReadPermissions(authenticatedUsername, consumerConfig, topicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -462,7 +483,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
@@ -508,7 +530,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
@@ -561,6 +584,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return PipeSubscribePollResp.toTPipeSubscribeResp(ownerStatus, Collections.emptyList());
           }
+          final TSStatus readPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername, consumerConfig, topicNamesToCheck);
+          if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                readPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
                   consumerConfig,
@@ -578,6 +609,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return PipeSubscribePollResp.toTPipeSubscribeResp(
                 tsFileOwnerStatus, Collections.emptyList());
           }
+          final String tsFileTopicName =
+              ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tsFileReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername,
+                      consumerConfig,
+                      Collections.singleton(tsFileTopicName));
+          if (tsFileReadPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileReadPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
@@ -593,6 +636,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           if (tabletsOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return PipeSubscribePollResp.toTPipeSubscribeResp(
                 tabletsOwnerStatus, Collections.emptyList());
+          }
+          final String tabletsTopicName =
+              ((PollTabletsPayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tabletsReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername,
+                      consumerConfig,
+                      Collections.singleton(tabletsTopicName));
+          if (tabletsReadPermissionStatus.getCode()
+              != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsReadPermissionStatus, Collections.emptyList());
           }
           events =
               handlePipeSubscribePollTabletsRequest(
@@ -658,7 +714,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                         SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                             commitContext.getConsumerGroupId(), commitContext.getTopicName());
                     if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
-                        commitContext.getTopicName())) {
+                        commitContext.getTopicName(), isTableModel(consumerConfig))) {
                       ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(queueId, commitContext.getRegionId(), size);
                     } else {
@@ -1069,7 +1125,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig));
 
     // fetch topics should be unsubscribed
     final List<String> topicNamesToUnsubscribe =
@@ -1273,5 +1330,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return Math.max(
         SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs(),
         consumerConfig.getHeartbeatIntervalMs() * HEARTBEAT_TIMEOUT_MULTIPLIER);
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(consumerConfig.getSqlDialect());
   }
 }

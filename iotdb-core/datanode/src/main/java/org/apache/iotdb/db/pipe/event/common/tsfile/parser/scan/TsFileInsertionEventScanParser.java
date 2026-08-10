@@ -36,9 +36,9 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -93,9 +93,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private IChunkReader chunkReader;
   private BatchData data;
-  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
-  private PipeMemoryBlock allocatedMemoryBlockForTsFileInput;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk;
+  private TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTsFileInput;
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
@@ -129,6 +129,35 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
     super(
         tsFile,
         pipeName,
@@ -141,16 +170,15 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         entity,
         skipIfNoPrivileges,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
 
     this.startTime = startTime;
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    this.allocatedMemoryBlockForBatchData =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-    this.allocatedMemoryBlockForChunk =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
 
     try {
       currentModifications =
@@ -158,8 +186,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
       tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -184,6 +211,27 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     this(
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager)
+      throws IOException, IllegalPathException {
+    this(
         null,
         0,
         tsFile,
@@ -194,7 +242,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         null,
         false,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        memoryManager);
   }
 
   private TsFileSequenceReader createTsFileSequenceReader(
@@ -204,8 +253,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+        memoryManager.forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
         new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
         false,
@@ -367,8 +415,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     currentDeviceString, currentMeasurements, rowCountAndMemorySize.getLeft());
             if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
                 < rowCountAndMemorySize.getRight()) {
-              PipeDataNodeResourceManager.memory()
-                  .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+              allocatedMemoryBlockForTablet.forceResize(rowCountAndMemorySize.getRight());
             }
             isFirstRow = false;
           }
@@ -472,8 +519,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private void resizePageDataMemoryIfNeeded(final long estimatedMemoryUsageInBytes) {
     if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < estimatedMemoryUsageInBytes) {
-      PipeDataNodeResourceManager.memory()
-          .forceResize(allocatedMemoryBlockForBatchData, estimatedMemoryUsageInBytes);
+      allocatedMemoryBlockForBatchData.forceResize(estimatedMemoryUsageInBytes);
     }
   }
 
@@ -654,8 +700,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             }
 
             if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-              PipeDataNodeResourceManager.memory()
-                  .forceResize(allocatedMemoryBlockForChunk, chunkHeader.getDataSize());
+              allocatedMemoryBlockForChunk.forceResize(chunkHeader.getDataSize());
             }
 
             Chunk chunk =
@@ -1030,7 +1075,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     final long chunkSize = pendingAlignedChunkGroup.chunkSize + valueChunk.valueChunkSize;
     if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, chunkSize);
+      allocatedMemoryBlockForChunk.forceResize(chunkSize);
     }
   }
 
@@ -1046,8 +1091,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         calculateMaxAlignedPageMemorySizeWithBatchData(
             pendingAlignedChunkGroup.timeChunkIndex, pendingAlignedChunkGroup, valueChunk);
     if (pageMemorySize > getPageDataMemoryLimitInBytes()) {
-      PipeDataNodeResourceManager.memory()
-          .forceResize(allocatedMemoryBlockForBatchData, pageMemorySize);
+      allocatedMemoryBlockForBatchData.forceResize(pageMemorySize);
     }
   }
 

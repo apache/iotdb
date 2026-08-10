@@ -1294,7 +1294,13 @@ public class ConfigPhysicalPlanSerDeTest {
     final DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
     final DropTopicPlan dropTopicPlan1 =
         (DropTopicPlan) ConfigPhysicalPlan.Factory.create(dropTopicPlan.serializeToByteBuffer());
-    Assert.assertEquals(dropTopicPlan.getTopicName(), dropTopicPlan1.getTopicName());
+    Assert.assertEquals(dropTopicPlan, dropTopicPlan1);
+
+    final DropTopicPlan tableDropTopicPlan = new DropTopicPlan("test_topic", true);
+    final DropTopicPlan tableDropTopicPlan1 =
+        (DropTopicPlan)
+            ConfigPhysicalPlan.Factory.create(tableDropTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(tableDropTopicPlan, tableDropTopicPlan1);
   }
 
   @Test
