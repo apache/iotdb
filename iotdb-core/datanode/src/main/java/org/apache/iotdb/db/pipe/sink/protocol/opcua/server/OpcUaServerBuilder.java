@@ -23,19 +23,30 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.net.InetAddresses;
+import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.diagnostics.SessionSecurityDiagnosticsAccessMode;
+import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
+import org.eclipse.milo.opcua.sdk.server.identity.IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.UsernameIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
-import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.ServerTypeNode;
+import org.eclipse.milo.opcua.sdk.server.model.objects.ServerTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.NodeIds;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
+import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.UaRuntimeException;
+import org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup;
 import org.eclipse.milo.opcua.stack.core.security.DefaultCertificateManager;
-import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
+import org.eclipse.milo.opcua.stack.core.security.DefaultServerCertificateValidator;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedCertificateQuarantine;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
+import org.eclipse.milo.opcua.stack.core.security.KeyStoreCertificateStore;
+import org.eclipse.milo.opcua.stack.core.security.RsaSha256CertificateFactory;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -43,15 +54,12 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.core.util.CertificateUtil;
-import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
-import org.eclipse.milo.opcua.stack.core.util.SelfSignedHttpsCertificateBuilder;
-import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
-import org.eclipse.milo.opcua.stack.server.security.DefaultServerCertificateValidator;
+import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransport;
+import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -59,16 +67,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
-import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME;
-import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_X509;
+import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
+import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME;
+import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POLICY_X509;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.ubyte;
 
 /**
@@ -89,7 +97,7 @@ public class OpcUaServerBuilder implements Closeable {
   private Path securityDir;
   private boolean enableAnonymousAccess;
   private Set<SecurityPolicy> securityPolicies;
-  private DefaultTrustListManager trustListManager;
+  private FileBasedTrustListManager trustListManager;
   private long debounceTimeMs;
 
   public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
@@ -191,59 +199,78 @@ public class OpcUaServerBuilder implements Closeable {
       throw new PipeException(DataNodePipeMessages.UNABLE_CREATE_SECURITY_DIR + securityDir);
     }
 
-    final File pkiDir = securityDir.resolve("pki").toFile();
+    final Path pkiDir = securityDir.resolve("pki");
 
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info(DataNodePipeMessages.OPC_UA_SECURITY_DIR, securityDir.toAbsolutePath());
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info(DataNodePipeMessages.OPC_UA_SECURITY_PKI_DIR, pkiDir.getAbsolutePath());
+        .info(DataNodePipeMessages.OPC_UA_SECURITY_PKI_DIR, pkiDir.toAbsolutePath());
 
     final Set<String> endpointHostnames = getEndpointHostnames();
     final Set<String> certificateHostnames = getCertificateHostnames(endpointHostnames);
     final OpcUaKeyStoreLoader loader =
         new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray(), certificateHostnames);
 
+    trustListManager = FileBasedTrustListManager.createAndInitialize(pkiDir);
+    final FileBasedCertificateQuarantine certificateQuarantine =
+        FileBasedCertificateQuarantine.create(pkiDir.resolve("rejected").resolve("certs"));
+    final KeyStoreCertificateStore certificateStore =
+        KeyStoreCertificateStore.createAndInitialize(
+            new KeyStoreCertificateStore.Settings(
+                securityDir.resolve("iotdb-milo-application.pfx"),
+                () -> password.toCharArray(),
+                alias -> password.toCharArray()));
+    final RsaSha256CertificateFactory certificateFactory =
+        new RsaSha256CertificateFactory() {
+          @Override
+          protected KeyPair createRsaSha256KeyPair() {
+            return loader.getServerKeyPair();
+          }
+
+          @Override
+          protected X509Certificate[] createRsaSha256CertificateChain(final KeyPair keyPair) {
+            return new X509Certificate[] {loader.getServerCertificate()};
+          }
+        };
+    final DefaultServerCertificateValidator certificateValidator =
+        new DefaultServerCertificateValidator(trustListManager, certificateQuarantine);
+    final DefaultApplicationGroup applicationGroup =
+        DefaultApplicationGroup.createAndInitialize(
+            trustListManager, certificateStore, certificateFactory, certificateValidator);
     final DefaultCertificateManager certificateManager =
-        new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
-
-    final OpcUaServerConfig serverConfig;
-
-    trustListManager = new DefaultTrustListManager(pkiDir);
+        new DefaultCertificateManager(certificateQuarantine, applicationGroup);
 
     LOGGER.info(
         DataNodePipeMessages.CERTIFICATE_DIRECTORY_IS_PLEASE_MOVE_CERTIFICATES_FROM,
-        pkiDir.getAbsolutePath());
+        pkiDir.toAbsolutePath());
 
-    final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
-
-    final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
-        new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-    httpsCertificateBuilder.setCommonName(certificateHostnames.iterator().next());
-    certificateHostnames.forEach(
-        hostname -> {
-          if (InetAddresses.isInetAddress(hostname)) {
-            httpsCertificateBuilder.addIpAddress(hostname);
-          } else {
-            httpsCertificateBuilder.addDnsName(hostname);
-          }
-        });
-    final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
-
-    final DefaultServerCertificateValidator certificateValidator =
-        new DefaultServerCertificateValidator(trustListManager);
-
-    final UsernameIdentityValidator identityValidator =
+    final UsernameIdentityValidator usernameIdentityValidator =
         new UsernameIdentityValidator(
-            enableAnonymousAccess,
             authChallenge ->
-                authChallenge.getUsername().equals(user)
-                    && authChallenge.getPassword().equals(password));
-
-    final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+                Objects.equals(authChallenge.getUsername(), user)
+                    && Objects.equals(authChallenge.getPassword(), password));
+    final X509IdentityValidator x509IdentityValidator =
+        new X509IdentityValidator(
+            userCertificate -> {
+              try {
+                certificateValidator.validateCertificateChain(List.of(userCertificate), null, null);
+                return true;
+              } catch (final UaException ignored) {
+                return false;
+              }
+            });
+    final List<IdentityValidator> identityValidators = new ArrayList<>();
+    if (enableAnonymousAccess) {
+      identityValidators.add(AnonymousIdentityValidator.INSTANCE);
+    }
+    identityValidators.add(usernameIdentityValidator);
+    identityValidators.add(x509IdentityValidator);
 
     final X509Certificate certificate =
-        certificateManager.getCertificates().stream()
-            .findFirst()
+        applicationGroup
+            .getCertificateChain(NodeIds.RsaSha256ApplicationCertificateType)
+            .filter(certificateChain -> certificateChain.length > 0)
+            .map(certificateChain -> certificateChain[0])
             .orElseThrow(
                 () ->
                     new UaRuntimeException(
@@ -265,10 +292,10 @@ public class OpcUaServerBuilder implements Closeable {
                         StatusCodes.Bad_ConfigurationError,
                         DataNodePipeMessages.CERTIFICATE_MISSING_APPLICATION_URI));
 
-    final Set<EndpointConfiguration> endpointConfigurations =
-        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort, endpointHostnames);
+    final Set<EndpointConfig> endpointConfigurations =
+        createEndpointConfigurations(certificate, tcpBindPort, endpointHostnames);
 
-    serverConfig =
+    final OpcUaServerConfig serverConfig =
         OpcUaServerConfig.builder()
             .setApplicationUri(applicationUri)
             .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
@@ -282,16 +309,18 @@ public class OpcUaServerBuilder implements Closeable {
                     "",
                     DateTime.now()))
             .setCertificateManager(certificateManager)
-            .setTrustListManager(trustListManager)
-            .setCertificateValidator(certificateValidator)
-            .setHttpsKeyPair(httpsKeyPair)
-            .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
-            .setIdentityValidator(new CompositeValidator(identityValidator, x509IdentityValidator))
+            .setIdentityValidator(new CompositeValidator(identityValidators))
+            .setSessionSecurityDiagnosticsAccessMode(
+                SessionSecurityDiagnosticsAccessMode.RESTRICTED)
             .setProductUri("urn:apache:iotdb:opc-ua-server")
             .build();
 
     // Setup server to enable event posting
-    final OpcUaServer server = new OpcUaServer(serverConfig);
+    final OpcTcpServerTransportConfig transportConfig =
+        OpcTcpServerTransportConfig.newBuilder().build();
+    final OpcUaServer server =
+        new OpcUaServer(
+            serverConfig, transportProfile -> new OpcTcpServerTransport(transportConfig));
     final UaNode serverNode =
         server.getAddressSpaceManager().getManagedNode(Identifiers.Server).orElse(null);
     if (serverNode instanceof ServerTypeNode) {
@@ -345,12 +374,9 @@ public class OpcUaServerBuilder implements Closeable {
         .anyMatch(hostname -> hostname.equalsIgnoreCase(advertisedHost));
   }
 
-  Set<EndpointConfiguration> createEndpointConfigurations(
-      final X509Certificate certificate,
-      final int tcpBindPort,
-      final int httpsBindPort,
-      final Set<String> hostnames) {
-    final Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
+  Set<EndpointConfig> createEndpointConfigurations(
+      final X509Certificate certificate, final int tcpBindPort, final Set<String> hostnames) {
+    final Set<EndpointConfig> endpointConfigurations = new LinkedHashSet<>();
     final Set<String> effectiveHostnames = new LinkedHashSet<>();
     if (Objects.nonNull(advertisedHost)) {
       effectiveHostnames.add(toEndpointHostname(advertisedHost));
@@ -360,81 +386,58 @@ public class OpcUaServerBuilder implements Closeable {
           .forEach(effectiveHostnames::add);
     }
 
-    final List<String> bindAddresses = newArrayList();
-    bindAddresses.add(WILD_CARD_ADDRESS);
+    for (final String hostname : effectiveHostnames) {
+      final EndpointConfig.Builder builder =
+          EndpointConfig.newBuilder()
+              .setBindAddress(WILD_CARD_ADDRESS)
+              .setHostname(hostname)
+              .setPath("/iotdb")
+              .setCertificate(certificate);
+      if (enableAnonymousAccess) {
+        builder.addTokenPolicy(USER_TOKEN_POLICY_ANONYMOUS);
+      }
+      builder.addTokenPolicies(USER_TOKEN_POLICY_USERNAME, USER_TOKEN_POLICY_X509);
 
-    for (final String bindAddress : bindAddresses) {
-      for (final String hostname : effectiveHostnames) {
-        final EndpointConfiguration.Builder builder =
-            EndpointConfiguration.newBuilder()
-                .setBindAddress(bindAddress)
-                .setHostname(hostname)
-                .setPath("/iotdb")
-                .setCertificate(certificate)
-                .addTokenPolicies(
-                    USER_TOKEN_POLICY_ANONYMOUS,
-                    USER_TOKEN_POLICY_USERNAME,
-                    USER_TOKEN_POLICY_X509);
-
-        final Set<SecurityPolicy> securityPolicySet = new HashSet<>(securityPolicies);
-        if (securityPolicySet.contains(SecurityPolicy.None)) {
-          final EndpointConfiguration.Builder noSecurityBuilder =
-              builder
-                  .copy()
-                  .setSecurityPolicy(SecurityPolicy.None)
-                  .setSecurityMode(MessageSecurityMode.None);
-
-          endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
-          endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
-          securityPolicySet.remove(SecurityPolicy.None);
-        }
-
-        for (final SecurityPolicy securityPolicy : securityPolicySet) {
-          endpointConfigurations.add(
-              buildTcpEndpoint(
-                  builder
-                      .copy()
-                      .setSecurityPolicy(securityPolicy)
-                      .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
-                  tcpBindPort));
-
-          endpointConfigurations.add(
-              buildHttpsEndpoint(
-                  builder
-                      .copy()
-                      .setSecurityPolicy(securityPolicy)
-                      .setSecurityMode(MessageSecurityMode.Sign),
-                  httpsBindPort));
-        }
-
-        final EndpointConfiguration.Builder discoveryBuilder =
+      final Set<SecurityPolicy> securityPolicySet = new HashSet<>(securityPolicies);
+      if (securityPolicySet.contains(SecurityPolicy.None)) {
+        final EndpointConfig.Builder noSecurityBuilder =
             builder
                 .copy()
-                .setPath("/iotdb/discovery")
                 .setSecurityPolicy(SecurityPolicy.None)
                 .setSecurityMode(MessageSecurityMode.None);
 
-        endpointConfigurations.add(buildTcpEndpoint(discoveryBuilder, tcpBindPort));
-        endpointConfigurations.add(buildHttpsEndpoint(discoveryBuilder, httpsBindPort));
+        endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
+        securityPolicySet.remove(SecurityPolicy.None);
       }
+
+      for (final SecurityPolicy securityPolicy : securityPolicySet) {
+        endpointConfigurations.add(
+            buildTcpEndpoint(
+                builder
+                    .copy()
+                    .setSecurityPolicy(securityPolicy)
+                    .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
+                tcpBindPort));
+      }
+
+      final EndpointConfig.Builder discoveryBuilder =
+          builder
+              .copy()
+              .setPath("/iotdb/discovery")
+              .setSecurityPolicy(SecurityPolicy.None)
+              .setSecurityMode(MessageSecurityMode.None);
+
+      endpointConfigurations.add(buildTcpEndpoint(discoveryBuilder, tcpBindPort));
     }
 
     return endpointConfigurations;
   }
 
-  private EndpointConfiguration buildTcpEndpoint(
-      final EndpointConfiguration.Builder base, final int tcpBindPort) {
+  private EndpointConfig buildTcpEndpoint(
+      final EndpointConfig.Builder base, final int tcpBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
         .setBindPort(tcpBindPort)
-        .build();
-  }
-
-  private EndpointConfiguration buildHttpsEndpoint(
-      final EndpointConfiguration.Builder base, final int httpsBindPort) {
-    return base.copy()
-        .setTransportProfile(TransportProfile.HTTPS_UABINARY)
-        .setBindPort(httpsBindPort)
         .build();
   }
 

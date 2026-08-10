@@ -21,10 +21,13 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.sdk.server.diagnostics.SessionSecurityDiagnosticsAccessMode;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.UserTokenType;
 import org.eclipse.milo.opcua.stack.core.util.CertificateUtil;
-import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,18 +52,24 @@ public class OpcUaServerBuilderTest {
     final OpcUaServerBuilder builder =
         new OpcUaServerBuilder().setSecurityPolicies(securityPolicies);
 
-    final Set<EndpointConfiguration> endpoints =
-        builder.createEndpointConfigurations(null, 12686, 8443, detectedHostnames);
+    final Set<EndpointConfig> endpoints =
+        builder.createEndpointConfigurations(null, 12686, detectedHostnames);
 
     for (final String hostname : detectedHostnames) {
       Assert.assertEquals(
-          2,
+          1,
           endpoints.stream()
               .filter(endpoint -> endpoint.getPath().equals("/iotdb"))
               .filter(endpoint -> endpoint.getHostname().equals(hostname))
               .filter(endpoint -> endpoint.getSecurityPolicy() == SecurityPolicy.None)
               .count());
     }
+    Assert.assertTrue(
+        endpoints.stream()
+            .allMatch(
+                endpoint ->
+                    endpoint.getTransportProfile() == TransportProfile.TCP_UASC_UABINARY
+                        && endpoint.getBindPort() == 12686));
     Assert.assertEquals(Collections.singleton(SecurityPolicy.None), securityPolicies);
   }
 
@@ -73,12 +82,12 @@ public class OpcUaServerBuilderTest {
             .setAdvertisedHost("opc.example.com")
             .setSecurityPolicies(Collections.singleton(SecurityPolicy.None));
 
-    final Set<EndpointConfiguration> endpoints =
-        builder.createEndpointConfigurations(null, 12686, 8443, detectedHostnames);
+    final Set<EndpointConfig> endpoints =
+        builder.createEndpointConfigurations(null, 12686, detectedHostnames);
 
     Assert.assertEquals(
         Collections.singleton("opc.example.com"),
-        endpoints.stream().map(EndpointConfiguration::getHostname).collect(Collectors.toSet()));
+        endpoints.stream().map(EndpointConfig::getHostname).collect(Collectors.toSet()));
     Assert.assertTrue(
         endpoints.stream().allMatch(endpoint -> "0.0.0.0".equals(endpoint.getBindAddress())));
   }
@@ -90,16 +99,15 @@ public class OpcUaServerBuilderTest {
             .setAdvertisedHost("[2001:db8::1]")
             .setSecurityPolicies(Collections.singleton(SecurityPolicy.None));
 
-    final Set<EndpointConfiguration> endpoints =
-        builder.createEndpointConfigurations(
-            null, 12686, 8443, Collections.singleton("opc-server"));
+    final Set<EndpointConfig> endpoints =
+        builder.createEndpointConfigurations(null, 12686, Collections.singleton("opc-server"));
 
     Assert.assertEquals(
         Collections.singleton("[2001:db8::1]"),
-        endpoints.stream().map(EndpointConfiguration::getHostname).collect(Collectors.toSet()));
+        endpoints.stream().map(EndpointConfig::getHostname).collect(Collectors.toSet()));
     Assert.assertTrue(
         endpoints.stream()
-            .map(EndpointConfiguration::getEndpointUrl)
+            .map(EndpointConfig::getEndpointUrl)
             .allMatch(endpointUrl -> endpointUrl.contains("://[2001:db8::1]:")));
     Assert.assertThrows(
         IllegalArgumentException.class,
@@ -123,17 +131,50 @@ public class OpcUaServerBuilderTest {
             .setSecurityPolicies(Collections.singleton(SecurityPolicy.None))
             .setDebounceTimeMs(50)) {
       final OpcUaServer server = builder.build();
-      final Set<EndpointConfiguration> endpoints = server.getConfig().getEndpoints();
+      final Set<EndpointConfig> endpoints = server.getConfig().getEndpoints();
 
       Assert.assertEquals(
           Collections.singleton(advertisedHost),
-          endpoints.stream().map(EndpointConfiguration::getHostname).collect(Collectors.toSet()));
+          endpoints.stream().map(EndpointConfig::getHostname).collect(Collectors.toSet()));
       Assert.assertTrue(
           endpoints.stream()
-              .map(EndpointConfiguration::getCertificate)
+              .map(EndpointConfig::getCertificate)
               .allMatch(
                   certificate ->
                       CertificateUtil.getSanDnsNames(certificate).contains(advertisedHost)));
+    }
+  }
+
+  @Test
+  public void testAnonymousAccessCanBeDisabledAndDiagnosticsStayRestricted() throws Exception {
+    final Path securityDir = temporaryFolder.newFolder("restricted-security").toPath();
+
+    try (final OpcUaServerBuilder builder =
+        new OpcUaServerBuilder()
+            .setTcpBindPort(12686)
+            .setHttpsBindPort(8443)
+            .setAdvertisedHost("127.0.0.1")
+            .setUser("root")
+            .setPassword("root")
+            .setSecurityDir(securityDir.toString())
+            .setEnableAnonymousAccess(false)
+            .setSecurityPolicies(Collections.singleton(SecurityPolicy.None))
+            .setDebounceTimeMs(50)) {
+      final OpcUaServer server = builder.build();
+
+      Assert.assertEquals(
+          SessionSecurityDiagnosticsAccessMode.RESTRICTED,
+          server.getConfig().getSessionSecurityDiagnosticsAccessMode());
+      Assert.assertFalse(
+          server
+              .getConfig()
+              .getIdentityValidator()
+              .getSupportedTokenTypes()
+              .contains(UserTokenType.Anonymous));
+      Assert.assertTrue(
+          server.getConfig().getEndpoints().stream()
+              .flatMap(endpoint -> endpoint.getTokenPolicies().stream())
+              .noneMatch(policy -> policy.getTokenType() == UserTokenType.Anonymous));
     }
   }
 
