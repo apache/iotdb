@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import static org.junit.Assert.assertTrue;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.Callable;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,12 +26,21 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.concurrent.Callable;
+
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableClusterIT.class})
