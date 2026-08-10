@@ -331,6 +331,7 @@ struct TDataNodeHeartbeatResp {
   17: optional map<i32, i64> dataRegionRawDataSize
   18: optional map<i32, i64> dataRegionObjectFileSize
   19: optional list<i32> pipeDegradedStatusList
+  20: optional list<map<string, i64>> pipeRecentFailureList
 }
 
 struct TPipeHeartbeatReq {

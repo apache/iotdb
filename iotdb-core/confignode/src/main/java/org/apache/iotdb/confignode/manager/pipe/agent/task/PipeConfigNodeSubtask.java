@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnviro
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -241,6 +242,13 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     lastExceptionTime = Long.MAX_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
+  }
+
+  @Override
+  protected void reportResourceFailure(
+      final EnrichedEvent event, final PipeResourceFailureType failureType) {
+    PipeConfigNodeAgent.task()
+        .recordPipeResourceFailure(event.getPipeName(), event.getCreationTime(), failureType);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

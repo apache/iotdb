@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -1214,6 +1215,15 @@ public abstract class PipeTaskAgent {
     if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
       ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
           .decreaseFloatingMemoryUsageInByte(sizeInByte);
+    }
+  }
+
+  public void recordPipeResourceFailure(
+      final String pipeName, final long creationTime, final PipeResourceFailureType failureType) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    // To avoid recording a failure for the stale pipe before alter
+    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).recordResourceFailure(failureType);
     }
   }
 

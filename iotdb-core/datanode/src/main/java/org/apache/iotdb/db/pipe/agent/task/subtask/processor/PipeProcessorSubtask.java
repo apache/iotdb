@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -242,6 +243,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      recordResourceFailure(event, PipeResourceFailureType.MEMORY_TIMEOUT);
       PipeLogger.log(
           LOGGER::info,
           DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
@@ -249,6 +251,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     } catch (final Exception e) {
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        recordResourceFailure(event, PipeResourceFailureType.MEMORY_TIMEOUT);
         PipeLogger.log(
             LOGGER::info,
             DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
@@ -351,5 +354,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  private void recordResourceFailure(final Event event, final PipeResourceFailureType failureType) {
+    if (event instanceof EnrichedEvent) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      PipeDataNodeAgent.task()
+          .recordPipeResourceFailure(
+              enrichedEvent.getPipeName(), enrichedEvent.getCreationTime(), failureType);
+    }
   }
 }
