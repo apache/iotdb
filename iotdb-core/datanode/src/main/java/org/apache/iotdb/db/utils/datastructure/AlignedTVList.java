@@ -154,6 +154,10 @@ public abstract class AlignedTVList extends TVList {
   private final AlignedTVList outer = this;
 
   AlignedTVList(List<TSDataType> types) {
+    this(types, true);
+  }
+
+  AlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
@@ -161,7 +165,7 @@ public abstract class AlignedTVList extends TVList {
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(new ArrayList<>(getDefaultArrayNum()));
+      values.add(initializeValueColumns ? new ArrayList<>(getDefaultArrayNum()) : null);
     }
     // arrayMemCostWithoutPrimitiveArrays depends on per-column value arrays, so values must be
     // initialized before computing it
@@ -169,13 +173,18 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
+    return newAlignedList(dataTypes, true);
+  }
+
+  public static AlignedTVList newAlignedList(
+      List<TSDataType> dataTypes, boolean initializeValueColumns) {
     switch (TVLIST_SORT_ALGORITHM) {
       case QUICK:
-        return new QuickAlignedTVList(dataTypes);
+        return new QuickAlignedTVList(dataTypes, initializeValueColumns);
       case BACKWARD:
-        return new BackAlignedTVList(dataTypes);
+        return new BackAlignedTVList(dataTypes, initializeValueColumns);
       default:
-        return new TimAlignedTVList(dataTypes);
+        return new TimAlignedTVList(dataTypes, initializeValueColumns);
     }
   }
 
@@ -277,7 +286,14 @@ public abstract class AlignedTVList extends TVList {
             Objects.requireNonNull(
                 columnsToClone,
                 DataNodeMiscMessages.EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37));
-    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes), false);
+    // Pre-create the inner value lists for the retained columns; the other slots stay null until
+    // the ownership transfer moves the source columns into place.
+    for (int i = 0; i < values.size(); i++) {
+      if (retainedColumns.contains(i)) {
+        cloneList.values.set(i, new ArrayList<>(values.get(i).size()));
+      }
+    }
     cloneAs(cloneList);
     cloneColumnDataTo(cloneList, retainedColumns);
     return prepareMovePlan(cloneList, retainedColumns);
@@ -310,7 +326,7 @@ public abstract class AlignedTVList extends TVList {
                     .EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037,
                 i));
       }
-      if (cloneList.values.get(i) == null || !cloneList.values.get(i).isEmpty()) {
+      if (cloneList.values.get(i) != null) {
         throw new IllegalStateException(
             String.format(
                 DataNodeMiscMessages
