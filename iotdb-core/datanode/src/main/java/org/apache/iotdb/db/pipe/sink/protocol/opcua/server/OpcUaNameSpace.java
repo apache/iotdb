@@ -67,12 +67,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -201,29 +201,16 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private static Object getObjectValue4Opc(
       final TimeValuePair timeValuePair, final TSDataType dataType) {
     final Object value = timeValuePair.getValue().getValue();
-    switch (dataType) {
-      case DATE:
-        return new DateTime(
-            new java.util.Date(DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
-      case TIMESTAMP:
-        return new DateTime(timestampToUtc(((Number) value).longValue()));
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return value instanceof Binary ? value.toString() : String.valueOf(value);
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-        return value;
-      case VECTOR:
-      case OBJECT:
-      case UNKNOWN:
-      default:
-        throw new UnSupportedDataTypeException(
-            DataNodePipeMessages.UNSUPPORTED_DATATYPE + dataType);
-    }
+    return switch (dataType) {
+      case DATE ->
+          new DateTime(new Date(DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
+      case TIMESTAMP -> new DateTime(timestampToUtc(((Number) value).longValue()));
+      case TEXT, BLOB, STRING -> value instanceof Binary ? value.toString() : String.valueOf(value);
+      case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> value;
+      case VECTOR, OBJECT, UNKNOWN ->
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED_DATATYPE + dataType);
+    };
   }
 
   public static void transferTabletForClientServerModel(
@@ -490,7 +477,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         return ((int[]) column)[rowIndex];
       case DATE:
         return new DateTime(
-            new java.util.Date(Date.valueOf(((LocalDate[]) column)[rowIndex]).getTime()));
+            Date.from(
+                ((LocalDate[]) column)[rowIndex].atStartOfDay(ZoneId.systemDefault()).toInstant()));
       case INT64:
         return ((long[]) column)[rowIndex];
       case TIMESTAMP:

@@ -36,8 +36,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -69,7 +71,7 @@ public class OpcUaNameSpaceMetadataTest {
 
   @Test
   public void testTransferLastValuesForTableModel() throws Exception {
-    final int lastDate = DateUtils.parseDateExpressionToInt(java.time.LocalDate.of(2024, 1, 2));
+    final int lastDate = DateUtils.parseDateExpressionToInt(LocalDate.of(2024, 1, 2));
     final long lastTimestamp = 1_700_000_001_000L;
     final CapturedRow capturedRow = new CapturedRow();
     final OpcUaSink sink = createSink();
@@ -90,7 +92,7 @@ public class OpcUaNameSpaceMetadataTest {
     Assert.assertEquals(Arrays.asList("date", "timestamp"), capturedRow.getMeasurementNames());
     Assert.assertEquals(Arrays.asList(2L, 4L), capturedRow.timestamps.get());
     Assert.assertEquals(
-        new DateTime(new java.util.Date(DateUtils.parseIntToDate(lastDate).getTime())).getUtcTime(),
+        new DateTime(new Date(DateUtils.parseIntToDate(lastDate).getTime())).getUtcTime(),
         ((DateTime) capturedRow.values.get().get(0)).getUtcTime());
     Assert.assertEquals(
         OpcUaNameSpace.timestampToUtc(lastTimestamp),

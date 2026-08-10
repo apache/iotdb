@@ -66,6 +66,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -127,13 +128,23 @@ public class IoTDBOpcUaClient {
   }
 
   public void transferLastValues(
-      final IDeviceID deviceID,
-      final List<Pair<IMeasurementSchema, TimeValuePair>> lastValues,
+      final Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> deviceLastValues,
       final boolean isTableModel,
       final OpcUaSink sink)
       throws Exception {
-    OpcUaNameSpace.transferLastValues(
-        deviceID, lastValues, isTableModel, sink, this::transferTabletRowForClientServerModel);
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    for (final Map.Entry<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> entry :
+        deviceLastValues.entrySet()) {
+      OpcUaNameSpace.transferLastValues(
+          entry.getKey(),
+          entry.getValue(),
+          isTableModel,
+          sink,
+          (segments, measurementSchemas, timestamps, values, currentSink) ->
+              collectWriteRequests(
+                  segments, measurementSchemas, timestamps, values, currentSink, writeRequests));
+    }
+    writeValues(writeRequests);
   }
 
   private void transferTabletRowForClientServerModel(
@@ -143,11 +154,22 @@ public class IoTDBOpcUaClient {
       final List<Object> values,
       final OpcUaSink sink)
       throws Exception {
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    collectWriteRequests(segments, measurementSchemas, timestamps, values, sink, writeRequests);
+    writeValues(writeRequests);
+  }
+
+  private void collectWriteRequests(
+      final String[] segments,
+      final List<IMeasurementSchema> measurementSchemas,
+      final List<Long> timestamps,
+      final List<Object> values,
+      final OpcUaSink sink,
+      final List<OpcUaWriteRequest> writeRequests) {
     StatusCode currentQuality = sink.getDefaultQuality();
     Object value = null;
     long timestamp = 0;
     NodeId opcDataType = null;
-    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
 
     for (int i = 0; i < measurementSchemas.size(); ++i) {
       if (Objects.isNull(values.get(i))) {
@@ -190,8 +212,6 @@ public class IoTDBOpcUaClient {
       writeRequests.add(
           new OpcUaWriteRequest(value, timestamp, opcDataType, currentQuality, segments, null));
     }
-
-    writeValues(writeRequests);
   }
 
   private void writeValues(final List<OpcUaWriteRequest> writeRequests) throws Exception {

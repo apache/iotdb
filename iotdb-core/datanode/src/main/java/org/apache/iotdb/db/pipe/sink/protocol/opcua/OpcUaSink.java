@@ -569,17 +569,22 @@ public class OpcUaSink implements PipeConnector {
         // Keep the parser as a compatibility fallback when the TsFile metadata cannot be read.
         return TsFileTransferResult.FALLBACK_TO_TABLETS;
       }
+      if (Objects.isNull(deviceLastValues)) {
+        return TsFileTransferResult.FALLBACK_TO_TABLETS;
+      }
 
       final boolean isTableModel = pipeTsFileInsertionEvent.isTableModelEvent();
-      for (final Map.Entry<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> entry :
-          deviceLastValues.entrySet()) {
-        if (Objects.nonNull(nameSpace)) {
+      if (Objects.nonNull(nameSpace)) {
+        for (final Map.Entry<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> entry :
+            deviceLastValues.entrySet()) {
           nameSpace.transferLastValues(entry.getKey(), entry.getValue(), isTableModel, this);
-        } else if (Objects.nonNull(client)) {
-          client.transferLastValues(entry.getKey(), entry.getValue(), isTableModel, this);
-        } else {
-          throw new PipeException(DataNodePipeMessages.NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED);
         }
+      } else if (Objects.nonNull(client)) {
+        // Batch all devices into the same OPC UA write so that many-device TsFiles do not incur one
+        // network round trip per device.
+        client.transferLastValues(deviceLastValues, isTableModel, this);
+      } else {
+        throw new PipeException(DataNodePipeMessages.NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED);
       }
       return TsFileTransferResult.TRANSFERRED;
     } finally {
@@ -587,7 +592,7 @@ public class OpcUaSink implements PipeConnector {
     }
   }
 
-  static Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> readLastValues(
+  static @Nullable Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> readLastValues(
       final File tsFile) throws Exception {
     final Map<IDeviceID, Map<String, TSDataType>> deviceToTimeseriesDataTypes =
         readTimeseriesDataTypes(tsFile);
@@ -606,7 +611,7 @@ public class OpcUaSink implements PipeConnector {
         final Map<String, TSDataType> timeseriesDataTypes =
             deviceToTimeseriesDataTypes.get(deviceLastValue.getLeft());
         if (Objects.isNull(timeseriesDataTypes)) {
-          throw new IOException();
+          return null;
         }
 
         final List<Pair<IMeasurementSchema, TimeValuePair>> typedLastValues =
@@ -615,7 +620,7 @@ public class OpcUaSink implements PipeConnector {
           ++actualTimeseriesCount;
           final TSDataType dataType = timeseriesDataTypes.get(lastValue.getLeft());
           if (Objects.isNull(dataType)) {
-            throw new IOException();
+            return null;
           }
           if (!TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft())) {
             typedLastValues.add(
@@ -629,7 +634,7 @@ public class OpcUaSink implements PipeConnector {
     // TsFileLastReader logs and suppresses IOExceptions from Iterator#hasNext. Comparing against an
     // independently read metadata count prevents a truncated result from being treated as EOF.
     if (actualTimeseriesCount != expectedTimeseriesCount) {
-      throw new IOException();
+      return null;
     }
     return deviceLastValues;
   }
