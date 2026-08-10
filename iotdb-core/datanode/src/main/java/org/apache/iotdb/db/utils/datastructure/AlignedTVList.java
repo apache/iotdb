@@ -1472,10 +1472,10 @@ public abstract class AlignedTVList extends TVList {
 
   /**
    * Calculate the one-time container memory retained by this list. Primitive-array references in
-   * the time/index/value lists and bitmap lists are already charged by the per-block accounting,
-   * so only their list objects and backing-array headers are added here. In contrast, references
-   * in the outer column containers (and the N-wide accounting arrays kept after a partial clone)
-   * are not charged elsewhere and are counted in full.
+   * the time/index/value lists and bitmap lists are already charged by the per-block accounting, so
+   * only their list objects and backing-array headers are added here. In contrast, references in
+   * the outer column containers (and the N-wide accounting arrays kept after a partial clone) are
+   * not charged elsewhere and are counted in full.
    */
   long calculateContainerRamCost(Set<Integer> retainedColumns) {
     long size = 0;
@@ -1515,8 +1515,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private static long listRamCostWithReferences(List<?> list) {
-    return RamUsageEstimator.shallowSizeOf(list)
-        + RamUsageEstimator.sizeOfObjectArray(list.size());
+    return RamUsageEstimator.shallowSizeOf(list) + RamUsageEstimator.sizeOfObjectArray(list.size());
   }
 
   private static long listRamCostWithoutReferences(List<?> list) {
