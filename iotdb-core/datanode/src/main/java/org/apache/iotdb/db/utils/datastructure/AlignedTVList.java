@@ -46,6 +46,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -1448,7 +1449,8 @@ public abstract class AlignedTVList extends TVList {
   public synchronized long getRamSize() {
     return (long) timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
         + materializedValueArrayMemCost
-        + materializedBitmapMemoryCost;
+        + materializedBitmapMemoryCost
+        + calculateContainerRamCost(null);
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {
@@ -1463,7 +1465,63 @@ public abstract class AlignedTVList extends TVList {
         size += (long) materializedValueArrayCounts[i] * valueListArrayMemCost(dataType);
       }
     }
-    return size + calculateBitmapRamCost(bitMaps, columnsToClone);
+    return size
+        + calculateBitmapRamCost(bitMaps, columnsToClone)
+        + calculateContainerRamCost(columnsToClone);
+  }
+
+  /**
+   * Calculate the one-time container memory retained by this list. Primitive-array references in
+   * the time/index/value lists and bitmap lists are already charged by the per-block accounting,
+   * so only their list objects and backing-array headers are added here. In contrast, references
+   * in the outer column containers (and the N-wide accounting arrays kept after a partial clone)
+   * are not charged elsewhere and are counted in full.
+   */
+  long calculateContainerRamCost(Set<Integer> retainedColumns) {
+    long size = 0;
+
+    size += listRamCostWithReferences(dataTypes);
+    size += RamUsageEstimator.sizeOfLongArray(memoryBinaryChunkSize.length);
+    size += RamUsageEstimator.sizeOfIntArray(materializedValueArrayCounts.length);
+    size += listRamCostWithoutReferences(timestamps);
+    if (indices != null) {
+      size += listRamCostWithoutReferences(indices);
+    }
+
+    size += listRamCostWithReferences(values);
+    for (int i = 0; i < values.size(); i++) {
+      if (retainedColumns != null && !retainedColumns.contains(i)) {
+        continue;
+      }
+      List<Object> columnValues = values.get(i);
+      if (columnValues != null) {
+        size += listRamCostWithoutReferences(columnValues);
+      }
+    }
+
+    if (bitMaps != null) {
+      size += listRamCostWithReferences(bitMaps);
+      for (int i = 0; i < bitMaps.size(); i++) {
+        if (retainedColumns != null && !retainedColumns.contains(i)) {
+          continue;
+        }
+        List<BitMap> columnBitMaps = bitMaps.get(i);
+        if (columnBitMaps != null) {
+          size += listRamCostWithoutReferences(columnBitMaps);
+        }
+      }
+    }
+    return size;
+  }
+
+  private static long listRamCostWithReferences(List<?> list) {
+    return RamUsageEstimator.shallowSizeOf(list)
+        + RamUsageEstimator.sizeOfObjectArray(list.size());
+  }
+
+  private static long listRamCostWithoutReferences(List<?> list) {
+    return RamUsageEstimator.shallowSizeOf(list)
+        + (list.isEmpty() ? 0 : RamUsageEstimator.sizeOfObjectArray(0));
   }
 
   private static long calculateBitmapRamCost(
