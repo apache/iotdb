@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class MigrationTaskManager implements IService, IMigrationManager {
@@ -67,50 +68,63 @@ public class MigrationTaskManager implements IService, IMigrationManager {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final TierManager tierManager = TierManager.getInstance();
   private static final long CHECK_INTERVAL_IN_SECONDS = 10;
+  private static final int MIGRATION_SCHEDULE_THREAD_COUNT = 3;
   // Keep a bounded backlog while allowing every migration worker to remain busy.
   private static final int MIGRATION_TASK_QUEUE_LIMIT = 50;
 
-  /** Slots for migration tasks that have been submitted but not completed. */
-  private volatile Semaphore migrationTaskSlots;
-
   /** enable or not */
-  private boolean enable = false;
+  private volatile boolean enable = false;
 
-  /** single thread to schedule */
-  private ScheduledExecutorService scheduler;
-
-  /** workers to migrate files */
-  private WrappedThreadPoolExecutor workers;
+  /** Executors and admission state owned by the current service start. */
+  private volatile SchedulingContext schedulingContext;
 
   /** migrate rate limiter, KB/s */
   private volatile RateLimiter[] migrateRateLimiters;
 
   @Override
-  public void start() throws StartupException {
-    enable = true;
+  public synchronized void start() throws StartupException {
+    if (enable) {
+      return;
+    }
     // metrics
     MetricService.getInstance().addMetricSet(MigrationMetrics.getInstance());
     // threads and tasks
     reloadMigrateSpeedLimit();
-    migrationTaskSlots =
-        new Semaphore(iotdbConfig.getMigrateThreadCount() + MIGRATION_TASK_QUEUE_LIMIT);
-    scheduler =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.MIGRATION_SCHEDULER.getName());
-    workers =
+    ScheduledExecutorService scheduler =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            MIGRATION_SCHEDULE_THREAD_COUNT, ThreadName.MIGRATION_SCHEDULER.getName());
+    WrappedThreadPoolExecutor workers =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 iotdbConfig.getMigrateThreadCount(), ThreadName.MIGRATION.getName());
     workers.disableErrorLog();
+    SchedulingContext context =
+        new SchedulingContext(
+            scheduler,
+            workers,
+            new Semaphore(iotdbConfig.getMigrateThreadCount() + MIGRATION_TASK_QUEUE_LIMIT));
+    schedulingContext = context;
+    enable = true;
+
+    // The pool reserves one thread per producer, and every run owns its snapshot. A blocked
+    // migration producer therefore cannot starve either deletion producer, while TsFileResource's
+    // status CAS arbitrates files observed concurrently by different snapshots.
+    registerScheduleTask(context, () -> new MigrationScheduleTask(context).scheduleAuditDeletion());
+    registerScheduleTask(context, () -> new MigrationScheduleTask(context).scheduleDeletion());
+    registerScheduleTask(context, () -> new MigrationScheduleTask(context).scheduleMigration());
+  }
+
+  private void registerScheduleTask(SchedulingContext context, Runnable task) {
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        scheduler,
-        () -> new MigrationScheduleTask().run(),
+        context.scheduler,
+        task,
         CHECK_INTERVAL_IN_SECONDS,
         CHECK_INTERVAL_IN_SECONDS,
         TimeUnit.SECONDS);
   }
 
-  private class MigrationScheduleTask implements Runnable {
+  private class MigrationScheduleTask {
+    private final SchedulingContext context;
     private final long[] tierDiskTotalSpace = tierManager.getTierDiskTotalSpace();
     private final long[] tierDiskUsableSpace = tierManager.getTierDiskUsableSpace();
 
@@ -132,7 +146,8 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     /** Audit TsFiles Max Space */
     private final double auditTsFilesMaxSpaceInGB = commonConfig.getAuditLogSpaceTlInGB();
 
-    public MigrationScheduleTask() {
+    public MigrationScheduleTask(SchedulingContext context) {
+      this.context = context;
       for (int i = 0; i < tierManager.getTiersNum(); i++) {
         double usable = tierDiskUsableSpace[i] * 1.0 / tierDiskTotalSpace[i];
         if (usable <= 1 - iotdbConfig.getSpaceUsageThresholds()[i]) {
@@ -158,31 +173,26 @@ public class MigrationTaskManager implements IService, IMigrationManager {
       }
     }
 
-    @Override
-    public void run() {
-      schedule();
-    }
-
-    private void schedule() {
+    private void collectAuditTsFiles() {
       for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
         if (dataRegion.getDatabaseName().startsWith(SystemConstant.AUDIT_DATABASE)) {
           auditTsFiles.addAll(dataRegion.getSequenceFileList());
           auditTsFiles.addAll(dataRegion.getUnSequenceFileList());
-          continue;
         }
-        tsfiles.addAll(dataRegion.getSequenceFileList());
-        tsfiles.addAll(dataRegion.getUnSequenceFileList());
       }
-      scheduleAuditDeletion();
-      if (TierFullPolicy.valueOf(iotdbConfig.getTierFullPolicy()) == TierFullPolicy.DELETE) {
-        scheduleDeletion();
-      }
-      if (iotdbConfig.getTierDataDirs().length != 1) {
-        scheduleMigration();
+    }
+
+    private void collectNonAuditTsFiles() {
+      for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+        if (!dataRegion.getDatabaseName().startsWith(SystemConstant.AUDIT_DATABASE)) {
+          tsfiles.addAll(dataRegion.getSequenceFileList());
+          tsfiles.addAll(dataRegion.getUnSequenceFileList());
+        }
       }
     }
 
     private void scheduleAuditDeletion() {
+      collectAuditTsFiles();
       if (auditTsFilesMaxSpaceInGB == Double.MAX_VALUE) {
         return;
       }
@@ -234,6 +244,10 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     }
 
     private void scheduleDeletion() {
+      if (TierFullPolicy.valueOf(iotdbConfig.getTierFullPolicy()) != TierFullPolicy.DELETE) {
+        return;
+      }
+      collectNonAuditTsFiles();
       if (!needMigrationTiers.contains(tierDiskTotalSpace.length - 1)) {
         return;
       }
@@ -254,20 +268,18 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     }
 
     private void trySubmitDeleteTask(int tierLevel, TsFileResource sourceTsFile) {
-      if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
+      if (!trySubmitTask(context, sourceTsFile, new DeleteTask(sourceTsFile), null)) {
         return;
       }
       releaseDiskUsage(tierLevel, sourceTsFile.getTsFileSize());
-      workers.submit(new DeleteTask(sourceTsFile));
     }
 
     private void trySubmitAuditDeleteTask(int tierLevel, TsFileResource sourceTsFile) {
-      if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
+      if (!trySubmitTask(context, sourceTsFile, new DeleteTask(sourceTsFile), null)) {
         return;
       }
       releaseDiskUsage(tierLevel, sourceTsFile.getTsFileSize());
       auditTsFilesTotalSpaceInBytes -= sourceTsFile.getTsFileSize();
-      workers.submit(new DeleteTask(sourceTsFile));
     }
 
     private int compareDeletePriority(TsFileResource f1, TsFileResource f2) {
@@ -281,6 +293,10 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     }
 
     private void scheduleMigration() {
+      if (iotdbConfig.getTierDataDirs().length == 1) {
+        return;
+      }
+      collectNonAuditTsFiles();
       // only migrate closed TsFiles not in the last tier
       List<TsFileResource> migrateCandidates =
           tsfiles.stream()
@@ -334,17 +350,16 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     private void trySubmitMigrationTask(
         int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir)
         throws IOException, InterruptedException {
-      acquireMigrationTaskSlot();
-      if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
-        releaseMigrationTaskSlot();
-        return;
-      }
+      Semaphore taskSlots = context.migrationTaskSlots;
+      taskSlots.acquire();
       try {
         MigrationTask task = MigrationTask.newTask(cause, sourceTsFile, targetDir);
-        workers.submit(task);
+        if (!trySubmitTask(context, sourceTsFile, task, taskSlots)) {
+          taskSlots.release();
+          return;
+        }
       } catch (RuntimeException | IOException e) {
-        releaseMigrationTaskSlot();
-        sourceTsFile.setStatus(TsFileResourceStatus.NORMAL);
+        taskSlots.release();
         throw e;
       }
       releaseDiskUsage(tierLevel, sourceTsFile.getTsFileSize());
@@ -373,14 +388,34 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     }
   }
 
+  private boolean trySubmitTask(
+      SchedulingContext context,
+      TsFileResource sourceTsFile,
+      Runnable task,
+      Semaphore migrationTaskSlots) {
+    synchronized (context.submissionMonitor) {
+      if (!context.acceptingTasks || !sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
+        return false;
+      }
+      try {
+        context.workers.execute(new SubmittedTask(task, sourceTsFile, migrationTaskSlots));
+        return true;
+      } catch (RuntimeException e) {
+        sourceTsFile.setStatus(TsFileResourceStatus.NORMAL);
+        throw e;
+      }
+    }
+  }
+
   void acquireMigrationTaskSlot() throws InterruptedException {
-    migrationTaskSlots.acquire();
+    SchedulingContext context = schedulingContext;
+    context.migrationTaskSlots.acquire();
   }
 
   void releaseMigrationTaskSlot() {
-    Semaphore taskSlots = migrationTaskSlots;
-    if (taskSlots != null) {
-      taskSlots.release();
+    SchedulingContext context = schedulingContext;
+    if (context != null) {
+      context.migrationTaskSlots.release();
     }
   }
 
@@ -413,14 +448,27 @@ public class MigrationTaskManager implements IService, IMigrationManager {
   }
 
   @Override
-  public void stop() {
-    if (scheduler != null) {
-      scheduler.shutdownNow();
-    }
-    if (workers != null) {
-      workers.shutdownNow();
-    }
+  public synchronized void stop() {
     enable = false;
+    SchedulingContext context = schedulingContext;
+    if (context == null) {
+      return;
+    }
+
+    synchronized (context.submissionMonitor) {
+      context.acceptingTasks = false;
+    }
+    context.scheduler.shutdownNow();
+
+    List<Runnable> unstartedTasks;
+    synchronized (context.submissionMonitor) {
+      unstartedTasks = context.workers.shutdownNow();
+    }
+    for (Runnable task : unstartedTasks) {
+      if (task instanceof SubmittedTask submittedTask) {
+        submittedTask.cancelBeforeRun();
+      }
+    }
   }
 
   @Override
@@ -435,6 +483,66 @@ public class MigrationTaskManager implements IService, IMigrationManager {
 
   public static MigrationTaskManager getInstance() {
     return InstanceHolder.INSTANCE;
+  }
+
+  private static class SchedulingContext {
+    private final ScheduledExecutorService scheduler;
+    private final WrappedThreadPoolExecutor workers;
+    private final Semaphore migrationTaskSlots;
+    private final Object submissionMonitor = new Object();
+
+    // Guarded by submissionMonitor so stop and task admission form one atomic lifecycle decision.
+    private boolean acceptingTasks = true;
+
+    private SchedulingContext(
+        ScheduledExecutorService scheduler,
+        WrappedThreadPoolExecutor workers,
+        Semaphore migrationTaskSlots) {
+      this.scheduler = scheduler;
+      this.workers = workers;
+      this.migrationTaskSlots = migrationTaskSlots;
+    }
+  }
+
+  /**
+   * Releases a task reservation exactly once, whether the worker runs it or shutdown cancels it.
+   */
+  static class SubmittedTask implements Runnable {
+    private final Runnable task;
+    private final TsFileResource sourceTsFile;
+    private final Semaphore migrationTaskSlots;
+    private final AtomicBoolean claimed = new AtomicBoolean(false);
+
+    SubmittedTask(Runnable task, TsFileResource sourceTsFile, Semaphore migrationTaskSlots) {
+      this.task = task;
+      this.sourceTsFile = sourceTsFile;
+      this.migrationTaskSlots = migrationTaskSlots;
+    }
+
+    @Override
+    public void run() {
+      if (!claimed.compareAndSet(false, true)) {
+        return;
+      }
+      try {
+        task.run();
+      } finally {
+        releaseResources();
+      }
+    }
+
+    void cancelBeforeRun() {
+      if (claimed.compareAndSet(false, true)) {
+        releaseResources();
+      }
+    }
+
+    private void releaseResources() {
+      sourceTsFile.setStatus(TsFileResourceStatus.NORMAL);
+      if (migrationTaskSlots != null) {
+        migrationTaskSlots.release();
+      }
+    }
   }
 
   private static class InstanceHolder {

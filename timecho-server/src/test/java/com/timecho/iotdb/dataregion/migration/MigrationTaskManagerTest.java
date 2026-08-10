@@ -18,10 +18,12 @@
  */
 package com.timecho.iotdb.dataregion.migration;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -41,10 +43,13 @@ import org.junit.Test;
 import java.io.File;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -78,6 +83,7 @@ public class MigrationTaskManagerTest {
   private ObjectStorageType prevOSType;
   private long[] prevTieredStorageMigrateSpeedLimitBytesPerSec;
   private String[][] prevTierDataDirs;
+  private Set<Long> existingMigrationSchedulerThreadIds;
 
   @Before
   public void setUp() throws Exception {
@@ -98,6 +104,7 @@ public class MigrationTaskManagerTest {
     prevTieredStorageMigrateSpeedLimitBytesPerSec =
         config.getTieredStorageMigrateSpeedLimitBytesPerSec();
     config.setTieredStorageMigrateSpeedLimitBytesPerSec(new long[] {1024 * 1024});
+    existingMigrationSchedulerThreadIds = getMigrationSchedulerThreadIds();
     MigrationTaskManager.getInstance().start();
   }
 
@@ -112,6 +119,47 @@ public class MigrationTaskManagerTest {
         prevTieredStorageMigrateSpeedLimitBytesPerSec);
     config.setTierDataDirs(prevTierDataDirs);
     MigrationTaskManager.getInstance().stop();
+  }
+
+  /**
+   * Verifies that the three task producers cannot block one another on a single scheduler thread.
+   */
+  @Test
+  public void testScheduleTasksUseIndependentThreads() {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    Set<Long> schedulerThreadIds;
+    do {
+      schedulerThreadIds = getMigrationSchedulerThreadIds();
+      schedulerThreadIds.removeAll(existingMigrationSchedulerThreadIds);
+      if (schedulerThreadIds.size() == 3) {
+        break;
+      }
+      Thread.yield();
+    } while (System.nanoTime() < deadline);
+
+    assertEquals(3, schedulerThreadIds.size());
+  }
+
+  /** Verifies shutdown cancellation restores the file and slot without later double release. */
+  @Test
+  public void testCancelledSubmittedTaskReleasesResourcesOnce() {
+    File sourceFile =
+        new File(
+            MIGRATION_SOURCE_TIME_PARTITION_DIR,
+            TsFileNameGenerator.generateNewTsFileName(0, 0, 0, 0));
+    TsFileResource tsFileResource = new TsFileResource(sourceFile, TsFileResourceStatus.NORMAL);
+    assertTrue(tsFileResource.setStatus(TsFileResourceStatus.MIGRATING));
+    Semaphore taskSlots = new Semaphore(0);
+    AtomicBoolean executed = new AtomicBoolean(false);
+    MigrationTaskManager.SubmittedTask submittedTask =
+        new MigrationTaskManager.SubmittedTask(() -> executed.set(true), tsFileResource, taskSlots);
+
+    submittedTask.cancelBeforeRun();
+    submittedTask.run();
+
+    assertFalse(executed.get());
+    assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+    assertEquals(1, taskSlots.availablePermits());
   }
 
   @Test
@@ -213,5 +261,13 @@ public class MigrationTaskManagerTest {
         MigrationTaskManager.getInstance().releaseMigrationTaskSlot();
       }
     }
+  }
+
+  private Set<Long> getMigrationSchedulerThreadIds() {
+    return Thread.getAllStackTraces().keySet().stream()
+        .filter(Thread::isAlive)
+        .filter(thread -> thread.getName().contains(ThreadName.MIGRATION_SCHEDULER.getName()))
+        .map(Thread::getId)
+        .collect(Collectors.toSet());
   }
 }
