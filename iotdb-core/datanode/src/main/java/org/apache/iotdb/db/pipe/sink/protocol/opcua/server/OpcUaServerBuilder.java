@@ -45,7 +45,7 @@ import org.eclipse.milo.opcua.stack.core.security.DefaultCertificateManager;
 import org.eclipse.milo.opcua.stack.core.security.DefaultServerCertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.FileBasedCertificateQuarantine;
 import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
-import org.eclipse.milo.opcua.stack.core.security.KeyStoreCertificateStore;
+import org.eclipse.milo.opcua.stack.core.security.MemoryCertificateStore;
 import org.eclipse.milo.opcua.stack.core.security.RsaSha256CertificateFactory;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
@@ -214,12 +214,9 @@ public class OpcUaServerBuilder implements Closeable {
     trustListManager = FileBasedTrustListManager.createAndInitialize(pkiDir);
     final FileBasedCertificateQuarantine certificateQuarantine =
         FileBasedCertificateQuarantine.create(pkiDir.resolve("rejected").resolve("certs"));
-    final KeyStoreCertificateStore certificateStore =
-        KeyStoreCertificateStore.createAndInitialize(
-            new KeyStoreCertificateStore.Settings(
-                securityDir.resolve("iotdb-milo-application.pfx"),
-                () -> password.toCharArray(),
-                alias -> password.toCharArray()));
+    // OpcUaKeyStoreLoader already persists the application key pair in iotdb-server.pfx. Keeping
+    // Milo's application-group store in memory avoids a second password-protected stale copy.
+    final MemoryCertificateStore certificateStore = new MemoryCertificateStore();
     final RsaSha256CertificateFactory certificateFactory =
         new RsaSha256CertificateFactory() {
           @Override

@@ -146,6 +146,39 @@ public class OpcUaServerBuilderTest {
   }
 
   @Test
+  public void testRebuildWithChangedPassword() throws Exception {
+    final Path securityDir = temporaryFolder.newFolder("changed-password-security").toPath();
+
+    try (final OpcUaServerBuilder builder =
+        new OpcUaServerBuilder()
+            .setTcpBindPort(12686)
+            .setHttpsBindPort(8443)
+            .setAdvertisedHost("127.0.0.1")
+            .setUser("root")
+            .setPassword("root")
+            .setSecurityDir(securityDir.toString())
+            .setEnableAnonymousAccess(true)
+            .setSecurityPolicies(Collections.singleton(SecurityPolicy.None))
+            .setDebounceTimeMs(50)) {
+      builder.build();
+    }
+
+    try (final OpcUaServerBuilder builder =
+        new OpcUaServerBuilder()
+            .setTcpBindPort(12686)
+            .setHttpsBindPort(8443)
+            .setAdvertisedHost("127.0.0.1")
+            .setUser("root")
+            .setPassword("changed")
+            .setSecurityDir(securityDir.toString())
+            .setEnableAnonymousAccess(true)
+            .setSecurityPolicies(Collections.singleton(SecurityPolicy.None))
+            .setDebounceTimeMs(50)) {
+      builder.build();
+    }
+  }
+
+  @Test
   public void testAnonymousAccessCanBeDisabledAndDiagnosticsStayRestricted() throws Exception {
     final Path securityDir = temporaryFolder.newFolder("restricted-security").toPath();
 
