@@ -93,6 +93,9 @@ public final class ProcedureMessages {
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
   public static final String AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY =
       "Auth procedure: clean datanode cache successfully";
+  public static final String AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED =
+      "Auth plan has been committed, but DataNode permission cache invalidation failed. "
+          + "Some DataNodes may have stale permissions; please clear their permission cache manually.";
   public static final String BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP =
       "{}, Begin to change DataNode status, nodeStatusMap: {}";
   public static final String BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS =
@@ -356,7 +359,7 @@ public final class ProcedureMessages {
   public static final String ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT =
       "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.";
   public static final String EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES =
-      "Execute auth plan {} success. To invalidate datanodes: {}";
+      "Execute auth plan {} success.";
   public static final String EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "Executing on region for column {} in {}.{} when dropping column";
   public static final String FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ =
@@ -551,8 +554,6 @@ public final class ProcedureMessages {
       "Fail to drop trigger [%s] at STATE [%s]";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES =
       "Fail to drop trigger [%s] on Data Nodes";
-  public static final String FAIL_TO_EXECUTE_PLAN_AT_STATE =
-      "Fail to execute plan [%s] at state[%s]";
   public static final String FAIL_TO_REMOVE_AINODE_AT_STATE =
       "Fail to remove AINode [%s] at STATE [%s], %s";
   public static final String FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES =
@@ -860,8 +861,6 @@ public final class ProcedureMessages {
       "Retrievable error trying to create pipe plugin [{}], state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
       "Retrievable error trying to drop pipe plugin [{}], state: {}";
-  public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
-      "Retrievable error trying to execute plan {}, state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "Retrievable error trying to remove AINode [{}], state [{}]";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
