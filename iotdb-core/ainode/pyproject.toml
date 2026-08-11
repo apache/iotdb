@@ -107,6 +107,7 @@ arch = ">=8.0.0"
 
 # ---- Optimizers / utils ----
 optuna = "^4.4.0"
+greenlet = "3.5.4"
 psutil = "^7.0.0"
 requests = "^2.32.5"
 dynaconf = "^3.2.11"
@@ -119,6 +120,7 @@ hf_xet = ">=1.1.9"
 # ---- Tooling ----
 pyinstaller = "6.16.0"
 black = ">=26.3.1"
+platformdirs = "4.11.0"
 isort = "6.0.1"
 setuptools = ">=75.3.0"
 joblib = ">=1.4.2"

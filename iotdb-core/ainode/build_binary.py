@@ -85,15 +85,6 @@ def get_venv_python(venv_dir):
         return venv_dir / "bin" / "python"
 
 
-def update_pip(venv_python):
-    """Update pip in the virtual environment to the latest version."""
-    print("Updating pip...")
-    subprocess.run(
-        [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"], check=True
-    )
-    print("pip updated successfully")
-
-
 def install_poetry(venv_python):
     """Install poetry 2.2.1 in the virtual environment."""
     print("Installing poetry 2.2.1...")
@@ -104,6 +95,7 @@ def install_poetry(venv_python):
             "pip",
             "install",
             "poetry==2.2.1",
+            "platformdirs==4.11.0",
         ],
         check=True,
     )
@@ -441,7 +433,7 @@ def build():
 
     Steps:
     1. Setup virtual environment (outside project directory)
-    2. Update pip and install 2.2.1 poetry
+    2. Install Poetry 2.2.1 and its pinned bootstrap dependency
     3. Install project dependencies (including PyInstaller from pyproject.toml)
     4. Check dist cache — skip PyInstaller if source hasn't changed
     5. Build executable using PyInstaller (if cache miss)
@@ -452,7 +444,6 @@ def build():
     venv_dir = setup_venv()
     venv_python = get_venv_python(venv_dir)
 
-    update_pip(venv_python)
     install_poetry(venv_python)
     install_dependencies(venv_python, venv_dir, script_dir)
 
