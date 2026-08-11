@@ -19,13 +19,17 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -34,6 +38,9 @@ import java.util.function.Supplier;
  * source of each receiver-owned file.
  */
 public final class PipeTsFileConversionTaskManager {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeTsFileConversionTaskManager.class);
 
   public enum State {
     PENDING,
@@ -97,6 +104,7 @@ public final class PipeTsFileConversionTaskManager {
   private static final int MAX_CONTEXTS =
       LoadTsFileDataTypeConverter.getTabletConversionPermitCount();
   private static final Map<String, Task> TASKS = new LinkedHashMap<>(128, 0.75F, true);
+  private static final AtomicInteger RETAINED_CONTEXT_COUNT = new AtomicInteger();
   private static final ThreadLocal<String> CURRENT_TASK_ID = new ThreadLocal<>();
   // Keeps legacy seal requests (which predate conversion task ids) eligible for receiver takeover.
   private static final ThreadLocal<Boolean> CURRENT_TYPE_MISMATCH = new ThreadLocal<>();
@@ -105,6 +113,10 @@ public final class PipeTsFileConversionTaskManager {
 
   private PipeTsFileConversionTaskManager() {
     // utility class
+  }
+
+  public static Task registerIfAbsent(final String taskId) {
+    return registerIfAbsent(taskId, true);
   }
 
   public static Task registerIfAbsent(final String taskId, final boolean asyncLoadOnTypeMismatch) {
@@ -259,7 +271,7 @@ public final class PipeTsFileConversionTaskManager {
         final ContextReservation reservation = reserveContextSlot(task);
         evictedContext = reservation.evictedContext;
         if (reservation.slotAvailable) {
-          task.conversionContext = context;
+          retainContext(task, context);
           retained = true;
         }
       }
@@ -283,8 +295,7 @@ public final class PipeTsFileConversionTaskManager {
     synchronized (TASKS) {
       final Task task = TASKS.get(taskId);
       if (task != null) {
-        context = task.conversionContext;
-        task.conversionContext = null;
+        context = detachContext(task);
       }
     }
     closeContext(context);
@@ -292,20 +303,12 @@ public final class PipeTsFileConversionTaskManager {
   }
 
   private static ContextReservation reserveContextSlot(final Task currentTask) {
-    int contextCount = 0;
-    for (final Task task : TASKS.values()) {
-      if (task.conversionContext != null) {
-        contextCount++;
-      }
-    }
-    if (contextCount < MAX_CONTEXTS) {
+    if (RETAINED_CONTEXT_COUNT.get() < MAX_CONTEXTS) {
       return new ContextReservation(true, null);
     }
     for (final Task task : TASKS.values()) {
       if (task != currentTask && task.conversionContext != null && task.state != State.RUNNING) {
-        final Object context = task.conversionContext;
-        task.conversionContext = null;
-        return new ContextReservation(true, context);
+        return new ContextReservation(true, detachContext(task));
       }
     }
     return new ContextReservation(false, null);
@@ -321,14 +324,29 @@ public final class PipeTsFileConversionTaskManager {
     }
   }
 
+  private static void retainContext(final Task task, final Object context) {
+    task.conversionContext = context;
+    RETAINED_CONTEXT_COUNT.incrementAndGet();
+  }
+
+  private static Object detachContext(final Task task) {
+    final Object context = task.conversionContext;
+    if (context != null) {
+      task.conversionContext = null;
+      RETAINED_CONTEXT_COUNT.decrementAndGet();
+    }
+    return context;
+  }
+
   private static void closeContext(final Object context) {
     if (!(context instanceof AutoCloseable)) {
       return;
     }
     try {
       ((AutoCloseable) context).close();
-    } catch (final Exception ignored) {
-      // Best-effort cleanup. The task state is still authoritative.
+    } catch (final Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages.LOG_FAILED_TO_CLOSE_PIPE_TSFILE_CONVERSION_CONTEXT_8E4D886B, e);
     }
   }
 
@@ -485,8 +503,7 @@ public final class PipeTsFileConversionTaskManager {
       if (task != null && task.state != State.SUCCESS && task.state != State.FAILED) {
         task.status = status;
         task.retrySealAllowed = false;
-        context = task.conversionContext;
-        task.conversionContext = null;
+        context = detachContext(task);
         task.state = state;
       }
     }
@@ -501,15 +518,7 @@ public final class PipeTsFileConversionTaskManager {
 
   @VisibleForTesting
   static int getRetainedContextCount() {
-    synchronized (TASKS) {
-      int count = 0;
-      for (final Task task : TASKS.values()) {
-        if (task.conversionContext != null) {
-          count++;
-        }
-      }
-      return count;
-    }
+    return RETAINED_CONTEXT_COUNT.get();
   }
 
   private static void evictCompletedTasksIfNecessary() {

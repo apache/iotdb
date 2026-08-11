@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -77,10 +78,11 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
     LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION_DOT, loadTsFileStatement);
 
     final boolean isManagedTask = PipeTsFileConversionTaskManager.getCurrentTaskId() != null;
-    final TableConversionContext conversionContext =
+    final TabletConversionContext conversionContext =
         isManagedTask
-            ? PipeTsFileConversionTaskManager.getOrCreateCurrentContext(TableConversionContext::new)
-            : new TableConversionContext();
+            ? PipeTsFileConversionTaskManager.getOrCreateCurrentContext(
+                TabletConversionContext::new)
+            : new TabletConversionContext();
     boolean shouldReleaseContext = !isManagedTask;
 
     try {
@@ -192,18 +194,15 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         .getTsFiles()
         .forEach(
             tsFile -> {
-              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
+              FileUtils.deleteFileIfExist(tsFile);
               final String tsFilePath = tsFile.getAbsolutePath();
-              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
-                  new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
-              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
-                  new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
-              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
-                  new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
             });
   }
 
-  private static final class TableConversionContext implements AutoCloseable {
+  private static final class TabletConversionContext implements AutoCloseable {
     private int fileIndex;
     private TsFileInsertionEventTableParser parser;
     private Iterator<TabletInsertionEvent> iterator;

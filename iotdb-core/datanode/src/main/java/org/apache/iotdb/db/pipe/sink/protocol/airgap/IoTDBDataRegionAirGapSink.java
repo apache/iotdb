@@ -482,8 +482,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throws PipeException, IOException {
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
     final String conversionTaskId =
-        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
-            getSinkTaskId(), events, dataBaseName, outputIndex, Objects.nonNull(modFile));
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                getSinkTaskId(), events, dataBaseName, outputIndex, Objects.nonNull(modFile))
+            : null;
 
     if (Objects.nonNull(modFile)) {
       transferFilePieces(pipe2WeightMap, modFile, socket, true);

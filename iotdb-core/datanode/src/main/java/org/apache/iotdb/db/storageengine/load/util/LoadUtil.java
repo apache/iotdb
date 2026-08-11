@@ -291,6 +291,9 @@ public class LoadUtil {
 
   private static boolean isExistingTaskComplete(
       final File transferDir, final List<File> sourceFiles) {
+    // A task directory becomes visible only after its populated staging directory is published.
+    // Missing or empty paths cannot prove a durable handoff; completed tasks are recognized by the
+    // conversion task manager before the transfer reaches this fallback check.
     if (!transferDir.isDirectory()) {
       return false;
     }

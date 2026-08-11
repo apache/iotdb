@@ -132,7 +132,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                         tsFile.getAbsolutePath(),
                         listeningDirFile.getAbsolutePath(),
                         isTableModel,
-                        isGeneratedByPipe);
+                        isGeneratedByPipe,
+                        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
                   });
         } catch (UncheckedIOException e) {
           LOGGER.debug(StorageEngineMessages.FILE_DELETED_IGNORE_EXCEPTION);

@@ -545,12 +545,14 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     final String conversionTaskId =
-        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
-            sinkTaskId,
-            events,
-            dataBaseName,
-            outputIndex,
-            Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver());
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                sinkTaskId,
+                events,
+                dataBaseName,
+                outputIndex,
+                Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver())
+            : null;
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {

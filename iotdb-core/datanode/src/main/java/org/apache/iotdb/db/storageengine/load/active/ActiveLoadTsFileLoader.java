@@ -89,11 +89,21 @@ public class ActiveLoadTsFileLoader {
 
   public void tryTriggerTsFileLoad(
       String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
+    tryTriggerTsFileLoad(absolutePath, pendingDir, isTabletMode, isGeneratedByPipe, null);
+  }
+
+  public void tryTriggerTsFileLoad(
+      String absolutePath,
+      String pendingDir,
+      boolean isTabletMode,
+      boolean isGeneratedByPipe,
+      String conversionTaskId) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
+    if (pendingQueue.enqueue(
+        absolutePath, pendingDir, isGeneratedByPipe, isTabletMode, conversionTaskId)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -271,13 +281,8 @@ public class ActiveLoadTsFileLoader {
             ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
             : new File(entry.getPendingDir());
     final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
-    final String conversionTaskId =
-        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY);
-    final boolean asyncLoadOnTypeMismatch =
-        Boolean.parseBoolean(
-            attributes.getOrDefault(
-                ActiveLoadPathHelper.PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY, "true"));
-    PipeTsFileConversionTaskManager.registerIfAbsent(conversionTaskId, asyncLoadOnTypeMismatch);
+    final String conversionTaskId = entry.getConversionTaskId();
+    PipeTsFileConversionTaskManager.registerIfAbsent(conversionTaskId);
     PipeTsFileConversionTaskManager.markReceiverOwned(conversionTaskId);
     PipeTsFileConversionTaskManager.markRunning(conversionTaskId);
     PipeTsFileConversionTaskManager.enter(conversionTaskId);
@@ -342,7 +347,7 @@ public class ActiveLoadTsFileLoader {
   private void handleLoadFailure(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
     if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
-      PipeTsFileConversionTaskManager.markFailed(getConversionTaskId(entry), status);
+      PipeTsFileConversionTaskManager.markFailed(entry.getConversionTaskId(), status);
       LOGGER.warn(
           StorageEngineMessages
               .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_STATUS_FILE_F43E9EF7,
@@ -355,7 +360,7 @@ public class ActiveLoadTsFileLoader {
 
   private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
     PipeTsFileConversionTaskManager.markFailed(
-        getConversionTaskId(entry), new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
+        entry.getConversionTaskId(), new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
     LOGGER.warn(
         StorageEngineMessages
             .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_FILE_5EE1FA08,
@@ -368,12 +373,12 @@ public class ActiveLoadTsFileLoader {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
     if (ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
       PipeTsFileConversionTaskManager.markPaused(
-          getConversionTaskId(entry),
+          entry.getConversionTaskId(),
           new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
               .setMessage(e.getMessage()));
     } else {
       PipeTsFileConversionTaskManager.markFailed(
-          getConversionTaskId(entry),
+          entry.getConversionTaskId(),
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
       LOGGER.warn(
           StorageEngineMessages
@@ -383,16 +388,6 @@ public class ActiveLoadTsFileLoader {
           e);
       removeFileAndResourceAndModsToFailDir(entry.getFile());
     }
-  }
-
-  private String getConversionTaskId(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
-    final File tsFile = new File(entry.getFile());
-    final File pendingDir =
-        entry.getPendingDir() == null
-            ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
-            : new File(entry.getPendingDir());
-    return ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir)
-        .get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY);
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {

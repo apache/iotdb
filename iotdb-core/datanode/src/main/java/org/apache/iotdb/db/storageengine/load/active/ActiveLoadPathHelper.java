@@ -47,8 +47,6 @@ public final class ActiveLoadPathHelper {
   private static final String SEGMENT_SEPARATOR = "-";
   public static final String USER_KEY = "user";
   public static final String PIPE_CONVERSION_TASK_ID_KEY = "pipe-conversion-task-id";
-  public static final String PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY =
-      "pipe-async-load-on-type-mismatch";
 
   /**
    * Prefix for directories used while a load handoff is being assembled. Active-load scanning must
@@ -65,7 +63,6 @@ public final class ActiveLoadPathHelper {
           Arrays.asList(
               USER_KEY,
               PIPE_CONVERSION_TASK_ID_KEY,
-              PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
@@ -137,8 +134,7 @@ public final class ActiveLoadPathHelper {
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated,
       final String userName,
-      final String conversionTaskId,
-      final Boolean asyncLoadOnTypeMismatch) {
+      final String conversionTaskId) {
     final Map<String, String> attributes =
         buildAttributes(
             databaseName,
@@ -151,10 +147,6 @@ public final class ActiveLoadPathHelper {
             userName);
     if (conversionTaskId != null && !conversionTaskId.isEmpty()) {
       attributes.put(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
-    }
-    if (conversionTaskId != null && asyncLoadOnTypeMismatch != null) {
-      attributes.put(
-          PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY, Boolean.toString(asyncLoadOnTypeMismatch));
     }
     return attributes;
   }
@@ -386,16 +378,8 @@ public final class ActiveLoadPathHelper {
         break;
       case PIPE_CONVERSION_TASK_ID_KEY:
         if (value == null || value.isEmpty()) {
-          throw new SemanticException(StorageEngineMessages.USER_NAME_MUST_NOT_BE_EMPTY);
-        }
-        break;
-      case PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY:
-        if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
           throw new SemanticException(
-              String.format(
-                  StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
-                  PIPE_ASYNC_LOAD_ON_TYPE_MISMATCH_KEY,
-                  value));
+              StorageEngineMessages.EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E);
         }
         break;
       case USER_KEY:

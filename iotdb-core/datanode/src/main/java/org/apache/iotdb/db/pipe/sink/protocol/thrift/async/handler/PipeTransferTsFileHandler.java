@@ -143,8 +143,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.transferMod = transferMod;
     this.dataBaseName = dataBaseName;
     conversionTaskId =
-        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
-            connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod);
+        connector.shouldAsyncLoadTsFileOnTypeMismatch()
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod)
+            : null;
     currentFile = transferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
