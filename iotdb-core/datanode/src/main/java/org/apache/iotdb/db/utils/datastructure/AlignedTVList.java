@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -98,8 +99,9 @@ public abstract class AlignedTVList extends TVList {
   public static final class PartialClonePlan {
     private final AlignedTVList sourceList;
     private final AlignedTVList cloneList;
-    private final List<Object>[] valueColumnsToMove;
-    private final List<BitMap>[] bitmapColumnsToMove;
+    // The columns retained by the source. commit() derives the moved columns from this set, so
+    // no O(N) move-plan arrays need to be allocated during preparation.
+    private final Set<Integer> retainedColumns;
     private final long sourceBitmapMemoryCost;
     private final long cloneBitmapMemoryCost;
 
@@ -108,14 +110,12 @@ public abstract class AlignedTVList extends TVList {
     private PartialClonePlan(
         AlignedTVList sourceList,
         AlignedTVList cloneList,
-        List<Object>[] valueColumnsToMove,
-        List<BitMap>[] bitmapColumnsToMove,
+        Set<Integer> retainedColumns,
         long sourceBitmapMemoryCost,
         long cloneBitmapMemoryCost) {
       this.sourceList = sourceList;
       this.cloneList = cloneList;
-      this.valueColumnsToMove = valueColumnsToMove;
-      this.bitmapColumnsToMove = bitmapColumnsToMove;
+      this.retainedColumns = retainedColumns;
       this.sourceBitmapMemoryCost = sourceBitmapMemoryCost;
       this.cloneBitmapMemoryCost = cloneBitmapMemoryCost;
     }
@@ -198,6 +198,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
+  @TestOnly
   public TVList getTvListByColumnIndex(
       List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     List<List<Object>> values = new ArrayList<>();
@@ -243,7 +244,7 @@ public abstract class AlignedTVList extends TVList {
         int materializedArrayCount = materializedValueArrayCounts[columnIndex];
         alignedTvList.materializedValueArrayCounts[i] = materializedArrayCount;
         alignedTvList.materializedValueArrayMemCost +=
-            (long) materializedArrayCount * valueListArrayMemCost(dataTypeList.get(i));
+            (long) materializedArrayCount * primitiveArrayMemCost(dataTypeList.get(i));
       }
     }
     return alignedTvList;
@@ -299,7 +300,6 @@ public abstract class AlignedTVList extends TVList {
     return prepareMovePlan(cloneList, retainedColumns);
   }
 
-  @SuppressWarnings("unchecked")
   private PartialClonePlan prepareMovePlan(AlignedTVList cloneList, Set<Integer> retainedColumns) {
     Objects.requireNonNull(
         cloneList, DataNodeMiscMessages.EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F);
@@ -311,15 +311,14 @@ public abstract class AlignedTVList extends TVList {
               .EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613);
     }
 
-    List<Object>[] valueColumnsToMove = (List<Object>[]) new List<?>[columnCount];
-    List<BitMap>[] bitmapColumnsToMove = (List<BitMap>[]) new List<?>[columnCount];
+    // Validate the move without allocating any O(N) move-plan arrays; commit() re-derives the
+    // moved columns from the retained set, which only needs this validation to be complete.
     for (int i = 0; i < columnCount; i++) {
       if (retainedColumns.contains(i)) {
         continue;
       }
 
-      List<Object> columnValues = values.get(i);
-      if (columnValues == null) {
+      if (values.get(i) == null) {
         throw new IllegalStateException(
             String.format(
                 DataNodeMiscMessages
@@ -333,7 +332,6 @@ public abstract class AlignedTVList extends TVList {
                     .EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F,
                 i));
       }
-      valueColumnsToMove[i] = columnValues;
 
       if (bitMaps != null && bitMaps.get(i) != null) {
         if (cloneList.bitMaps == null
@@ -345,15 +343,13 @@ public abstract class AlignedTVList extends TVList {
                       .EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88,
                   i));
         }
-        bitmapColumnsToMove[i] = bitMaps.get(i);
       }
     }
 
     return new PartialClonePlan(
         this,
         cloneList,
-        valueColumnsToMove,
-        bitmapColumnsToMove,
+        retainedColumns,
         calculateBitmapRamCost(bitMaps, retainedColumns),
         calculateBitmapRamCost(bitMaps, null));
   }
@@ -368,17 +364,22 @@ public abstract class AlignedTVList extends TVList {
             (long) materializedCount * primitiveArrayMemCost(dataTypes.get(i));
       }
     }
-    for (int i = 0; i < plan.valueColumnsToMove.length; i++) {
-      List<Object> columnValues = plan.valueColumnsToMove[i];
-      if (columnValues == null) {
+    Set<Integer> retainedColumns = plan.retainedColumns;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (retainedColumns.contains(i)) {
         continue;
       }
 
       // Move value arrays and bitmaps from the source to the clone. The clone was created with
       // empty column containers, so the moved references are set into place.
+      List<Object> columnValues = values.get(i);
+      if (columnValues == null) {
+        // Defensive: prepareMovePlan already validated that every moved column is materialized.
+        continue;
+      }
       plan.cloneList.values.set(i, columnValues);
       values.set(i, null);
-      List<BitMap> columnBitMaps = plan.bitmapColumnsToMove[i];
+      List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(i);
       if (columnBitMaps != null) {
         plan.cloneList.bitMaps.set(i, columnBitMaps);
         bitMaps.set(i, null);
@@ -1538,11 +1539,11 @@ public abstract class AlignedTVList extends TVList {
     return size;
   }
 
-  private static long listRamCostWithReferences(List<?> list) {
+  static long listRamCostWithReferences(List<?> list) {
     return RamUsageEstimator.shallowSizeOf(list) + RamUsageEstimator.sizeOfObjectArray(list.size());
   }
 
-  private static long listRamCostWithoutReferences(List<?> list) {
+  static long listRamCostWithoutReferences(List<?> list) {
     return RamUsageEstimator.shallowSizeOf(list)
         + (list.isEmpty() ? 0 : RamUsageEstimator.sizeOfObjectArray(0));
   }

@@ -418,6 +418,26 @@ public class FragmentInstanceExecutionTest {
       assertEquals(100, row);
       assertFalse(pointReader1.hasNextTimeValuePair());
       assertFalse(pointReader2.hasNextTimeValuePair());
+
+      // Before ending the queries, the retained source's reserved memory must equal the value
+      // recalculated at cleanup time - this is exactly the accounting releaseTVListOwnedByQuery
+      // validates when the owning query ends (a mismatch would emit a WARN during release).
+      long reservedBeforeRelease = workingTvList.getReservedMemoryBytes();
+      assertTrue(reservedBeforeRelease > 0);
+      assertEquals(workingTvList.calculateRamSize().getRamSize(), reservedBeforeRelease);
+
+      // End Query 1, the owner of the retained source. No other query uses the source any more,
+      // so the final release must return its reserved memory and clear the list.
+      context1.releaseResource();
+      assertTrue(workingTvList.getQueryContextSet().isEmpty());
+      assertEquals(0, workingTvList.rowCount());
+
+      // End Query 2. The clone is now the memTable's working TVList, so cleanup only detaches the
+      // query from it; the clone itself must remain intact as the working list.
+      context2.releaseResource();
+      assertTrue(cloneTvList.getQueryContextSet().isEmpty());
+      assertEquals(100, cloneTvList.rowCount());
+      assertSame(cloneTvList, memChunk.getWorkingTVList());
     } catch (Exception e) {
       fail(e.getMessage());
     } finally {

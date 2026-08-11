@@ -178,6 +178,7 @@ public class AlignedTVListTest {
     }
 
     Assert.assertNull(tvList.getBitMaps());
+    long ramSizeBeforeBitmapAllocation = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE * 2 + 1L, new Object[] {null, 1L});
 
     List<BitMap> firstColumnBitMaps = tvList.getBitMaps().get(0);
@@ -191,9 +192,14 @@ public class AlignedTVListTest {
         firstColumnBitMaps.get(2).ramBytesUsed() < new BitMap(ARRAY_SIZE).ramBytesUsed());
     Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE * 2 + 1, 0));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE * 2, 0));
+    // Only the lazily allocated bitmap, its slot references and the container of the newly
+    // created bitmap structure are charged; no additional value array is materialized.
     Assert.assertEquals(
-        3L * AlignedTVList.bitmapReferenceRamCost() + AlignedTVList.bitmapRamCost(),
-        tvList.calculateRamSize().getRamSize() - 3L * tvList.alignedTvListArrayMemCost());
+        3L * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost()
+            + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
+            + AlignedTVList.listRamCostWithoutReferences(tvList.getBitMaps().get(0)),
+        tvList.calculateRamSize().getRamSize() - ramSizeBeforeBitmapAllocation);
   }
 
   @Test
@@ -269,12 +275,17 @@ public class AlignedTVListTest {
     Assert.assertEquals(1, tvList.getLongByValueIndex(ARRAY_SIZE + 1, 1));
 
     long ramSizeBeforeExtension = tvList.calculateRamSize().getRamSize();
+    long containerBeforeExtension = tvList.calculateContainerRamCost(null);
     tvList.extendColumn(TSDataType.INT32);
 
     Assert.assertNull(tvList.getValues().get(2).get(0));
     Assert.assertNull(tvList.getValues().get(2).get(1));
     Assert.assertNull(tvList.getBitMaps().get(2));
-    Assert.assertEquals(ramSizeBeforeExtension, tvList.calculateRamSize().getRamSize());
+    // extendColumn only adds the N-wide container overhead of the new column; neither a value
+    // array nor a bitmap is materialized.
+    Assert.assertEquals(
+        ramSizeBeforeExtension + tvList.calculateContainerRamCost(null) - containerBeforeExtension,
+        tvList.calculateRamSize().getRamSize());
 
     long ramSizeBeforeExtendedColumnMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 2L, new Object[] {null, null, 2});
@@ -289,10 +300,13 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
+    // Materializing the extended column charges its primitive array, the lazily created bitmap
+    // (slot references + bitmap) and the container of the new bitmap structure.
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(TSDataType.INT32)
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT32)
             + 2L * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+            + AlignedTVList.bitmapRamCost()
+            + AlignedTVList.listRamCostWithoutReferences(tvList.getBitMaps().get(2)),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeExtendedColumnMaterialization);
   }
 
@@ -307,10 +321,14 @@ public class AlignedTVListTest {
     long ramSizeBeforeMaterialization = tvList.calculateRamSize().getRamSize();
     tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {1L, 1L});
 
+    // Materializing the second column charges its primitive array, the lazily created bitmap
+    // (slot references + bitmap) and the container of the new bitmap structure.
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
+        AlignedTVList.primitiveArrayMemCost(TSDataType.INT64)
             + 2L * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+            + AlignedTVList.bitmapRamCost()
+            + AlignedTVList.listRamCostWithReferences(tvList.getBitMaps())
+            + AlignedTVList.listRamCostWithoutReferences(tvList.getBitMaps().get(1)),
         tvList.calculateRamSize().getRamSize() - ramSizeBeforeMaterialization);
 
     Assert.assertEquals(
@@ -324,14 +342,18 @@ public class AlignedTVListTest {
     Assert.assertEquals(
         (long) projectedTvList.getValues().get(0).size()
                 * projectedTvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
-            + AlignedTVList.valueListArrayMemCost(TSDataType.INT64)
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT64)
             + (long) projectedTvList.getBitMaps().get(0).size()
                 * AlignedTVList.bitmapReferenceRamCost()
-            + AlignedTVList.bitmapRamCost(),
+            + AlignedTVList.bitmapRamCost()
+            + projectedTvList.calculateContainerRamCost(null),
         projectedTvList.calculateRamSize().getRamSize());
 
     tvList.clear();
-    Assert.assertEquals(0, tvList.calculateRamSize().getRamSize());
+    // clear() keeps the N-wide containers for reuse, so only the retained (empty) container
+    // baseline remains charged; no per-block, materialized-array or bitmap payload is left.
+    Assert.assertEquals(
+        tvList.calculateContainerRamCost(null), tvList.calculateRamSize().getRamSize());
   }
 
   @Test
@@ -343,9 +365,12 @@ public class AlignedTVListTest {
     }
 
     int blockCount = tvList.getValues().get(0).size();
-    long denseRamSize = blockCount * tvList.alignedTvListArrayMemCost();
+    // The second column is never materialized (only nulls were written), so only the first
+    // column's primitive arrays are charged; the N-wide container baseline is added once.
     long expectedRamSize =
-        denseRamSize - blockCount * AlignedTVList.valueListArrayMemCost(TSDataType.INT64);
+        (long) blockCount * tvList.alignedTvListArrayMemCostWithoutPrimitiveArrays()
+            + (long) blockCount * AlignedTVList.primitiveArrayMemCost(TSDataType.INT64)
+            + tvList.calculateContainerRamCost(null);
 
     Assert.assertEquals(expectedRamSize, tvList.calculateRamSize().getRamSize());
     Assert.assertNull(tvList.getBitMaps());
@@ -638,9 +663,12 @@ public class AlignedTVListTest {
     long retainedRamSize = tvList.calculateRamSize(retainedColumns).getRamSize();
     long fullRamSize = tvList.calculateRamSize().getRamSize();
 
-    // Only the retained column's materialized arrays are charged, so keeping 1 of 256 columns
-    // must cost far less than the full list.
-    Assert.assertTrue(retainedRamSize < fullRamSize / 64);
+    // The N-wide container baseline is retained regardless of how many columns are cloned, so
+    // exclude it to verify that the per-column payload scales with the retained column count:
+    // keeping 1 of 256 columns must cost far less than the full list.
+    long retainedPayload = retainedRamSize - tvList.calculateContainerRamCost(retainedColumns);
+    long fullPayload = fullRamSize - tvList.calculateContainerRamCost(null);
+    Assert.assertTrue(retainedPayload < fullPayload / 64);
 
     AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(retainedColumns);
     plan.commit();
