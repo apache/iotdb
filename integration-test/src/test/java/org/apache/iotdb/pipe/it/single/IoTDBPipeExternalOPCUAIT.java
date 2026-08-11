@@ -34,11 +34,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.core.Reference;
+import org.eclipse.milo.opcua.sdk.server.AddressSpace.AddNodesContext;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.api.services.NodeManagementServices.AddNodesContext;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
@@ -160,7 +160,7 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
     } finally {
       if (opcUaClient != null) {
-        opcUaClient.disconnect().get();
+        opcUaClient.disconnect();
       }
       if (externalServer != null) {
         externalServer.close();
@@ -187,7 +187,7 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
                 readyTime, readyTime),
             null);
         final DataValue value =
-            client.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/ready")).get();
+            client.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/ready"));
         if (value.getValue().getValue() instanceof Double
             && (Double) value.getValue().getValue() > 0
             && StatusCode.GOOD.equals(value.getStatusCode())) {
@@ -220,7 +220,7 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
     final long startTime = System.currentTimeMillis();
     while (System.currentTimeMillis() - startTime <= 10_000L) {
       try {
-        final DataValue value = client.readValue(0, TimestampsToReturn.Both, nodeId).get();
+        final DataValue value = client.readValue(0, TimestampsToReturn.Both, nodeId);
         Assert.assertEquals(expectedValue, value.getValue());
         Assert.assertEquals(expectedStatus, value.getStatusCode());
         Assert.assertEquals(expectedSourceTime, value.getSourceTime());
@@ -297,14 +297,14 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
     }
 
     @Override
-    public synchronized void addNodes(
+    public synchronized List<AddNodesResult> addNodes(
         final AddNodesContext context, final List<AddNodesItem> nodesToAdd) {
       final List<AddNodesResult> results = new ArrayList<>(nodesToAdd.size());
       for (final AddNodesItem item : nodesToAdd) {
         final AddNodesResult result = addNode(item);
         results.add(result);
       }
-      context.success(results);
+      return results;
     }
 
     private AddNodesResult addNode(final AddNodesItem item) {
@@ -348,7 +348,7 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
       switch (item.getNodeClass()) {
         case Variable:
           final VariableAttributes variableAttributes =
-              (VariableAttributes) attributes.decode(getServer().getSerializationContext());
+              (VariableAttributes) attributes.decode(getServer().getStaticEncodingContext());
           newNode =
               new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                   .setNodeId(nodeId.get())
@@ -368,7 +368,7 @@ public class IoTDBPipeExternalOPCUAIT extends AbstractPipeSingleIT {
           break;
         case Object:
           final ObjectAttributes objectAttributes =
-              (ObjectAttributes) attributes.decode(getServer().getSerializationContext());
+              (ObjectAttributes) attributes.decode(getServer().getStaticEncodingContext());
           if (!Identifiers.FolderType.equals(typeDefinition.get())) {
             return new AddNodesResult(
                 new StatusCode(StatusCodes.Bad_TypeDefinitionInvalid), NodeId.NULL_VALUE);
