@@ -120,7 +120,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.14</milo.version>
+        <milo.version>1.1.6</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
@@ -371,29 +371,7 @@
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-core</artifactId>
-                <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-core</artifactId>
-                <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-server</artifactId>
+                <artifactId>milo-stack-core</artifactId>
                 <version>${milo.version}</version>
             </dependency>
             <dependency>
@@ -403,12 +381,17 @@
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
-                <artifactId>stack-client</artifactId>
+                <artifactId>milo-sdk-core</artifactId>
                 <version>${milo.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-client</artifactId>
+                <artifactId>milo-transport</artifactId>
+                <version>${milo.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>milo-sdk-client</artifactId>
                 <version>${milo.version}</version>
             </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
@@ -430,14 +413,8 @@
             </dependency>
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
-                <artifactId>sdk-server</artifactId>
+                <artifactId>milo-sdk-server</artifactId>
                 <version>${milo.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.activation</groupId>
-                        <artifactId>jakarta.activation</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
