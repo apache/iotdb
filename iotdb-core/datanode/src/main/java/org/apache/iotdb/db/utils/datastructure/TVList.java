@@ -551,6 +551,7 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  @TestOnly
   public TVList getTvListByColumnIndex(
       List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
@@ -822,6 +823,16 @@ public abstract class TVList implements WALEntryValue {
 
   public Set<QueryContext> getQueryContextSet() {
     return queryContextSet;
+  }
+
+  /**
+   * Get the union of all columns accessed by queries on this TVList. For non-AlignedTVList, returns
+   * empty set. This method should be called with queryListLock held for thread safety.
+   *
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
+  public Set<Integer> getAccessedColumnsForQuery() {
+    return null;
   }
 
   public List<BitMap> getBitMap() {

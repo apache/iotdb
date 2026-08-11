@@ -187,23 +187,19 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
-            <artifactId>stack-core</artifactId>
+            <artifactId>milo-stack-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
-            <artifactId>sdk-core</artifactId>
+            <artifactId>milo-sdk-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
-            <artifactId>stack-server</artifactId>
+            <artifactId>milo-transport</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
-            <artifactId>stack-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>sdk-client</artifactId>
+            <artifactId>milo-sdk-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
@@ -223,7 +219,7 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
-            <artifactId>sdk-server</artifactId>
+            <artifactId>milo-sdk-server</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
