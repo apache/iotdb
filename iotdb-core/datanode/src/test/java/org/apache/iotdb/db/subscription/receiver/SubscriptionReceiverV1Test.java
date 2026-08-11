@@ -70,6 +70,36 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testHandleTimeoutRetriesAfterInFlightRequestCompletes() throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+    final AtomicLong inFlightRequestCount = (AtomicLong) getField(receiver, "inFlightRequestCount");
+
+    inFlightRequestCount.set(1L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(0L, closeAttemptCount.get());
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+
+    inFlightRequestCount.set(0L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(1L, closeAttemptCount.get());
+    Assert.assertNull(getField(receiver, "sharedConsumerConfig"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
   public void testHandleTimeoutRetriesAfterCleanupFailure() throws Exception {
     final AtomicLong closeAttemptCount = new AtomicLong();
     final SubscriptionReceiverV1 receiver =
