@@ -109,15 +109,12 @@ public class PipeRealtimeExtractTest {
   private ExecutorService writeService;
   private ExecutorService listenerService;
   private int dataNodeId;
-  private boolean pipeRealtimeRegionLevelDowngradingEnabled;
   private double pipeTotalFloatingMemoryProportion;
 
   @Before
   public void setUp() throws Exception {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
-    pipeRealtimeRegionLevelDowngradingEnabled =
-        CommonDescriptor.getInstance().getConfig().getPipeRealtimeRegionLevelDowngradingEnabled();
     pipeTotalFloatingMemoryProportion =
         CommonDescriptor.getInstance().getConfig().getPipeTotalFloatingMemoryProportion();
     removeTestPipeMeta();
@@ -136,9 +133,6 @@ public class PipeRealtimeExtractTest {
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
-    CommonDescriptor.getInstance()
-        .getConfig()
-        .setPipeRealtimeRegionLevelDowngradingEnabled(pipeRealtimeRegionLevelDowngradingEnabled);
     CommonDescriptor.getInstance()
         .getConfig()
         .setPipeTotalFloatingMemoryProportion(pipeTotalFloatingMemoryProportion);
@@ -402,9 +396,57 @@ public class PipeRealtimeExtractTest {
   }
 
   @Test
+  public void testHybridSourceRegionLevelDowngradingIsPipeSpecific() throws Exception {
+    try (final PipeRealtimeDataRegionHybridSource disabledExtractor =
+            new PipeRealtimeDataRegionHybridSource();
+        final PipeRealtimeDataRegionHybridSource enabledExtractor =
+            new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters disabledParameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                }
+              });
+      final PipeParameters enabledParameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+
+      final PipeTaskRuntimeConfiguration disabledConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  "region-level-downgrading-disabled",
+                  TEST_PIPE_CREATION_TIME,
+                  dataRegion1,
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+      final PipeTaskRuntimeConfiguration enabledConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  "region-level-downgrading-enabled",
+                  TEST_PIPE_CREATION_TIME,
+                  dataRegion1,
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+
+      disabledExtractor.validate(new PipeParameterValidator(disabledParameters));
+      disabledExtractor.customize(disabledParameters, disabledConfiguration);
+      enabledExtractor.validate(new PipeParameterValidator(enabledParameters));
+      enabledExtractor.customize(enabledParameters, enabledConfiguration);
+
+      Assert.assertFalse(isRegionLevelDowngradingEnabled(disabledExtractor));
+      Assert.assertTrue(isRegionLevelDowngradingEnabled(enabledExtractor));
+    }
+  }
+
+  @Test
   public void testHybridSourceRegionLevelDowngradingWaitsForTsFileCommit() throws Exception {
     registerTestPipeMeta();
-    CommonDescriptor.getInstance().getConfig().setPipeRealtimeRegionLevelDowngradingEnabled(true);
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
     commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
@@ -415,6 +457,9 @@ public class PipeRealtimeExtractTest {
               new HashMap<String, String>() {
                 {
                   put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
                 }
               });
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
@@ -597,7 +642,6 @@ public class PipeRealtimeExtractTest {
   public void testHybridSourceRegionLevelDowngradingResumesCompleteBufferedTablets()
       throws Exception {
     registerTestPipeMeta();
-    CommonDescriptor.getInstance().getConfig().setPipeRealtimeRegionLevelDowngradingEnabled(true);
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
     commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
@@ -608,6 +652,9 @@ public class PipeRealtimeExtractTest {
               new HashMap<String, String>() {
                 {
                   put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
                 }
               });
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
@@ -712,7 +759,6 @@ public class PipeRealtimeExtractTest {
   @Test
   public void testHybridSourceRegionLevelDowngradingOnlyCachesLatestTsFile() throws Exception {
     registerTestPipeMeta();
-    CommonDescriptor.getInstance().getConfig().setPipeRealtimeRegionLevelDowngradingEnabled(true);
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
     commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
@@ -723,6 +769,9 @@ public class PipeRealtimeExtractTest {
               new HashMap<String, String>() {
                 {
                   put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
                 }
               });
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
@@ -839,7 +888,6 @@ public class PipeRealtimeExtractTest {
   public void testHybridSourceRegionLevelDowngradingPreservesPreviouslyQueuedEvents()
       throws Exception {
     registerTestPipeMeta();
-    CommonDescriptor.getInstance().getConfig().setPipeRealtimeRegionLevelDowngradingEnabled(true);
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
     commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
@@ -850,6 +898,9 @@ public class PipeRealtimeExtractTest {
               new HashMap<String, String>() {
                 {
                   put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
                 }
               });
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
@@ -1218,6 +1269,15 @@ public class PipeRealtimeExtractTest {
         PipeRealtimeDataRegionHybridSource.class.getDeclaredField("inFlightTsFileCount");
     inFlightTsFileCountField.setAccessible(true);
     return inFlightTsFileCountField.getInt(extractor);
+  }
+
+  private boolean isRegionLevelDowngradingEnabled(
+      final PipeRealtimeDataRegionHybridSource extractor) throws Exception {
+    final Field isRegionLevelDowngradingEnabledField =
+        PipeRealtimeDataRegionHybridSource.class.getDeclaredField(
+            "isRegionLevelDowngradingEnabled");
+    isRegionLevelDowngradingEnabledField.setAccessible(true);
+    return isRegionLevelDowngradingEnabledField.getBoolean(extractor);
   }
 
   private PipeRealtimeEvent createProgressReportRealtimeEvent() {

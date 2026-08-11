@@ -222,7 +222,6 @@ public class CommonConfig {
   private int pipeRealTimeQueueMaxWaitingTsFileSize = 1;
   private boolean pipeRealtimeForceDowngradingEnabled = true;
   private double pipeRealtimeForceDowngradingProportion = 0.25d;
-  private boolean pipeRealtimeRegionLevelDowngradingEnabled = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -1808,23 +1807,6 @@ public class CommonConfig {
     logger.info(
         ConfigMessages.LOG_PIPEREALTIMEFORCEDOWNGRADINGPROPORTION_SET_ARG_92974D0B,
         pipeRealtimeForceDowngradingProportion);
-  }
-
-  public boolean getPipeRealtimeRegionLevelDowngradingEnabled() {
-    return pipeRealtimeRegionLevelDowngradingEnabled;
-  }
-
-  public void setPipeRealtimeRegionLevelDowngradingEnabled(
-      boolean pipeRealtimeRegionLevelDowngradingEnabled) {
-    if (this.pipeRealtimeRegionLevelDowngradingEnabled
-        == pipeRealtimeRegionLevelDowngradingEnabled) {
-      return;
-    }
-    this.pipeRealtimeRegionLevelDowngradingEnabled = pipeRealtimeRegionLevelDowngradingEnabled;
-    logger.info(
-        ConfigMessages.CONFIG_SET_TO,
-        "pipeRealtimeRegionLevelDowngradingEnabled",
-        pipeRealtimeRegionLevelDowngradingEnabled);
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {

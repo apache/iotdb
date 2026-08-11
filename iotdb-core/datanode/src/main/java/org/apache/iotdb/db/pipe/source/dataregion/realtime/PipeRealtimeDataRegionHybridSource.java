@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -33,6 +34,9 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -41,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
@@ -52,8 +57,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridSource.class);
 
-  private final boolean isRegionLevelDowngradingEnabled =
-      PipeConfig.getInstance().getPipeRealtimeRegionLevelDowngradingEnabled();
+  private boolean isRegionLevelDowngradingEnabled =
+      PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_DEFAULT_VALUE;
   private final Object regionLevelDowngradingLock = new Object();
 
   private final Set<TsFileEpoch> activeTsFileEpochs =
@@ -68,6 +73,35 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   private TsFileEpoch regionLevelTailTsFileEpoch = null;
   private boolean canSupplyEventsBeforeRegionLevelDowngrading = false;
   private int inFlightTsFileCount = 0;
+
+  @Override
+  public void validate(final PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+    validator
+        .validateAttributeValueRange(
+            PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString());
+  }
+
+  @Override
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+    isRegionLevelDowngradingEnabled =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY),
+            PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_DEFAULT_VALUE);
+  }
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {

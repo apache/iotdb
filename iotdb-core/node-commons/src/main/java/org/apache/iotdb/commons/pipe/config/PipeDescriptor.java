@@ -302,11 +302,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realtime_force_downgrading_proportion",
                 String.valueOf(config.getPipeRealtimeForceDowngradingProportion()))));
-    config.setPipeRealtimeRegionLevelDowngradingEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_realtime_region_level_downgrading_enabled",
-                String.valueOf(config.getPipeRealtimeRegionLevelDowngradingEnabled()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
