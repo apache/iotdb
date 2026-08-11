@@ -541,21 +541,21 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
     // Test records
@@ -564,7 +564,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(1598168, memTable.getTVListsRamCost());
+    Assert.assertEquals(1790320, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
   }
@@ -589,9 +589,12 @@ public class TsFileProcessorTest {
     actualProcessor.insertTablet(
         genSingleMeasurementTablet(rowCount, true), rangeList, actualResults, false, new long[5]);
 
+    // The failed-only block never materializes its value array, so the only difference from the
+    // expected processor is the primitive array payload+header; the slot reference is charged once
+    // by the container model and is identical on both sides.
     Assert.assertEquals(
         expectedProcessor.getWorkMemTable().getTVListsRamCost()
-            - AlignedTVList.valueListArrayMemCost(dataType),
+            - AlignedTVList.primitiveArrayMemCost(dataType),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
@@ -616,11 +619,13 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
 
-    long denseBlockCost =
-        AlignedTVList.alignedTvListArrayMemCost(
-            new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
+    // A new block charges the per-block cost (timestamps + headers/refs) plus the primitive array
+    // of the newly materialized column; the column's slot reference is charged once by the
+    // container model and is unchanged when the inner list grows by one slot (8-byte aligned).
     Assert.assertEquals(
-        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
+        AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null)
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -642,11 +647,13 @@ public class TsFileProcessorTest {
     rowNode.setAligned(true);
     processor.insert(rowNode, new long[5]);
 
-    long denseBlockCost =
-        AlignedTVList.alignedTvListArrayMemCost(
-            new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null);
+    // A new block charges the per-block cost (timestamps + headers/refs) plus the primitive array
+    // of the newly materialized column; the column's slot reference is charged once by the
+    // container model and is unchanged when the inner list grows by one slot (8-byte aligned).
     Assert.assertEquals(
-        denseBlockCost - AlignedTVList.valueListArrayMemCost(TSDataType.INT32),
+        AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null)
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
         processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
   }
 
@@ -778,57 +785,56 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(0, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3504552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3504552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3504552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3504552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3504552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(
-        5269104 - 3000L * AlignedTVList.bitmapRamCost(), memTable.getTVListsRamCost());
+    Assert.assertEquals(5761296, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(7009104, memTable.getTVListsRamCost());
+    Assert.assertEquals(7633296, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
     Assert.assertEquals(1920960, memTable.memSize());
@@ -838,14 +844,14 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(7010720, memTable.getTVListsRamCost());
+    Assert.assertEquals(7634912, memTable.getTVListsRamCost());
     // Test records
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(7012336, memTable.getTVListsRamCost());
+    Assert.assertEquals(7636528, memTable.getTVListsRamCost());
     Assert.assertEquals(240200, memTable.getTotalPointsNum());
     Assert.assertEquals(1923360, memTable.memSize());
   }
@@ -1118,8 +1124,10 @@ public class TsFileProcessorTest {
     insertAlignedRow(processor, denseDevice, PrimitiveArrayManager.ARRAY_SIZE, true);
     long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
 
+    // Both rows advance the same block (identical container growth), so the difference is only the
+    // dense row's materialized value array payload+header, not its slot reference.
     Assert.assertEquals(
-        AlignedTVList.valueListArrayMemCost(dataType),
+        AlignedTVList.primitiveArrayMemCost(dataType),
         denseRowRamIncrement - sparseRowRamIncrement);
   }
 

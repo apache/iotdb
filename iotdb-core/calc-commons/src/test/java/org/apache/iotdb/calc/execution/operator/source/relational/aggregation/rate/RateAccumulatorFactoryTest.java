@@ -162,6 +162,9 @@ public class RateAccumulatorFactoryTest {
     public void releaseMemoryCumulatively(long size) {}
 
     @Override
+    public void releaseMemoryImmediately(long size) {}
+
+    @Override
     public void releaseAllReservedMemory() {}
 
     @Override
