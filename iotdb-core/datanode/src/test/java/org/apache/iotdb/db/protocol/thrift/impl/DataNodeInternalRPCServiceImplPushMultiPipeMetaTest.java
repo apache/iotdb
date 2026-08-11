@@ -30,6 +30,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -238,6 +239,77 @@ public class DataNodeInternalRPCServiceImplPushMultiPipeMetaTest {
     Assert.assertEquals(
         TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode(), resp.getStatus().getCode());
     Assert.assertEquals(0, resp.getExceptionMessagesSize());
+  }
+
+  @Test
+  public void testPushMultiPipeMetaInvokesBatchHandlerOnce() {
+    final AtomicInteger batchCallCount = new AtomicInteger(0);
+    final AtomicInteger singleCallCount = new AtomicInteger(0);
+    final TPushPipeMetaResp resp =
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
+            new TPushMultiPipeMetaReq()
+                .setPipeMetas(
+                    Arrays.asList(
+                        ByteBuffer.wrap(new byte[] {1}), ByteBuffer.wrap(new byte[] {2}))),
+            new PushMultiPipeMetaHelper.Handler() {
+              @Override
+              public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
+                Assert.fail("Unexpected drop pipe request");
+                return null;
+              }
+
+              @Override
+              public boolean handlePipeMetaChanges(
+                  final List<ByteBuffer> pipeMetas,
+                  final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+                batchCallCount.incrementAndGet();
+                Assert.assertEquals(2, pipeMetas.size());
+                return true;
+              }
+
+              @Override
+              public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(
+                  final ByteBuffer pipeMeta) {
+                singleCallCount.incrementAndGet();
+                return null;
+              }
+            });
+
+    Assert.assertEquals(1, batchCallCount.get());
+    Assert.assertEquals(0, singleCallCount.get());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+  }
+
+  @Test
+  public void testPushMultiPipeMetaReturnsTimeoutWhenBatchHandlerTimesOut() {
+    final TPushPipeMetaResp resp =
+        PushMultiPipeMetaHelper.pushMultiPipeMeta(
+            new TPushMultiPipeMetaReq()
+                .setPipeMetas(Collections.singletonList(ByteBuffer.wrap(new byte[] {1}))),
+            new PushMultiPipeMetaHelper.Handler() {
+              @Override
+              public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
+                Assert.fail("Unexpected drop pipe request");
+                return null;
+              }
+
+              @Override
+              public boolean handlePipeMetaChanges(
+                  final List<ByteBuffer> pipeMetas,
+                  final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+                return false;
+              }
+
+              @Override
+              public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(
+                  final ByteBuffer pipeMeta) {
+                Assert.fail("Unexpected single pipe meta request");
+                return null;
+              }
+            });
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode(), resp.getStatus().getCode());
   }
 
   private static TPushPipeMetaRespExceptionMessage newExceptionMessage(final String pipeName) {
