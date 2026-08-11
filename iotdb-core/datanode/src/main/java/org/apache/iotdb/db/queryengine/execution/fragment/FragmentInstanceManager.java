@@ -64,6 +64,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
@@ -141,6 +142,7 @@ public class FragmentInstanceManager {
     FragmentInstanceId instanceId = instance.getId();
     AtomicLong driversCount = new AtomicLong();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
+      AtomicReference<FragmentInstanceInfo> failedInstanceInfo = new AtomicReference<>();
       FragmentInstanceExecution execution =
           instanceExecution.computeIfAbsent(
               instanceId,
@@ -228,6 +230,10 @@ public class FragmentInstanceManager {
                         DataNodeQueryMessages.ERROR_WHEN_CREATE_FRAGMENTINSTANCEEXECUTION, t);
                     stateMachine.failed(t);
                   }
+                  // cancelTask may remove the context from instanceContext while this execution is
+                  // still being created. Capture the failure result from the local context before
+                  // returning from computeIfAbsent instead of looking it up from the map later.
+                  failedInstanceInfo.set(context.getInstanceInfo());
                   clearFIRelatedResources(instanceId);
                   return null;
                 }
@@ -244,7 +250,7 @@ public class FragmentInstanceManager {
                 });
         return execution.getInstanceInfo();
       } else {
-        return createFailedInstanceInfo(instanceId);
+        return failedInstanceInfo.get();
       }
     } finally {
       QueryRelatedResourceMetricSet.getInstance()
@@ -297,6 +303,7 @@ public class FragmentInstanceManager {
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
     FragmentInstanceId instanceId = instance.getId();
+    AtomicReference<FragmentInstanceInfo> failedInstanceInfo = new AtomicReference<>();
     FragmentInstanceExecution execution =
         instanceExecution.computeIfAbsent(
             instanceId,
@@ -359,6 +366,9 @@ public class FragmentInstanceManager {
                   logger.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
                   stateMachine.failed(t);
                 }
+                // See execDataQueryFragmentInstance for why this result must not be fetched from
+                // instanceContext after computeIfAbsent returns.
+                failedInstanceInfo.set(context.getInstanceInfo());
                 clearFIRelatedResources(instanceId);
                 return null;
               }
@@ -374,7 +384,7 @@ public class FragmentInstanceManager {
               });
       return execution.getInstanceInfo();
     } else {
-      return createFailedInstanceInfo(instanceId);
+      return failedInstanceInfo.get();
     }
   }
 
@@ -445,11 +455,6 @@ public class FragmentInstanceManager {
     }
     TFetchFragmentInstanceStatisticsResp statisticsResp = context.getFragmentInstanceStatistics();
     return statisticsResp == null ? new TFetchFragmentInstanceStatisticsResp() : statisticsResp;
-  }
-
-  private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
-    FragmentInstanceContext context = instanceContext.get(instanceId);
-    return context.getInstanceInfo();
   }
 
   private void removeOldInstances() {
