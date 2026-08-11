@@ -109,6 +109,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final AtomicInteger parsedTabletInsertionEventCount = new AtomicInteger(0);
   private final AtomicBoolean isTsFileParsingCompleted = new AtomicBoolean(false);
   private final AtomicLong parsedPointCountForCount = new AtomicLong(0);
+  private final AtomicInteger generatedTabletInsertionEventCount = new AtomicInteger(0);
+  private final AtomicInteger transferredGeneratedTabletInsertionEventCount = new AtomicInteger(0);
+  private final AtomicBoolean generatedTabletInsertionEventsParsingCompleted =
+      new AtomicBoolean(false);
+  private final AtomicBoolean isTsFileEventCommitted = new AtomicBoolean(false);
+  private final AtomicBoolean isTransferred = new AtomicBoolean(false);
+  private final List<Runnable> onTransferredHooks = new ArrayList<>();
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -295,6 +302,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           if (shouldReportOnCommit) {
             eliminateProgressIndex();
           }
+          markAsTransferredOnCommit();
         });
   }
 
@@ -518,6 +526,75 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFileDedupScopeID,
               resource.getTsFilePath());
     }
+  }
+
+  /**
+   * Records a tablet generated from this TsFile that has been accepted by the processor output
+   * collector. The transfer hook must wait for all such tablets, rather than the first one, before
+   * allowing the region-level downgrade to end.
+   */
+  public void registerGeneratedTabletInsertionEvent() {
+    generatedTabletInsertionEventCount.incrementAndGet();
+  }
+
+  /** Records that one tablet generated from this TsFile has been committed downstream. */
+  public void markGeneratedTabletInsertionEventAsTransferred() {
+    transferredGeneratedTabletInsertionEventCount.incrementAndGet();
+    markAsTransferredIfGeneratedTabletEventsCompleted();
+  }
+
+  /** Marks the end of tablet generation for this TsFile. */
+  public void markGeneratedTabletInsertionEventsParsingCompleted() {
+    generatedTabletInsertionEventsParsingCompleted.set(true);
+    markAsTransferredIfGeneratedTabletEventsCompleted();
+  }
+
+  private void markAsTransferredIfGeneratedTabletEventsCompleted() {
+    if ((generatedTabletInsertionEventsParsingCompleted.get() || isTsFileEventCommitted.get())
+        && generatedTabletInsertionEventCount.get() > 0
+        && transferredGeneratedTabletInsertionEventCount.get()
+            >= generatedTabletInsertionEventCount.get()) {
+      markAsTransferred();
+    }
+  }
+
+  private void markAsTransferredOnCommit() {
+    // The default PipeProcessor implementation iterates over toTabletInsertionEvents() directly,
+    // so it cannot signal parser completion through consumeTabletInsertionEventsWithRetry(). Its
+    // source event is committed only after processor execution has returned, which makes this a
+    // reliable completion boundary for the generated-event counters as well.
+    isTsFileEventCommitted.set(true);
+    if (generatedTabletInsertionEventCount.get() == 0) {
+      markAsTransferred();
+      return;
+    }
+    markAsTransferredIfGeneratedTabletEventsCompleted();
+  }
+
+  private void markAsTransferred() {
+    final List<Runnable> hooksToRun;
+    synchronized (onTransferredHooks) {
+      if (!isTransferred.compareAndSet(false, true)) {
+        return;
+      }
+      hooksToRun = new ArrayList<>(onTransferredHooks);
+      onTransferredHooks.clear();
+    }
+    hooksToRun.forEach(Runnable::run);
+  }
+
+  /**
+   * Adds a hook that is invoked after this TsFile, or the last tablet generated from it, is
+   * committed downstream.
+   */
+  public void addOnTransferredHook(final Runnable hook) {
+    synchronized (onTransferredHooks) {
+      if (!isTransferred.get()) {
+        onTransferredHooks.add(hook);
+        return;
+      }
+    }
+    hook.run();
   }
 
   public PipeTsFileInsertionEvent bindTsFileDedupScopeID(final String tsFileDedupScopeID) {
@@ -776,6 +853,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             getNextTabletInsertionEventFromSavedProgress();
         if (parsedEvent == null) {
           isTsFileParsingCompleted.set(true);
+          markGeneratedTabletInsertionEventsParsingCompleted();
           releaseTsFileParserMemoryIfReserved();
           return;
         }

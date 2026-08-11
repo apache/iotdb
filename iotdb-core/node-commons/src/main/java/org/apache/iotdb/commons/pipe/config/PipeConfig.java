@@ -135,6 +135,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealtimeForceDowngradingProportion();
   }
 
+  public boolean getPipeRealtimeRegionLevelDowngradingEnabled() {
+    return COMMON_CONFIG.getPipeRealtimeRegionLevelDowngradingEnabled();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -542,6 +546,9 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_REALTIME_FORCE_DOWNGRADING_PROPORTION,
         getPipeRealtimeForceDowngradingProportion());
+    LOGGER.info(
+        PipeMessages.LOG_PIPEREALTIMEREGIONLEVELDOWNGRADINGENABLED_ARG_2469AEDD,
+        getPipeRealtimeRegionLevelDowngradingEnabled());
 
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_SUBTASK_EXECUTOR_MAX_THREAD_NUM,

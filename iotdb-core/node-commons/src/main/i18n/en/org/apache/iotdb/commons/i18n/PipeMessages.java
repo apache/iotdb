@@ -70,6 +70,8 @@ public final class PipeMessages {
       "PipeRealtimeForceDowngradingEnabled: {}";
   public static final String CONFIG_PIPE_REALTIME_FORCE_DOWNGRADING_PROPORTION =
       "PipeRealtimeForceDowngradingProportion: {}";
+  public static final String LOG_PIPEREALTIMEREGIONLEVELDOWNGRADINGENABLED_ARG_2469AEDD =
+      "PipeRealtimeRegionLevelDowngradingEnabled: {}";
   public static final String CONFIG_PIPE_SUBTASK_EXECUTOR_MAX_THREAD_NUM =
       "PipeSubtaskExecutorMaxThreadNum: {}";
   public static final String

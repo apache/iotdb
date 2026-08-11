@@ -262,6 +262,13 @@ public class PipeEventCollector implements EventCollector {
 
     if (pendingQueue.offer(event)) {
       collectInvocationCount.incrementAndGet();
+      if (event instanceof PipeRawTabletInsertionEvent
+          && ((PipeRawTabletInsertionEvent) event).getSourceEvent()
+              instanceof PipeTsFileInsertionEvent) {
+        ((PipeTsFileInsertionEvent) ((PipeRawTabletInsertionEvent) event).getSourceEvent())
+            .registerGeneratedTabletInsertionEvent();
+      }
+      return;
     }
   }
 
