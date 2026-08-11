@@ -177,6 +177,38 @@ public class PipeEventCollector implements EventCollector {
             && !sourceEvent.shouldParseTime());
   }
 
+  public boolean shouldParseTsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+    return sourceEvent.shouldParse4Privilege()
+        || !skipParsing && (forceTabletFormat || !canSkipParsing4TsFileEvent(sourceEvent));
+  }
+
+  public void prepareTsFileEventForParallelParsing(final PipeTsFileInsertionEvent sourceEvent) {
+    if (sourceEvent.isProgressReportManagedByTsFileParser()
+        || !sourceEvent.shouldReportGeneratedEventsOnCommit()) {
+      return;
+    }
+    if (sourceEvent.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId(sourceEvent, creationTime, regionId);
+    }
+    if (sourceEvent.getCommitId() > EnrichedEvent.NO_COMMIT_ID) {
+      sourceEvent.markProgressReportManagedByTsFileParser();
+    }
+  }
+
+  public PipeEventCollector forkForTsFileParser() {
+    final PipeEventCollector collector =
+        new PipeEventCollector(
+            pendingQueue,
+            creationTime,
+            regionId,
+            forceTabletFormat,
+            skipParsing,
+            isUsedForConsensusPipe);
+    collector.setProcessorExecutionGuard(processorExecutionGuard);
+    return collector;
+  }
+
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
     if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
       hasNoGeneratedEvent = false;
@@ -252,9 +284,20 @@ public class PipeEventCollector implements EventCollector {
         return;
       }
 
-      // Assign a commit id for this event in order to report progress in order.
-      PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
+      final PipeTsFileInsertionEvent progressReportSourceTsFile =
+          event instanceof PipeRawTabletInsertionEvent
+              ? ((PipeRawTabletInsertionEvent) event).getProgressReportSourceTsFile()
+              : null;
+      if (progressReportSourceTsFile == null) {
+        // Assign a commit id for this event in order to report progress in order.
+        PipeEventCommitManager.getInstance()
+            .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
+      } else {
+        // The source TsFile owns the ordered commit id. Parsed tablets only retain its committer
+        // key so downstream queues can still identify the pipe session and region.
+        enrichedEvent.setCommitterKeyAndCommitId(
+            progressReportSourceTsFile.getCommitterKey(), EnrichedEvent.NO_COMMIT_ID);
+      }
 
       // Assign a rebootTime for iotConsensusV2
       enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());

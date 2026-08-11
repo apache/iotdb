@@ -56,6 +56,9 @@ import java.util.function.BiConsumer;
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     implements TabletInsertionEvent, ReferenceTrackableEvent, AutoCloseable {
 
+  private static final String SOURCE_TSFILE_PROGRESS_HOLDER =
+      PipeRawTabletInsertionEvent.class.getName() + "#source-tsfile-progress";
+
   // For better calculation
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeRawTabletInsertionEvent.class);
@@ -65,6 +68,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
+  private boolean isSourceTsFileProgressReferenceIncreased;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
@@ -258,15 +262,28 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeSinglePipeMetrics.getInstance()
-          .increaseRawTabletEventCount(pipeName, creationTime);
+    final PipeTsFileInsertionEvent progressReportSourceTsFile = getProgressReportSourceTsFile();
+    if (progressReportSourceTsFile != null) {
+      if (!progressReportSourceTsFile.increaseReferenceCount(SOURCE_TSFILE_PROGRESS_HOLDER)) {
+        return false;
+      }
+      isSourceTsFileProgressReferenceIncreased = true;
     }
-    return true;
+
+    try {
+      PipeDataNodeResourceManager.memory()
+          .forceResize(
+              allocatedMemoryBlock,
+              PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .increaseRawTabletEventCount(pipeName, creationTime);
+      }
+      return true;
+    } catch (final RuntimeException e) {
+      releaseSourceTsFileProgressReference(true, false);
+      throw e;
+    }
   }
 
   @Override
@@ -303,7 +320,26 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       }
     }
 
+    releaseSourceTsFileProgressReference(shouldReportOnCommit, !shouldReportOnCommit);
+
     return true;
+  }
+
+  private void releaseSourceTsFileProgressReference(
+      final boolean shouldReport, final boolean shouldAbortSourceProgressReport) {
+    if (!isSourceTsFileProgressReferenceIncreased) {
+      return;
+    }
+    isSourceTsFileProgressReferenceIncreased = false;
+
+    final PipeTsFileInsertionEvent progressReportSourceTsFile = getProgressReportSourceTsFile();
+    if (progressReportSourceTsFile != null && !progressReportSourceTsFile.isReleased()) {
+      if (shouldAbortSourceProgressReport) {
+        progressReportSourceTsFile.abortProgressReportManagedByTsFileParser();
+      }
+      progressReportSourceTsFile.decreaseReferenceCount(
+          SOURCE_TSFILE_PROGRESS_HOLDER, shouldReport);
+    }
   }
 
   protected void eliminateProgressIndex() {
@@ -426,6 +462,22 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  public PipeTsFileInsertionEvent getProgressReportSourceTsFile() {
+    if (sourceEvent instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) sourceEvent).isProgressReportManagedByTsFileParser()) {
+      return (PipeTsFileInsertionEvent) sourceEvent;
+    }
+    if (sourceEvent instanceof PipeRawTabletInsertionEvent) {
+      return ((PipeRawTabletInsertionEvent) sourceEvent).getProgressReportSourceTsFile();
+    }
+    return null;
+  }
+
+  @Override
+  public boolean needToCommit() {
+    return getProgressReportSourceTsFile() == null;
   }
 
   @Override

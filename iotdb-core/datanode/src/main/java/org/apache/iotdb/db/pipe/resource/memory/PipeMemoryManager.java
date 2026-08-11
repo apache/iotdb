@@ -193,9 +193,7 @@ public class PipeMemoryManager {
         enqueueTsFileParserReservationRequest(pipeRegionIdentity, reservationKey);
 
     final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
-    final int perPipeRegionLimit =
-        Math.max(
-            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final int perPipeRegionLimit = getTsFileParserInFlightMaxNumPerPipeRegion(globalLimit);
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
     if (reservedTsFileParserCount >= globalLimit
@@ -322,9 +320,7 @@ public class PipeMemoryManager {
       return;
     }
 
-    final int perPipeRegionLimit =
-        Math.max(
-            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final int perPipeRegionLimit = getTsFileParserInFlightMaxNumPerPipeRegion(globalLimit);
     final PipeRegionIdentity nextPipeRegion =
         getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
     if (nextPipeRegion == null) {
@@ -380,6 +376,11 @@ public class PipeMemoryManager {
       }
     }
     return firstEligiblePipeRegion;
+  }
+
+  private static int getTsFileParserInFlightMaxNumPerPipeRegion(final int globalLimit) {
+    final int configuredLimit = PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    return configuredLimit <= 0 ? globalLimit : Math.min(globalLimit, configuredLimit);
   }
 
   private void clearTsFileParserAdmissionCursorIfIdle() {
