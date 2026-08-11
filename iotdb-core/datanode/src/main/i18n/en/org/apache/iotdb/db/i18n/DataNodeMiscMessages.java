@@ -952,8 +952,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // auth – BasicAuthorityCache
   // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "datanode cache initialization failed";
   public static final String
       LOG_CLEARED_PASSWORD_REFERENCES_FOR_ARG_CACHED_USERS_BEFORE_INVALIDATING_THE_AUTHORITY_CACHE_5AAF9560 =
           "Cleared password references for {} cached users before invalidating the authority cache.";

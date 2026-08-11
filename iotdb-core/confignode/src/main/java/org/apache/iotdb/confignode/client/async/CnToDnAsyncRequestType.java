@@ -148,6 +148,10 @@ public enum CnToDnAsyncRequestType {
   // audit log and event write-back
   INSERT_RECORD,
   ENABLE_SEPARATION_OF_ADMIN_POWERS,
+
   // fetch sessions info
-  FETCH_SESSIONS_NUM_INFO
+  FETCH_SESSIONS_NUM_INFO,
+
+  // authority
+  INVALIDATE_PERMISSION_CACHE,
 }

@@ -140,6 +140,7 @@ public class AuthorityChecker {
   }
 
   public static void invalidateAllCache() {
+    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     authorityFetcher.get().getAuthorCache().invalidAllCache();
   }
 

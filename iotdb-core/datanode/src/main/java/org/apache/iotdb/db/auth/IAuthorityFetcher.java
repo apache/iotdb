@@ -93,8 +93,6 @@ public interface IAuthorityFetcher {
 
   IAuthorCache getAuthorCache();
 
-  void refreshToken();
-
   User getUser(String username, final boolean force);
 
   Role getRole(String roleName);

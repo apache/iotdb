@@ -98,18 +98,10 @@ public class BasicAuthorityCache implements IAuthorCache {
         }
         userCache.invalidate(userName);
       }
-      if (userCache.getIfPresent(userName) != null) {
-        LOGGER.error(DataNodeMiscMessages.DATANODE_CACHE_INIT_FAILED);
-        return false;
-      }
     }
     if (roleName != null) {
       if (roleCache.getIfPresent(roleName) != null) {
         roleCache.invalidate(roleName);
-      }
-      if (roleCache.getIfPresent(roleName) != null) {
-        LOGGER.error(DataNodeMiscMessages.DATANODE_CACHE_INIT_FAILED);
-        return false;
       }
     }
     return true;
