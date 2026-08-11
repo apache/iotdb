@@ -35,9 +35,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.UsernameProvider;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -138,7 +138,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
                 new NodeId(2, "root/db/d1/`1`"),
                 new Variant(1.0),
                 new DateTime(timestampToUtc(1)));
-        opcUaClient.disconnect().get();
+        opcUaClient.disconnect();
         break;
       }
 
@@ -202,26 +202,19 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       long startTime = System.currentTimeMillis();
       while (true) {
         try {
-          value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
-                  .get();
+          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
 
           value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1231`"))
-                  .get();
+              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1231`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
 
           value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1232`"))
-                  .get();
+              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1232`"));
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
@@ -240,10 +233,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       startTime = System.currentTimeMillis();
       while (true) {
         try {
-          value =
-              opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
-                  .get();
+          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"));
           Assert.assertEquals(new DateTime(timestampToUtc(2)), value.getSourceTime());
           Assert.assertEquals(new Variant(2.0), value.getValue());
           Assert.assertEquals(StatusCode.UNCERTAIN, value.getStatusCode());
@@ -255,7 +245,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         }
       }
 
-      opcUaClient.disconnect().get();
+      opcUaClient.disconnect();
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
 
@@ -399,7 +389,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     final long startTime = System.currentTimeMillis();
     while (System.currentTimeMillis() - startTime <= 10_000L) {
       try {
-        final DataValue value = client.readValue(0, TimestampsToReturn.Both, nodeId).get();
+        final DataValue value = client.readValue(0, TimestampsToReturn.Both, nodeId);
         Assert.assertEquals(expectedValue, value.getValue());
         Assert.assertEquals(expectedSourceTime, value.getSourceTime());
         return value;
