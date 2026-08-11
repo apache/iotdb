@@ -22,9 +22,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -66,7 +65,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
 
   private final QueryDataSet queryDataSet;
 
-  private final PipeMemoryBlock allocatedBlockForTablet;
+  private final TsFileInsertionEventParserMemoryBlock allocatedBlockForTablet;
 
   // Maintain sorted mods list and current index for each measurement
   private final List<ModsOperationUtil.ModsInfo> measurementModsList;
@@ -79,7 +78,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
       final String deviceId,
       final List<String> measurements,
       final IExpression timeFilterExpression,
-      final PipeMemoryBlock allocatedBlockForTablet,
+      final TsFileInsertionEventParserMemoryBlock allocatedBlockForTablet,
       final PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications,
       final TabletStringInternPool tabletStringInternPool)
       throws IOException {
@@ -160,8 +159,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
             PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
         tablet = new Tablet(deviceId, schemas, rowCountAndMemorySize.getLeft());
         if (allocatedBlockForTablet.getMemoryUsageInBytes() < rowCountAndMemorySize.getRight()) {
-          PipeDataNodeResourceManager.memory()
-              .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+          allocatedBlockForTablet.forceResize(rowCountAndMemorySize.getRight());
         }
         this.rowRecord = null; // Clear the saved first row
         isFirstRow = false;
