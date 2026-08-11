@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.iot.service;
 
+import org.apache.iotdb.commons.service.NoopServerContext;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -37,7 +39,7 @@ public class IoTConsensusRPCServiceHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
-    return null;
+    return NoopServerContext.INSTANCE;
   }
 
   @Override
