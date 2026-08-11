@@ -950,12 +950,6 @@ public final class DataNodeMiscMessages {
       "cache role's path privileges error";
 
   // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "datanode cache initialization failed";
-
-  // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor
   // ---------------------------------------------------------------------------
   public static final String TRIGGER_FIRE_ERROR =

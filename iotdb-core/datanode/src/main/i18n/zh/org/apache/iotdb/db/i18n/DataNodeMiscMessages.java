@@ -947,11 +947,6 @@ public final class DataNodeMiscMessages {
   public static final String CACHE_ROLE_PATH_PRIVILEGES_ERROR =
       "缓存角色路径权限时发生错误";
 
-  // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "DataNode 缓存初始化失败";
 
   // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor

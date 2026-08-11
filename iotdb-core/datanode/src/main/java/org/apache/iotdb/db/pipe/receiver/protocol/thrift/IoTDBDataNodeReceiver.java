@@ -611,7 +611,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false, null, true)
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false, null)
         : loadTsFileSync(null, fileAbsolutePath, false);
   }
 

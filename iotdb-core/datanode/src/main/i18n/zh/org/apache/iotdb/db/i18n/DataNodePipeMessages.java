@@ -1215,8 +1215,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} 已启动。Socket：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}：在 air gap receiver 处遇到 TSStatus {}，将忽略。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe：写入 row。将类型从 {} 转换为 {}。";
@@ -1256,8 +1254,6 @@ public final class DataNodePipeMessages {
       "开始加载 serialize number 为 {}、type 为 {} 的 pipeData，value={}";
   public static final String STORAGE_ENGINE_READONLY = "存储引擎只读";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} 从 {} 开始到 {} 已完成。";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "在 air gap receiver 处遇到临时不可用异常，将在本地重试。";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "iotConsensusV2 请求版本 {} 与 sender 请求版本 {} 不同，"
           + "receiver 将被重置为 sender 请求版本。";

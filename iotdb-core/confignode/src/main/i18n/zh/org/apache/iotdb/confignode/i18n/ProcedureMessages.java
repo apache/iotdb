@@ -91,6 +91,8 @@ public final class ProcedureMessages {
   public static final String AUTHENTICATION_FAILED = "认证失败。";
   public static final String AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY =
       "Auth procedure：成功清理 datanode 缓存";
+  public static final String AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED =
+      "权限计划已提交，但 DataNode 权限缓存失效失败。部分 DataNode 可能仍持有过期权限，请手动清理权限缓存。";
   public static final String BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP =
       "{}, 开始修改 DataNode 状态，nodeStatusMap：{}";
   public static final String BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS =
@@ -344,7 +346,7 @@ public final class ProcedureMessages {
   public static final String ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT =
       "反序列化 {}（procID {}）出错。该 procedure 将被忽略。它可能属于旧版本，目前无法使用。";
   public static final String EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES =
-      "执行 auth plan {} 成功。使 datanode 缓存失效：{}";
+      "执行 auth plan {} 成功。";
   public static final String EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "删除列时在表 {}.{} 中列 {} 对应的 region 上执行";
   public static final String FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ =
@@ -531,7 +533,6 @@ public final class ProcedureMessages {
       "重试 {} 次后删除 pipe plugin [{}] 仍失败";
   public static final String FAIL_TO_DROP_TRIGGER_AT_STATE = "在 STATE [%s] 处删除 trigger [%s] 失败";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES = "在 DataNode 上删除 trigger [%s] 失败";
-  public static final String FAIL_TO_EXECUTE_PLAN_AT_STATE = "在 state[%s] 处执行 plan [%s] 失败";
   public static final String FAIL_TO_REMOVE_AINODE_AT_STATE = "在 STATE [%s] 处移除 AINode [%s] 失败，%s";
   public static final String FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES =
       "在 ConfigNode [%s] 上移除 [%s] 个 AINode 失败";
@@ -818,8 +819,6 @@ public final class ProcedureMessages {
       "尝试创建 pipe plugin [{}] 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
       "尝试删除 pipe plugin [{}] 时发生可重试错误，状态：{}";
-  public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
-      "尝试执行 plan {} 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "尝试移除 AINode [{}] 时发生可重试错误，状态 [{}]";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
