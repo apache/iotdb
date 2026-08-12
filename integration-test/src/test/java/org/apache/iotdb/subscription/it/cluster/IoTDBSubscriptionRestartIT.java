@@ -77,6 +77,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setSubscriptionEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)

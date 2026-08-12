@@ -2088,6 +2088,16 @@ pipe_air_gap_receiver_port=9780
 pipe_all_sinks_rate_limit_bytes_per_second=-1
 
 ####################
+### Subscription Configuration
+####################
+
+# Whether to enable subscription.
+# When disabled, subscription does not consume query memory.
+# effectiveMode: restart
+# Datatype: boolean
+subscription_enabled=false
+
+####################
 ### Subscription Consensus Configuration
 ####################
 
