@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.AlignedSinglePageWholeChunkReader;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.SinglePageWholeChunkReader;
@@ -155,6 +156,42 @@ public class TsFileInsertionDataContainerTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testConfiguredTsFileParserSelection() throws Exception {
+    final PipeTsFileInsertionEvent sourceEvent =
+        createPipeTsFileInsertionEventForRetryTest("configured-parser-selection.tsfile");
+
+    try (final TsFileInsertionDataContainer container =
+        new TsFileInsertionDataContainerProvider(
+                null,
+                0,
+                nonalignedTsFile,
+                new PrefixPipePattern("root"),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                sourceEvent,
+                "query")
+            .provide(false)) {
+      Assert.assertTrue(container instanceof TsFileInsertionQueryDataContainer);
+    }
+
+    try (final TsFileInsertionDataContainer container =
+        new TsFileInsertionDataContainerProvider(
+                null,
+                0,
+                nonalignedTsFile,
+                new PrefixPipePattern("root"),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                sourceEvent,
+                "scan")
+            .provide(false)) {
+      Assert.assertTrue(container instanceof TsFileInsertionScanDataContainer);
+    }
   }
 
   @Test
