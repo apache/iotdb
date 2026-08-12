@@ -79,15 +79,18 @@ public class IoTConsensusMemoryManagerTest {
     assertEquals(20L, request.getMemorySize());
     assertEquals(30L, request.getRetainedMemorySize());
     assertEquals(1, request.getSerializedRequests().size());
+    request.clearRequests();
+    assertTrue(request.getRequests().isEmpty());
+    assertEquals(20L, request.getRetainedMemorySize());
 
     assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
     assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
     assertEquals(
-        30L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+        20L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
 
     IoTConsensusMemoryManager.getInstance().free(request);
     assertEquals(
-        30L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+        20L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
     IoTConsensusMemoryManager.getInstance().free(request);
     assertEquals(
         0L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
@@ -105,6 +108,17 @@ public class IoTConsensusMemoryManagerTest {
     IoTConsensusMemoryManager.getInstance().free(request);
     assertEquals(
         0L, IoTConsensusMemoryManager.getInstance().getMemoryBlock().getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testClearUnserializedRequest() {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            1, Collections.singletonList(new SizedConsensusRequest(10, 20)));
+
+    request.clearRequests();
+    assertTrue(request.getRequests().isEmpty());
+    assertEquals(0L, request.getRetainedMemorySize());
   }
 
   private void testReserveAndRelease(int numReservation) {

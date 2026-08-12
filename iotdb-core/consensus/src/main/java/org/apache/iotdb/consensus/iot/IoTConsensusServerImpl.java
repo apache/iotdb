@@ -157,6 +157,7 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private IndexedConsensusRequest lastConsensusRequest;
 
   // Subscription queues receive IndexedConsensusRequest in real-time from write(),
   // similar to LogDispatcher, enabling in-memory data delivery without waiting for WAL flush.
@@ -283,13 +284,14 @@ public class IoTConsensusServerImpl {
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       indexedConsensusRequest.setRoutingEpoch(currentRoutingEpoch);
+      lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
             IoTConsensusMessages.DATA_REGION_INDEX_AFTER_BUILD,
             thisNode.getGroupId(),
             getMinSyncIndex(),
             indexedConsensusRequest.getSearchIndex(),
-            indexedConsensusRequest.getSerializedRequests());
+            lastConsensusRequest.getSerializedRequests());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
@@ -312,11 +314,11 @@ public class IoTConsensusServerImpl {
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
         synchronized (searchIndex) {
-          logDispatcher.offer(indexedConsensusRequest);
+          final int sqCount = subscriptionQueueRegistry.size();
+          logDispatcher.offer(indexedConsensusRequest, sqCount > 0);
           // Deliver to subscription queues for real-time in-memory consumption.
           // Offer AFTER stateMachine.write() so that InsertNode has inferred types
           // and properly typed values (same timing as LogDispatcher).
-          final int sqCount = subscriptionQueueRegistry.size();
           if (sqCount > 0) {
             subscriptionQueueRegistry.offer(indexedConsensusRequest);
           } else if (logger.isDebugEnabled()

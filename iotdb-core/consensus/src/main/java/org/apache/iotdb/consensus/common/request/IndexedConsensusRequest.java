@@ -53,7 +53,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.requests = requests;
+    this.requests = new ArrayList<>(requests);
     this.syncIndex = -1L;
     this.serializedRequests = new ArrayList<>(requests.size());
   }
@@ -61,7 +61,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   public IndexedConsensusRequest(
       long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.requests = requests;
+    this.requests = new ArrayList<>(requests);
     this.syncIndex = syncIndex;
     this.serializedRequests = new ArrayList<>(requests.size());
   }
@@ -109,6 +109,21 @@ public class IndexedConsensusRequest implements IConsensusRequest {
       return retainedMemorySize;
     }
     return requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
+  }
+
+  /**
+   * Releases the original request objects after their serialized buffers have been materialized.
+   * Replication only needs the serialized buffers, while subscription delivery still needs the
+   * original objects and therefore must not call this method.
+   */
+  public synchronized void clearRequests() {
+    if (requests.isEmpty()) {
+      return;
+    }
+    if (serializedRequestsBuilt) {
+      retainedMemorySize -= requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
+    }
+    requests.clear();
   }
 
   public long getSearchIndex() {
