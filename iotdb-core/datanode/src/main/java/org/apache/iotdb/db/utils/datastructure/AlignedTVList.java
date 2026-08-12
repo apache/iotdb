@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -1540,11 +1541,12 @@ public abstract class AlignedTVList extends TVList {
   }
 
   static long listRamCostWithReferences(List<?> list) {
-    return RamUsageEstimator.shallowSizeOf(list) + RamUsageEstimator.sizeOfObjectArray(list.size());
+    return MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfObjectArray(list.size());
   }
 
   static long listRamCostWithoutReferences(List<?> list) {
-    return RamUsageEstimator.shallowSizeOf(list)
+    return MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
         + (list.isEmpty() ? 0 : RamUsageEstimator.sizeOfObjectArray(0));
   }
 
