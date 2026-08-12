@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunctio
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
@@ -205,6 +207,11 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
   DataPartition getDataPartition(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
+  DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots);
+
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
@@ -214,4 +221,11 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+
+  DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll);
 }

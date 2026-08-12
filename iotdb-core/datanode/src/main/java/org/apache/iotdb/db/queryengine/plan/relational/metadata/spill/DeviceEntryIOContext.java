@@ -19,32 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-
-import java.util.concurrent.TimeUnit;
 
 public final class DeviceEntryIOContext {
 
   private final MPPQueryContext queryContext;
   private final boolean duringFetchSchema;
-  private final long timeoutStartNanos;
-  private final long remainingTimeoutNanos;
 
   public DeviceEntryIOContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
     this.queryContext = queryContext;
     this.duringFetchSchema = duringFetchSchema;
-    this.timeoutStartNanos = System.nanoTime();
-    long elapsedMillis = Math.max(0, System.currentTimeMillis() - queryContext.getStartTime());
-    long remainingTimeoutMillis = Math.max(0, queryContext.getTimeOut() - elapsedMillis);
-    this.remainingTimeoutNanos = TimeUnit.MILLISECONDS.toNanos(remainingTimeoutMillis);
   }
 
   public void checkTimeout() {
-    if (System.nanoTime() - timeoutStartNanos >= remainingTimeoutNanos) {
-      throw new QueryTimeoutRuntimeException(
-          queryContext.getStartTime(), System.currentTimeMillis(), queryContext.getTimeOut());
-    }
+    queryContext.checkTimeOut();
   }
 
   public void recordDiskIO(long bytes, long startNanos) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBui
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1719,9 +1721,28 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    return partitionFetcher.getDataPartition(database, dataSet, timePartitionSlots);
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        database, dataSet, timePartitionSlots, needLeftAll, needRightAll);
   }
 }

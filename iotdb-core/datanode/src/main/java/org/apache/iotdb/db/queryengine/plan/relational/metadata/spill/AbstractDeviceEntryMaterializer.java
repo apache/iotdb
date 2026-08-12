@@ -44,6 +44,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private boolean ownerRegistered;
   private boolean finished;
   private DeviceEntryIOContext ioContext;
+  private MPPQueryContext queryContext;
 
   protected AbstractDeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes) {
@@ -98,10 +99,20 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   public abstract void forceSpill() throws IOException;
 
   protected final void setQueryContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
-    ioContext = new DeviceEntryIOContext(queryContext, duringFetchSchema);
+    this.queryContext = queryContext;
+    this.duringFetchSchema = duringFetchSchema;
   }
 
+  private boolean duringFetchSchema;
+
   protected final DeviceEntryIOContext ioContext() {
+    return ioContext;
+  }
+
+  protected final DeviceEntryIOContext createIOContextOnSpill() {
+    if (ioContext == null && queryContext != null) {
+      ioContext = queryContext.getOrCreateDeviceEntryIOContext(duringFetchSchema);
+    }
     return ioContext;
   }
 

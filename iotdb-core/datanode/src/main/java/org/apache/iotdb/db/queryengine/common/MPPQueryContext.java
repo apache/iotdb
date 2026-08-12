@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
@@ -131,6 +132,8 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
+
+  private DeviceEntryIOContext deviceEntryIOContext;
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
@@ -401,6 +404,13 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setStartTime(long startTime) {
     this.startTime = startTime;
+  }
+
+  public DeviceEntryIOContext getOrCreateDeviceEntryIOContext(boolean duringFetchSchema) {
+    if (deviceEntryIOContext == null) {
+      deviceEntryIOContext = new DeviceEntryIOContext(this, duringFetchSchema);
+    }
+    return deviceEntryIOContext;
   }
 
   public void addFailedEndPoint(TEndPoint endPoint) {

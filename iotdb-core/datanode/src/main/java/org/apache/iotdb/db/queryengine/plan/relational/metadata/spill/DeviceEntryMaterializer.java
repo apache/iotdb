@@ -113,6 +113,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
             ? ensureUnregisteredOwnerDirectory(
                 Path.of(IoTDBDescriptor.getInstance().getConfig().getQueryDir(), "device-entry"))
             : ensureOwnerDirectory();
+    createIOContextOnSpill();
     spiller =
         new DeviceEntryDiskSpiller(
             ownerDirectory.resolve(rawSegment ? "raw" : "fi"), thresholdInBytes(), ioContext());

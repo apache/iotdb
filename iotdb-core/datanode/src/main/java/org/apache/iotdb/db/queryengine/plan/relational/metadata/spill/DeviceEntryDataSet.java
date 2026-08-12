@@ -26,21 +26,21 @@ import java.util.List;
 
 public interface DeviceEntryDataSet extends AutoCloseable {
 
-  public long getEntryCount();
+  long getEntryCount();
 
-  public boolean isSpilled();
+  boolean isSpilled();
 
-  public DeviceEntryReader openReader() throws IOException;
+  DeviceEntryReader openReader() throws IOException;
 
-  public default DeviceEntryReader openConsumingReader() throws IOException {
+  default DeviceEntryReader openConsumingReader() throws IOException {
     throw new UnsupportedOperationException("Open consuming reader is not supported");
   }
 
-  public default List<DeviceEntry> getInlineEntries() {
+  default List<DeviceEntry> getInlineEntries() {
     throw new UnsupportedOperationException(
         "Only InMemoryDeviceEntryDataSet supports get inline device entries");
   }
 
   @Override
-  public void close() throws IOException;
+  void close() throws IOException;
 }

@@ -218,10 +218,10 @@ public final class QueryCardinalityUtil {
             && !node.getProjection().getMap().isEmpty()) { // also exist date_bin
           return Range.atLeast(0L);
         } else {
-          return Range.atMost((long) node.getDeviceEntries().size());
+          return Range.atMost(node.getDeviceEntryCount());
         }
       } else {
-        return Range.singleton((long) node.getDeviceEntries().size());
+        return Range.singleton(node.getDeviceEntryCount());
       }
     }
 
