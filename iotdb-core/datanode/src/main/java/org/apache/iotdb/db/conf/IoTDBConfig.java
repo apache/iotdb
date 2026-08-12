@@ -220,7 +220,7 @@ public class IoTDBConfig {
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
   /** Whether WAL nodes cache their sorted WAL file lists. */
-  private boolean walFileListCacheEnabled = false;
+  private boolean walFileListCacheEnabled = true;
 
   /**
    * Enables or disables the automatic clearing of the WAL cache when a memory compaction is

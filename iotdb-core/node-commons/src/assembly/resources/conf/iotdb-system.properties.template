@@ -1708,10 +1708,11 @@ wal_buffer_size_in_byte=33554432
 # Whether to cache the sorted WAL file list in each WAL node.
 # Enabling this avoids scanning and sorting the WAL directory whenever the file list is accessed,
 # including when a consensus request reader updates its files to search.
-# Consider enabling this when IoTConsensus synchronizes data through WAL and synchronization latency is observed.
+# Keeping this enabled is especially recommended when IoTConsensus synchronizes data through WAL
+# and synchronization latency is observed.
 # effectiveMode: restart
 # Datatype: boolean
-wal_file_list_cache_enabled=false
+wal_file_list_cache_enabled=true
 
 # Size threshold of each wal file
 # When a wal file's size exceeds this, the wal file will be closed and a new wal file will be created.

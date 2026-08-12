@@ -41,7 +41,10 @@ import java.util.Properties;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
-  /** Verifies that WAL file-list caching is loaded at startup and remains restart-only. */
+  /**
+   * Verifies that WAL file-list caching defaults on, supports startup override, and is
+   * restart-only.
+   */
   @Test
   public void testWalFileListCacheConfiguration() throws Exception {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
@@ -49,13 +52,18 @@ public class PropertiesTest {
     final TrimProperties properties = new TrimProperties();
 
     try {
-      properties.setProperty("wal_file_list_cache_enabled", "true");
-      descriptor.loadProperties(properties);
-      Assert.assertTrue(descriptor.getConfig().isWalFileListCacheEnabled());
+      Assert.assertTrue(new IoTDBConfig().isWalFileListCacheEnabled());
+      Assert.assertTrue(
+          Boolean.parseBoolean(
+              ConfigurationFileUtils.getConfigurationDefaultValue("wal_file_list_cache_enabled")));
 
       properties.setProperty("wal_file_list_cache_enabled", "false");
+      descriptor.loadProperties(properties);
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
+
+      properties.setProperty("wal_file_list_cache_enabled", "true");
       descriptor.loadHotModifiedProps(properties);
-      Assert.assertTrue(descriptor.getConfig().isWalFileListCacheEnabled());
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
     } finally {
       descriptor.getConfig().setWalFileListCacheEnabled(originalValue);
     }
