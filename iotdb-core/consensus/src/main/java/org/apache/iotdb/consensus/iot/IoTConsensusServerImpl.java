@@ -321,6 +321,7 @@ public class IoTConsensusServerImpl {
               subscriptionQueueRegistry.offer(indexedConsensusRequest);
           logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
           if (!offeredToSubscription
+              && subscriptionQueueRegistry.isEmpty()
               && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
