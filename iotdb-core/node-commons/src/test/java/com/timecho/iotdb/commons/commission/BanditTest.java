@@ -19,6 +19,7 @@
 
 package com.timecho.iotdb.commons.commission;
 
+import org.apache.iotdb.commons.conf.Edition;
 import org.apache.iotdb.commons.exception.LicenseException;
 import org.apache.iotdb.commons.i18n.CommissionMessages;
 
@@ -71,6 +72,30 @@ public class BanditTest {
 
     Assert.assertEquals(
         CommissionMessages.EXCEPTION_ILLEGAL_LICENSE_9E683B8A, exception.getMessage());
+  }
+
+  @Test
+  public void testV02DecryptReadsReleaseByteAfterExistingFields() throws Exception {
+    String systemInfo = "02-AAAAAAAA-PJPLSTKB-6VOVROH5";
+    String clearedSystemInfo = "02-00000000-PJPLSTKB-6VOVROH5";
+    byte identifier = (byte) ((1 << 4) | (1 << 5));
+    ByteBuffer dataBuffer = ByteBuffer.allocate(7);
+    dataBuffer.put(identifier);
+    dataBuffer.putInt(20300101);
+    dataBuffer.put((byte) 1);
+    dataBuffer.put((byte) Edition.IOTDB.getRelease());
+    byte[] data = dataBuffer.array();
+    byte[] tag = HmacProtocol.calculateTag(data, clearedSystemInfo);
+    ByteBuffer payloadBuffer = ByteBuffer.allocate(data.length + tag.length);
+    payloadBuffer.put(data);
+    payloadBuffer.put(tag);
+
+    Properties properties =
+        decryptV02(new Base32().encodeAsString(payloadBuffer.array()), Arrays.asList(systemInfo));
+
+    Assert.assertEquals(
+        String.valueOf(Edition.IOTDB.getRelease()),
+        properties.getProperty(Lottery.PRODUCT_RELEASE_NAME));
   }
 
   private static String buildV02ActivationCode(String salt, boolean skipHardwareCheck)

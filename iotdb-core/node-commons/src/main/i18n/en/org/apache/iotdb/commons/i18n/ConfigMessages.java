@@ -151,5 +151,7 @@ public final class ConfigMessages {
   // Edition gate: an IoTDB-edition-disabled feature was clamped to its disabled form during config load.
   public static final String LOG_EDITION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_HAS_BEEN_DISABLED_605345CE =
       "[Edition] {} is not available in this edition and has been disabled.";
+  public static final String LOG_CURRENT_PRODUCT_RELEASE_ARG_9A522901 =
+      "Current product release: {}.";
 
 }

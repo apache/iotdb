@@ -68,6 +68,7 @@ public class Lottery {
   // Release fields
   public static final String RELEASE_TYPE_NAME = "TYP";
   public static final String RELEASE_TYPE_TRIAL = "trial";
+  public static final String PRODUCT_RELEASE_NAME = "R1";
 
   // activate info
   protected final Obligation<Long> licenseIssueTimestamp = new Obligation<>(0L, Long::parseLong);
@@ -111,6 +112,7 @@ public class Lottery {
     CAPACITY_CONFIG.add(1);
     CAPACITY_CONFIG.add(4);
     CAPACITY_CONFIG.add(8);
+    CAPACITY_CONFIG.add(1);
     CAPACITY_CONFIG.add(1);
     CAPACITY_CONFIG.add(1);
   }

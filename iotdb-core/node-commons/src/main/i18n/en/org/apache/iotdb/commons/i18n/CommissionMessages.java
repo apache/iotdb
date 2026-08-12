@@ -27,6 +27,11 @@ public final class CommissionMessages {
       "License decryption error";
   public static final String LOG_ILLEGAL_COLUMN_EXISTS_7C3E3453 = "Illegal column exists";
   public static final String EXCEPTION_ILLEGAL_LICENSE_9E683B8A = "illegal license";
+  public static final String EXCEPTION_LICENSE_RELEASE_ARG_IS_INVALID_77533A6B =
+      "License release %s is invalid.";
+  public static final String
+      EXCEPTION_LICENSE_RELEASE_ARG_DOES_NOT_MATCH_CURRENT_RUNNING_RELEASE_ARG_2FDF322A =
+          "License release %s does not match current running release %s.";
 
   private CommissionMessages() {}
 }

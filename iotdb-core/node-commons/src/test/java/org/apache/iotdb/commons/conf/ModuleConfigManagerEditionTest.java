@@ -47,4 +47,12 @@ public class ModuleConfigManagerEditionTest {
     assertEquals(Edition.IOTDB, Edition.fromString("iotdb"));
     assertEquals(Edition.TIMECHODB, Edition.fromString("TIMECHODB"));
   }
+
+  @Test
+  public void testReleaseCodeAndDisplayName() {
+    assertEquals(1, Edition.TIMECHODB.getRelease());
+    assertEquals(2, Edition.IOTDB.getRelease());
+    assertEquals("TimechoDB", Edition.TIMECHODB.getDisplayName());
+    assertEquals("IoTDB", Edition.IOTDB.getDisplayName());
+  }
 }

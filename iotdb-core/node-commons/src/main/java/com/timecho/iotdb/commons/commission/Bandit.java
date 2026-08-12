@@ -328,6 +328,10 @@ public class Bandit {
             boolean l4 = buffer.get() != 0x00;
             p.setProperty(Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, String.valueOf(l4));
             break;
+          case 5:
+            int release = buffer.get() & 0xFF;
+            p.setProperty(Lottery.PRODUCT_RELEASE_NAME, String.valueOf(release));
+            break;
           default:
             LOG.error(CommissionMessages.LOG_ILLEGAL_COLUMN_EXISTS_7C3E3453);
             throw new IllegalArgumentException(

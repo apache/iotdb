@@ -19,6 +19,9 @@
 
 package com.timecho.iotdb.manager.activation;
 
+import org.apache.iotdb.commons.conf.ModuleConfigManager;
+
+import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,9 +35,22 @@ public class AutoActivationClientTest {
         AutoActivationClient.buildAuthorizationHeader("secret", "1700000000000", "{\"a\":1}");
 
     Assert.assertEquals(
-        "version=1,api_key=\"secret\",timestamp=1700000000000,"
-            + "signature=\"9deo/gyI2fofSj+6vnv3NnN+rF+OcZ1FCXSO/X8oHIk=\"",
+        "version=2,api_key=\"secret\",timestamp=1700000000000,"
+            + "signature=\"Gv7Udlv62tbIHXbzkvk9O3l4BfaA07wL0b/oR1TPKXI=\"",
         authorization);
+  }
+
+  @Test
+  public void testBuildRequestBodyIncludesCurrentRelease() {
+    JsonObject body = AutoActivationClient.buildRequestBody("machine", true, "trace", "span");
+
+    Assert.assertEquals("trace", body.get("traceId").getAsString());
+    Assert.assertEquals("span", body.get("spanId").getAsString());
+    Assert.assertEquals("machine", body.get("machineCode").getAsString());
+    Assert.assertEquals(
+        ModuleConfigManager.getInstance().getEdition().getRelease(),
+        body.get("release").getAsInt());
+    Assert.assertEquals("license_expired", body.get("activationReason").getAsString());
   }
 
   @Test

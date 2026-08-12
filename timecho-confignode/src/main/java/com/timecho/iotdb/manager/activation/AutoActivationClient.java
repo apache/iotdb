@@ -20,6 +20,7 @@
 package com.timecho.iotdb.manager.activation;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.ModuleConfigManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import com.google.gson.Gson;
@@ -48,7 +49,7 @@ public class AutoActivationClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(AutoActivationClient.class);
   private static final Gson GSON = new Gson();
   private static final String LICENSE_SERVER_URL = "https://license.timecho.com";
-  private static final String AUTHORIZATION_VERSION = "1";
+  private static final String AUTHORIZATION_VERSION = "2";
   private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
   private static final int MAX_RESPONSE_BODY_LOG_LENGTH = 1024;
   private static final String REDACTED_LOG_VALUE = "[REDACTED]";
@@ -80,19 +81,26 @@ public class AutoActivationClient {
       String apiKey, String machineCode, boolean renew, String traceId) throws IOException {
     String actualTraceId = traceId == null || traceId.isEmpty() ? newTraceId() : traceId;
     String spanId = newSpanId();
-    JsonObject body = new JsonObject();
-    body.addProperty("traceId", actualTraceId);
-    body.addProperty("spanId", spanId);
-    body.addProperty("machineCode", machineCode);
-    body.addProperty("renew", renew);
-    if (renew) {
-      body.addProperty("activationReason", "license_expired");
-    }
+    JsonObject body = buildRequestBody(machineCode, renew, actualTraceId, spanId);
 
     JsonObject response = post("/api/timechodb/auto-activation/request", body, apiKey);
     JsonObject data = getData(response);
     String license = getRequiredString(data, "license");
     return new AutoActivationResult(license);
+  }
+
+  static JsonObject buildRequestBody(
+      String machineCode, boolean renew, String traceId, String spanId) {
+    JsonObject body = new JsonObject();
+    body.addProperty("traceId", traceId);
+    body.addProperty("spanId", spanId);
+    body.addProperty("machineCode", machineCode);
+    body.addProperty("release", ModuleConfigManager.getInstance().getEdition().getRelease());
+    body.addProperty("renew", renew);
+    if (renew) {
+      body.addProperty("activationReason", "license_expired");
+    }
+    return body;
   }
 
   private JsonObject post(String path, JsonObject body, String apiKey) throws IOException {

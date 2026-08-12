@@ -44,6 +44,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.timecho.iotdb.commons.commission.Bandit;
+import com.timecho.iotdb.commons.commission.LicenseReleaseValidator;
 import com.timecho.iotdb.commons.commission.Lottery;
 import com.timecho.iotdb.commons.commission.obligation.ObligationStatus;
 import com.timecho.iotdb.commons.external.codec.binary.Base32;
@@ -510,6 +511,7 @@ public class RegulateManager {
     Properties licenseProperties = new Properties();
     licenseProperties.load(new StringReader(deprecatedLicenseContent));
     normalizeLicenseProperties(licenseVersion, licenseProperties);
+    LicenseReleaseValidator.validateForCurrentRelease(licenseProperties);
     return licenseProperties;
   }
 

@@ -21,8 +21,16 @@ package org.apache.iotdb.commons.conf;
 
 /** Build-time product edition. Defaults to {@link #TIMECHODB} when unset or unrecognized. */
 public enum Edition {
-  TIMECHODB,
-  IOTDB;
+  TIMECHODB(1, "TimechoDB"),
+  IOTDB(2, "IoTDB");
+
+  private final int release;
+  private final String displayName;
+
+  Edition(int release, String displayName) {
+    this.release = release;
+    this.displayName = displayName;
+  }
 
   public static Edition fromString(String value) {
     if (value == null) {
@@ -33,5 +41,13 @@ public enum Edition {
       return IOTDB;
     }
     return TIMECHODB;
+  }
+
+  public int getRelease() {
+    return release;
+  }
+
+  public String getDisplayName() {
+    return displayName;
   }
 }

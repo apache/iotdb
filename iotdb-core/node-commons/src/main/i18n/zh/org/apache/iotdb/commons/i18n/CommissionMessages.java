@@ -26,6 +26,11 @@ public final class CommissionMessages {
   public static final String LOG_LICENSE_DECRYPTION_ERROR_D31D4781 = "许可证解密错误";
   public static final String LOG_ILLEGAL_COLUMN_EXISTS_7C3E3453 = "存在非法列";
   public static final String EXCEPTION_ILLEGAL_LICENSE_9E683B8A = "许可证无效";
+  public static final String EXCEPTION_LICENSE_RELEASE_ARG_IS_INVALID_77533A6B =
+      "License 发行版 %s 无效。";
+  public static final String
+      EXCEPTION_LICENSE_RELEASE_ARG_DOES_NOT_MATCH_CURRENT_RUNNING_RELEASE_ARG_2FDF322A =
+          "License 中的发行版 %s 与当前运行的发行版 %s 不一致。";
 
   private CommissionMessages() {}
 }
