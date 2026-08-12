@@ -24,7 +24,8 @@ public final class MetricsCoreMessages {
   // --- IoTDBJmxReporter ---
   public static final String JMX_REGISTER_FAILED = "IoTDB Metric: Unable to register ";
   public static final String JMX_UNREGISTER_FAILED = "IoTDB Metric: Unable to unregister: ";
-  public static final String JMX_REPORTER_ALREADY_START = "IoTDB Metric: JmxReporter already start!";
+  public static final String JMX_REPORTER_ALREADY_START =
+      "IoTDB Metric: JmxReporter already start!";
   public static final String JMX_REPORTER_START_FAILED =
       "IoTDB Metric: JmxReporter failed to start, because ";
   public static final String JMX_REPORTER_START = "IoTDB Metric: JmxReporter start!";
@@ -36,9 +37,11 @@ public final class MetricsCoreMessages {
   public static final String JMX_UNABLE_TO_REGISTER = "IoTDB Metric: Unable to register {} {}";
 
   private MetricsCoreMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_DETECTED_ERROR_TAKING_SNAPSHOT_MAY_CAUSE_MISS_DURING_RECORDING_2BAE49C4 = "Detected an error while taking snapshot, may cause a miss during this recording.";
-
+  public static final String
+      LOG_DETECTED_ERROR_TAKING_SNAPSHOT_MAY_CAUSE_MISS_DURING_RECORDING_2BAE49C4 =
+          "Detected an error while taking snapshot, may cause a miss during this recording.";
 }

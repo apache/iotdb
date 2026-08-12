@@ -26,15 +26,15 @@ public final class ISessionMessages {
       "OBJECT Type only support getString";
 
   // --- Template ---
-  public static final String DUPLICATED_CHILD_IN_TEMPLATE =
-      "Duplicated child of node in template.";
+  public static final String DUPLICATED_CHILD_IN_TEMPLATE = "Duplicated child of node in template.";
   public static final String NOT_DIRECT_CHILD_OF_TEMPLATE =
       "It is not a direct child of the template: ";
 
   private ISessionMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
-
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 =
+      "Data type %s is not supported.";
 }

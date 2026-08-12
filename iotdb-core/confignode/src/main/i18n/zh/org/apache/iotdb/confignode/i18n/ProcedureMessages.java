@@ -1500,11 +1500,9 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
           "上一次尝试因“%s”失败，正在重试此状态。";
-  public static final String
-      MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
-          "此状态因“%s”失败，正在等待回滚。";
-  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
-      "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
 }

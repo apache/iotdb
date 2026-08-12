@@ -37,24 +37,21 @@ public final class RatisMessages {
       "leader {} read only, force step down failed due to, ";
   public static final String TRY_ADD_CONFLICTING_PEER =
       "{}: try to add a peer {} with conflicting id or address in {}";
-  public static final String IS_LEADER_REQUEST_FAILED =
-      "isLeader request failed with exception: ";
+  public static final String IS_LEADER_REQUEST_FAILED = "isLeader request failed with exception: ";
   public static final String IS_LEADER_READY_REQUEST_FAILED =
       "isLeaderReady request failed with exception: ";
   public static final String GET_LOGICAL_CLOCK_REQUEST_FAILED =
       "getLogicalClock request failed with exception: ";
   public static final String IS_LEADER_READY_CHECKING_FAILED =
       "isLeaderReady checking failed with exception: ";
-  public static final String LEADER_STILL_NOT_READY =
-      "{}: leader is still not ready after {}ms";
+  public static final String LEADER_STILL_NOT_READY = "{}: leader is still not ready after {}ms";
   public static final String UNEXPECTED_INTERRUPTION_WAIT_LEADER_READY =
       "Unexpected interruption when waitUntilLeaderReady";
   public static final String FETCH_DIVISION_INFO_FAILED =
       "fetch division info for group {} failed due to: ";
   public static final String TRIGGER_SNAPSHOT_SUCCESS =
       "{} group {}: successfully taken snapshot at index {} with force = {}";
-  public static final String GET_GROUP_FAILED =
-      "get group {} failed ";
+  public static final String GET_GROUP_FAILED = "get group {} failed ";
   public static final String BORROW_CLIENT_FROM_POOL_FAILED =
       "Borrow client from pool for group {} failed.";
   public static final String TRANSFER_LEADER_FAILED_TIMEOUT =
@@ -74,8 +71,7 @@ public final class RatisMessages {
       "internal error. statemachine throws a runtime exception: ";
   public static final String INTERRUPTED_WAITING_SYSTEM_READY =
       "{}: interrupted when waiting until system ready: ";
-  public static final String REQUEST_MESSAGE_REQUIRED =
-      "An RequestMessage is required but got {}";
+  public static final String REQUEST_MESSAGE_REQUIRED = "An RequestMessage is required but got {}";
   public static final String UNABLE_TO_CREATE_TEMP_SNAPSHOT_DIR =
       "Unable to create temp snapshotDir at {}";
   public static final String ATOMIC_RENAME_FAILED =
@@ -85,8 +81,7 @@ public final class RatisMessages {
 
   // ===================== RatisClient =====================
 
-  public static final String CANNOT_CLOSE_RAFT_CLIENT =
-      "cannot close raft client ";
+  public static final String CANNOT_CLOSE_RAFT_CLIENT = "cannot close raft client ";
   public static final String RAFT_CLIENT_REQUEST_FAILED =
       "{}: raft client request failed and caught exception: ";
 
@@ -103,18 +98,15 @@ public final class RatisMessages {
 
   public static final String CANNOT_CONSTRUCT_SNAPSHOT_DIR_STREAM =
       "Cannot construct snapshot directory stream ";
-  public static final String CANNOT_RESOLVE_REAL_PATH =
-      "{} cannot resolve real path of {} due to ";
+  public static final String CANNOT_RESOLVE_REAL_PATH = "{} cannot resolve real path of {} due to ";
 
   // ===================== ResponseMessage =====================
 
-  public static final String SERIALIZE_TSSTATUS_FAILED =
-      "serialize TSStatus failed {}";
+  public static final String SERIALIZE_TSSTATUS_FAILED = "serialize TSStatus failed {}";
 
   // ===================== MetricRegistryManager =====================
 
-  public static final String REPORTER_DISABLED =
-      "Reporter is disabled from RatisMetricRegistries";
+  public static final String REPORTER_DISABLED = "Reporter is disabled from RatisMetricRegistries";
   public static final String JMX_REPORTER_DISABLED =
       "JMX Reporter is disabled from RatisMetricRegistries";
   public static final String CONSOLE_REPORTER_DISABLED =
@@ -122,13 +114,17 @@ public final class RatisMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA = "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}";
-  public static final String EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15 = "internal GRPC connection error:";
-  public static final String LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2 = "Failed {}, attempt #{}, sleep {} and then retry";
-  public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC = "{}: interrupted when waiting for retry";
+  public static final String
+      LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA =
+          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}";
+  public static final String EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15 =
+      "internal GRPC connection error:";
+  public static final String LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2 =
+      "Failed {}, attempt #{}, sleep {} and then retry";
+  public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC =
+      "{}: interrupted when waiting for retry";
   public static final String EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E = "supplier == null";
   public static final String EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947 = "condition == null";
   public static final String EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7 =
       "%s: failed to load snapshot from %s";
-
 }

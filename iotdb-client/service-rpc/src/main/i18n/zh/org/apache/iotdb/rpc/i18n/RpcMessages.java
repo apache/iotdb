@@ -25,13 +25,10 @@ public final class RpcMessages {
   public static final String FRAME_ERROR_HTTP_REQUEST =
       "检测到异常帧大小 (%d)，可能正在发送 HTTP GET/POST%s 请求到 Thrift-RPC 端口，请确认使用了正确的端口";
   public static final String FRAME_ERROR_TLS_REQUEST =
-      "检测到异常帧大小 (%d)，可能正在发送 TLS ClientHello 请求%s"
-          + "到未启用 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
+      "检测到异常帧大小 (%d)，可能正在发送 TLS ClientHello 请求%s" + "到未启用 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
   public static final String FRAME_ERROR_NEGATIVE_FRAME_SIZE = "读取到负数帧大小 (%d)%s！";
-  public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
-      "帧大小 (%d) 超过保护最大值 (%d)%s！";
-  public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
-      "字符串长度 (%d) 超过保护最大值 (%d)%s！";
+  public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED = "帧大小 (%d) 超过保护最大值 (%d)%s！";
+  public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED = "字符串长度 (%d) 超过保护最大值 (%d)%s！";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
@@ -77,18 +74,24 @@ public final class RpcMessages {
   public static final String REMOTE_ADDRESS_PREFIX = " 来自 ";
 
   private RpcMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B = "columnIndex2TsBlockColumnIndexList 的大小 %s 不等于 columnNameList 的大小 %s。";
-  public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "由于网络连接问题，无法从服务器获取结果：{} ";
+  public static final String
+      EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B =
+          "columnIndex2TsBlockColumnIndexList 的大小 %s 不等于 columnNameList 的大小 %s。";
+  public static final String
+      EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 =
+          "由于网络连接问题，无法从服务器获取结果：{} ";
   public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
-  public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "同一组中的后续请求将被重定向到 ";
-  public static final String EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528 =
-      "没有可用的 keystore 或 truststore 类型";
+  public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B =
+      "同一组中的后续请求将被重定向到 ";
+  public static final String
+      EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528 =
+          "没有可用的 keystore 或 truststore 类型";
   public static final String EXCEPTION_FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE_FILE_F3306313 =
       "加载 keystore 或 truststore 文件失败";
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "未找到 keystore 或 truststore 文件：";
-
 }

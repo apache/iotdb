@@ -817,6 +817,11 @@
                     <version>${spotless.version}</version>
                     <configuration>
                         <java>
+                            <includes>
+                                <include>src/main/java/**/*.java</include>
+                                <include>src/test/java/**/*.java</include>
+                                <include>src/main/i18n/**/*.java</include>
+                            </includes>
                             <googleJavaFormat>
                                 <version>${google.java.format.version}</version>
                                 <style>GOOGLE</style>

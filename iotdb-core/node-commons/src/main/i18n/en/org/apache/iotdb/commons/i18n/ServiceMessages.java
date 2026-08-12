@@ -33,10 +33,8 @@ public final class ServiceMessages {
   public static final String CLOSE_THREAD_POOL_SERVER_AND_SERVER_SOCKET =
       "{}: close TThreadPoolServer and TServerSocket for {}";
   public static final String FAILED_TO_START_BECAUSE = "failed to start, because ";
-  public static final String FAILED_TO_START_SERVICE_BECAUSE =
-      "%s: failed to start %s, because ";
-  public static final String SERVICE_THREAD_BEGIN_TO_RUN =
-      "The {} service thread begin to run...";
+  public static final String FAILED_TO_START_SERVICE_BECAUSE = "%s: failed to start %s, because ";
+  public static final String SERVICE_THREAD_BEGIN_TO_RUN = "The {} service thread begin to run...";
   public static final String SERVICE_EXIT_BECAUSE = "%s: %s exit, because ";
   public static final String UNEXPECTED_SERVER_TYPE = "Unexpected serverType {}";
   public static final String FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE =
@@ -50,8 +48,7 @@ public final class ServiceMessages {
   public static final String JMX_PORT_IS_UNDEFINED = "{} JMX port is undefined";
 
   // ---- RegisterManager ----
-  public static final String SERVICE_ALREADY_REGISTERED =
-      "{} has already been registered. skip";
+  public static final String SERVICE_ALREADY_REGISTERED = "{} has already been registered. skip";
   public static final String SERVICE_STARTED_WITH_TIME =
       "The {} service is started successfully, which takes {} ms.";
   public static final String SERVICE_DEREGISTERED = "{} deregistered";
@@ -80,8 +77,7 @@ public final class ServiceMessages {
       "Stop latch is null when getting status";
   public static final String STOP_LATCH_WHEN_GETTING_STATUS =
       "Stop latch is {} when getting status";
-  public static final String SERVICE_ALREADY_RUNNING =
-      "{}: {} has been already running now";
+  public static final String SERVICE_ALREADY_RUNNING = "{}: {} has been already running now";
   public static final String START_SERVICE = "{}: start {}...";
   public static final String START_SERVICE_SUCCESSFULLY =
       "{}: start {} successfully, listening on ip {} port {}";
@@ -106,22 +102,19 @@ public final class ServiceMessages {
 
   // ---- MetricService ----
   public static final String LOAD_METRIC_REPORTERS = "Load metric reporters, type: {}";
-  public static final String FAILED_TO_LOAD_REPORTER =
-      "Failed to load reporter which type is {}";
+  public static final String FAILED_TO_LOAD_REPORTER = "Failed to load reporter which type is {}";
   public static final String METRIC_SERVICE_START_TO_INIT = "MetricService start to init.";
   public static final String METRIC_SERVICE_START_SUCCESSFULLY =
       "MetricService start successfully.";
   public static final String METRIC_SERVICE_FAILED_TO_START =
       "MetricService failed to start {} because: ";
-  public static final String METRIC_SERVICE_TRY_TO_RESTART =
-      "MetricService try to restart.";
+  public static final String METRIC_SERVICE_TRY_TO_RESTART = "MetricService try to restart.";
   public static final String METRIC_SERVICE_REBIND_METRIC_SET =
       "MetricService rebind metricSet: {}";
   public static final String METRIC_SERVICE_RESTART_SUCCESSFULLY =
       "MetricService restart successfully.";
   public static final String METRIC_SERVICE_TRY_TO_STOP = "MetricService try to stop.";
-  public static final String METRIC_SERVICE_STOP_SUCCESSFULLY =
-      "MetricService stop successfully.";
+  public static final String METRIC_SERVICE_STOP_SUCCESSFULLY = "MetricService stop successfully.";
   public static final String METRIC_SERVICE_RELOAD_INTERNAL_REPORTER =
       "MetricService reload internal reporter.";
   public static final String METRIC_SERVICE_RELOAD_INTERNAL_REPORTER_SUCCESSFULLY =

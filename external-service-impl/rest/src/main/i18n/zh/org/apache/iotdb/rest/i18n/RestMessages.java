@@ -34,9 +34,8 @@ public final class RestMessages {
   public static final String SQL_SHOULD_NOT_BE_NULL = "sql 不能为空";
   public static final String ROW_LIMIT_SHOULD_BE_POSITIVE = "row_limit 应为正数";
   public static final String ROW_LIMIT_CAMEL_SHOULD_BE_POSITIVE = "rowLimit 应为正数";
-  public static final String
-      MESSAGE_DATASET_ROW_SIZE_EXCEEDED_THE_GIVEN_MAX_ROW_SIZE_ARG_7A3F6452 =
-          "数据集行数超过给定的最大行数（%d）";
+  public static final String MESSAGE_DATASET_ROW_SIZE_EXCEEDED_THE_GIVEN_MAX_ROW_SIZE_ARG_7A3F6452 =
+      "数据集行数超过给定的最大行数（%d）";
   public static final String PREFIX_PATHS_NOT_NULL = "prefix_paths 不能为空";
   public static final String TIMESTAMPS_NOT_NULL = "timestamps 不能为空";
   public static final String IS_ALIGNED_NOT_NULL = "is_aligned 不能为空";
@@ -66,13 +65,10 @@ public final class RestMessages {
       "column_names 和 column_categories 的数量应相同";
   public static final String COLUMN_CATEGORIES_AND_DATA_TYPES_SIZE_MISMATCH =
       "column_categories 和 data_types 的数量应相同";
-  public static final String VALUES_AND_TIMESTAMPS_SIZE_MISMATCH =
-      "values 和 timestamps 的数量应相同";
+  public static final String VALUES_AND_TIMESTAMPS_SIZE_MISMATCH = "values 和 timestamps 的数量应相同";
   public static final String ILLEGAL_TABLE_DATA_TYPE = "%s 是 %s 的非法数据类型";
-  public static final String ILLEGAL_DEVICE_MEASUREMENT_DATA_TYPE =
-      "%s 是 %s.%s 的非法数据类型";
-  public static final String ROW_VALUES_SIZE_MISMATCH =
-      "第 %d 行的 values 数量与 data_types 数量不相等";
+  public static final String ILLEGAL_DEVICE_MEASUREMENT_DATA_TYPE = "%s 是 %s.%s 的非法数据类型";
+  public static final String ROW_VALUES_SIZE_MISMATCH = "第 %d 行的 values 数量与 data_types 数量不相等";
   public static final String ERROR_MESSAGE_SEPARATOR = "，";
 
   // --- RequestSizeLimitFilter ---
@@ -88,8 +84,7 @@ public final class RestMessages {
   // --- RequestLimitChecker ---
   public static final String MESSAGE_INSERTTABLET_REQUEST_8647CA58 = "insertTablet 请求";
   public static final String MESSAGE_INSERTRECORDS_REQUEST_93E12369 = "insertRecords 请求";
-  public static final String MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C =
-      "table insertTablet 请求";
+  public static final String MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C = "table insertTablet 请求";
   public static final String EXCEPTION_ARG_ROW_COUNT_ARG_EXCEEDS_LIMIT_ARG_EE427E4B =
       "%s 行数 %d 超过限制 %d";
   public static final String EXCEPTION_ARG_COLUMN_COUNT_ARG_EXCEEDS_LIMIT_ARG_DEE9637E =
@@ -119,9 +114,9 @@ public final class RestMessages {
           "每个 insertRecords 行中的 measurements、data types 和 values 数量应相同";
 
   private RestMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE = "不支持的数据类型: ";
-
 }

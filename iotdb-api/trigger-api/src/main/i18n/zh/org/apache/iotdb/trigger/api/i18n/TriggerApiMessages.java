@@ -28,8 +28,7 @@ public final class TriggerApiMessages {
   public static final String NO_SUCH_TRIGGER_EVENT = "不存在该触发器事件（id: %d）";
 
   // --- FailureStrategy ---
-  public static final String UNSUPPORTED_FAILURE_STRATEGY_TYPE =
-      "不支持的 FailureStrategy 类型。";
+  public static final String UNSUPPORTED_FAILURE_STRATEGY_TYPE = "不支持的 FailureStrategy 类型。";
 
   private TriggerApiMessages() {}
 }

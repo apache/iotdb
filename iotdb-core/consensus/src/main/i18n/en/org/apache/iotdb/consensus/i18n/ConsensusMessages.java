@@ -38,18 +38,14 @@ public final class ConsensusMessages {
 
   // ===================== Exception messages (String.format %s) =====================
 
-  public static final String CONSENSUS_GROUP_NOT_EXIST =
-      "The consensus group %s doesn't exist";
+  public static final String CONSENSUS_GROUP_NOT_EXIST = "The consensus group %s doesn't exist";
   public static final String CONSENSUS_GROUP_ALREADY_EXIST =
       "The consensus group %d already exists";
-  public static final String ILLEGAL_PEER_NUM =
-      "Illegal peer num %d when adding consensus group";
+  public static final String ILLEGAL_PEER_NUM = "Illegal peer num %d when adding consensus group";
   public static final String ILLEGAL_PEER_ENDPOINT =
       "Illegal addConsensusGroup because currentNode %s is not in consensusGroup %s";
-  public static final String PEER_ALREADY_IN_GROUP =
-      "Peer %s:%d is already in group %d";
-  public static final String PEER_NOT_IN_GROUP =
-      "Peer %s is not in group %d";
+  public static final String PEER_ALREADY_IN_GROUP = "Peer %s:%d is already in group %d";
+  public static final String PEER_NOT_IN_GROUP = "Peer %s is not in group %d";
 
   // ===================== Common log messages (SLF4J {}) =====================
 
@@ -65,8 +61,7 @@ public final class ConsensusMessages {
       "Cannot create local peer for group {} with peers {}";
   public static final String FAILED_TO_RESET_PEER_LIST_WHILE_START =
       "Failed to reset peer list while start";
-  public static final String RECORD_CORRECT_PEER_LIST =
-      "Record correct peer list: {}";
+  public static final String RECORD_CORRECT_PEER_LIST = "Record correct peer list: {}";
   public static final String INTERRUPTED_WHEN_SHUTTING_DOWN_EXECUTOR =
       "{}: interrupted when shutting down add Executor with exception {}";
   public static final String INTERRUPTED_WHEN_SHUTTING_DOWN_EXECUTOR_RATIS =
@@ -123,8 +118,7 @@ public final class ConsensusMessages {
       "Peer is inactive and not ready to receive sync log request, %s, DataNode Id: %s";
   public static final String PEER_INACTIVE_NOT_READY_WRITE =
       "Peer is inactive and not ready to write request, %s, DataNode Id: %s";
-  public static final String REMOVE_SYNC_LOG_CHANNEL_FAILED =
-      "remove sync log channel failed";
+  public static final String REMOVE_SYNC_LOG_CHANNEL_FAILED = "remove sync log channel failed";
   public static final String FAILED_TO_CLEANUP_TRANSFERRED_SNAPSHOT =
       "failed to cleanup transferred snapshot {}";
 
@@ -159,20 +153,19 @@ public final class ConsensusMessages {
   public static final String VISIT_FILE_FAILED = "visit file {} failed due to {}";
   public static final String IO_EXCEPTION_LISTING_SNAPSHOT_DIR =
       "IOException occurred during listing snapshot directory: ";
-  public static final String FAILED_TO_LOAD_KEYSTORE =
-      "Failed or truststore to load keystore file";
+  public static final String FAILED_TO_LOAD_KEYSTORE = "Failed or truststore to load keystore file";
   public static final String KEYSTORE_FILE_NOT_FOUND = "keystore or truststore file not found";
-  public static final String FAILED_TO_READ_KEYSTORE =
-      "Failed to read key store or trust store.";
+  public static final String FAILED_TO_READ_KEYSTORE = "Failed to read key store or trust store.";
   public static final String NOT_IMPLEMENTED_YET = "not implemented yet";
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_RAFT_SERVER_CANNOT_SERVE_READ_REQUESTS_NOW_LEADER_UNKNOWN_UNDER_B6D65373 = "Raft Server cannot serve read requests now (leader is unknown or under recovery). ";
+  public static final String
+      EXCEPTION_RAFT_SERVER_CANNOT_SERVE_READ_REQUESTS_NOW_LEADER_UNKNOWN_UNDER_B6D65373 =
+          "Raft Server cannot serve read requests now (leader is unknown or under recovery). ";
   public static final String EXCEPTION_PLEASE_TRY_READ_LATER_D8E0CDE1 = "Please try read later: ";
   public static final String EXCEPTION_RATIS_REQUEST_FAILED_52AF217F = "Ratis request failed ";
   public static final String EXCEPTION_UNKNOWN_88183B94 = "Unknown";
   public static final String EXCEPTION_RATIS_REQUEST_FAILED_58107CDE = "Ratis request failed: ";
   public static final String EXCEPTION_DOT_F779BA66 = ". ";
-
 }
