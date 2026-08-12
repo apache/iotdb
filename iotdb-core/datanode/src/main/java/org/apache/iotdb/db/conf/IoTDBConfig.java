@@ -219,7 +219,7 @@ public class IoTDBConfig {
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
-  /** Whether WAL nodes cache the sorted WAL file list used by consensus request readers. */
+  /** Whether WAL nodes cache their sorted WAL file lists. */
   private boolean walFileListCacheEnabled = false;
 
   /**

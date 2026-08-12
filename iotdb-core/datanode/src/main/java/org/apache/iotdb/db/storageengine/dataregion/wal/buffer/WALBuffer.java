@@ -64,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
@@ -122,11 +123,16 @@ public class WALBuffer extends AbstractWALBuffer {
 
   // manage wal files which have MemTableIds
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
-  private final Runnable walFileListChangedListener;
+  private final BiConsumer<File, File> walFileRolledListener;
 
   public WALBuffer(String identifier, String logDirectory) throws IOException {
     this(
-        identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L, () -> {});
+        identifier,
+        logDirectory,
+        new CheckpointManager(identifier, logDirectory),
+        0,
+        0L,
+        (sealedWalFile, currentWalFile) -> {});
   }
 
   public WALBuffer(
@@ -136,7 +142,13 @@ public class WALBuffer extends AbstractWALBuffer {
       long startFileVersion,
       long startSearchIndex)
       throws IOException {
-    this(identifier, logDirectory, checkpointManager, startFileVersion, startSearchIndex, () -> {});
+    this(
+        identifier,
+        logDirectory,
+        checkpointManager,
+        startFileVersion,
+        startSearchIndex,
+        (sealedWalFile, currentWalFile) -> {});
   }
 
   public WALBuffer(
@@ -145,11 +157,11 @@ public class WALBuffer extends AbstractWALBuffer {
       CheckpointManager checkpointManager,
       long startFileVersion,
       long startSearchIndex,
-      Runnable walFileListChangedListener)
+      BiConsumer<File, File> walFileRolledListener)
       throws IOException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = checkpointManager;
-    this.walFileListChangedListener = walFileListChangedListener;
+    this.walFileRolledListener = walFileRolledListener;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     allocateBuffers();
     currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
@@ -182,8 +194,10 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @Override
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
-    File file = super.rollLogWriter(searchIndex, fileStatus);
+    File sealedWalFile = super.rollLogWriter(searchIndex, fileStatus);
     currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
+    // Update the WAL node's ordered file index before waking readers waiting for this roll.
+    walFileRolledListener.accept(sealedWalFile, currentWALFileWriter.getLogFile());
     buffersLock.lock();
     try {
       // notify WALReader that new file is generated, and it can read new file
@@ -191,7 +205,7 @@ public class WALBuffer extends AbstractWALBuffer {
     } finally {
       buffersLock.unlock();
     }
-    return file;
+    return sealedWalFile;
   }
 
   @TestOnly

@@ -1705,8 +1705,9 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Whether to cache the sorted WAL file list in each WAL node for consensus request readers.
-# Enabling this avoids scanning and sorting the WAL directory whenever a reader updates its files to search.
+# Whether to cache the sorted WAL file list in each WAL node.
+# Enabling this avoids scanning and sorting the WAL directory whenever the file list is accessed,
+# including when a consensus request reader updates its files to search.
 # Consider enabling this when IoTConsensus synchronizes data through WAL and synchronization latency is observed.
 # effectiveMode: restart
 # Datatype: boolean

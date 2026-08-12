@@ -82,6 +82,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -120,6 +121,15 @@ public class WALNode implements IWALNode {
   // WAL files with versionId >= this value are retained for subscription consumers
   private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
+  private final boolean walFileListCacheEnabled;
+  private final Object walFileListCacheLock = new Object();
+  // Maintains the cache incrementally by version; all mutations are protected by the cache lock.
+  private final TreeMap<Long, File> walFilesByVersion = new TreeMap<>();
+  // File changes only mark the cache dirty; the next file-list access publishes a snapshot lazily.
+  private volatile boolean sortedWalFilesCacheDirty = true;
+  // Replaced as a never-mutated snapshot so readers cannot observe a partially updated list.
+  private volatile File[] sortedWalFilesCache;
+
   private volatile boolean deleted = false;
 
   public WALNode(String identifier, String logDirectory) throws IOException {
@@ -135,9 +145,80 @@ public class WALNode implements IWALNode {
       logger.info(StorageEngineMessages.CREATE_FOLDER_FOR_WAL_NODE, logDirectory, identifier);
     }
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
+    this.walFileListCacheEnabled = config.isWalFileListCacheEnabled();
     this.buffer =
         new WALBuffer(
-            identifier, logDirectory, checkpointManager, startFileVersion, startSearchIndex);
+            identifier,
+            logDirectory,
+            checkpointManager,
+            startFileVersion,
+            startSearchIndex,
+            this::updateSortedWalFilesCacheAfterRoll);
+    initializeSortedWalFilesCacheIfEnabled();
+  }
+
+  private File[] getSortedWalFiles() {
+    if (!walFileListCacheEnabled) {
+      return listAndSortWalFiles();
+    }
+    File[] snapshot = sortedWalFilesCache;
+    if (!sortedWalFilesCacheDirty && snapshot != null) {
+      return snapshot;
+    }
+    synchronized (walFileListCacheLock) {
+      if (sortedWalFilesCacheDirty || sortedWalFilesCache == null) {
+        sortedWalFilesCache = walFilesByVersion.values().toArray(new File[0]);
+        sortedWalFilesCacheDirty = false;
+      }
+      return sortedWalFilesCache;
+    }
+  }
+
+  private File[] listAndSortWalFiles() {
+    final File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles != null) {
+      WALFileUtils.ascSortByVersionId(walFiles);
+    }
+    return walFiles;
+  }
+
+  private void initializeSortedWalFilesCacheIfEnabled() {
+    if (walFileListCacheEnabled) {
+      synchronized (walFileListCacheLock) {
+        File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+        walFilesByVersion.clear();
+        if (walFiles != null) {
+          for (File walFile : walFiles) {
+            walFilesByVersion.put(WALFileUtils.parseVersionId(walFile.getName()), walFile);
+          }
+        }
+        sortedWalFilesCacheDirty = true;
+      }
+    }
+  }
+
+  private void updateSortedWalFilesCacheAfterRoll(File sealedWalFile, File currentWalFile) {
+    if (!walFileListCacheEnabled) {
+      return;
+    }
+    synchronized (walFileListCacheLock) {
+      walFilesByVersion.put(WALFileUtils.parseVersionId(sealedWalFile.getName()), sealedWalFile);
+      walFilesByVersion.put(WALFileUtils.parseVersionId(currentWalFile.getName()), currentWalFile);
+      sortedWalFilesCacheDirty = true;
+    }
+  }
+
+  private void removeDeletedWalFilesFromCache(List<Long> deletedVersionIds) {
+    if (!walFileListCacheEnabled || deletedVersionIds.isEmpty()) {
+      return;
+    }
+    synchronized (walFileListCacheLock) {
+      for (Long deletedVersionId : deletedVersionIds) {
+        if (walFilesByVersion.remove(deletedVersionId) != null) {
+          sortedWalFilesCacheDirty = true;
+        }
+      }
+    }
   }
 
   @Override
@@ -291,7 +372,7 @@ public class WALNode implements IWALNode {
 
     private boolean initAndCheckIfNeedContinue() {
       rollWalFileIfHaveNoActiveMemTable();
-      File[] allWalFilesOfOneNode = WALFileUtils.listAllWALFiles(logDirectory);
+      File[] allWalFilesOfOneNode = getSortedWalFiles();
       if (allWalFilesOfOneNode == null || allWalFilesOfOneNode.length <= 1) {
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -301,7 +382,6 @@ public class WALNode implements IWALNode {
         }
         return false;
       }
-      WALFileUtils.ascSortByVersionId(allWalFilesOfOneNode);
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
@@ -413,6 +493,7 @@ public class WALNode implements IWALNode {
       }
       buffer.subtractDiskUsage(deleteFileSize);
       buffer.subtractFileNum(successfullyDeleted.size());
+      removeDeletedWalFilesFromCache(successfullyDeleted);
     }
 
     private int initFileIndexAfterFilterSafelyDeleteIndex() {
@@ -916,8 +997,7 @@ public class WALNode implements IWALNode {
     }
 
     private void updateFilesToSearch() {
-      File[] filesToSearch = WALFileUtils.listAllWALFiles(logDirectory);
-      WALFileUtils.ascSortByVersionId(filesToSearch);
+      File[] filesToSearch = getSortedWalFiles();
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
           StorageEngineMessages.STORAGE_LOG_SEARCHINDEX_RESULT_FILES_6151DCEB,
@@ -981,12 +1061,11 @@ public class WALNode implements IWALNode {
     if (bytesToFree <= 0) {
       return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
     }
-    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    File[] walFiles = getSortedWalFiles();
     if (walFiles == null || walFiles.length <= 1) {
       // No files or only the current-writing file — cannot free anything
       return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
     }
-    WALFileUtils.ascSortByVersionId(walFiles);
     // Exclude the last file (currently being written)
     long accumulated = 0;
     for (int i = 0; i < walFiles.length - 1; i++) {
@@ -1017,11 +1096,10 @@ public class WALNode implements IWALNode {
 
   @Override
   public Pair<Long, Long> getDeletionBoundBeforeTimestamp(long cutoffTimeMs) {
-    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    File[] walFiles = getSortedWalFiles();
     if (walFiles == null || walFiles.length <= 1) {
       return new Pair<>(Long.MIN_VALUE + 1, 0L);
     }
-    WALFileUtils.ascSortByVersionId(walFiles);
     int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
     if (expiredPrefixLength == 0) {
       return new Pair<>(Long.MIN_VALUE + 1, 0L);
@@ -1064,6 +1142,13 @@ public class WALNode implements IWALNode {
 
   public File getLogDirectory() {
     return logDirectory;
+  }
+
+  @TestOnly
+  File[] getCachedSortedWalFiles() {
+    return sortedWalFilesCache == null
+        ? null
+        : Arrays.copyOf(sortedWalFilesCache, sortedWalFilesCache.length);
   }
 
   /** Get the .wal file starts with the specified version id */
