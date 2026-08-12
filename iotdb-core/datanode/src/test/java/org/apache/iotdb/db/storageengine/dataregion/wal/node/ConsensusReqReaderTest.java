@@ -60,13 +60,16 @@ public class ConsensusReqReaderTest {
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
   private WALMode prevMode;
+  private boolean prevWalFileListCacheEnabled;
   private WALNode walNode;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
+    prevWalFileListCacheEnabled = config.isWalFileListCacheEnabled();
     config.setWalMode(WALMode.SYNC);
+    config.setWalFileListCacheEnabled(true);
     walNode = new WALNode(identifier, logDirectory);
   }
 
@@ -74,6 +77,7 @@ public class ConsensusReqReaderTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
+    config.setWalFileListCacheEnabled(prevWalFileListCacheEnabled);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 

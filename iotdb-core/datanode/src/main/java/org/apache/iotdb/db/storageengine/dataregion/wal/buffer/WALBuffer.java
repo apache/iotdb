@@ -122,9 +122,11 @@ public class WALBuffer extends AbstractWALBuffer {
 
   // manage wal files which have MemTableIds
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
+  private final Runnable walFileListChangedListener;
 
   public WALBuffer(String identifier, String logDirectory) throws IOException {
-    this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
+    this(
+        identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L, () -> {});
   }
 
   public WALBuffer(
@@ -134,8 +136,20 @@ public class WALBuffer extends AbstractWALBuffer {
       long startFileVersion,
       long startSearchIndex)
       throws IOException {
+    this(identifier, logDirectory, checkpointManager, startFileVersion, startSearchIndex, () -> {});
+  }
+
+  public WALBuffer(
+      String identifier,
+      String logDirectory,
+      CheckpointManager checkpointManager,
+      long startFileVersion,
+      long startSearchIndex,
+      Runnable walFileListChangedListener)
+      throws IOException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = checkpointManager;
+    this.walFileListChangedListener = walFileListChangedListener;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     allocateBuffers();
     currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
