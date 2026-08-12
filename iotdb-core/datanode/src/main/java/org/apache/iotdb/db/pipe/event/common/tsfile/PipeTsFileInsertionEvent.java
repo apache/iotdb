@@ -122,6 +122,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
   private String tsFileDedupScopeID;
+  private String tsFileParser;
   // False when generated tablet events should wait for an external progress report.
   private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
@@ -653,6 +654,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFileDedupScopeID;
   }
 
+  public String getTsFileParser() {
+    return tsFileParser;
+  }
+
+  public void setTsFileParser(final String tsFileParser) {
+    this.tsFileParser = tsFileParser;
+  }
+
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
@@ -690,9 +699,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 isTsFileSealed)
             .bindTsFileDedupScopeID(tsFileDedupScopeID)
             .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
-
     copiedEvent.hasObjectData = this.hasObjectData;
-
+    copiedEvent.setTsFileParser(tsFileParser);
     return copiedEvent;
   }
 
@@ -1312,7 +1320,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         shouldParse4Privilege
             ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
             : null,
-        this);
+        this,
+        tsFileParser);
   }
 
   public long count(final boolean skipReportOnCommit) throws Exception {
