@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.statistics;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 public class QueryPlanStatistics {
   private long analyzeCost;
   private long fetchPartitionCost;
@@ -29,12 +27,9 @@ public class QueryPlanStatistics {
   private long logicalOptimizationCost;
   private long distributionPlanCost;
   private long dispatchCost = 0;
-  // DeviceEntry materialization may involve multiple Region materializers. Use the same
-  // lock-free accumulation style as execution.fragment.QueryStatistics.
-  private final AtomicLong diskIOSizeForDeviceEntry = new AtomicLong();
-  private final AtomicLong diskIOTimeCostForDeviceEntry = new AtomicLong();
-  private final AtomicLong deviceEntrySegmentCount = new AtomicLong();
-  private final AtomicLong deviceEntrySortedRunCount = new AtomicLong();
+  private long diskIOSizeForDeviceEntryDuringFetchSchema;
+  private long diskIOTimeCostForDeviceEntryDuringFetchSchema;
+  private long deviceEntryCount;
 
   public void setAnalyzeCost(long analyzeCost) {
     this.analyzeCost = analyzeCost;
@@ -92,32 +87,24 @@ public class QueryPlanStatistics {
     return dispatchCost;
   }
 
-  public void recordDeviceEntryDiskIO(long bytes, long timeCost) {
-    diskIOSizeForDeviceEntry.addAndGet(bytes);
-    diskIOTimeCostForDeviceEntry.addAndGet(timeCost);
+  public void recordDeviceEntryDiskIODuringFetchSchema(long bytes, long timeCost) {
+    diskIOSizeForDeviceEntryDuringFetchSchema += bytes;
+    diskIOTimeCostForDeviceEntryDuringFetchSchema += timeCost;
   }
 
-  public void recordDeviceEntrySegment() {
-    deviceEntrySegmentCount.incrementAndGet();
+  public void recordDeviceEntryCount(long count) {
+    deviceEntryCount += count;
   }
 
-  public void recordDeviceEntrySortedRun() {
-    deviceEntrySortedRunCount.incrementAndGet();
+  public long getDiskIOSizeForDeviceEntryDuringFetchSchema() {
+    return diskIOSizeForDeviceEntryDuringFetchSchema;
   }
 
-  public long getDiskIOSizeForDeviceEntry() {
-    return diskIOSizeForDeviceEntry.get();
+  public long getDiskIOTimeCostForDeviceEntryDuringFetchSchema() {
+    return diskIOTimeCostForDeviceEntryDuringFetchSchema;
   }
 
-  public long getDiskIOTimeCostForDeviceEntry() {
-    return diskIOTimeCostForDeviceEntry.get();
-  }
-
-  public long getDeviceEntrySegmentCount() {
-    return deviceEntrySegmentCount.get();
-  }
-
-  public long getDeviceEntrySortedRunCount() {
-    return deviceEntrySortedRunCount.get();
+  public long getDeviceEntryCount() {
+    return deviceEntryCount;
   }
 }

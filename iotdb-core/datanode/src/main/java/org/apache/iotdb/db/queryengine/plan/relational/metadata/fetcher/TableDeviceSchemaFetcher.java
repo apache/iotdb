@@ -245,14 +245,7 @@ public class TableDeviceSchemaFetcher {
         mayContainDuplicateDevice,
         false)) {
       fetchMissingDeviceSchemaForQuery(
-          database,
-          tableInstance,
-          attributeColumns,
-          statement,
-          deviceEntryMap,
-          null,
-          queryContext,
-          null);
+          database, tableInstance, attributeColumns, statement, deviceEntryMap, null, queryContext);
     }
 
     // TODO table metadata:  implement deduplicate during schemaRegion execution
@@ -278,8 +271,7 @@ public class TableDeviceSchemaFetcher {
     if (TreeViewSchema.isTreeViewTable(tableInstance)) {
       final Map<String, List<DeviceEntry>> deviceEntryMap = new HashMap<>();
       final AtomicBoolean mayContainDuplicateDevice = new AtomicBoolean(false);
-      // pass by reference
-      final AtomicBoolean containsNonAlignedDevice = new AtomicBoolean(false);
+      boolean containsNonAlignedDevice = false;
       final ShowDevice statement = new ShowDevice(database, table);
       try (DeviceEntryMaterializer materializer =
           new DeviceEntryMaterializer(
@@ -302,21 +294,21 @@ public class TableDeviceSchemaFetcher {
           for (DeviceEntry entry : entries) {
             appendToMaterializer(materializer, entry, queryContext, true);
             if (entry instanceof NonAlignedDeviceEntry) {
-              containsNonAlignedDevice.set(true);
+              containsNonAlignedDevice = true;
             }
           }
           entries.clear();
         }
         if (needRemoteFetch) {
-          fetchMissingDeviceSchemaForQuery(
-              database,
-              tableInstance,
-              attributeColumns,
-              statement,
-              deviceEntryMap,
-              materializer,
-              queryContext,
-              containsNonAlignedDevice);
+          containsNonAlignedDevice |=
+              fetchMissingDeviceSchemaForQuery(
+                  database,
+                  tableInstance,
+                  attributeColumns,
+                  statement,
+                  deviceEntryMap,
+                  materializer,
+                  queryContext);
         }
         if (deviceEntryMap.size() > 1) {
           throw new SemanticException(
@@ -327,7 +319,7 @@ public class TableDeviceSchemaFetcher {
         final String resultDatabase =
             deviceEntryMap.isEmpty() ? null : deviceEntryMap.keySet().iterator().next();
         return new DeviceEntryDataSetResult(
-            resultDatabase, materializer.finish(), containsNonAlignedDevice.get());
+            resultDatabase, materializer.finish(), containsNonAlignedDevice);
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
@@ -357,8 +349,7 @@ public class TableDeviceSchemaFetcher {
             statement,
             cachedEntries,
             null,
-            queryContext,
-            null);
+            queryContext);
       }
       cachedEntries.put(
           database, new ArrayList<>(new LinkedHashSet<>(cachedEntries.get(database))));
@@ -383,8 +374,7 @@ public class TableDeviceSchemaFetcher {
             statement,
             cachedEntries,
             materializer,
-            queryContext,
-            null);
+            queryContext);
       }
       final DeviceEntryDataSet dataSet = materializer.finish();
       return new DeviceEntryDataSetResult(database, dataSet, false);
@@ -629,16 +619,16 @@ public class TableDeviceSchemaFetcher {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes);
   }
 
-  private void fetchMissingDeviceSchemaForQuery(
+  private boolean fetchMissingDeviceSchemaForQuery(
       final String database,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final ShowDevice statement,
       final Map<String, List<DeviceEntry>> deviceEntryMap,
       final DeviceEntryMaterializer materializer,
-      final MPPQueryContext mppQueryContext,
-      final AtomicBoolean containsNonAlignedDevice) {
+      final MPPQueryContext mppQueryContext) {
     Throwable t = null;
+    boolean containsNonAlignedDevice = false;
 
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
@@ -712,14 +702,14 @@ public class TableDeviceSchemaFetcher {
                 deviceEntryMap.get(database),
                 materializer);
           } else {
-            constructTreeResults(
-                tsBlock.get(),
-                columnHeaderList,
-                tableInstance,
-                mppQueryContext,
-                deviceEntryMap,
-                materializer,
-                containsNonAlignedDevice);
+            containsNonAlignedDevice |=
+                constructTreeResults(
+                    tsBlock.get(),
+                    columnHeaderList,
+                    tableInstance,
+                    mppQueryContext,
+                    deviceEntryMap,
+                    materializer);
           }
         }
       } else {
@@ -732,6 +722,7 @@ public class TableDeviceSchemaFetcher {
               TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }
       }
+      return containsNonAlignedDevice;
     } catch (final Throwable throwable) {
       t = throwable;
       throw throwable;
@@ -803,14 +794,14 @@ public class TableDeviceSchemaFetcher {
     }
   }
 
-  private void constructTreeResults(
+  private boolean constructTreeResults(
       final TsBlock tsBlock,
       final List<ColumnHeader> columnHeaderList,
       final TsTable tableInstance,
       final MPPQueryContext mppQueryContext,
       final Map<String, List<DeviceEntry>> deviceEntryMap,
-      final DeviceEntryMaterializer materializer,
-      final AtomicBoolean containsNonAlignedDevice) {
+      final DeviceEntryMaterializer materializer) {
+    boolean containsNonAlignedDevice = false;
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getTagNum()];
@@ -822,6 +813,7 @@ public class TableDeviceSchemaFetcher {
           columns[columns.length - 2].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, new Binary[0])
               : new NonAlignedDeviceEntry(deviceID, new Binary[0]);
+      containsNonAlignedDevice |= deviceEntry instanceof NonAlignedDeviceEntry;
       final List<DeviceEntry> deviceEntries =
           deviceEntryMap.computeIfAbsent(
               columns[columns.length - 1].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
@@ -831,11 +823,9 @@ public class TableDeviceSchemaFetcher {
         deviceEntries.add(deviceEntry);
       } else {
         appendToMaterializer(materializer, deviceEntry, mppQueryContext, false);
-        if (deviceEntry instanceof NonAlignedDeviceEntry) {
-          containsNonAlignedDevice.set(true);
-        }
       }
     }
+    return containsNonAlignedDevice;
   }
 
   private void constructNodesArrayAndAttributeMap(

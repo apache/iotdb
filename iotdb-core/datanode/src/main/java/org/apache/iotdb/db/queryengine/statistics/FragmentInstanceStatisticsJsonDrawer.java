@@ -55,12 +55,13 @@ public class FragmentInstanceStatisticsJsonDrawer {
         "fetchPartitionCostMs", formatMs(context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(
         "fetchSchemaCostMs", formatMs(context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
-    planStatistics.addProperty("diskIOSizeForDeviceEntry", context.getDiskIOSizeForDeviceEntry());
     planStatistics.addProperty(
-        "diskIOTimeCostForDeviceEntryMs",
-        formatMs(context.getDiskIOTimeCostForDeviceEntry() * NS_TO_MS_FACTOR));
-    planStatistics.addProperty("deviceEntrySegmentCount", context.getDeviceEntrySegmentCount());
-    planStatistics.addProperty("deviceEntrySortedRunCount", context.getDeviceEntrySortedRunCount());
+        "diskIOSizeForDeviceEntryDuringFetchSchema",
+        context.getDiskIOSizeForDeviceEntryDuringFetchSchema());
+    planStatistics.addProperty(
+        "diskIOTimeCostForDeviceEntryDuringFetchSchemaMs",
+        formatMs(context.getDiskIOTimeCostForDeviceEntryDuringFetchSchema() * NS_TO_MS_FACTOR));
+    planStatistics.addProperty("deviceEntryCount", context.getDeviceEntryCount());
     planStatistics.addProperty(
         "logicalPlanCostMs", formatMs(context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(

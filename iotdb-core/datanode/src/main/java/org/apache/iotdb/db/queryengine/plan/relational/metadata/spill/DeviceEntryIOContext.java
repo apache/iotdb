@@ -27,11 +27,13 @@ import java.util.concurrent.TimeUnit;
 public final class DeviceEntryIOContext {
 
   private final MPPQueryContext queryContext;
+  private final boolean duringFetchSchema;
   private final long timeoutStartNanos;
   private final long remainingTimeoutNanos;
 
-  public DeviceEntryIOContext(MPPQueryContext queryContext) {
+  public DeviceEntryIOContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
     this.queryContext = queryContext;
+    this.duringFetchSchema = duringFetchSchema;
     this.timeoutStartNanos = System.nanoTime();
     long elapsedMillis = Math.max(0, System.currentTimeMillis() - queryContext.getStartTime());
     long remainingTimeoutMillis = Math.max(0, queryContext.getTimeOut() - elapsedMillis);
@@ -46,15 +48,16 @@ public final class DeviceEntryIOContext {
   }
 
   public void recordDiskIO(long bytes, long startNanos) {
-    queryContext.recordDeviceEntryDiskIO(bytes, System.nanoTime() - startNanos);
+    long timeCost = System.nanoTime() - startNanos;
+    if (duringFetchSchema) {
+      queryContext.recordDeviceEntryDiskIODuringFetchSchema(bytes, timeCost);
+    }
     checkTimeout();
   }
 
-  public void recordSegment() {
-    queryContext.recordDeviceEntrySegment();
-  }
-
-  public void recordSortedRun() {
-    queryContext.recordDeviceEntrySortedRun();
+  public void recordDeviceEntryCount(long count) {
+    if (duringFetchSchema) {
+      queryContext.recordDeviceEntryCount(count);
+    }
   }
 }

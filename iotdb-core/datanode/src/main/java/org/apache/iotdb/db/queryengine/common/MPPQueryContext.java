@@ -528,32 +528,28 @@ public class MPPQueryContext implements IAuditEntity {
     return queryPlanStatistics.getDispatchCost();
   }
 
-  public void recordDeviceEntryDiskIO(long bytes, long timeCost) {
-    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIO(bytes, timeCost);
+  public void recordDeviceEntryDiskIODuringFetchSchema(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIODuringFetchSchema(bytes, timeCost);
   }
 
-  public void recordDeviceEntrySegment() {
-    getOrCreateQueryPlanStatistics().recordDeviceEntrySegment();
+  public void recordDeviceEntryCount(long count) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryCount(count);
   }
 
-  public void recordDeviceEntrySortedRun() {
-    getOrCreateQueryPlanStatistics().recordDeviceEntrySortedRun();
+  public long getDiskIOSizeForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringFetchSchema();
   }
 
-  public long getDiskIOSizeForDeviceEntry() {
-    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDiskIOSizeForDeviceEntry();
+  public long getDiskIOTimeCostForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringFetchSchema();
   }
 
-  public long getDiskIOTimeCostForDeviceEntry() {
-    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDiskIOTimeCostForDeviceEntry();
-  }
-
-  public long getDeviceEntrySegmentCount() {
-    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntrySegmentCount();
-  }
-
-  public long getDeviceEntrySortedRunCount() {
-    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntrySortedRunCount();
+  public long getDeviceEntryCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntryCount();
   }
 
   private QueryPlanStatistics getOrCreateQueryPlanStatistics() {

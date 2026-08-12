@@ -47,7 +47,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
       boolean rawSegment,
       MPPQueryContext queryContext) {
     this(queryId, planNodeId, thresholdInBytes, rawSegment);
-    setQueryContext(queryContext);
+    setQueryContext(queryContext, rawSegment);
   }
 
   @Override
@@ -96,6 +96,9 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
       dataSet =
           new SpilledDeviceEntryDataSet(
               queryId(), ownerDirectory(), spiller.finish(), entryCount(), !rawSegment);
+    }
+    if (ioContext() != null) {
+      ioContext().recordDeviceEntryCount(entryCount());
     }
     markFinished();
     return dataSet;

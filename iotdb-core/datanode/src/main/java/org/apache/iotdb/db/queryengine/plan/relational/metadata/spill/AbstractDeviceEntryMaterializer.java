@@ -97,8 +97,8 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   public abstract void forceSpill() throws IOException;
 
-  public final void setQueryContext(MPPQueryContext queryContext) {
-    ioContext = new DeviceEntryIOContext(queryContext);
+  protected final void setQueryContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
+    ioContext = new DeviceEntryIOContext(queryContext, duringFetchSchema);
   }
 
   protected final DeviceEntryIOContext ioContext() {

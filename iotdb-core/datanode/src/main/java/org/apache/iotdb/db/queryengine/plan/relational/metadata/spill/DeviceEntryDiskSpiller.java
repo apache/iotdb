@@ -101,7 +101,6 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
     sealedSegments.add(sealedFile);
     if (ioContext != null) {
       ioContext.recordDiskIO(0, startNanos);
-      ioContext.recordSegment();
     }
     temporaryFile = null;
     currentBytes = 0;
