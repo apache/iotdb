@@ -70,6 +70,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryReader;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
@@ -91,6 +94,8 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -746,7 +751,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      final Map<String, List<DeviceEntry>> deviceEntriesMap =
+      final DeviceEntryDataSetResult deviceEntryDataSetResult =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -756,7 +761,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                               expression, tableScanNode.getAssignments()))
                   .collect(Collectors.toList()),
               attributeColumns,
-              queryContext);
+              queryContext,
+              tableScanNode.getPlanNodeId());
+      final Map<String, List<DeviceEntry>> deviceEntriesMap =
+          readDeviceEntries(deviceEntryDataSetResult);
       if (deviceEntriesMap.size() > 1) {
         throw new SemanticException(
             DataNodeQueryMessages.TREE_DEVICE_VIEW_WITH_MULTIPLE_DATABASES
@@ -835,6 +843,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             .recordTablePlanCost(PARTITION_FETCHER, fetchPartitionCost);
         queryContext.setFetchPartitionCost(fetchPartitionCost);
       }
+    }
+
+    private Map<String, List<DeviceEntry>> readDeviceEntries(
+        final DeviceEntryDataSetResult result) {
+      final List<DeviceEntry> entries = new ArrayList<>();
+      try (DeviceEntryDataSet dataSet = result.getDataSet();
+          DeviceEntryReader reader = dataSet.openReader()) {
+        while (reader.hasNext()) {
+          entries.add(reader.next());
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+      return Collections.singletonMap(result.getDatabase(), entries);
     }
 
     @Override

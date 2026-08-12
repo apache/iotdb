@@ -55,6 +55,25 @@ public class FragmentInstanceStatisticsDrawer {
             "Fetch Schema Cost: %.3f ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
+        1,
+        String.format(
+            "Disk IO Size for DeviceEntry: %d bytes", context.getDiskIOSizeForDeviceEntry()));
+    addLine(
+        planHeader,
+        1,
+        String.format(
+            "Disk IO Time Cost for DeviceEntry: %.3f ms",
+            context.getDiskIOTimeCostForDeviceEntry() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        1,
+        String.format("DeviceEntry Segment Count: %d", context.getDeviceEntrySegmentCount()));
+    addLine(
+        planHeader,
+        1,
+        String.format("DeviceEntry Sorted Run Count: %d", context.getDeviceEntrySortedRunCount()));
+    addLine(
+        planHeader,
         0,
         String.format(
             "Logical Plan Cost: %.3f ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));

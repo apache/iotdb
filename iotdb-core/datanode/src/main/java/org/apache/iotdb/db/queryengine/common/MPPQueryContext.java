@@ -528,6 +528,41 @@ public class MPPQueryContext implements IAuditEntity {
     return queryPlanStatistics.getDispatchCost();
   }
 
+  public void recordDeviceEntryDiskIO(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIO(bytes, timeCost);
+  }
+
+  public void recordDeviceEntrySegment() {
+    getOrCreateQueryPlanStatistics().recordDeviceEntrySegment();
+  }
+
+  public void recordDeviceEntrySortedRun() {
+    getOrCreateQueryPlanStatistics().recordDeviceEntrySortedRun();
+  }
+
+  public long getDiskIOSizeForDeviceEntry() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDiskIOSizeForDeviceEntry();
+  }
+
+  public long getDiskIOTimeCostForDeviceEntry() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDiskIOTimeCostForDeviceEntry();
+  }
+
+  public long getDeviceEntrySegmentCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntrySegmentCount();
+  }
+
+  public long getDeviceEntrySortedRunCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntrySortedRunCount();
+  }
+
+  private QueryPlanStatistics getOrCreateQueryPlanStatistics() {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    return queryPlanStatistics;
+  }
+
   public void setAnalyzeCost(long analyzeCost) {
     if (queryPlanStatistics == null) {
       queryPlanStatistics = new QueryPlanStatistics();
