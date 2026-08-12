@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -41,6 +42,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +50,9 @@ import java.util.Optional;
 
 public class DeviceTableScanNode extends TableScanNode {
 
-  protected List<DeviceEntry> deviceEntries;
+  protected List<DeviceEntry> deviceEntries = Collections.emptyList();
+
+  @Nullable protected transient DeviceEntryDataSet deviceEntryDataSet;
 
   // Indicates the respective index order of tag and attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
@@ -148,7 +152,7 @@ public class DeviceTableScanNode extends TableScanNode {
             pushLimitToEachDevice,
             containsNonAlignedDevice);
     cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
-    return cloned;
+    return copyDeviceEntryDataSetTo(cloned);
   }
 
   protected static void serializeMemberVariables(
@@ -265,6 +269,28 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
+  }
+
+  public void setDeviceEntryDataSet(final DeviceEntryDataSet deviceEntryDataSet) {
+    this.deviceEntryDataSet = deviceEntryDataSet;
+    this.deviceEntries =
+        deviceEntryDataSet.isSpilled()
+            ? Collections.emptyList()
+            : deviceEntryDataSet.getInlineEntries();
+  }
+
+  @Nullable
+  public DeviceEntryDataSet getDeviceEntryDataSet() {
+    return deviceEntryDataSet;
+  }
+
+  public <T extends DeviceTableScanNode> T copyDeviceEntryDataSetTo(final T target) {
+    target.deviceEntryDataSet = deviceEntryDataSet;
+    return target;
+  }
+
+  public long getDeviceEntryCount() {
+    return deviceEntryDataSet == null ? deviceEntries.size() : deviceEntryDataSet.getEntryCount();
   }
 
   public Map<Symbol, Integer> getTagAndAttributeIndexMap() {

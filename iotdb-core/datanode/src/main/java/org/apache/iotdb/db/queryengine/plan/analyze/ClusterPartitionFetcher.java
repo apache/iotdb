@@ -48,6 +48,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryReader;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -57,6 +59,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -207,28 +210,26 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
     if (null == dataPartition) {
-      try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new StatementAnalyzeException(
-              String.format(
-                  DataNodeQueryMessages
-                      .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
-                  dataPartitionTableResp.getStatus().getMessage()));
-        }
-      } catch (final ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
-                e.getMessage()));
-      }
+      dataPartition =
+          fetchDataPartition(constructDataPartitionReqForQuery(sgNameToQueryParamsMap), true);
+    }
+    return dataPartition;
+  }
+
+  @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    final Set<TSeriesPartitionSlot> seriesPartitionSlots = collectSeriesPartitionSlots(dataSet);
+    DataPartition dataPartition =
+        partitionCache.getDataPartition(database, seriesPartitionSlots, timePartitionSlots);
+    if (null == dataPartition) {
+      dataPartition =
+          fetchDataPartition(
+              constructDataPartitionReqForQuery(
+                  database, seriesPartitionSlots, timePartitionSlots, false, false),
+              true);
     }
     return dataPartition;
   }
@@ -239,20 +240,41 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     // In this method, we must fetch from config node because it contains -oo or +oo
     // and there is no need to update cache because since we will never fetch it from cache, the
     // update operation will be only time waste
+    return fetchDataPartition(constructDataPartitionReqForQuery(sgNameToQueryParamsMap), false);
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    final Set<TSeriesPartitionSlot> seriesPartitionSlots = collectSeriesPartitionSlots(dataSet);
+    return fetchDataPartition(
+        constructDataPartitionReqForQuery(
+            database, seriesPartitionSlots, timePartitionSlots, needLeftAll, needRightAll),
+        false);
+  }
+
+  private DataPartition fetchDataPartition(
+      final TDataPartitionReq request, final boolean updateCache) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TDataPartitionTableResp dataPartitionTableResp =
-          client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+      final TDataPartitionTableResp dataPartitionTableResp = client.getDataPartitionTable(request);
       if (dataPartitionTableResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return parseDataPartitionResp(dataPartitionTableResp);
-      } else {
-        throw new StatementAnalyzeException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
-                dataPartitionTableResp.getStatus().getMessage()));
+        final DataPartition dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        if (updateCache) {
+          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
+        }
+        return dataPartition;
       }
+      throw new StatementAnalyzeException(
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AN_ERROR_OCCURRED_WHEN_EXECUTING_GETDATAPARTITION_S_D21A0011,
+              dataPartitionTableResp.getStatus().getMessage()));
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           String.format(
@@ -541,6 +563,34 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
+  }
+
+  private TDataPartitionReq constructDataPartitionReqForQuery(
+      final String database,
+      final Set<TSeriesPartitionSlot> seriesPartitionSlots,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    final TTimeSlotList sharedTimeSlotList =
+        new TTimeSlotList(timePartitionSlots, needLeftAll, needRightAll);
+    final Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotToTimeSlots = new HashMap<>();
+    for (final TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
+      seriesSlotToTimeSlots.put(seriesPartitionSlot, sharedTimeSlotList);
+    }
+    return new TDataPartitionReq(Collections.singletonMap(database, seriesSlotToTimeSlots));
+  }
+
+  private Set<TSeriesPartitionSlot> collectSeriesPartitionSlots(final DeviceEntryDataSet dataSet) {
+    final Set<TSeriesPartitionSlot> seriesPartitionSlots = new HashSet<>();
+    try (final DeviceEntryReader reader = dataSet.openReader()) {
+      while (reader.hasNext()) {
+        seriesPartitionSlots.add(
+            partitionExecutor.getSeriesPartitionSlot(reader.next().getDeviceID()));
+      }
+    } catch (final IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return seriesPartitionSlots;
   }
 
   private SchemaPartition parseSchemaPartitionTableResp(

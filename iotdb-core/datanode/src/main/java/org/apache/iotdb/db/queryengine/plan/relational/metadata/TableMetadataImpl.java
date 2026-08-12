@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -57,6 +59,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBui
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.ITableCache;
@@ -75,7 +79,6 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -1439,24 +1442,6 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
-      case SqlConstant.IRATE:
-        validateRateFunctionArguments(
-            functionName,
-            argumentTypes,
-            2,
-            DataNodeQueryMessages
-                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08);
-        break;
-      case SqlConstant.RATE:
-      case SqlConstant.INCREASE:
-      case SqlConstant.DELTA:
-        validateRateFunctionArguments(
-            functionName,
-            argumentTypes,
-            4,
-            DataNodeQueryMessages
-                .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B);
-        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -1498,10 +1483,6 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.SKEWNESS:
       case SqlConstant.KURTOSIS:
-      case SqlConstant.RATE:
-      case SqlConstant.INCREASE:
-      case SqlConstant.IRATE:
-      case SqlConstant.DELTA:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;
@@ -1631,33 +1612,6 @@ public class TableMetadataImpl implements Metadata {
     throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FUNCTION + functionName);
   }
 
-  private static void validateRateFunctionArguments(
-      String functionName,
-      List<? extends Type> argumentTypes,
-      int expectedArgumentCount,
-      String argumentCountError) {
-    if (argumentTypes.size() != expectedArgumentCount) {
-      throw new SemanticException(String.format(argumentCountError, functionName));
-    }
-    if (!CommonMetadataUtils.isSupportedMathNumericType(argumentTypes.get(0))) {
-      throw new SemanticException(
-          String.format(
-              DataNodeQueryMessages
-                  .EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434,
-              functionName));
-    }
-    for (int i = 1; i < argumentTypes.size(); i++) {
-      Type argumentType = argumentTypes.get(i);
-      if (!INT64.equals(argumentType) && !TIMESTAMP.equals(argumentType)) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages
-                    .EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3,
-                functionName));
-      }
-    }
-  }
-
   @Override
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
@@ -1677,18 +1631,20 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public Map<String, List<DeviceEntry>> indexScan(
+  public DeviceEntryDataSetResult indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
-      final MPPQueryContext context) {
+      final MPPQueryContext context,
+      final PlanNodeId planNodeId) {
     return TableDeviceSchemaFetcher.getInstance()
-        .fetchDeviceSchemaForDataQuery(
+        .fetchDeviceSchemaForDataQueryAsDataSet(
             tableName.getDatabaseName(),
             tableName.getObjectName(),
             expressionList,
             attributeColumns,
-            context);
+            context,
+            planNodeId);
   }
 
   @Override
@@ -1765,9 +1721,28 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    return partitionFetcher.getDataPartition(database, dataSet, timePartitionSlots);
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        database, dataSet, timePartitionSlots, needLeftAll, needRightAll);
   }
 }

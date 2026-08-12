@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
@@ -67,9 +66,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Conver
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
@@ -91,6 +90,8 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -746,7 +747,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      final Map<String, List<DeviceEntry>> deviceEntriesMap =
+      final DeviceEntryDataSetResult deviceEntryDataSetResult =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -756,84 +757,85 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                               expression, tableScanNode.getAssignments()))
                   .collect(Collectors.toList()),
               attributeColumns,
-              queryContext);
-      if (deviceEntriesMap.size() > 1) {
-        throw new SemanticException(
-            DataNodeQueryMessages.TREE_DEVICE_VIEW_WITH_MULTIPLE_DATABASES
-                + deviceEntriesMap.keySet()
-                + DataNodeQueryMessages.IS_UNSUPPORTED_YET);
-      }
-      final String deviceDatabase =
-          !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
-      final List<DeviceEntry> deviceEntries =
-          Objects.nonNull(deviceDatabase)
-              ? deviceEntriesMap.get(deviceDatabase)
-              : Collections.emptyList();
-
-      tableScanNode.setDeviceEntries(deviceEntries);
-      if (deviceEntries.stream()
-          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
-        tableScanNode.setContainsNonAlignedDevice();
-      }
-
-      if (tableScanNode instanceof TreeDeviceViewScanNode) {
-        ((TreeDeviceViewScanNode) tableScanNode).setTreeDBName(deviceDatabase);
-      }
-
-      final long schemaFetchCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
-      queryContext.setFetchSchemaCost(schemaFetchCost);
-
-      if (deviceEntries.isEmpty()) {
-        if (analysis.noAggregates() && !analysis.hasJoinNode()) {
-          // no device entries, queries(except aggregation and join) can be finished
-          analysis.setEmptyDataSource(true);
-          analysis.setFinishQueryAfterAnalyze();
+              queryContext,
+              tableScanNode.getPlanNodeId());
+      final DeviceEntryDataSet deviceEntryDataSet = deviceEntryDataSetResult.getDataSet();
+      boolean dataSetTransferred = false;
+      try {
+        final String deviceDatabase = deviceEntryDataSetResult.getDatabase();
+        if (deviceEntryDataSetResult.containsNonAlignedDevice()) {
+          tableScanNode.setContainsNonAlignedDevice();
         }
-      } else {
-        final Filter timeFilter =
-            tableScanNode
-                .getTimePredicate()
-                .map(
-                    value ->
-                        value.accept(
-                            new ConvertPredicateToTimeFilterVisitor(
-                                queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
-                            null))
-                .orElse(null);
-
-        tableScanNode.setTimeFilter(timeFilter);
-
-        startTime = System.nanoTime();
-        final DataPartition dataPartition =
-            fetchDataPartitionByDevices(
-                // for tree view, we need to pass actual tree db name to this method
-                tableScanNode instanceof TreeDeviceViewScanNode
-                    ? deviceDatabase
-                    : tableScanNode.getQualifiedObjectName().getDatabaseName(),
-                deviceEntries,
-                timeFilter);
-
-        if (dataPartition.getDataPartitionMap().size() > 1) {
-          throw new IllegalStateException(
-              DataNodeQueryMessages
-                  .QUERY_EXCEPTION_TABLE_MODEL_CAN_ONLY_PROCESS_DATA_ONLY_IN_ONE_DATABASE_YET_AB8C1EF5);
+        if (tableScanNode instanceof TreeDeviceViewScanNode) {
+          ((TreeDeviceViewScanNode) tableScanNode).setTreeDBName(deviceDatabase);
         }
 
-        if (dataPartition.getDataPartitionMap().isEmpty()) {
+        final long schemaFetchCost = System.nanoTime() - startTime;
+        QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
+        queryContext.setFetchSchemaCost(schemaFetchCost);
+
+        if (deviceEntryDataSet.getEntryCount() == 0) {
           if (analysis.noAggregates() && !analysis.hasJoinNode()) {
-            // no data partitions, queries(except aggregation and join) can be finished
+            // no device entries, queries(except aggregation and join) can be finished
             analysis.setEmptyDataSource(true);
             analysis.setFinishQueryAfterAnalyze();
           }
         } else {
-          analysis.upsertDataPartition(dataPartition);
+          final Filter timeFilter =
+              tableScanNode
+                  .getTimePredicate()
+                  .map(
+                      value ->
+                          value.accept(
+                              new ConvertPredicateToTimeFilterVisitor(
+                                  queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                              null))
+                  .orElse(null);
+
+          tableScanNode.setTimeFilter(timeFilter);
+
+          startTime = System.nanoTime();
+          final DataPartition dataPartition =
+              fetchDataPartitionByDeviceDataSet(
+                  // for tree view, we need to pass actual tree db name to this method
+                  tableScanNode instanceof TreeDeviceViewScanNode
+                      ? deviceDatabase
+                      : tableScanNode.getQualifiedObjectName().getDatabaseName(),
+                  deviceEntryDataSet,
+                  timeFilter);
+
+          if (dataPartition.getDataPartitionMap().size() > 1) {
+            throw new IllegalStateException(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_TABLE_MODEL_CAN_ONLY_PROCESS_DATA_ONLY_IN_ONE_DATABASE_YET_AB8C1EF5);
+          }
+
+          if (dataPartition.getDataPartitionMap().isEmpty()) {
+            if (analysis.noAggregates() && !analysis.hasJoinNode()) {
+              // no data partitions, queries(except aggregation and join) can be finished
+              analysis.setEmptyDataSource(true);
+              analysis.setFinishQueryAfterAnalyze();
+            }
+          } else {
+            analysis.upsertDataPartition(dataPartition);
+          }
+
+          final long fetchPartitionCost = System.nanoTime() - startTime;
+          QueryPlanCostMetricSet.getInstance()
+              .recordTablePlanCost(PARTITION_FETCHER, fetchPartitionCost);
+          queryContext.setFetchPartitionCost(fetchPartitionCost);
         }
 
-        final long fetchPartitionCost = System.nanoTime() - startTime;
-        QueryPlanCostMetricSet.getInstance()
-            .recordTablePlanCost(PARTITION_FETCHER, fetchPartitionCost);
-        queryContext.setFetchPartitionCost(fetchPartitionCost);
+        tableScanNode.setDeviceEntryDataSet(deviceEntryDataSet);
+        dataSetTransferred = true;
+      } finally {
+        if (!dataSetTransferred) {
+          try {
+            deviceEntryDataSet.close();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
       }
     }
 
@@ -1363,10 +1365,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return node;
     }
 
-    private DataPartition fetchDataPartitionByDevices(
+    private DataPartition fetchDataPartitionByDeviceDataSet(
         final String
             database, // for tree view, database should be the real tree db name with `root.` prefix
-        final List<DeviceEntry> deviceEntries,
+        final DeviceEntryDataSet deviceEntryDataSet,
         final Filter globalTimeFilter) {
       final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);
@@ -1379,18 +1381,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             CONFIG.getSeriesPartitionSlotNum());
       }
 
-      final List<DataPartitionQueryParam> dataPartitionQueryParams =
-          deviceEntries.stream()
-              .map(
-                  deviceEntry ->
-                      new DataPartitionQueryParam(
-                          deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right))
-              .collect(Collectors.toList());
-
       if (res.right.left || res.right.right) {
-        return metadata.getDataPartitionWithUnclosedTimeRange(database, dataPartitionQueryParams);
+        return metadata.getDataPartitionWithUnclosedTimeRange(
+            database, deviceEntryDataSet, res.left, res.right.left, res.right.right);
       } else {
-        return metadata.getDataPartition(database, dataPartitionQueryParams);
+        return metadata.getDataPartition(database, deviceEntryDataSet, res.left);
       }
     }
 

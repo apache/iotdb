@@ -352,6 +352,18 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
+    long deviceEntryBatchSize =
+        Long.parseLong(
+            properties.getProperty(
+                "table_query_device_entry_batch_size_in_bytes",
+                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
+    if (deviceEntryBatchSize <= 0) {
+      deviceEntryBatchSize =
+          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+              / memoryConfig.getQueryThreadCount()
+              / 4;
+    }
+    conf.setTableQueryDeviceEntryBatchSizeInBytes(deviceEntryBatchSize);
     String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
     for (int i = 0; i < defaultTierDirs.length; ++i) {
       defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
