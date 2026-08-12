@@ -432,6 +432,10 @@ public final class DataNodeQueryMessages {
       "不支持的数据类型 %s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_MIN_BY_FMT =
       "MaxBy/MinBy 不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_FMT =
+      "等值事件聚合不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_FMT =
+      "变化事件聚合不支持的数据类型：%s";
   public static final String TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT =
       "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =

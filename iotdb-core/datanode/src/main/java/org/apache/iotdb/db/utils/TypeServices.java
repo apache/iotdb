@@ -56,6 +56,18 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.AbstractSameTypeNumericOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualBinaryWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualBooleanWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualDoubleWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualFloatWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualIntWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.EqualLongWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationDoubleWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationFloatWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationIntWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationLongWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationWindowManager;
+import org.apache.iotdb.db.queryengine.execution.operator.window.VariationWindowParameter;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
@@ -1049,6 +1061,34 @@ public class TypeServices {
                   case ROW, UNKNOWN, VECTOR -> MaxMinByAccumulatorStrategy.unsupported(type);
                 };
 
+    public static final TypeService<EventWindowManagerProvider>
+        EVENT_WINDOW_MANAGER_PROVIDER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case INT32 ->
+                      eventWindowManagerProvider(
+                          EqualIntWindowManager::new, VariationIntWindowManager::new);
+                  case INT64 ->
+                      eventWindowManagerProvider(
+                          EqualLongWindowManager::new, VariationLongWindowManager::new);
+                  case FLOAT ->
+                      eventWindowManagerProvider(
+                          EqualFloatWindowManager::new, VariationFloatWindowManager::new);
+                  case DOUBLE ->
+                      eventWindowManagerProvider(
+                          EqualDoubleWindowManager::new, VariationDoubleWindowManager::new);
+                  case TEXT -> eventWindowManagerProvider(EqualBinaryWindowManager::new, null);
+                  case BOOLEAN -> eventWindowManagerProvider(EqualBooleanWindowManager::new, null);
+                  case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      EventWindowManagerProvider.unsupported();
+                };
+
+    private static EventWindowManagerProvider eventWindowManagerProvider(
+        final EventWindowManagerFactory equalFactory,
+        final EventWindowManagerFactory variationFactory) {
+      return new EventWindowManagerProvider(equalFactory, variationFactory);
+    }
+
     private static void updateBinaryIntermediate(
         final MaxMinByAccumulator accumulator,
         final long time,
@@ -1230,6 +1270,47 @@ public class TypeServices {
       }
     }
 
+    public static final class EventWindowManagerProvider {
+      private static final EventWindowManagerProvider UNSUPPORTED =
+          new EventWindowManagerProvider(null, null);
+
+      private final EventWindowManagerFactory equalFactory;
+      private final EventWindowManagerFactory variationFactory;
+
+      private EventWindowManagerProvider(
+          final EventWindowManagerFactory equalFactory,
+          final EventWindowManagerFactory variationFactory) {
+        this.equalFactory = equalFactory;
+        this.variationFactory = variationFactory;
+      }
+
+      private static EventWindowManagerProvider unsupported() {
+        return UNSUPPORTED;
+      }
+
+      public VariationWindowManager createEqual(
+          final VariationWindowParameter parameter, final boolean ascending) {
+        if (equalFactory == null) {
+          throw new UnSupportedDataTypeException(
+              String.format(
+                  DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_FMT,
+                  parameter.getDataType()));
+        }
+        return equalFactory.create(parameter, ascending);
+      }
+
+      public VariationWindowManager createVariation(
+          final VariationWindowParameter parameter, final boolean ascending) {
+        if (variationFactory == null) {
+          throw new UnSupportedDataTypeException(
+              String.format(
+                  DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_FMT,
+                  parameter.getDataType()));
+        }
+        return variationFactory.create(parameter, ascending);
+      }
+    }
+
     private static ExtremeValueAccumulatorStrategy extremeValueAccumulatorStrategy(
         final ExtremeValueColumnUpdater columnUpdater,
         final ExtremeValueStatisticsUpdater statisticsUpdater,
@@ -1329,6 +1410,7 @@ public class TypeServices {
       EXTREME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
       TIME_VALUE_ACCUMULATOR_STRATEGY_SERVICE.check();
       MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.check();
+      EVENT_WINDOW_MANAGER_PROVIDER_SERVICE.check();
       OUTPUT_COLUMN_SIZE_PER_LINE_SERVICE.check();
       MODE_ACCUMULATOR_PROVIDER_SERVICE.check();
     }
@@ -1425,6 +1507,11 @@ public class TypeServices {
     @FunctionalInterface
     private interface MaxMinByYBytesUpdater {
       void update(MaxMinByAccumulator accumulator, long time, byte[] bytes, int offset);
+    }
+
+    @FunctionalInterface
+    private interface EventWindowManagerFactory {
+      VariationWindowManager create(VariationWindowParameter parameter, boolean ascending);
     }
   }
 

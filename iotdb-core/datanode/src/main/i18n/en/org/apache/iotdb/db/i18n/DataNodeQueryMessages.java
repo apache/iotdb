@@ -434,6 +434,10 @@ public final class DataNodeQueryMessages {
       "Unsupported data type %s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_MIN_BY_FMT =
       "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_FMT =
+      "Unsupported data type in equal event aggregation : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_FMT =
+      "Unsupported data type in variation event aggregation : %s";
   public static final String TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT =
       "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
