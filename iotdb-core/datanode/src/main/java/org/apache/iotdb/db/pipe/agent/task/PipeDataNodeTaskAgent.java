@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
@@ -405,6 +406,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Boolean> pipeCompletedList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -438,6 +440,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
+        pipeRecentFailureList.add(
+            ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
 
         logger.ifPresent(
             l ->
@@ -457,6 +461,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeCompletedList(pipeCompletedList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeRecentFailureList(pipeRecentFailureList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -486,6 +491,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final List<Boolean> pipeCompletedList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     final List<Double> pipeRemainingTimeList = new ArrayList<>();
+    final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
@@ -519,6 +525,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeCompletedList.add(isCompleted);
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
+        pipeRecentFailureList.add(
+            ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
 
         logger.ifPresent(
             l ->
@@ -538,6 +546,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeCompletedList(pipeCompletedList);
     resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
     resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    resp.setPipeRecentFailureList(pipeRecentFailureList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
