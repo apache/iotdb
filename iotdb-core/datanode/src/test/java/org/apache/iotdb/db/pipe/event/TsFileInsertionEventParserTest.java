@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.AlignedSinglePageWholeChunkReader;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.SinglePageWholeChunkReader;
@@ -155,6 +156,46 @@ public class TsFileInsertionEventParserTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testConfiguredTsFileParserSelection() throws Exception {
+    final PipeTsFileInsertionEvent sourceEvent =
+        createPipeTsFileInsertionEventForRetryTest("configured-parser-selection.tsfile");
+
+    try (final TsFileInsertionEventParser parser =
+        new TsFileInsertionEventParserProvider(
+                null,
+                0,
+                nonalignedTsFile,
+                new PrefixTreePattern("root"),
+                null,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                sourceEvent,
+                "query")
+            .provide(false)) {
+      Assert.assertTrue(parser instanceof TsFileInsertionEventQueryParser);
+    }
+
+    try (final TsFileInsertionEventParser parser =
+        new TsFileInsertionEventParserProvider(
+                null,
+                0,
+                nonalignedTsFile,
+                new PrefixTreePattern("root"),
+                null,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                sourceEvent,
+                "scan")
+            .provide(false)) {
+      Assert.assertTrue(parser instanceof TsFileInsertionEventScanParser);
+    }
   }
 
   @Test

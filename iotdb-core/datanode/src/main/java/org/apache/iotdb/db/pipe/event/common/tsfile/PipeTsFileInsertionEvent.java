@@ -119,6 +119,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
   private String tsFileDedupScopeID;
+  private String tsFileParser;
   // False when generated tablet events should wait for an external progress report.
   private volatile boolean shouldReportGeneratedEventsOnCommit = true;
 
@@ -540,6 +541,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFileDedupScopeID;
   }
 
+  public String getTsFileParser() {
+    return tsFileParser;
+  }
+
+  public void setTsFileParser(final String tsFileParser) {
+    this.tsFileParser = tsFileParser;
+  }
+
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
@@ -553,29 +562,32 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeTsFileInsertionEvent(
-            getRawIsTableModelEvent(),
-            getSourceDatabaseNameFromDataRegion(),
-            resource,
-            tsFile,
-            isWithMod,
-            isLoaded,
-            isGeneratedByHistoricalExtractor,
-            tableNames,
-            pipeName,
-            creationTime,
-            pipeTaskMeta,
-            treePattern,
-            tablePattern,
-            userId,
-            userName,
-            cliHostname,
-            skipIfNoPrivileges,
-            startTime,
-            endTime,
-            isTsFileSealed)
-        .bindTsFileDedupScopeID(tsFileDedupScopeID)
-        .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
+    final PipeTsFileInsertionEvent copiedEvent =
+        new PipeTsFileInsertionEvent(
+                getRawIsTableModelEvent(),
+                getSourceDatabaseNameFromDataRegion(),
+                resource,
+                tsFile,
+                isWithMod,
+                isLoaded,
+                isGeneratedByHistoricalExtractor,
+                tableNames,
+                pipeName,
+                creationTime,
+                pipeTaskMeta,
+                treePattern,
+                tablePattern,
+                userId,
+                userName,
+                cliHostname,
+                skipIfNoPrivileges,
+                startTime,
+                endTime,
+                isTsFileSealed)
+            .bindTsFileDedupScopeID(tsFileDedupScopeID)
+            .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
+    copiedEvent.setTsFileParser(tsFileParser);
+    return copiedEvent;
   }
 
   @Override
@@ -1140,7 +1152,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   shouldParse4Privilege
                       ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
                       : null,
-                  this)
+                  this,
+                  tsFileParser)
               .provide(isWithMod));
       return eventParser.get();
     } catch (final Exception e) {
