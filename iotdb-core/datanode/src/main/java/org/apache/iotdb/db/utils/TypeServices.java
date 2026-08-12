@@ -290,6 +290,41 @@ public class TypeServices {
                   };
             };
 
+    // Schema evolution keeps physically compatible columns, widens supported values, and exposes
+    // incompatible historical values as nulls instead of interpreting their raw storage.
+    public static final TypeService<AlteredDataTypeColumnTransformer>
+        ALTERED_DATA_TYPE_COLUMN_TRANSFORMER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN,
+                      INT32,
+                      INT64,
+                      FLOAT,
+                      DOUBLE,
+                      TEXT,
+                      STRING,
+                      TIMESTAMP,
+                      DATE,
+                      BLOB -> {
+                    final TSDataType targetType = TSDataType.valueOf(type.getTypeEnum().name());
+                    yield (source, positionCount) -> {
+                      final TSDataType sourceType = source.getDataType();
+                      // DATE shares INT32's physical column but was historically incompatible with
+                      // a schema change to INT32, while the other shared-column pairs are reusable.
+                      if (sourceType == targetType
+                          || (targetType != TSDataType.INT32
+                              && SchemaUtils.isUsingSameColumn(sourceType, targetType))) {
+                        return source;
+                      }
+                      return targetType.isCompatible(sourceType)
+                          ? source.convertTo(targetType)
+                          : type.createNullColumn(positionCount);
+                    };
+                  }
+                  case OBJECT -> (source, positionCount) -> source;
+                  case ROW, UNKNOWN, VECTOR -> (source, positionCount) -> null;
+                };
+
     public static final TypeService<RoundTransformer> ROUND_TRANSFORMER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -813,6 +848,11 @@ public class TypeServices {
     }
 
     @FunctionalInterface
+    public interface AlteredDataTypeColumnTransformer {
+      Column transform(Column source, int positionCount);
+    }
+
+    @FunctionalInterface
     public interface RoundTransformer {
       void transform(RoundFunctionTransformer transformer, Column[] columns, ColumnBuilder builder)
           throws QueryProcessException, IOException;
@@ -853,6 +893,7 @@ public class TypeServices {
       COLUMN_BUILDER_SERVICE.check();
       VALUE_TO_DOUBLE_SERVICE.check();
       TRANSFORM_COLUMN_VALUE_WRITER_SERVICE.check();
+      ALTERED_DATA_TYPE_COLUMN_TRANSFORMER_SERVICE.check();
       ROUND_TRANSFORMER_SERVICE.check();
       DIFF_TRANSFORMER_SERVICE.check();
       NEGATION_TRANSFORMER_SERVICE.check();
@@ -1634,10 +1675,47 @@ public class TypeServices {
                   };
             };
 
+    public static final TypeService<Function<Object, Pair<Literal, String>>>
+        PREPARED_PARAMETER_LITERAL_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      value -> {
+                        final String text = Boolean.toString((Boolean) value);
+                        return new Pair<>(new BooleanLiteral(text), text);
+                      };
+                  case INT32, INT64 ->
+                      value -> {
+                        final String text = String.valueOf(value);
+                        return new Pair<>(new LongLiteral(text), text);
+                      };
+                  case FLOAT ->
+                      value -> new Pair<>(new DoubleLiteral((Float) value), String.valueOf(value));
+                  case DOUBLE ->
+                      value -> new Pair<>(new DoubleLiteral((Double) value), String.valueOf(value));
+                  case TEXT, STRING ->
+                      value -> {
+                        final String text = (String) value;
+                        return new Pair<>(
+                            new StringLiteral(text), "'" + text.replace("'", "''") + "'");
+                      };
+                  case BLOB ->
+                      value -> {
+                        final BinaryLiteral literal = new BinaryLiteral((byte[]) value);
+                        return new Pair<>(literal, "X'" + literal.toHexString() + "'");
+                      };
+                  case DATE, TIMESTAMP, OBJECT, ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new IllegalArgumentException(
+                            DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + type.getTypeEnum());
+                      };
+                };
+
     static {
       VALUE_PARSER_NO_EXCEPTION_SERVICE.check();
       VALUE_PARSER_SERVICE.check();
       AUTO_CAST_SERVICE.check();
+      PREPARED_PARAMETER_LITERAL_SERVICE.check();
     }
 
     private static NumberFormatException inconsistentValueException(

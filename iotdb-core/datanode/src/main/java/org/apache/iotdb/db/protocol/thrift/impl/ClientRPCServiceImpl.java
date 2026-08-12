@@ -48,14 +48,9 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -143,6 +138,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
@@ -216,6 +212,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.utils.Binary;
@@ -699,34 +696,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return new Pair<>(new NullLiteral(), "NULL");
       }
 
-      switch (param.type) {
-        case BOOLEAN:
-          String boolStr = (Boolean) param.value ? "true" : "false";
-          return new Pair<>(new BooleanLiteral(boolStr), boolStr);
-        case INT32:
-        case INT64:
-          String numStr = String.valueOf(param.value);
-          return new Pair<>(new LongLiteral(numStr), numStr);
-        case FLOAT:
-          String floatStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
-        case DOUBLE:
-          String doubleStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
-        case TEXT:
-        case STRING:
-          String strVal = (String) param.value;
-          // Escape single quotes for SQL
-          String escapedStr = "'" + strVal.replace("'", "''") + "'";
-          return new Pair<>(new StringLiteral(strVal), escapedStr);
-        case BLOB:
-          byte[] bytes = (byte[]) param.value;
-          String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
-          return new Pair<>(new BinaryLiteral(bytes), hexStr);
-        default:
-          throw new IllegalArgumentException(
-              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
-      }
+      return TypeServices.ValueConversion.PREPARED_PARAMETER_LITERAL_SERVICE
+          .call(Type.fromTsDataType(param.type))
+          .apply(param.value);
     }
   }
 
