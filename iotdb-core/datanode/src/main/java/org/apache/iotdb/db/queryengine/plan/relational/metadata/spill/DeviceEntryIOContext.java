@@ -42,10 +42,4 @@ public final class DeviceEntryIOContext {
     }
     checkTimeout();
   }
-
-  public void recordDeviceEntryCount(long count) {
-    if (duringFetchSchema) {
-      queryContext.recordDeviceEntryCount(count);
-    }
-  }
 }

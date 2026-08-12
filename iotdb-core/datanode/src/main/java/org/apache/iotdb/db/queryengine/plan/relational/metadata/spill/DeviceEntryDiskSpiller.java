@@ -62,8 +62,8 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
     ensureOutput();
     output.writeInt(serializedEntry.length);
     output.write(serializedEntry);
-    currentBytes += recordBytes;
     recordDiskIO(recordBytes, startNanos);
+    currentBytes += recordBytes;
   }
 
   public List<Path> finish() throws IOException {
@@ -99,9 +99,6 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
       Files.move(temporaryFile, sealedFile, StandardCopyOption.REPLACE_EXISTING);
     }
     sealedSegments.add(sealedFile);
-    if (ioContext != null) {
-      ioContext.recordDiskIO(0, startNanos);
-    }
     temporaryFile = null;
     currentBytes = 0;
   }

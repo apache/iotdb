@@ -162,7 +162,7 @@ public final class DeviceEntrySpillManager {
   }
 
   private Path rootDirectory() {
-    return Path.of(IoTDBDescriptor.getInstance().getConfig().getQueryDir(), "device-entry");
+    return Path.of(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir(), "device-entry");
   }
 
   private Path fragmentRootDirectory() {

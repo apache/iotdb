@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
@@ -47,7 +46,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
       boolean rawSegment,
       MPPQueryContext queryContext) {
     this(queryId, planNodeId, thresholdInBytes, rawSegment);
-    setQueryContext(queryContext, rawSegment);
+    setQueryContext(queryContext);
   }
 
   @Override
@@ -95,10 +94,10 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     } else {
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(), ownerDirectory(), spiller.finish(), entryCount(), !rawSegment);
+              queryId(), ownerDirectory(), spiller.finish(), entryCount(), true);
     }
-    if (ioContext() != null) {
-      ioContext().recordDeviceEntryCount(entryCount());
+    if (rawSegment && getQueryContext() != null) {
+      getQueryContext().recordDeviceEntryCount(entryCount());
     }
     markFinished();
     return dataSet;
@@ -108,12 +107,10 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     if (spiller != null) {
       return;
     }
-    Path ownerDirectory =
-        rawSegment
-            ? ensureUnregisteredOwnerDirectory(
-                Path.of(IoTDBDescriptor.getInstance().getConfig().getQueryDir(), "device-entry"))
-            : ensureOwnerDirectory();
-    createIOContextOnSpill();
+    Path ownerDirectory = ensureOwnerDirectory();
+    if (rawSegment) {
+      createIOContextOnSpill(true);
+    }
     spiller =
         new DeviceEntryDiskSpiller(
             ownerDirectory.resolve(rawSegment ? "raw" : "fi"), thresholdInBytes(), ioContext());

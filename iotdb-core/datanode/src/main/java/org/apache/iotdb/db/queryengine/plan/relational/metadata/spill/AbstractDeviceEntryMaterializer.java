@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.tsfile.external.commons.io.FileUtils;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -98,18 +97,15 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   public abstract void forceSpill() throws IOException;
 
-  protected final void setQueryContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
+  protected final void setQueryContext(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
-    this.duringFetchSchema = duringFetchSchema;
   }
-
-  private boolean duringFetchSchema;
 
   protected final DeviceEntryIOContext ioContext() {
     return ioContext;
   }
 
-  protected final DeviceEntryIOContext createIOContextOnSpill() {
+  protected final DeviceEntryIOContext createIOContextOnSpill(boolean duringFetchSchema) {
     if (ioContext == null && queryContext != null) {
       ioContext = queryContext.getOrCreateDeviceEntryIOContext(duringFetchSchema);
     }
@@ -136,23 +132,14 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     return ownerDirectory;
   }
 
-  protected final Path ensureUnregisteredOwnerDirectory(Path rootDirectory) throws IOException {
-    if (ownerDirectory == null) {
-      Path normalizedRoot = rootDirectory.normalize();
-      Path directory = normalizedRoot.resolve(queryId).resolve(planNodeId.getId()).normalize();
-      if (!directory.startsWith(normalizedRoot)) {
-        throw new IllegalArgumentException();
-      }
-      Files.createDirectories(directory);
-      ownerDirectory = directory;
-    }
-    return ownerDirectory;
-  }
-
   protected final void checkNotFinished() {
     if (finished) {
       throw new IllegalStateException();
     }
+  }
+
+  public MPPQueryContext getQueryContext() {
+    return queryContext;
   }
 
   protected final void markFinished() {

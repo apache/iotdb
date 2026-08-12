@@ -31,6 +31,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,11 +44,13 @@ import static org.junit.Assert.assertTrue;
 public class DeviceEntryMaterializerTest {
 
   private Path queryDirectory;
+  private String originalSortTmpDir;
 
   @Before
   public void setUp() throws Exception {
     queryDirectory = Files.createTempDirectory("device-entry-spill-test");
-    IoTDBDescriptor.getInstance().getConfig().setQueryDir(queryDirectory.toString());
+    originalSortTmpDir = IoTDBDescriptor.getInstance().getConfig().getSortTmpDir();
+    IoTDBDescriptor.getInstance().getConfig().setSortTmpDir(queryDirectory.toString());
   }
 
   @After
@@ -55,6 +58,7 @@ public class DeviceEntryMaterializerTest {
     DeviceEntrySpillManager.getInstance().clearStaleData();
     Files.deleteIfExists(queryDirectory.resolve("device-entry"));
     Files.deleteIfExists(queryDirectory);
+    IoTDBDescriptor.getInstance().getConfig().setSortTmpDir(originalSortTmpDir);
   }
 
   @Test
