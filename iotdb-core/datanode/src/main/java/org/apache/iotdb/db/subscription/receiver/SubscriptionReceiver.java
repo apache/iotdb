@@ -35,5 +35,26 @@ public interface SubscriptionReceiver {
 
   void handleTimeout();
 
+  /**
+   * Returns the identity of the consumer currently associated with this receiver, or {@code null}
+   * if the receiver has not completed a handshake (or has already been invalidated).
+   */
+  String getConsumerId();
+
+  /**
+   * Returns the consumer group currently associated with this receiver, or {@code null} if the
+   * receiver has not completed a handshake (or has already been invalidated).
+   */
+  String getConsumerGroupId();
+
+  /**
+   * Invalidates this receiver so that requests from an obsolete connection cannot affect a new
+   * owner.
+   */
+  void invalidateConsumer();
+
+  /** Returns whether this receiver still owns an active consumer timeout state. */
+  boolean hasActiveConsumer();
+
   long remainingMs();
 }

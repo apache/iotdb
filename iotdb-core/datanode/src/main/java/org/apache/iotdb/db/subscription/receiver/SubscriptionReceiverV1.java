@@ -128,6 +128,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile boolean consumerInvalidated;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private long consumerStateVersion;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -187,58 +188,90 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
-  public void handleExit() {
-    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
-    if (Objects.nonNull(consumerConfig)) {
-      LOGGER.info(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_REMOVE_CONSUMER_CONFIG_WHEN_HANDLING_EXIT_3827D0E8,
-          consumerConfigThreadLocal.get());
-      // we should not close the consumer here because it might reuse the previous consumption
-      // progress to continue consuming
-      // closeConsumer(consumerConfig);
-      // when handling exit, unsubscribe from topics that have already been completed as much as
-      // possible to release some resources (such as the underlying pipe) in a timely manner
-      unsubscribeCompleteTopics(consumerConfig);
-      consumerConfigThreadLocal.remove();
-    }
+  public String getConsumerId() {
+    final ConsumerConfig consumerConfig = sharedConsumerConfig;
+    return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerId();
+  }
+
+  @Override
+  public String getConsumerGroupId() {
+    final ConsumerConfig consumerConfig = sharedConsumerConfig;
+    return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerGroupId();
+  }
+
+  @Override
+  public boolean hasActiveConsumer() {
+    return Objects.nonNull(sharedConsumerConfig);
+  }
+
+  @Override
+  public void invalidateConsumer() {
     clearSharedConsumerState();
-    authenticatedUsername = null;
+  }
+
+  @Override
+  public void handleExit() {
+    synchronized (this) {
+      final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+      try {
+        if (Objects.nonNull(consumerConfig)) {
+          LOGGER.info(
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTION_REMOVE_CONSUMER_CONFIG_WHEN_HANDLING_EXIT_3827D0E8,
+              consumerConfig);
+          // We should not close the consumer here because it might reuse the previous consumption
+          // progress to continue consuming. When another connection has already taken ownership,
+          // the receiver is invalidated and even this best-effort cleanup must be skipped.
+          if (!consumerInvalidated) {
+            // When handling exit, unsubscribe from topics that have already been completed as much
+            // as possible to release some resources (such as the underlying pipe) in a timely
+            // manner.
+            unsubscribeCompleteTopics(consumerConfig);
+          }
+        }
+      } finally {
+        consumerConfigThreadLocal.remove();
+        pollTimerThreadLocal.remove();
+        authenticatedUsername = null;
+      }
+    }
   }
 
   @Override
   public void handleTimeout() {
-    final ConsumerConfig consumerConfig;
-    final long inactiveMs;
-    final long timeoutMs;
     synchronized (this) {
-      consumerConfig = sharedConsumerConfig;
+      final ConsumerConfig consumerConfig = sharedConsumerConfig;
       if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
         return;
       }
-      timeoutMs = calculateConsumerInactivityTimeoutMs(consumerConfig);
-      inactiveMs = System.currentTimeMillis() - lastActivityTimeMs;
+      final long timeoutMs = calculateConsumerInactivityTimeoutMs(consumerConfig);
+      final long inactiveMs = System.currentTimeMillis() - lastActivityTimeMs;
       if (inactiveMs <= timeoutMs) {
         return;
       }
-      clearSharedConsumerState();
-    }
 
-    LOGGER.info(
-        DataNodePipeMessages
-            .PIPE_LOG_SUBSCRIPTION_CONSUMER_IS_INACTIVE_FOR_MS_EXCEEDING_TIMEOUT_36E06B11,
-        consumerConfig,
-        inactiveMs,
-        timeoutMs);
-    try {
-      closeConsumer(consumerConfig);
-    } catch (final Exception e) {
-      LOGGER.warn(
+      final long stateVersion = consumerStateVersion;
+      LOGGER.info(
           DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_FAILED_TO_CLOSE_TIMED_OUT_CONSUMER_AFTER_MS_89CC11F1,
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_IS_INACTIVE_FOR_MS_EXCEEDING_TIMEOUT_36E06B11,
           consumerConfig,
           inactiveMs,
-          e);
+          timeoutMs);
+      try {
+        closeConsumer(consumerConfig);
+        // Clear the timeout state only after successful cleanup and only if it still represents the
+        // same consumer activation. On failure, keep it so the timeout checker can retry.
+        if (sharedConsumerConfig == consumerConfig && consumerStateVersion == stateVersion) {
+          clearSharedConsumerState();
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_FAILED_TO_CLOSE_TIMED_OUT_CONSUMER_AFTER_MS_89CC11F1,
+            consumerConfig,
+            inactiveMs,
+            e);
+      }
     }
   }
 
@@ -1084,7 +1117,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
-  private void closeConsumer(final ConsumerConfig consumerConfig) {
+  void closeConsumer(final ConsumerConfig consumerConfig) {
     // unsubscribe all subscribed topics
     final Set<String> topicNames =
         SubscriptionAgent.consumer()
@@ -1318,12 +1351,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       sharedConsumerConfig = consumerConfig;
       consumerInvalidated = false;
       lastActivityTimeMs = System.currentTimeMillis();
+      consumerStateVersion++;
     }
   }
 
-  private void clearSharedConsumerState() {
-    sharedConsumerConfig = null;
-    consumerInvalidated = true;
+  private synchronized void clearSharedConsumerState() {
+    if (Objects.nonNull(sharedConsumerConfig) || !consumerInvalidated) {
+      sharedConsumerConfig = null;
+      consumerInvalidated = true;
+      consumerStateVersion++;
+    }
   }
 
   private long calculateConsumerInactivityTimeoutMs(final ConsumerConfig consumerConfig) {
