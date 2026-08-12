@@ -40,7 +40,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -221,7 +220,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       String database, DeviceEntryDataSet dataSet, List<TTimePartitionSlot> timePartitionSlots) {
-    return getDataPartition(Collections.emptyMap());
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -237,7 +236,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
       List<TTimePartitionSlot> timePartitionSlots,
       boolean needLeftAll,
       boolean needRightAll) {
-    return getDataPartition(Collections.emptyMap());
+    throw new UnsupportedOperationException();
   }
 
   @Override

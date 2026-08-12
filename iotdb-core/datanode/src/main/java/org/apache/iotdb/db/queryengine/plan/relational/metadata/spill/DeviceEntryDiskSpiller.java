@@ -84,8 +84,6 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
     if (output == null) {
       return;
     }
-    checkTimeout();
-    long startNanos = System.nanoTime();
     output.close();
     output = null;
     Path sealedFile = directory.resolve(String.format("segment-%06d.bin", nextSegmentId++));
