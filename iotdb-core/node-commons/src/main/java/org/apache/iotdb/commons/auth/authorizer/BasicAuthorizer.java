@@ -188,6 +188,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         continue;
       }
       User user = userManager.getEntity(e.getKey());
+      if (user == null) {
+        continue;
+      }
       if (user.getMinSessionPerUser() == -1) {
         compititivePoolUsed += e.getValue();
         continue;
