@@ -1349,7 +1349,7 @@ public abstract class AlignedTVList extends TVList {
 
   /** Initial list-container memory before the first aligned row is written. */
   public static long alignedTvListInitialMemCost(int measurementColumnCount) {
-    long arrayListShallowSize = RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+    long arrayListShallowSize = MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE;
     long listWithReferencesSize =
         arrayListShallowSize + RamUsageEstimator.sizeOfObjectArray(measurementColumnCount);
     return 2 * listWithReferencesSize
@@ -1564,7 +1564,7 @@ public abstract class AlignedTVList extends TVList {
               - RamUsageEstimator.sizeOfObjectArray(oldColumnCount);
     }
     long newColumnContainerCost =
-        RamUsageEstimator.shallowSizeOf(new ArrayList<>())
+        MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
             + (timestamps.isEmpty() ? 0 : RamUsageEstimator.sizeOfObjectArray(0));
     return size + newColumnCount * newColumnContainerCost;
   }
