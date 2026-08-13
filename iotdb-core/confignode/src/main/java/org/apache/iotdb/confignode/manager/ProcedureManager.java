@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -1011,9 +1012,13 @@ public class ProcedureManager {
   }
 
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
-    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     final TDataNodeLocation targetDataNode =
-        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+    if (targetDataNode == null) {
+      return targetDataNodeNotExistStatus(
+          req.getDataNodeId(), TSStatusCode.RECONSTRUCT_REGION_ERROR);
+    }
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
@@ -1051,8 +1056,16 @@ public class ProcedureManager {
   }
 
   public TSStatus extendRegions(TExtendRegionReq req) {
+    final TDataNodeLocation targetDataNode =
+        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+    if (targetDataNode == null) {
+      return targetDataNodeNotExistStatus(req.getDataNodeId(), TSStatusCode.EXTEND_REGION_ERROR);
+    }
     return processExtendOrRemoveRegions(
-        req.getRegionId(), req, this::extendOneRegion, TSStatusCode.EXTEND_REGION_ERROR);
+        req.getRegionId(),
+        req,
+        (regionId, request) -> extendOneRegion(regionId, request, targetDataNode),
+        TSStatusCode.EXTEND_REGION_ERROR);
   }
 
   public TSStatus removeRegions(TRemoveRegionReq req) {
@@ -1098,7 +1111,8 @@ public class ProcedureManager {
     return resp;
   }
 
-  private TSStatus extendOneRegion(int theRegionId, TExtendRegionReq req) {
+  private TSStatus extendOneRegion(
+      int theRegionId, TExtendRegionReq req, TDataNodeLocation targetDataNode) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionId;
@@ -1112,9 +1126,6 @@ public class ProcedureManager {
             .setMessage("get region group id fail");
       }
 
-      // find target dn
-      final TDataNodeLocation targetDataNode =
-          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
       // select coordinator for adding peer
       RegionMaintainHandler handler = env.getRegionMaintainHandler();
       final TDataNodeLocation coordinator =
@@ -1139,6 +1150,20 @@ public class ProcedureManager {
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+  }
+
+  private TDataNodeLocation getRegisteredDataNodeLocationOrNull(int dataNodeId) {
+    TDataNodeConfiguration dataNodeConfiguration =
+        configManager.getNodeManager().getRegisteredDataNode(dataNodeId);
+    return dataNodeConfiguration == null ? null : dataNodeConfiguration.getLocation();
+  }
+
+  private TSStatus targetDataNodeNotExistStatus(int dataNodeId, TSStatusCode statusCode) {
+    return new TSStatus(statusCode.getStatusCode())
+        .setMessage(
+            String.format(
+                ManagerMessages.MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF,
+                dataNodeId));
   }
 
   private TSStatus removeOneRegion(int theRegionId, TRemoveRegionReq req) {
