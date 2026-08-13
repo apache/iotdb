@@ -323,7 +323,7 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create database test_show_create_db with (ttl=300, max_schema_region_group_num=DEFAULT, max_data_region_group_num=DEFAULT, time_partition_interval=100000)");
+          "create database test_show_create_db with (ttl=300, max_schema_region_group_num=DEFAULT, max_data_region_group_num=DEFAULT, time_partition_origin=2000, time_partition_interval=100000)");
 
       try (final ResultSet resultSet =
           statement.executeQuery("show create database test_show_create_db")) {
@@ -334,6 +334,7 @@ public class IoTDBDatabaseIT {
             createDatabaseSQL,
             createDatabaseSQL.startsWith("CREATE DATABASE \"test_show_create_db\" WITH ("));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("ttl=300"));
+        assertTrue(createDatabaseSQL, createDatabaseSQL.contains("time_partition_origin=2000"));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("time_partition_interval=100000"));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_schema_region_group_num="));
         assertTrue(createDatabaseSQL, createDatabaseSQL.contains("max_data_region_group_num="));
@@ -577,7 +578,8 @@ public class IoTDBDatabaseIT {
                   "exception_message,STRING,ATTRIBUTE,",
                   "remaining_event_count,INT64,ATTRIBUTE,",
                   "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,",
-                  "is_degraded,BOOLEAN,ATTRIBUTE,")));
+                  "is_degraded,BOOLEAN,ATTRIBUTE,",
+                  "recent_failures,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -699,7 +701,7 @@ public class IoTDBDatabaseIT {
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from pipes"),
-          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,is_degraded,",
+          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,is_degraded,recent_failures,",
           Collections.emptySet());
 
       // No auth needed

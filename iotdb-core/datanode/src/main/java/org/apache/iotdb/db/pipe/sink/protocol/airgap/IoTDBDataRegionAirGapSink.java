@@ -475,7 +475,12 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length(), dataBaseName),
+              modFile.getName(),
+              modFile.length(),
+              tsFile.getName(),
+              tsFile.length(),
+              dataBaseName,
+              shouldWaitForSchemaBeforeLoad),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -490,7 +495,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              tsFile.getName(), tsFile.length(), dataBaseName),
+              tsFile.getName(), tsFile.length(), dataBaseName, shouldWaitForSchemaBeforeLoad),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -517,11 +522,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payload =
             readLength == readFileBufferSize

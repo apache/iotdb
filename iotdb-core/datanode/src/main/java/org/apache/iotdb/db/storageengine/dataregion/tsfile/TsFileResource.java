@@ -1614,7 +1614,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
   private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
     ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
-    newMFile.getFile().delete();
+    FileUtils.deleteFileIfExist(newMFile.getFile());
     try {
       for (Modification oldMod : oldModFile.getModifications()) {
         newMFile.write(new TreeDeletionEntry((Deletion) oldMod));

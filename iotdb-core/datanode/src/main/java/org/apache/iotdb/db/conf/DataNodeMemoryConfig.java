@@ -33,6 +33,13 @@ import org.slf4j.LoggerFactory;
 public class DataNodeMemoryConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeMemoryConfig.class);
 
+  private static final int LEGACY_QUERY_MEMORY_COMPONENT_COUNT = 8;
+  private static final int QUERY_MEMORY_COMPONENT_COUNT = 9;
+  private static final int SUBSCRIPTION_MEMORY_INDEX = 8;
+  private static final int[] DEFAULT_QUERY_MEMORY_PROPORTIONS = {
+    1, 100, 200, 50, 200, 200, 200, 50, 250
+  };
+
   public static final String SCHEMA_CACHE = "SchemaCache";
   public static final String SCHEMA_REGION = "SchemaRegion";
   public static final String PARTITION_CACHE = "PartitionCache";
@@ -130,6 +137,9 @@ public class DataNodeMemoryConfig {
 
   /** Memory manager proportion for timeIndex */
   private MemoryManager timeIndexMemoryManager;
+
+  /** Memory manager for subscription */
+  private MemoryManager subscriptionMemoryManager;
 
   /** Memory manager for the mtree */
   private MemoryManager schemaEngineMemoryManager;
@@ -464,6 +474,55 @@ public class DataNodeMemoryConfig {
             "Compaction", compactionMemorySize - fixedMemoryCost);
   }
 
+  static int[] resolveQueryMemoryProportions(
+      final String configuredProportions, final boolean subscriptionEnabled) {
+    final int[] resolvedProportions = DEFAULT_QUERY_MEMORY_PROPORTIONS.clone();
+    if (configuredProportions != null) {
+      final String[] proportions = configuredProportions.split(":");
+      if (proportions.length != LEGACY_QUERY_MEMORY_COMPONENT_COUNT
+          && proportions.length != QUERY_MEMORY_COMPONENT_COUNT) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeMiscMessages
+                    .EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941,
+                proportions.length));
+      }
+      for (int i = 0; i < proportions.length; i++) {
+        resolvedProportions[i] = Integer.parseInt(proportions[i].trim());
+        if (resolvedProportions[i] < 0) {
+          throw new IllegalArgumentException(
+              String.format(
+                  DataNodeMiscMessages
+                      .EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75,
+                  i + 1,
+                  resolvedProportions[i]));
+        }
+      }
+      if (proportions.length == LEGACY_QUERY_MEMORY_COMPONENT_COUNT) {
+        int legacyProportionSum = 0;
+        for (int i = 0; i < LEGACY_QUERY_MEMORY_COMPONENT_COUNT; i++) {
+          legacyProportionSum += resolvedProportions[i];
+        }
+        resolvedProportions[SUBSCRIPTION_MEMORY_INDEX] = legacyProportionSum / 4;
+      }
+    }
+    if (!subscriptionEnabled) {
+      resolvedProportions[SUBSCRIPTION_MEMORY_INDEX] = 0;
+    }
+    int proportionSum = 0;
+    for (final int proportion : resolvedProportions) {
+      proportionSum += proportion;
+    }
+    if (proportionSum <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6,
+              proportionSum));
+    }
+    return resolvedProportions;
+  }
+
   @SuppressWarnings("squid:S3518")
   private void initQueryEngineMemoryAllocate(
       MemoryManager queryEngineMemoryManager, TrimProperties properties) {
@@ -494,49 +553,40 @@ public class DataNodeMemoryConfig {
       LOGGER.error(String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
 
+    long maxMemoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
-    long maxMemoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
-
-    long bloomFilterCacheMemorySize = maxMemoryAvailable / 1001;
-    long chunkCacheMemorySize = maxMemoryAvailable * 100 / 1001;
-    long timeSeriesMetaDataCacheMemorySize = maxMemoryAvailable * 200 / 1001;
-    long coordinatorMemorySize = maxMemoryAvailable * 50 / 1001;
-    long operatorsMemorySize = maxMemoryAvailable * 200 / 1001;
-    long dataExchangeMemorySize = maxMemoryAvailable * 200 / 1001;
-    long timeIndexMemorySize = maxMemoryAvailable * 200 / 1001;
-    if (queryMemoryAllocateProportion != null) {
-      String[] proportions = queryMemoryAllocateProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      if (proportionSum != 0) {
-        try {
-          bloomFilterCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
-          chunkCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
-          timeSeriesMetaDataCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
-          coordinatorMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
-          operatorsMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
-          dataExchangeMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
-          timeIndexMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
-        } catch (Exception e) {
-          throw new IllegalArgumentException(
-              String.format(
-                  DataNodeMiscMessages
-                      .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2,
-                  queryMemoryAllocateProportion),
-              e);
-        }
-      }
+    boolean subscriptionEnabled =
+        Boolean.parseBoolean(
+            properties.getProperty("subscription_enabled", Boolean.TRUE.toString()));
+    final int[] queryMemoryProportions;
+    try {
+      queryMemoryProportions =
+          resolveQueryMemoryProportions(queryMemoryAllocateProportion, subscriptionEnabled);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2,
+              queryMemoryAllocateProportion),
+          e);
     }
+    int proportionSum = 0;
+    for (int proportion : queryMemoryProportions) {
+      proportionSum += proportion;
+    }
+
+    long bloomFilterCacheMemorySize =
+        maxMemoryAvailable * queryMemoryProportions[0] / proportionSum;
+    long chunkCacheMemorySize = maxMemoryAvailable * queryMemoryProportions[1] / proportionSum;
+    long timeSeriesMetaDataCacheMemorySize =
+        maxMemoryAvailable * queryMemoryProportions[2] / proportionSum;
+    long coordinatorMemorySize = maxMemoryAvailable * queryMemoryProportions[3] / proportionSum;
+    long operatorsMemorySize = maxMemoryAvailable * queryMemoryProportions[4] / proportionSum;
+    long dataExchangeMemorySize = maxMemoryAvailable * queryMemoryProportions[5] / proportionSum;
+    long timeIndexMemorySize = maxMemoryAvailable * queryMemoryProportions[6] / proportionSum;
+    long subscriptionMemorySize =
+        maxMemoryAvailable * queryMemoryProportions[SUBSCRIPTION_MEMORY_INDEX] / proportionSum;
 
     // metadata cache is disabled, we need to move all their allocated memory to other parts
     if (!isMetaDataCacheEnable()) {
@@ -567,6 +617,9 @@ public class DataNodeMemoryConfig {
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
+    subscriptionMemoryManager =
+        queryEngineMemoryManager.getOrCreateMemoryManager(
+            "Subscription", subscriptionMemorySize, true);
 
     // must be called after dataExchangeMemoryManager being inited.
     setQueryThreadCount(
@@ -728,6 +781,10 @@ public class DataNodeMemoryConfig {
 
   public MemoryManager getTimeIndexMemoryManager() {
     return timeIndexMemoryManager;
+  }
+
+  public MemoryManager getSubscriptionMemoryManager() {
+    return subscriptionMemoryManager;
   }
 
   public MemoryManager getSchemaEngineMemoryManager() {

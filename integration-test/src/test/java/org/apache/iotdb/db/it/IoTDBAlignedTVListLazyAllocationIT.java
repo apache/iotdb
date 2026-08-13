@@ -83,10 +83,7 @@ public class IoTDBAlignedTVListLazyAllocationIT {
             * NEW_COLUMN_COUNT
             * AlignedTVList.valueListArrayMemCost(TSDataType.INT64);
     long lazyAllocationCost =
-        (long) historicalBlockCount
-                * NEW_COLUMN_COUNT
-                * AlignedTVList.valueListArrayMemCostWithoutPrimitiveArray()
-            + (long) NEW_COLUMN_COUNT * AlignedTVList.primitiveArrayMemCost(TSDataType.INT64);
+        (long) NEW_COLUMN_COUNT * AlignedTVList.valueListArrayMemCost(TSDataType.INT64);
     long dataNodeMaxHeapSize = DATANODE_MAX_HEAP_SIZE_IN_MB * 1024L * 1024L;
 
     Assert.assertTrue(

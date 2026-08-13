@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.commons.subscription.consumer;
 
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
@@ -88,5 +90,28 @@ public class ConsumerGroupDeSerTest {
     Assert.assertTrue(
         consumerGroupMeta.getConsumersSubscribingTopic("test_topic").contains("test_consumer1"));
     Assert.assertTrue(copiedConsumerGroupMeta.getConsumersSubscribingTopic("test_topic").isEmpty());
+  }
+
+  @Test
+  public void testConsumerGroupShouldRejectMixedSqlDialects() {
+    final Map<String, String> treeConsumerAttributes = new HashMap<>();
+    treeConsumerAttributes.put("username", "user");
+    treeConsumerAttributes.put("password", "password");
+    treeConsumerAttributes.put(
+        ConsumerConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    final Map<String, String> tableConsumerAttributes = new HashMap<>(treeConsumerAttributes);
+    tableConsumerAttributes.put(
+        ConsumerConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group", 1, new ConsumerMeta("tree_consumer", 1, treeConsumerAttributes));
+
+    Assert.assertThrows(
+        SubscriptionException.class,
+        () ->
+            consumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(
+                new ConsumerMeta("table_consumer", 2, tableConsumerAttributes)));
   }
 }

@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
@@ -102,6 +103,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -199,6 +201,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return Collections.emptyList();
     }
 
+    carryOverLocalProgressIndexForAlter(pipeMetaListFromCoordinator);
+
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
 
@@ -215,6 +219,88 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     return exceptionMessages;
+  }
+
+  /**
+   * Carry the committed progress of an old local task into an altered task when it is safe to do
+   * so. The old task is dropped before the new task is created, therefore this must run before
+   * {@link PipeTaskAgent#handlePipeMetaChangesInternal(List)} starts applying the metadata list.
+   *
+   * <p>We deliberately only carry progress when the old and new task stay on this DataNode and
+   * their realtime-only modes are unchanged. Mode changes have explicit progress semantics in the
+   * ConfigNode metadata (for example, realtime-only to historical resets to {@code
+   * MinimumProgressIndex}), and leader changes must use the coordinator checkpoint because the old
+   * task is not local to the new leader.
+   */
+  private void carryOverLocalProgressIndexForAlter(
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
+    for (final PipeMeta droppedPipeMeta : pipeMetaListFromCoordinator) {
+      if (droppedPipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.DROPPED) {
+        continue;
+      }
+
+      final PipeStaticMeta oldStaticMeta = droppedPipeMeta.getStaticMeta();
+      final PipeMeta localOldPipeMeta = pipeMetaKeeper.getPipeMeta(oldStaticMeta);
+      if (localOldPipeMeta == null) {
+        continue;
+      }
+
+      for (final PipeMeta updatedPipeMeta : pipeMetaListFromCoordinator) {
+        if (updatedPipeMeta == droppedPipeMeta
+            || updatedPipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED
+            || !oldStaticMeta.getPipeName().equals(updatedPipeMeta.getStaticMeta().getPipeName())
+            || oldStaticMeta.visibleUnderTableModel()
+                != updatedPipeMeta.getStaticMeta().visibleUnderTableModel()) {
+          continue;
+        }
+
+        carryOverLocalProgressIndexForAlter(
+            oldStaticMeta,
+            localOldPipeMeta,
+            updatedPipeMeta,
+            CONFIG.getDataNodeId(),
+            (staticMeta, consensusGroupId) ->
+                pipeTaskManager.getPipeTask(staticMeta, consensusGroupId) != null);
+      }
+    }
+  }
+
+  static void carryOverLocalProgressIndexForAlter(
+      final PipeStaticMeta oldStaticMeta,
+      final PipeMeta localOldPipeMeta,
+      final PipeMeta updatedPipeMeta,
+      final int localNodeId,
+      final BiPredicate<PipeStaticMeta, Integer> localTaskExists) {
+    final PipeStaticMeta updatedStaticMeta = updatedPipeMeta.getStaticMeta();
+
+    // A mode change has an explicit cutover/reset meaning in ConfigNode. In particular, a
+    // realtime-only -> historical alter must retain MinimumProgressIndex to scan old files.
+    if (PipeTaskAgent.isRealtimeOnlyPipe(oldStaticMeta.getSourceParameters())
+        != PipeTaskAgent.isRealtimeOnlyPipe(updatedStaticMeta.getSourceParameters())) {
+      return;
+    }
+
+    final Map<Integer, PipeTaskMeta> localTaskMetaMap =
+        localOldPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+    final Map<Integer, PipeTaskMeta> updatedTaskMetaMap =
+        updatedPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+    for (final Map.Entry<Integer, PipeTaskMeta> entry : updatedTaskMetaMap.entrySet()) {
+      final int consensusGroupId = entry.getKey();
+      final PipeTaskMeta updatedTaskMeta = entry.getValue();
+      final PipeTaskMeta localTaskMeta = localTaskMetaMap.get(consensusGroupId);
+
+      // Only the old task's actual leader owns an authoritative local checkpoint. Requiring the
+      // new task to stay on the same node also avoids losing the checkpoint during leader change.
+      if (localTaskMeta == null
+          || localTaskMeta.getLeaderNodeId() != localNodeId
+          || updatedTaskMeta.getLeaderNodeId() != localNodeId
+          || !localTaskExists.test(oldStaticMeta, consensusGroupId)) {
+        continue;
+      }
+
+      updatedTaskMeta.updateProgressIndex(localTaskMeta.getProgressIndex());
+    }
   }
 
   private Set<Integer> clearSchemaRegionListeningQueueIfNecessary(
@@ -240,11 +326,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         }
 
         final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-        if (progressIndex instanceof MetaProgressIndex) {
-          if (((MetaProgressIndex) progressIndex).getIndex() + 1
+        final Optional<MetaProgressIndex> metaProgressIndex =
+            Objects.isNull(progressIndex)
+                ? Optional.empty()
+                : progressIndex.getProgressIndexByType(MetaProgressIndex.class);
+        if (metaProgressIndex.isPresent()) {
+          if (metaProgressIndex.get().getIndex() + 1
               < schemaRegionId2ListeningQueueNewFirstIndex.getOrDefault(id, Long.MAX_VALUE)) {
             schemaRegionId2ListeningQueueNewFirstIndex.put(
-                id, ((MetaProgressIndex) progressIndex).getIndex() + 1);
+                id, metaProgressIndex.get().getIndex() + 1);
           }
         } else {
           // Do not clear "minimumProgressIndex"s related queues to avoid clearing
@@ -469,6 +559,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(
                 ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
                     .getGlobalTsFileEpochDegraded()));
+        report.pipeRecentFailureList.add(
+            ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
 
         logger.ifPresent(
             l ->
@@ -518,6 +610,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     private final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     private final List<Double> pipeRemainingTimeList = new ArrayList<>();
     private final List<Integer> pipeDegradedStatusList = new ArrayList<>();
+    private final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
 
     private void setTo(final TDataNodeHeartbeatResp resp) {
       resp.setPipeMetaList(pipeMetaBinaryList);
@@ -525,6 +618,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
       resp.setPipeRemainingTimeList(pipeRemainingTimeList);
       resp.setPipeDegradedStatusList(pipeDegradedStatusList);
+      resp.setPipeRecentFailureList(pipeRecentFailureList);
     }
 
     private void setTo(final TPipeHeartbeatResp resp) {
@@ -533,6 +627,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
       resp.setPipeRemainingTimeList(pipeRemainingTimeList);
       resp.setPipeDegradedStatusList(pipeDegradedStatusList);
+      resp.setPipeRecentFailureList(pipeRecentFailureList);
     }
   }
 

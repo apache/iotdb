@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
@@ -33,6 +35,29 @@ public class PipeRealtimeDataRegionSourceTest {
 
   private static final String TEST_REFERENCE_HOLDER =
       PipeRealtimeDataRegionSourceTest.class.getName();
+
+  @Test
+  public void timePartitionBoundsRespectDatabaseOrigin() {
+    final String database = "pipe_origin.db";
+    final TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName(database);
+    schema.setTimePartitionOrigin(1050L);
+    schema.setTimePartitionInterval(100L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig(database, schema);
+
+    try {
+      Assert.assertEquals(
+          1L, PipeRealtimeDataRegionSource.getStartTimePartitionIdLowerBound(1150L, database));
+      Assert.assertEquals(
+          1L, PipeRealtimeDataRegionSource.getEndTimePartitionIdUpperBound(1150L, database));
+      Assert.assertEquals(
+          2L, PipeRealtimeDataRegionSource.getStartTimePartitionIdLowerBound(1151L, database));
+      Assert.assertEquals(
+          0L, PipeRealtimeDataRegionSource.getEndTimePartitionIdUpperBound(1151L, database));
+    } finally {
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(database);
+    }
+  }
 
   @Test
   public void progressReportEventReleasesDroppedHeartbeatEvent() throws Exception {

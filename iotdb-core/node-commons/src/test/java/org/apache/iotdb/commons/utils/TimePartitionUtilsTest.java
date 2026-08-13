@@ -23,11 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class TimePartitionUtilsTest {
 
@@ -107,6 +109,32 @@ public class TimePartitionUtilsTest {
     Assert.assertTrue(actualSlot.getStartTime() > 0);
     long upperBound = TimePartitionUtils.getTimePartitionUpperBound(testTime, "global");
     assertEquals(Long.MAX_VALUE, upperBound);
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionIdDoesNotOverflow() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("overflow.db");
+    schema.setTimePartitionOrigin(1000L);
+    schema.setTimePartitionInterval(100L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("overflow.db", schema);
+
+    assertEquals(
+        -92233720368547769L, TimePartitionUtils.getTimePartitionId(Long.MIN_VALUE, "overflow.db"));
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionFilterPruning() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("filter.db");
+    schema.setTimePartitionOrigin(1000L);
+    schema.setTimePartitionInterval(100L);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("filter.db", schema);
+
+    assertFalse(TimePartitionUtils.satisfyTimePartition(TimeFilterApi.eq(1200L), 1L, "filter.db"));
+    assertFalse(
+        TimePartitionUtils.satisfyTimePartition(
+            TimeFilterApi.eq(TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL), 0L));
   }
 
   @Test

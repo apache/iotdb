@@ -588,8 +588,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      (isTableModel ? tableModelMTree : treeModelMTree)
-          .checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(databaseName);
+      for (final String node : databasePath.getNodes()) {
+        if (node.isEmpty()) {
+          throw new IllegalPathException(databaseName);
+        }
+      }
+      (isTableModel ? tableModelMTree : treeModelMTree).checkDatabaseAlreadySet(databasePath);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -807,7 +812,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return tmpFile.renameTo(snapshotFile);
     } finally {
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(

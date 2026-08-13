@@ -3204,7 +3204,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
-    if (!temporaryTopicMeta.getConfig().isConsensusMode()) {
+    if (!temporaryTopicMeta.getConfig().isIncrementalMode()) {
       try {
         PipeDataNodeAgent.plugin()
             .validate(

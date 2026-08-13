@@ -24,6 +24,9 @@ public final class CliMessages {
   // CliContext
   public static final String EXITING_WITH_CODE = "Exiting with code %d";
 
+  // Cli
+  public static final String SUCCESSFULLY_LOGIN_AT = "Successfully login at %s";
+
   // IoTDBDataBackTool
   public static final String TARGET_DIR_EMPTY =
       " -targetdir cannot be empty， The backup folder must be specified";
@@ -65,6 +68,9 @@ public final class CliMessages {
   public static final String TIMESTAMP_CANNOT_CONVERT = "Timestamp can not convert to %s";
   public static final String BLOB_CANNOT_CONVERT = "Blob can not convert to %s";
   public static final String CANNOT_CONVERT = "%s can not convert to %s";
+  public static final String
+      MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
+          "Invalid args: Required values for option table not provided.";
 
   private CliMessages() {}
   // ---------------------------------------------------------------------------

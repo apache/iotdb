@@ -116,6 +116,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     this.singleDevice = true;
   }
 
+  public boolean isSingleDevice() {
+    return singleDevice;
+  }
+
   public List<Binary[]> getObjectColumns() {
     List<Binary[]> objectColumns = new ArrayList<>();
     for (int i = 0;
@@ -324,6 +328,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         columnCategories[i].serialize(stream);
       }
     }
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    int size = super.serializedAttributesSize();
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += Byte.BYTES;
+      }
+    }
+    return size;
   }
 
   @Override

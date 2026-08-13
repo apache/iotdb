@@ -327,6 +327,16 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
+  protected int serializedAttributesSize() {
+    int size =
+        PlanNodeType.BYTES + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath()) + Integer.BYTES;
+    for (InsertRowNode node : insertRowNodeList) {
+      size += Long.BYTES + node.serializedMeasurementsAndValuesSize();
+    }
+    return size + insertRowNodeIndexList.size() * Integer.BYTES;
+  }
+
+  @Override
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
     insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByPipe);

@@ -52,6 +52,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
+import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -1076,6 +1079,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           setConfigurationStatement.getNeededPrivileges(),
           context);
     } catch (IOException e) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              context.setResult(false).setAuditLogOperation(AuditLogOperation.CONTROL), () -> "");
       throw new AccessDeniedException(DataNodeQueryMessages.FAILED_TO_CHECK_CONFIG_ITEM_PERMISSION);
     }
     setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
@@ -1631,18 +1637,35 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
-    context.setQueryType(node.getQueryType());
-    node.setExecutedByUserId(context.getUserId());
-    TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AccessDeniedException(status.getMessage());
+    PasswordChangeAuditContext passwordAuditContext =
+        PasswordChangeAuditContext.forTableStatement(node, context.getSession());
+    UserRoleModificationAuditContext userRoleAuditContext =
+        UserRoleModificationAuditContext.forTableStatement(
+            node, context.getSession(), context.getSql());
+    boolean executionDelegated = false;
+    try {
+      context.setQueryType(node.getQueryType());
+      node.setExecutedByUserId(context.getUserId());
+      TSStatus status = node.checkStatementIsValid(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AccessDeniedException(status.getMessage());
+      }
+      accessControl.checkUserCanRunRelationalAuthorStatement(
+          context.getSession().getUserName(), node, context);
+      if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
+        visitUpdateUser(node);
+      }
+      IConfigTask task =
+          PasswordChangeAuditTask.wrap(
+              new RelationalAuthorizerTask(node, userRoleAuditContext), passwordAuditContext);
+      executionDelegated = true;
+      return task;
+    } finally {
+      if (!executionDelegated) {
+        passwordAuditContext.log(null);
+        userRoleAuditContext.log(null);
+      }
     }
-    accessControl.checkUserCanRunRelationalAuthorStatement(
-        context.getSession().getUserName(), node, context);
-    if (node.getAuthorType() == AuthorRType.UPDATE_USER) {
-      visitUpdateUser(node);
-    }
-    return new RelationalAuthorizerTask(node);
   }
 
   private void visitUpdateUser(RelationalAuthorStatement node) {
@@ -1664,7 +1687,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1684,7 +1707,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   @Override
   public IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    accessControl.checkUserGlobalSysPrivilege(context);
+    accessControl.checkUserGlobalSysPrivilege(context, AuditLogOperation.DDL, node::getUdfName);
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 

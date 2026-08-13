@@ -259,17 +259,17 @@ public class TimePartitionUtils {
 
   public static long getTimePartitionId(long time, String database) {
     DatabaseTimePartitionConfig config = getDatabaseConfig(database);
-    time -= config.getTimePartitionOrigin();
-    return time > 0 || time % config.getTimePartitionInterval() == 0
-        ? time / config.getTimePartitionInterval()
-        : time / config.getTimePartitionInterval() - 1;
+    return config.isOriginMayCauseOverflow()
+        ? getTimePartitionIdWithoutOverflow(
+            time, config.getTimePartitionOrigin(), config.getTimePartitionInterval())
+        : getTimePartitionId(
+            time, config.getTimePartitionOrigin(), config.getTimePartitionInterval());
   }
 
   public static long getTimePartitionId(long time) {
-    time -= timePartitionOrigin;
-    return time > 0 || time % timePartitionInterval == 0
-        ? time / timePartitionInterval
-        : time / timePartitionInterval - 1;
+    return originMayCauseOverflow
+        ? getTimePartitionIdWithoutOverflow(time, timePartitionOrigin, timePartitionInterval)
+        : getTimePartitionId(time, timePartitionOrigin, timePartitionInterval);
   }
 
   public static long getStartTimeByPartitionId(long partitionId, String database) {
@@ -319,7 +319,7 @@ public class TimePartitionUtils {
     }
     DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     long partitionEndTime =
-        partitionStartTime >= config.getTimePartitionLowerBoundWithoutOverflow()
+        partitionStartTime >= config.getTimePartitionUpperBoundWithoutOverflow()
             ? Long.MAX_VALUE
             : (partitionStartTime + config.getTimePartitionInterval() - 1);
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
@@ -330,7 +330,7 @@ public class TimePartitionUtils {
       return true;
     }
     long partitionEndTime =
-        partitionStartTime >= timePartitionLowerBoundWithoutOverflow
+        partitionStartTime >= timePartitionUpperBoundWithoutOverflow
             ? Long.MAX_VALUE
             : (partitionStartTime + timePartitionInterval - 1);
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);

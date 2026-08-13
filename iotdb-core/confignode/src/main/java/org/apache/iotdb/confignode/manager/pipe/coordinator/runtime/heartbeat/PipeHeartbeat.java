@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ public class PipeHeartbeat {
   private final Map<PipeStaticMeta, Long> remainingEventCountMap = new HashMap<>();
   private final Map<PipeStaticMeta, Double> remainingTimeMap = new HashMap<>();
   private final Map<PipeStaticMeta, Boolean> isDegradedMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Map<String, Long>> recentFailuresMap = new HashMap<>();
 
   public PipeHeartbeat(
       final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
@@ -42,6 +44,22 @@ public class PipeHeartbeat {
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
       /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent) {
+    this(
+        pipeMetaByteBufferListFromAgent,
+        pipeCompletedListFromAgent,
+        pipeRemainingEventCountListFromAgent,
+        pipeRemainingTimeListFromAgent,
+        pipeDegradedStatusListFromAgent,
+        null);
+  }
+
+  public PipeHeartbeat(
+      final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
+      /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
+      /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent,
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent) {
     // Shall not reach here, just in case
     if (Objects.isNull(pipeMetaByteBufferListFromAgent)) {
       return;
@@ -77,6 +95,13 @@ public class PipeHeartbeat {
                       && i < pipeDegradedStatusListFromAgent.size()
                   ? pipeDegradedStatusListFromAgent.get(i)
                   : null));
+      recentFailuresMap.put(
+          pipeMeta.getStaticMeta(),
+          Objects.nonNull(pipeRecentFailureListFromAgent)
+                  && i < pipeRecentFailureListFromAgent.size()
+                  && Objects.nonNull(pipeRecentFailureListFromAgent.get(i))
+              ? new HashMap<>(pipeRecentFailureListFromAgent.get(i))
+              : Collections.emptyMap());
     }
   }
 
@@ -102,6 +127,10 @@ public class PipeHeartbeat {
 
   public Boolean getDegraded(final PipeStaticMeta pipeStaticMeta) {
     return isDegradedMap.get(pipeStaticMeta);
+  }
+
+  public Map<String, Long> getRecentFailures(final PipeStaticMeta pipeStaticMeta) {
+    return recentFailuresMap.get(pipeStaticMeta);
   }
 
   public boolean isEmpty() {

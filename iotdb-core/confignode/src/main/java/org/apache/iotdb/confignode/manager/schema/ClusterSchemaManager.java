@@ -1460,8 +1460,11 @@ public class ClusterSchemaManager {
       // 1. if the alteringTableList is null, means that executing the drop database is going on
       if (Objects.isNull(alteringTableList)) {
         List<TsTable> relatedTables = usingTableMap.remove(databaseName);
-        relatedTables.forEach(
-            table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+        // The database schema may already be removed while its deletion procedure is still running.
+        if (Objects.nonNull(relatedTables)) {
+          relatedTables.forEach(
+              table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+        }
       } else {
         // 2. if the table has existed, the procedure is modifying it.
         // so the usingTableMap and specialStatusMap both hold it
