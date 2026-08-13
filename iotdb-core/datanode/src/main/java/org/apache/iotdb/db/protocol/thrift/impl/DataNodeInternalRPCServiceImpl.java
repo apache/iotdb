@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -220,7 +221,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALWriteBlockStatus;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
@@ -2374,7 +2374,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
-    AuthorityChecker.getAuthorityFetcher().refreshToken();
     updateWALBlockedStatus();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());

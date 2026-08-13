@@ -159,7 +159,7 @@ public class HeartbeatService {
                 // Sample free-space on the same cadence DataNode samples its load. Runs after
                 // the async heartbeat dispatches so the OS call does not delay fanout. DiskCrash
                 // is observed passively by the Ratis write-path, not polled here.
-                if (iterationIndex % LOAD_SAMPLING_INTERVAL == 0) {
+                if (heartbeatCounter.get() % 10 == 0) {
                   DiskChecker.checkFreeRatioAndApply(
                       ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
                       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());

@@ -253,11 +253,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServiceProcessor.class);
+
+  private static final int DISK_CHECK_INTERVAL_IN_HEARTBEATS = 10;
+
+  private final AtomicLong heartbeatReceivedCounter = new AtomicLong(0);
 
   protected final CommonConfig commonConfig;
   protected final ConfigNodeConfig configNodeConfig;
@@ -1117,7 +1122,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     resp.setTimestamp(heartbeatReq.getTimestamp());
     // Sample free-space on the same cadence DataNode samples its load. DiskCrash is observed
     // passively from the Ratis write-path on this node, not polled here.
-    if (heartbeatReceivedCounter.getAndIncrement() % HeartbeatService.LOAD_SAMPLING_INTERVAL == 0) {
+    if (heartbeatReceivedCounter.getAndIncrement() % DISK_CHECK_INTERVAL_IN_HEARTBEATS == 0) {
       DiskChecker.checkFreeRatioAndApply(
           configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
     }

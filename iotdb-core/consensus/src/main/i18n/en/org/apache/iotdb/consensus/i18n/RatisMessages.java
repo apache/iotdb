@@ -35,6 +35,9 @@ public final class RatisMessages {
       "null reply received in writeWithRetry for request ";
   public static final String LEADER_READ_ONLY_STEP_DOWN_FAILED =
       "leader {} read only, force step down failed due to, ";
+  public static final String
+      LOG_DISK_FAILURE_OBSERVED_IN_RATIS_GROUP_ARG_MARKING_NODE_READONLY_DISKCRASH_31E461D2 =
+          "Disk failure observed in Ratis group {}; marking node ReadOnly(DiskCrash).";
   public static final String TRY_ADD_CONFLICTING_PEER =
       "{}: try to add a peer {} with conflicting id or address in {}";
   public static final String IS_LEADER_REQUEST_FAILED =

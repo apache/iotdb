@@ -1036,7 +1036,8 @@ class RatisConsensus implements IConsensus {
    */
   private void onDiskFailure(RaftGroupId groupId, Throwable cause) {
     logger.error(
-        "Disk failure observed in Ratis group {}; marking node ReadOnly(DiskCrash).",
+        RatisMessages
+            .LOG_DISK_FAILURE_OBSERVED_IN_RATIS_GROUP_ARG_MARKING_NODE_READONLY_DISKCRASH_31E461D2,
         groupId,
         cause);
     DiskChecker.apply(DiskChecker.DiskStatus.DISK_CRASH);

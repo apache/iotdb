@@ -24,18 +24,16 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 
 public final class WALWriteBlockStatus {
 
-  public static final String WAL_BLOCKED = "WALBlocked";
-
   private WALWriteBlockStatus() {}
 
   public static void updateStatus(CommonConfig commonConfig, boolean longTermWriteBlocked) {
     if (longTermWriteBlocked) {
       if (NodeStatus.Running.equals(commonConfig.getNodeStatus())) {
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(WAL_BLOCKED);
+        commonConfig.setStatusReason(NodeStatus.WAL_BLOCKED);
       }
     } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-        && WAL_BLOCKED.equals(commonConfig.getStatusReason())) {
+        && NodeStatus.WAL_BLOCKED.equals(commonConfig.getStatusReason())) {
       commonConfig.setNodeStatus(NodeStatus.Running);
       commonConfig.setStatusReason(null);
     }

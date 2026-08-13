@@ -57,7 +57,9 @@ public class MemoryControlledWALEntryQueue {
       synchronized (nonFullCondition) {
         while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
           if (elementSize
-              > SystemInfo.getInstance().getWalBufferQueueMemoryBlock().getTotalMemorySizeInBytes()) {
+              > SystemInfo.getInstance()
+                  .getWalBufferQueueMemoryBlock()
+                  .getTotalMemorySizeInBytes()) {
             throw new IoTDBRuntimeException(
                 String.format(
                     StorageEngineMessages

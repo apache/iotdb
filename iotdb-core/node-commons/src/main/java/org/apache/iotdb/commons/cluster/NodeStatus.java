@@ -38,6 +38,7 @@ public enum NodeStatus {
   ReadOnly("ReadOnly");
   public static final String DISK_FULL = "DiskFull";
   public static final String DISK_CRASH = "DiskCrash";
+  public static final String WAL_BLOCKED = "WALBlocked";
 
   private final String status;
 

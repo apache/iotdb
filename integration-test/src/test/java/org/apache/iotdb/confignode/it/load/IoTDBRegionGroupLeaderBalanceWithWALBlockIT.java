@@ -88,7 +88,8 @@ public class IoTDBRegionGroupLeaderBalanceWithWALBlockIT {
   private static final String WAL_THROTTLE_THRESHOLD_IN_BYTE = "wal_throttle_threshold_in_byte";
   private static final String WAL_FILE_SIZE_THRESHOLD_IN_BYTE_CONFIG =
       "wal_file_size_threshold_in_byte";
-  private static final String WAL_BLOCKED_STATUS = NodeStatus.ReadOnly.getStatus() + "(WALBlocked)";
+  private static final String WAL_BLOCKED_STATUS =
+      NodeStatus.ReadOnly.getStatus() + "(" + NodeStatus.WAL_BLOCKED + ")";
 
   @Before
   public void setUp() {

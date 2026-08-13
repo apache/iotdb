@@ -39,13 +39,12 @@ public class WALWriteBlockStatusTest {
     WALWriteBlockStatus.updateStatus(commonConfig, true);
 
     assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
-    assertEquals(WALWriteBlockStatus.WAL_BLOCKED, commonConfig.getStatusReason());
+    assertEquals(NodeStatus.WAL_BLOCKED, commonConfig.getStatusReason());
   }
 
   @Test
   public void testWalBlockedReadOnlyNodeRecovers() {
-    CommonConfig commonConfig =
-        mockCommonConfig(NodeStatus.ReadOnly, WALWriteBlockStatus.WAL_BLOCKED);
+    CommonConfig commonConfig = mockCommonConfig(NodeStatus.ReadOnly, NodeStatus.WAL_BLOCKED);
 
     WALWriteBlockStatus.updateStatus(commonConfig, false);
 
