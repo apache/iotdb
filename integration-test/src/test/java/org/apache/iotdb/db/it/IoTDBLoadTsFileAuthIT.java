@@ -28,10 +28,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -60,7 +59,7 @@ public class IoTDBLoadTsFileAuthIT {
   private static final long PARTITION_INTERVAL = 10 * 1000L;
   private static final String DATABASE = "root.load_auth";
   private static final String DEVICE = DATABASE + ".d1";
-  private static final IMeasurementSchema MEASUREMENT =
+  private static final MeasurementSchema MEASUREMENT =
       new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE);
   private static final String NO_WRITE_USER = "load_no_write_user";
   private static final String WRITE_USER = "load_write_user";
@@ -77,7 +76,6 @@ public class IoTDBLoadTsFileAuthIT {
   public static void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load-auth").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     EnvFactory.getEnv()
         .getConfig()
@@ -191,7 +189,7 @@ public class IoTDBLoadTsFileAuthIT {
       statement.execute("create database " + DATABASE);
       statement.execute(
           String.format(
-              "create timeseries %s.%s %s", DEVICE, MEASUREMENT.getMeasurementName(), dataType));
+              "create timeseries %s.%s %s", DEVICE, MEASUREMENT.getMeasurementId(), dataType));
     }
   }
 
@@ -248,7 +246,7 @@ public class IoTDBLoadTsFileAuthIT {
           final Statement statement = connection.createStatement();
           final ResultSet resultSet =
               statement.executeQuery(
-                  "select count(" + MEASUREMENT.getMeasurementName() + ") from " + DEVICE)) {
+                  "select count(" + MEASUREMENT.getMeasurementId() + ") from " + DEVICE)) {
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals(expected, resultSet.getLong(1));
         return;
