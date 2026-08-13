@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
+package org.apache.iotdb.pipe.plugin.sink.opcua.server;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.plugin.sink.opcua.OpcUaSink;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;

@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
+package org.apache.iotdb.pipe.plugin.sink.opcua.client;
 
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.plugin.sink.opcua.OpcUaSink;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;

@@ -17,18 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.pipe.plugin.sink.opcua;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaServerBuilder;
+import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventTransferUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -40,10 +35,13 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.ClientRunner;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.IoTDBOpcUaClient;
+import org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace;
+import org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaServerBuilder;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.record.Tablet;
 import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.client.identity.UsernameProvider;
@@ -163,9 +161,11 @@ public class OpcUaSink implements PipeConnector {
 
   // Inner server
   private @Nullable OpcUaNameSpace nameSpace;
+  private boolean serverRegistered;
 
   // Outer server
   private @Nullable IoTDBOpcUaClient client;
+  private boolean clientRegistered;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -372,6 +372,7 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey).getLeft().incrementAndGet();
+      serverRegistered = true;
     }
   }
 
@@ -452,6 +453,7 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl).getLeft().incrementAndGet();
+      clientRegistered = true;
     }
   }
 
@@ -504,8 +506,9 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    transferByTablet(
+    PipeTabletEventTransferUtils.transferByTablet(
         tabletInsertionEvent,
+        OpcUaSink.class.getName(),
         LOGGER,
         (tablet, isTableModel) -> {
           if (Objects.nonNull(nameSpace)) {
@@ -518,75 +521,14 @@ public class OpcUaSink implements PipeConnector {
         });
   }
 
-  public static void transferByTablet(
-      final TabletInsertionEvent tabletInsertionEvent,
-      final Logger logger,
-      final ThrowingBiConsumer<Tablet, Boolean, Exception> transferTablet)
-      throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
-        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
-      logger.warn(
-          DataNodePipeMessages
-              .THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLET,
-          tabletInsertionEvent);
-      return;
-    }
-
-    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTabletWrapper(
-          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent, transferTablet);
-    } else {
-      transferTabletWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent, transferTablet);
-    }
-  }
-
-  private static void transferTabletWrapper(
-      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent,
-      final ThrowingBiConsumer<Tablet, Boolean, Exception> transferTablet)
-      throws Exception {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(OpcUaSink.class.getName())) {
-      return;
-    }
-    try {
-      for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
-        transferTablet.accept(tablet, pipeInsertNodeTabletInsertionEvent.isTableModelEvent());
-      }
-    } finally {
-      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(OpcUaSink.class.getName(), false);
-    }
-  }
-
-  private static void transferTabletWrapper(
-      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent,
-      final ThrowingBiConsumer<Tablet, Boolean, Exception> transferTablet)
-      throws Exception {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaSink.class.getName())) {
-      return;
-    }
-    try {
-      transferTablet.accept(
-          pipeRawTabletInsertionEvent.convertToTablet(),
-          pipeRawTabletInsertionEvent.isTableModelEvent());
-    } finally {
-      pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaSink.class.getName(), false);
-    }
-  }
-
-  @FunctionalInterface
-  public interface ThrowingBiConsumer<T, U, E extends Exception> {
-    void accept(final T t, final U u) throws E;
-  }
-
   @Override
   public void close() throws Exception {
-    if (serverKey != null) {
+    if (serverKey != null && serverRegistered) {
       synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
         final Pair<AtomicInteger, OpcUaNameSpace> pair =
             SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
         if (pair == null) {
+          serverRegistered = false;
           return;
         }
 
@@ -597,14 +539,16 @@ public class OpcUaSink implements PipeConnector {
             SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
           }
         }
+        serverRegistered = false;
       }
     }
 
-    if (nodeUrl != null) {
+    if (nodeUrl != null && clientRegistered) {
       synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
         final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
             CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
         if (pair == null) {
+          clientRegistered = false;
           return;
         }
 
@@ -615,6 +559,7 @@ public class OpcUaSink implements PipeConnector {
             CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
           }
         }
+        clientRegistered = false;
       }
     }
   }

@@ -35,6 +35,13 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>opc-ua-sink</artifactId>
+            <version>${project.version}</version>
+            <classifier>jar-with-dependencies</classifier>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
             <version>2.0.11-SNAPSHOT</version>
             <type>zip</type>
@@ -89,6 +96,7 @@
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
+                                <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -122,6 +130,7 @@
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-library-pipe-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-external-service-impl-bin.zip</include>
                                     </includes>
                                 </fileSet>

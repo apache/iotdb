@@ -22,17 +22,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-examples</artifactId>
+        <artifactId>library-pipe</artifactId>
         <version>2.0.11-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>pipe-opc-ua-sink-example</artifactId>
-    <name>IoTDB: Example: Pipe: OPCUA Sink</name>
+    <name>IoTDB: Library-Pipe: OPC UA Sink Example</name>
     <dependencies>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
             <artifactId>milo-sdk-client</artifactId>
-            <version>${milo.version}</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>

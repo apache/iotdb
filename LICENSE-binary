@@ -218,6 +218,8 @@ Apache License 2.0
 commons-cli:commons-cli:1.5.0
 com.google.code.gson:gson:2.13.1
 com.google.guava.guava:32.1.2-jre
+com.google.guava:failureaccess:1.0.3
+com.google.guava:guava:33.6.0-jre
 com.fasterxml.jackson.core:jackson-annotations:2.16.2
 com.fasterxml.jackson.core:jackson-core:2.16.2
 com.fasterxml.jackson.core:jackson-databind:2.16.2
@@ -260,6 +262,8 @@ io.netty:netty-transport-native-unix-common:4.1.136.Final
 org.osgi:org.osgi.core:7.0.0
 org.osgi:osgi.cmpn:7.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.5.6
+org.jspecify:jspecify:1.0.0
+org.jctools:jctools-core:4.0.5
 org.xerial.snappy:snappy-java:1.1.10.5
 io.airlift.airline:0.9
 
@@ -292,8 +296,22 @@ EPL 2.0
 ------------
 ch.qos.logback:logback-classic:1.5.34
 ch.qos.logback:logback-core:1.5.34
+com.digitalpetri.fsm:strict-machine:1.0.0
+com.digitalpetri.netty:netty-channel-fsm:1.0.2
 jakarta.annotation:jakarta.annotation-api:3.0.0
 jakarta.servlet:jakarta.servlet-api:6.0.0
+org.eclipse.milo:milo-guava-dependencies:1.1.6
+org.eclipse.milo:milo-sdk-client:1.1.6
+org.eclipse.milo:milo-sdk-core:1.1.6
+org.eclipse.milo:milo-sdk-server:1.1.6
+org.eclipse.milo:milo-stack-core:1.1.6
+org.eclipse.milo:milo-transport:1.1.6
+
+Bouncy Castle Licence
+------------
+org.bouncycastle:bcpkix-jdk18on:1.84
+org.bouncycastle:bcprov-jdk18on:1.84
+org.bouncycastle:bcutil-jdk18on:1.84
 
 EDL 1.0
 ------------

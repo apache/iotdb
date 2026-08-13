@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
+package org.apache.iotdb.pipe.plugin.sink.opcua.client;
 
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.plugin.sink.opcua.OpcUaSink;
+import org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
@@ -67,8 +67,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.convertToOpcDataType;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
+import static org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.convertToOpcDataType;
+import static org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.timestampToUtc;
 import static org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_Timeout;
 
 public class IoTDBOpcUaClient {
