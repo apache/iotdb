@@ -45,6 +45,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -461,7 +463,9 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  // TVList preallocation needs a process-lifetime, node-wide mean independent of metric lifecycle.
+  private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
+  private final LongAdder flushedMemTableCount = new LongAdder();
 
   private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
       DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
@@ -603,6 +607,7 @@ public class WritingMetrics implements IMetricSet {
             MEM_TABLE_SIZE,
             SERIES_NUM,
             POINTS_NUM,
+            AVG_SERIES_POINT_NUM,
             COMPRESSION_RATIO,
             NULL_VALUE_RATIO,
             FLUSH_TSFILE_SIZE)
@@ -616,15 +621,6 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
-    avgPointHistogram =
-        MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                AVG_SERIES_POINT_NUM,
-                Tag.REGION.toString(),
-                dataRegionId.toString());
   }
 
   public Counter createWalFlushMemTableCounterMetrics() {
@@ -746,7 +742,6 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
-    avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   }
 
   public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
@@ -845,7 +840,17 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    avgPointHistogram.update(avgSeriesNum);
+    MetricService.getInstance()
+        .histogram(
+            avgSeriesNum,
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            AVG_SERIES_POINT_NUM,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+    avgSeriesPointNumSum.add(avgSeriesNum);
+    flushedMemTableCount.increment();
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -1046,7 +1051,8 @@ public class WritingMetrics implements IMetricSet {
     return INSTANCE;
   }
 
-  public Histogram getAvgPointHistogram() {
-    return avgPointHistogram;
+  public double getGlobalAvgSeriesPointNum() {
+    long count = flushedMemTableCount.sum();
+    return count == 0 ? 0 : avgSeriesPointNumSum.sum() / count;
   }
 }
