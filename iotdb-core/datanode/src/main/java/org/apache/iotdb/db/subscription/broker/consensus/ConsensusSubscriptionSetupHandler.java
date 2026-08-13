@@ -63,6 +63,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditDatabase;
+
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
@@ -661,8 +663,11 @@ public class ConsensusSubscriptionSetupHandler {
     return new ConsensusLogToTabletConverter(treePattern, tablePattern, null, actualDatabaseName);
   }
 
-  private static boolean matchesTopicDatabase(
+  static boolean matchesTopicDatabase(
       final TopicConfig topicConfig, final String actualDatabaseName) {
+    if (isAuditDatabase(actualDatabaseName)) {
+      return false;
+    }
     if (!topicConfig.isTableTopic()) {
       return true;
     }
@@ -694,6 +699,7 @@ public class ConsensusSubscriptionSetupHandler {
     final String regexMetaCharacters = ".*+?[](){}\\|^$";
     return Objects.nonNull(pattern)
         && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {
