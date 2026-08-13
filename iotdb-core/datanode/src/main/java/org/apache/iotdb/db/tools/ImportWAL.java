@@ -118,6 +118,8 @@ public class ImportWAL {
       final Path source = Paths.get(commandLine.getOptionValue("file"));
       final List<Path> walFiles = collectWALFiles(source);
       final String database = commandLine.getOptionValue("database");
+      final boolean deleteSource =
+          shouldDeleteSource(commandLine.getOptionValue("on_success", "none"));
       final String password = getPassword(commandLine);
       final Session treeSession =
           createSession(
@@ -141,7 +143,8 @@ public class ImportWAL {
           tableSession.open(false);
         }
         final ReplayStatistics statistics =
-            replayWALFiles(walFiles, new WALReplayer(treeSession, tableSession, database), out);
+            replayWALFiles(
+                walFiles, new WALReplayer(treeSession, tableSession, database), out, deleteSource);
         out.printf(
             ImportWALMessages
                 .MESSAGE_REPLAYED_ARG_OPERATIONS_FROM_ARG_WAL_FILES_SKIPPED_ARG_ENTRIES_F0D37E3A,
@@ -156,6 +159,11 @@ public class ImportWAL {
             statistics.getTotalBytes(),
             statistics.getAverageRateMbPerSecond());
         out.println();
+        if (deleteSource) {
+          out.printf(
+              ImportWALMessages.MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B, walFiles.size());
+          out.println();
+        }
       } finally {
         closeSession(tableSession);
         closeSession(treeSession);
@@ -212,6 +220,15 @@ public class ImportWAL {
             .desc(ImportWALMessages.MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_27BACD1C)
             .build());
     options.addOption(
+        Option.builder("os")
+            .longOpt("on_success")
+            .argName("on_success")
+            .hasArg()
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66)
+            .build());
+    options.addOption(
         Option.builder()
             .longOpt("help")
             .desc(ImportWALMessages.MESSAGE_PRINT_THIS_HELP_MESSAGE_E800AF7A)
@@ -240,6 +257,21 @@ public class ImportWAL {
               .EXCEPTION_PASSWORD_WAS_NOT_PROVIDED_AND_INTERACTIVE_INPUT_IS_UNAVAILABLE_40F42BCD);
     }
     return new String(password);
+  }
+
+  static boolean shouldDeleteSource(final String onSuccess) {
+    final String normalizedOnSuccess = onSuccess.trim();
+    if ("none".equalsIgnoreCase(normalizedOnSuccess)) {
+      return false;
+    }
+    if ("delete".equalsIgnoreCase(normalizedOnSuccess)) {
+      return true;
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            ImportWALMessages
+                .EXCEPTION_UNSUPPORTED_ON_SUCCESS_VALUE_ARG_EXPECTED_NONE_OR_DELETE_F1C8EACE,
+            onSuccess));
   }
 
   private static boolean containsHelpOption(final String[] args) {
@@ -368,6 +400,15 @@ public class ImportWAL {
   static ReplayStatistics replayWALFiles(
       final List<Path> walFiles, final WALReplayer replayer, final PrintStream progressStream)
       throws IOException {
+    return replayWALFiles(walFiles, replayer, progressStream, false);
+  }
+
+  static ReplayStatistics replayWALFiles(
+      final List<Path> walFiles,
+      final WALReplayer replayer,
+      final PrintStream progressStream,
+      final boolean deleteSource)
+      throws IOException {
     final ReplayStatistics statistics = new ReplayStatistics();
     final long startNanos = System.nanoTime();
     for (final Path walFile : walFiles) {
@@ -436,7 +477,25 @@ public class ImportWAL {
             e);
       }
     }
+    if (deleteSource) {
+      deleteSourceWALFiles(walFiles);
+    }
     return statistics;
+  }
+
+  private static void deleteSourceWALFiles(final List<Path> walFiles) throws IOException {
+    for (final Path walFile : walFiles) {
+      try {
+        Files.delete(walFile);
+      } catch (final IOException e) {
+        throw new IOException(
+            String.format(
+                ImportWALMessages.EXCEPTION_FAILED_TO_DELETE_SOURCE_WAL_FILE_ARG_ARG_236AF580,
+                walFile,
+                e.getMessage()),
+            e);
+      }
+    }
   }
 
   static class WALReplayer {

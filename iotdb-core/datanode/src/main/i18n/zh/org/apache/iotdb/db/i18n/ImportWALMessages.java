@@ -38,6 +38,9 @@ public final class ImportWALMessages {
   public static final String MESSAGE_PASSWORD_PROMPT_F2D0E794 = "密码：";
   public static final String MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_27BACD1C =
       "表模型 WAL 条目的目标数据库。";
+  public static final String
+      MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66 =
+          "所有 WAL 文件成功重放后，对源 WAL 文件执行操作。可选参数为 none（默认）和 delete。";
   public static final String MESSAGE_PRINT_THIS_HELP_MESSAGE_E800AF7A = "打印帮助信息。";
   public static final String MESSAGE_ARGUMENT_ERROR_ARG_A9767F62 = "参数错误：%s";
   public static final String MESSAGE_WAL_IMPORT_FAILED_ARG_55C014BA = "WAL 导入失败：%s";
@@ -57,8 +60,15 @@ public final class ImportWALMessages {
   public static final String
       MESSAGE_IMPORT_DURATION_ARG_SECONDS_TOTAL_SIZE_ARG_BYTES_AVERAGE_RATE_ARG_MB_PER_SECOND_4B4EA58D =
           "导入耗时：%.1f 秒；文件总大小：%d 字节；平均速率：%.1f MB/s。";
+  public static final String MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B =
+      "已删除 %d 个源 WAL 文件。";
   public static final String EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9 =
       "重放 WAL 文件 %s 时失败，偏移量 %d：%s";
+  public static final String EXCEPTION_FAILED_TO_DELETE_SOURCE_WAL_FILE_ARG_ARG_236AF580 =
+      "删除源 WAL 文件 %s 失败：%s";
+  public static final String
+      EXCEPTION_UNSUPPORTED_ON_SUCCESS_VALUE_ARG_EXPECTED_NONE_OR_DELETE_F1C8EACE =
+          "不支持的 on_success 值：%s。应为 none 或 delete。";
   public static final String EXCEPTION_TABLE_MODEL_WAL_ENTRIES_REQUIRE_DB_DATABASE_F7597726 =
       "表模型 WAL 条目要求指定 -db/--database。";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =

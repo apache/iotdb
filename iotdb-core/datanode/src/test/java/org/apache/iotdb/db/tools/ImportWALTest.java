@@ -104,6 +104,26 @@ public class ImportWALTest {
         files);
   }
 
+  /** Covers CLI discovery of the source-file operation without opening a Session. */
+  @Test
+  public void testHelpDescribesDeleteSourceOption() {
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+    final int exitCode =
+        ImportWAL.run(new String[] {"--help"}, new PrintStream(output), new PrintStream(output));
+
+    assertEquals(0, exitCode);
+    assertTrue(output.toString().contains("--on_success"));
+  }
+
+  /** Covers the default retention value, deletion value, normalization, and invalid input. */
+  @Test
+  public void testParseOnSuccessOption() {
+    assertFalse(ImportWAL.shouldDeleteSource("none"));
+    assertTrue(ImportWAL.shouldDeleteSource(" DELETE "));
+    assertThrows(IllegalArgumentException.class, () -> ImportWAL.shouldDeleteSource("unsupported"));
+  }
+
   /**
    * Covers a real WAL file containing one tree insert and one internal signal. The insert must be
    * sent once as a Tablet, while the signal is counted as skipped and no corruption is reported.
@@ -126,6 +146,49 @@ public class ImportWALTest {
     verify(treeSession).insertTablet(tabletCaptor.capture());
     assertEquals("root.sg.d1", tabletCaptor.getValue().getDeviceId());
     assertEquals(100, tabletCaptor.getValue().getTimestamp(0));
+    assertTrue(walFile.exists());
+  }
+
+  /** Covers opt-in deletion after every source WAL file completes successfully. */
+  @Test
+  public void testReplayDeletesSourceFilesAfterAllFilesSucceed() throws Exception {
+    final File firstWALFile = createWALFile(0);
+    final File secondWALFile = createWALFile(1);
+    writeWAL(
+        firstWALFile, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.delete.d1", 1)));
+    writeWAL(
+        secondWALFile, new WALInfoEntry(2, WALTestUtils.getInsertRowNode("root.sg.delete.d2", 2)));
+
+    ImportWAL.replayWALFiles(
+        Arrays.asList(firstWALFile.toPath(), secondWALFile.toPath()),
+        new ImportWAL.WALReplayer(mock(Session.class), null, null),
+        null,
+        true);
+
+    assertFalse(firstWALFile.exists());
+    assertFalse(secondWALFile.exists());
+  }
+
+  /** Covers all-or-nothing replay gating: a later failure must retain every source WAL file. */
+  @Test
+  public void testReplayRetainsAllSourceFilesWhenAnyFileFails() throws Exception {
+    final File validWALFile = createWALFile(0);
+    final File corruptedWALFile = createWALFile(1);
+    writeWAL(
+        validWALFile, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.retain.d1", 1)));
+    Files.write(corruptedWALFile.toPath(), new byte[] {WALEntryType.INSERT_ROW_NODE.getCode()});
+
+    assertThrows(
+        IOException.class,
+        () ->
+            ImportWAL.replayWALFiles(
+                Arrays.asList(validWALFile.toPath(), corruptedWALFile.toPath()),
+                new ImportWAL.WALReplayer(mock(Session.class), null, null),
+                null,
+                true));
+
+    assertTrue(validWALFile.exists());
+    assertTrue(corruptedWALFile.exists());
   }
 
   @Test

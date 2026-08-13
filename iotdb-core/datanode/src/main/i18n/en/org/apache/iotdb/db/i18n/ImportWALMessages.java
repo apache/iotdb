@@ -38,6 +38,9 @@ public final class ImportWALMessages {
   public static final String MESSAGE_PASSWORD_PROMPT_F2D0E794 = "Password: ";
   public static final String MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_27BACD1C =
       "Target database for table-model WAL entries.";
+  public static final String
+      MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66 =
+          "When all WAL files are replayed successfully, do operation on source WAL files. Optional parameters are none (default) and delete.";
   public static final String MESSAGE_PRINT_THIS_HELP_MESSAGE_E800AF7A =
       "Print this help message.";
   public static final String MESSAGE_ARGUMENT_ERROR_ARG_A9767F62 = "Argument error: %s";
@@ -58,8 +61,15 @@ public final class ImportWALMessages {
   public static final String
       MESSAGE_IMPORT_DURATION_ARG_SECONDS_TOTAL_SIZE_ARG_BYTES_AVERAGE_RATE_ARG_MB_PER_SECOND_4B4EA58D =
           "Import duration: %.1f s; total size: %d bytes; average rate: %.1f MB/s.";
+  public static final String MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B =
+      "Deleted %d source WAL files.";
   public static final String EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9 =
       "Failed to replay WAL file %s at offset %d: %s";
+  public static final String EXCEPTION_FAILED_TO_DELETE_SOURCE_WAL_FILE_ARG_ARG_236AF580 =
+      "Failed to delete source WAL file %s: %s";
+  public static final String
+      EXCEPTION_UNSUPPORTED_ON_SUCCESS_VALUE_ARG_EXPECTED_NONE_OR_DELETE_F1C8EACE =
+          "Unsupported on_success value: %s. Expected none or delete.";
   public static final String EXCEPTION_TABLE_MODEL_WAL_ENTRIES_REQUIRE_DB_DATABASE_F7597726 =
       "Table-model WAL entries require -db/--database.";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
