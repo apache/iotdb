@@ -329,6 +329,45 @@ public class AlignedTVListTest {
     }
   }
 
+  // A full clone must carry the same RAM as the source, and the clone must keep accounting
+  // correctly when it keeps receiving writes into new primitive-array blocks afterwards.
+  @Test
+  public void testCloneRamReconciliationAndWriteNewBlockAfterClone() {
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+
+    // Span multiple primitive-array blocks, with nulls exercising bitmap accounting.
+    int initialRowCount = ARRAY_SIZE * 2 + 1;
+    for (int i = 0; i < initialRowCount; i++) {
+      tvList.putAlignedValue(
+          i, new Object[] {(long) i, (i % 2 == 0) ? null : i, (i % 3 == 0) ? null : (double) i});
+    }
+
+    AlignedTVList clonedTvList = tvList.clone();
+    Assert.assertEquals(tvList.getRamSize(), clonedTvList.getRamSize());
+    Assert.assertEquals(tvList.getRamSize(), tvList.calculateRamSize().getRamSize());
+    Assert.assertEquals(clonedTvList.getRamSize(), clonedTvList.calculateRamSize().getRamSize());
+
+    // Keep writing a new block only into the clone. The clone must charge the newly materialized
+    // arrays while the source stays untouched.
+    long sourceRamAfterClone = tvList.getRamSize();
+    int additionalRowCount = ARRAY_SIZE + 1;
+    for (int i = 0; i < additionalRowCount; i++) {
+      long time = initialRowCount + i;
+      clonedTvList.putAlignedValue(time, new Object[] {time, (int) time, (double) time});
+    }
+
+    Assert.assertEquals(clonedTvList.getRamSize(), clonedTvList.calculateRamSize().getRamSize());
+    Assert.assertTrue(clonedTvList.getRamSize() > sourceRamAfterClone);
+    Assert.assertEquals(sourceRamAfterClone, tvList.getRamSize());
+    Assert.assertEquals(initialRowCount, tvList.rowCount);
+    Assert.assertEquals(initialRowCount + additionalRowCount, clonedTvList.rowCount);
+    Assert.assertEquals(
+        initialRowCount + additionalRowCount - 1L,
+        clonedTvList.getTime(initialRowCount + additionalRowCount - 1));
+  }
+
   @Test
   public void testCalculateChunkSize() {
     List<TSDataType> dataTypes = new ArrayList<>();
