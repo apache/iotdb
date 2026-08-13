@@ -27,10 +27,6 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
-        <repository>
-            <id>ratis-snapshot</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheratis-1182</url>
-        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
