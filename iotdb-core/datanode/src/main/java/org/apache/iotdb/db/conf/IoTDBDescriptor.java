@@ -141,7 +141,7 @@ public class IoTDBDescriptor {
   }
 
   protected IoTDBDescriptor() {
-    loadProps();
+    boolean hasLoadedProperties = loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
     boolean hasProperties = false;
@@ -167,8 +167,8 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // if there are no properties, we need to init memory config
-    if (!hasProperties) {
+    // If no configuration source initialized the memory config, initialize it with defaults.
+    if (!hasLoadedProperties && !hasProperties) {
       memoryConfig.init(new TrimProperties());
     }
   }
@@ -227,7 +227,7 @@ public class IoTDBDescriptor {
 
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void loadProps() {
+  private boolean loadProps() {
     TrimProperties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
@@ -256,11 +256,13 @@ public class IoTDBDescriptor {
             .getMetricConfig()
             .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
+      return true;
     } else {
       LOGGER.warn(
           DataNodeMiscMessages
               .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      return false;
     }
   }
 
