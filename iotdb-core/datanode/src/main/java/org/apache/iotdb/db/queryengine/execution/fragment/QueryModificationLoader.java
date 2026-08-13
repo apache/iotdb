@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationIterator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,7 +51,7 @@ class QueryModificationLoader implements AutoCloseable {
   private final Predicate<Modification> modificationMatcher;
   private final ModsTreeMatcher modsTreeMatcher;
 
-  private Iterator<Modification> currentIterator;
+  private ModificationIterator currentIterator;
 
   QueryModificationLoader(
       TsFileResource resource,
@@ -111,13 +111,13 @@ class QueryModificationLoader implements AutoCloseable {
         PatternTreeMapFactory.getModsPatternTreeMap();
     LoadModsResult result = new LoadModsResult(modifications);
     if (resource.getModFile().getSize() > getRemainingCacheQuota()) {
-      currentIterator = resource.getModFile().getModificationsIter().iterator();
+      currentIterator = resource.getModFile().getModificationsIter();
       result.loadedAllModEntries = false;
       result.cacheable = false;
       return result;
     }
 
-    currentIterator = resource.getModFile().getModificationsIter().iterator();
+    currentIterator = resource.getModFile().getModificationsIter();
 
     int appendedModCount = 0;
     boolean estimatedAfterLastAppend = false;
@@ -275,7 +275,10 @@ class QueryModificationLoader implements AutoCloseable {
   }
 
   private void closeCurrentIterator() {
-    currentIterator = null;
+    if (currentIterator != null) {
+      currentIterator.close();
+      currentIterator = null;
+    }
   }
 
   private static class LoadModsResult {
