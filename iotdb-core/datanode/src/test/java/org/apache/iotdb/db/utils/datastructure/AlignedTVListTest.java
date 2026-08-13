@@ -258,6 +258,8 @@ public class AlignedTVListTest {
                     - RamUsageEstimator.sizeOfObjectArray(oldColumnCount))
             + RamUsageEstimator.sizeOfLongArray(oldColumnCount + 1)
             - RamUsageEstimator.sizeOfLongArray(oldColumnCount)
+            + RamUsageEstimator.sizeOfIntArray(oldColumnCount + 1)
+            - RamUsageEstimator.sizeOfIntArray(oldColumnCount)
             + RamUsageEstimator.shallowSizeOf(new ArrayList<>())
             + RamUsageEstimator.sizeOfObjectArray(0);
     tvList.extendColumn(TSDataType.INT32);

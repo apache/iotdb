@@ -96,8 +96,6 @@ public abstract class AlignedTVList extends TVList {
     // The columns retained by the source. commit() derives the moved columns from this set, so
     // no O(N) move-plan arrays need to be allocated during preparation.
     private final Set<Integer> retainedColumns;
-    private final long sourceArrayMemCostWithoutIndex;
-    private final long cloneArrayMemCostWithoutIndex;
     private final long sourceBitmapMemoryCost;
     private final long cloneBitmapMemoryCost;
 
@@ -107,15 +105,11 @@ public abstract class AlignedTVList extends TVList {
         AlignedTVList sourceList,
         AlignedTVList cloneList,
         Set<Integer> retainedColumns,
-        long sourceArrayMemCostWithoutIndex,
-        long cloneArrayMemCostWithoutIndex,
         long sourceBitmapMemoryCost,
         long cloneBitmapMemoryCost) {
       this.sourceList = sourceList;
       this.cloneList = cloneList;
       this.retainedColumns = retainedColumns;
-      this.sourceArrayMemCostWithoutIndex = sourceArrayMemCostWithoutIndex;
-      this.cloneArrayMemCostWithoutIndex = cloneArrayMemCostWithoutIndex;
       this.sourceBitmapMemoryCost = sourceBitmapMemoryCost;
       this.cloneBitmapMemoryCost = cloneBitmapMemoryCost;
     }
@@ -262,8 +256,6 @@ public abstract class AlignedTVList extends TVList {
         this,
         cloneList,
         retainedColumns,
-        calculateArrayMemCostWithoutIndex(retainedColumns),
-        cloneList.calculateArrayMemCostWithoutIndex(null),
         calculateBitmapRamCost(bitMaps, retainedColumns),
         calculateBitmapRamCost(bitMaps, null));
   }
@@ -290,8 +282,8 @@ public abstract class AlignedTVList extends TVList {
       memoryBinaryChunkSize[i] = 0;
     }
 
-    arrayMemCostWithoutIndex = plan.sourceArrayMemCostWithoutIndex;
-    plan.cloneList.arrayMemCostWithoutIndex = plan.cloneArrayMemCostWithoutIndex;
+    refreshArrayMemCostWithoutIndex();
+    plan.cloneList.refreshArrayMemCostWithoutIndex();
     materializedBitmapMemoryCost = plan.sourceBitmapMemoryCost;
     plan.cloneList.materializedBitmapMemoryCost = plan.cloneBitmapMemoryCost;
     refreshMaterializedValueArrayMemoryCost();
@@ -1234,6 +1226,7 @@ public abstract class AlignedTVList extends TVList {
 
     size += listRamCostWithReferences(dataTypes);
     size += RamUsageEstimator.sizeOfLongArray(memoryBinaryChunkSize.length);
+    size += RamUsageEstimator.sizeOfIntArray(materializedValueArrayCounts.length);
     size += listRamCostWithoutReferences(timestamps);
     if (indices != null) {
       size += listRamCostWithoutReferences(indices);
@@ -1335,6 +1328,7 @@ public abstract class AlignedTVList extends TVList {
         arrayListShallowSize + RamUsageEstimator.sizeOfObjectArray(measurementColumnCount);
     return 2 * listWithReferencesSize
         + RamUsageEstimator.sizeOfLongArray(measurementColumnCount)
+        + RamUsageEstimator.sizeOfIntArray(measurementColumnCount)
         + arrayListShallowSize
         + (long) measurementColumnCount * arrayListShallowSize;
   }
@@ -1536,6 +1530,9 @@ public abstract class AlignedTVList extends TVList {
     size +=
         RamUsageEstimator.sizeOfLongArray(newTotalColumnCount)
             - RamUsageEstimator.sizeOfLongArray(oldColumnCount);
+    size +=
+        RamUsageEstimator.sizeOfIntArray(newTotalColumnCount)
+            - RamUsageEstimator.sizeOfIntArray(oldColumnCount);
     size +=
         RamUsageEstimator.sizeOfObjectArray(newTotalColumnCount)
             - RamUsageEstimator.sizeOfObjectArray(oldColumnCount);
