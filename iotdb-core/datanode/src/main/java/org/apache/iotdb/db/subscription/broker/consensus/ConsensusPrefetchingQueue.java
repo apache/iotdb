@@ -2579,6 +2579,44 @@ public class ConsensusPrefetchingQueue {
     return refreshed.get();
   }
 
+  /**
+   * Returns an event to the prefetching queue without modifying its response or nack count.
+   *
+   * <p>This is used when the server polled the event but cannot fit it in the current response.
+   */
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      if (isClosed || closeRequested || pendingSeekRequest != null || !isActive) {
+        return false;
+      }
+      if (Objects.isNull(commitContext)
+          || !commitContext.hasWriterProgress()
+          || isCommitContextOutdated(commitContext)) {
+        return false;
+      }
+      final AtomicBoolean requeued = new AtomicBoolean(false);
+      inFlightEvents.compute(
+          new InFlightEventKey(consumerId, commitContext),
+          (key, ev) -> {
+            if (Objects.isNull(ev)) {
+              return null;
+            }
+            if (ev.isCommitted()) {
+              cleanUpEvent(ev, false);
+              return null;
+            }
+            ev.resetLastPolledTimestamp();
+            prefetchingQueue.add(ev);
+            requeued.set(true);
+            return null;
+          });
+      return requeued.get();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   private boolean canAcceptCommitContext(
       final SubscriptionCommitContext commitContext, final String action, final boolean silent) {
     if (isClosed || closeRequested || pendingSeekRequest != null) {
