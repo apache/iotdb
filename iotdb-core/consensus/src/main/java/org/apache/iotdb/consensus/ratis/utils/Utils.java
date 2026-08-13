@@ -46,6 +46,7 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.common.cache.Cache;
 import org.apache.ratis.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.ratis.thirdparty.io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import org.apache.ratis.thirdparty.io.netty.handler.ssl.SslProvider;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
@@ -438,7 +439,9 @@ public class Utils {
     if (useJsseProvider) {
       String[] enabledCipherSuites = RpcSslUtils.getEnabledCipherSuites();
       if (enabledCipherSuites != null && enabledCipherSuites.length > 0) {
-        tlsConfig.setCipherSuites(enabledCipherSuites);
+        tlsConfig
+            .setCipherSuites(enabledCipherSuites)
+            .setCipherSuiteFilter(IdentityCipherSuiteFilter.INSTANCE);
       }
     }
   }
