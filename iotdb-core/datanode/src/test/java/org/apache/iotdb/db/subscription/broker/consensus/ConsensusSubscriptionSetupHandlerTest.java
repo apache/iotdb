@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -44,6 +45,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ConsensusSubscriptionSetupHandlerTest {
 
@@ -154,6 +157,47 @@ public class ConsensusSubscriptionSetupHandlerTest {
     final TopicConfig treeTopicConfig = new TopicConfig(Collections.emptyMap());
     assertFalse(ConsensusSubscriptionSetupHandler.matchesTopicDatabase(treeTopicConfig, "__audit"));
     assertTrue(ConsensusSubscriptionSetupHandler.matchesTopicDatabase(treeTopicConfig, "user_db"));
+  }
+
+  @Test
+  public void testTopicDataRegionModelIsolation() {
+    final TopicConfig treeTopicConfig = new TopicConfig(Collections.emptyMap());
+    final Map<String, String> tableTopicAttributes = new HashMap<>();
+    tableTopicAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableTopicAttributes.put(TopicConstant.DATABASE_KEY, "table_db");
+    final TopicConfig tableTopicConfig = new TopicConfig(tableTopicAttributes);
+
+    final DataRegion treeDataRegion = mock(DataRegion.class);
+    when(treeDataRegion.isTableModel()).thenReturn(false);
+    when(treeDataRegion.getDatabaseName()).thenReturn("root.tree_db");
+
+    final DataRegion tableDataRegion = mock(DataRegion.class);
+    when(tableDataRegion.isTableModel()).thenReturn(true);
+    when(tableDataRegion.getDatabaseName()).thenReturn("table_db");
+
+    final DataRegion otherTableDataRegion = mock(DataRegion.class);
+    when(otherTableDataRegion.isTableModel()).thenReturn(true);
+    when(otherTableDataRegion.getDatabaseName()).thenReturn("other_table_db");
+
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            treeDataRegion, treeTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            tableDataRegion, treeTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            treeDataRegion, tableTopicConfig, true));
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            tableDataRegion, tableTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            otherTableDataRegion, tableTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            tableDataRegion, tableTopicConfig, false));
   }
 
   private static void failOnSecondTopic(
