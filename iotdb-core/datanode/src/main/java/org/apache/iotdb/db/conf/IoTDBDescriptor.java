@@ -1779,6 +1779,12 @@ public class IoTDBDescriptor {
       conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
     }
 
+    conf.setWalFileListCacheEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_file_list_cache_enabled",
+                Boolean.toString(conf.isWalFileListCacheEnabled()))));
+
     loadWALHotModifiedProps(properties);
   }
 
