@@ -1089,7 +1089,7 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
-  conf.setPartitionTableRecoverWorkerNum(
+    conf.setPartitionTableRecoverWorkerNum(
         Integer.parseInt(
             properties.getProperty(
                 "partition_table_recover_worker_num",

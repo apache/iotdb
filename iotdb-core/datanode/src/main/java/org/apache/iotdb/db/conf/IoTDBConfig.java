@@ -1260,6 +1260,7 @@ public class IoTDBConfig {
   private int partitionTableRecoverWorkerNum = 10;
   // Rate limit set to 10 MB/s
   private int partitionTableRecoverMaxReadMBsPerSecond = 10;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4546,6 +4547,7 @@ public class IoTDBConfig {
   public void setCacheLastValuesMemoryBudgetInByte(long cacheLastValuesMemoryBudgetInByte) {
     this.cacheLastValuesMemoryBudgetInByte = cacheLastValuesMemoryBudgetInByte;
   }
+
   public int getPartitionTableRecoverWorkerNum() {
     return partitionTableRecoverWorkerNum;
   }

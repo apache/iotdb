@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,7 +226,8 @@ public class DataPartitionTableGenerator {
 
         for (IDeviceID deviceId : devices) {
           TSeriesPartitionSlot seriesSlotId =
-              seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
+              seriesPartitionExecutor.getSeriesPartitionSlot(
+                  ((PlainDeviceID) deviceId).toStringID());
           TTimePartitionSlot timePartitionSlot =
               new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId));
           dataPartitionMap

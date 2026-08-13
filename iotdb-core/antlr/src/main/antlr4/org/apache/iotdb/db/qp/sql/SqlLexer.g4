@@ -806,6 +806,10 @@ SYSTEM
     : S Y S T E M
     ;
 
+TABLE
+    : T A B L E
+    ;
+
 TAGS
     : T A G S
     ;

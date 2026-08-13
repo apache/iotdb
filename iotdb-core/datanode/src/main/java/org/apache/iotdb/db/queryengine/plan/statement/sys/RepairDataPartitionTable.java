@@ -44,7 +44,7 @@ public class RepairDataPartitionTable extends Statement implements IConfigStatem
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.OTHER;
+    return QueryType.WRITE;
   }
 
   @Override

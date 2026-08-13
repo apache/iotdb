@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -418,10 +420,11 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
       getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database) {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath(database, false).concatNode("**"));
+    patternTree.constructTree();
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        env.getConfigManager()
-            .getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()))
-            .getSchemaPartitionTable();
+        env.getConfigManager().getSchemaPartition(patternTree).getSchemaPartitionTable();
 
     // Construct request for getting data partition
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();

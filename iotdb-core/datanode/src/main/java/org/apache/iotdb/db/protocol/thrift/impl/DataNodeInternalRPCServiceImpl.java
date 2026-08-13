@@ -275,7 +275,6 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -308,6 +307,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -320,6 +320,7 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -2710,7 +2711,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           for (Map.Entry<String, DataPartitionTable> entry : dataPartitionTableMap.entrySet()) {
             String database = entry.getKey();
             DataPartitionTable dataPartitionTable = entry.getValue();
-            if (!StringUtils.isEmpty(database) && dataPartitionTable != null) {
+            if (database != null && !database.isEmpty() && dataPartitionTable != null) {
               DatabaseScopedDataPartitionTable databaseScopedDataPartitionTable =
                   new DatabaseScopedDataPartitionTable(database, dataPartitionTable);
               databaseScopedDataPartitionTableList.add(databaseScopedDataPartitionTable);

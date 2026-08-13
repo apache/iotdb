@@ -106,8 +106,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   protected ConfigManager configManager;
 
-  private int exitStatusCode = 0;
-
   public ConfigNode() {
     super("ConfigNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -142,7 +140,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       throw new IoTDBException("Error starting", -1);
     }
     active();
-    LOGGER.info("IoTDB started");
   }
 
   @Override
@@ -197,8 +194,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             startUpSleep("restart ConfigNode failed! ");
           }
         }
-        loadSecretKey();
-        loadHardwareCode();
         return;
       }
 
@@ -439,7 +434,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
-  private TConfigNodeLocation waitForLeaderElected() {
+  private void waitForLeaderElected() {
     while (!configManager.getConsensusManager().isLeaderExist()) {
       LOGGER.info("Leader has not been elected yet, wait for 1 second");
       try {
@@ -449,7 +444,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         LOGGER.warn("Unexpected interruption during waiting for leader election.");
       }
     }
-    return configManager.getConsensusManager().getLeaderLocation();
   }
 
   /**

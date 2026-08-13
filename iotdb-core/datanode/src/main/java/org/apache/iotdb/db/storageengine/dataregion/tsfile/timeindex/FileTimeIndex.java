@@ -128,13 +128,8 @@ public class FileTimeIndex implements ITimeIndex {
                   .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX),
               limiter)) {
         // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-        byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
-
-        if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
-          return ArrayDeviceTimeIndex.getDevices(inputStream);
-        } else {
-          return PlainDeviceTimeIndex.getDevices(inputStream);
-        }
+        ReadWriteIOUtils.readBytes(inputStream, 2);
+        return DeviceTimeIndex.getDevices(inputStream);
       }
     } catch (NoSuchFileException e) {
       // deleted by ttl
