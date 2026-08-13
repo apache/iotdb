@@ -1430,6 +1430,12 @@ public final class DataNodePipeMessages {
       "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
 
   // ---------------------------------------------------------------------------
+  // pipe – PipeRow
+  // ---------------------------------------------------------------------------
+  public static final String UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT =
+      "unsupported data type %s for column %s";
+
+  // ---------------------------------------------------------------------------
   // pipe – AbstractSameTypeNumericOperator
   // ---------------------------------------------------------------------------
   public static final String UNSUPPORTED_OUTPUT_DATATYPE_FMT = "Unsupported output datatype %s";

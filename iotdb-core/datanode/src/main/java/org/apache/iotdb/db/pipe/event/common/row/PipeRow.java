@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Type;
@@ -119,30 +120,9 @@ public class PipeRow implements Row {
 
   @Override
   public Object getObject(final int columnIndex) {
-    switch (getDataType(columnIndex)) {
-      case INT32:
-        return getInt(columnIndex);
-      case DATE:
-        return getDate(columnIndex);
-      case INT64:
-      case TIMESTAMP:
-        return getLong(columnIndex);
-      case FLOAT:
-        return getFloat(columnIndex);
-      case DOUBLE:
-        return getDouble(columnIndex);
-      case BOOLEAN:
-        return getBoolean(columnIndex);
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return getBinary(columnIndex);
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                "unsupported data type %s for column %s",
-                getDataType(columnIndex), columnNameStringList[columnIndex]));
-    }
+    return TypeServices.Pipe.PIPE_ROW_OBJECT_GETTER_SERVICE
+        .call(org.apache.tsfile.read.common.type.Type.fromTsDataType(valueColumnTypes[columnIndex]))
+        .get(this, columnIndex);
   }
 
   @Override

@@ -30,9 +30,9 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.type.service.IntTypeService;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
@@ -44,6 +44,7 @@ import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
 import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
@@ -82,12 +83,15 @@ public class TypeServices {
                     Comparator.comparing(
                         sortKey ->
                             type.getBoolean(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+            // TypeService.check() must be able to build a strategy for every enum value.
             case ROW, UNKNOWN, VECTOR ->
-                throw new IllegalArgumentException(
-                    String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
+                index -> {
+                  throw new IllegalArgumentException(
+                      String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
+                };
           };
 
-  public static final IntTypeService MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE =
+  public static final TypeService<Integer> MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
             case BOOLEAN -> 1;
@@ -134,6 +138,19 @@ public class TypeServices {
                               CalcMessages.UNSUPPORTED_DATA_TYPE + primitiveType.getDataType())
                           .setChecked(true);
                     };
+              };
+
+  // The caller supplies the exception so shared conversion keeps each aggregation API's contract.
+  public static final TypeService<ColumnToDoubleConverterFactory>
+      NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE -> ignored -> type::getDouble;
+                case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    exceptionSupplier ->
+                        (column, position) -> {
+                          throw exceptionSupplier.get();
+                        };
               };
 
   public static final TypeService<Function<DefaultEncodingProvider, TSEncoding>>
@@ -272,6 +289,7 @@ public class TypeServices {
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
     PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
+    NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE.check();
     DEFAULT_ENCODING_BY_TYPE_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
@@ -294,6 +312,16 @@ public class TypeServices {
     TSEncoding getDefaultDoubleEncoding();
 
     TSEncoding getDefaultTextEncoding();
+  }
+
+  @FunctionalInterface
+  public interface ColumnToDoubleConverter {
+    double convert(Column column, int position);
+  }
+
+  @FunctionalInterface
+  public interface ColumnToDoubleConverterFactory {
+    ColumnToDoubleConverter create(Supplier<? extends RuntimeException> exceptionSupplier);
   }
 
   @FunctionalInterface

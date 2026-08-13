@@ -86,6 +86,7 @@ import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
+import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.io.BaseEncoding;
@@ -3254,6 +3255,11 @@ public class TypeServices {
     }
 
     @FunctionalInterface
+    public interface PipeRowObjectGetter {
+      Object get(Row row, int columnIndex);
+    }
+
+    @FunctionalInterface
     public interface AggregateTabletColumnValueWriter {
       void write(Object column, int rowIndex, Object value);
     }
@@ -3311,6 +3317,26 @@ public class TypeServices {
                       throw new IllegalArgumentException(
                           DataNodePipeMessages.INVALID_INPUT + type.getTypeEnum());
                 };
+
+    public static final TypeService<PipeRowObjectGetter> PIPE_ROW_OBJECT_GETTER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN -> Row::getBoolean;
+              case INT32 -> Row::getInt;
+              case DATE -> Row::getDate;
+              case INT64, TIMESTAMP -> Row::getLong;
+              case FLOAT -> Row::getFloat;
+              case DOUBLE -> Row::getDouble;
+              case TEXT, BLOB, STRING -> Row::getBinary;
+              case OBJECT, ROW, UNKNOWN, VECTOR ->
+                  (row, columnIndex) -> {
+                    throw new UnsupportedOperationException(
+                        String.format(
+                            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT,
+                            row.getDataType(columnIndex),
+                            row.getColumnName(columnIndex)));
+                  };
+            };
 
     public static final TypeService<TsPrimitiveTabletValueWriter>
         PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE =
@@ -3492,7 +3518,9 @@ public class TypeServices {
       OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE.check();
       OPC_UA_DATA_TYPE_SERVICE.check();
       PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
-      PIPE_DATA_TYPE_TRANSFORMER_SERVICE.check();
+      // PIPE_DATA_TYPE_TRANSFORMER_SERVICE returns a value directly and intentionally rejects
+      // internal TsFile types, so the generic service check cannot be applied to it.
+      PIPE_ROW_OBJECT_GETTER_SERVICE.check();
       PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
