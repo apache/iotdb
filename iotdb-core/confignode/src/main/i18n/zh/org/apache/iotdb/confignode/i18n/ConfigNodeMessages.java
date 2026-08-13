@@ -728,5 +728,4 @@ public final class ConfigNodeMessages {
   // 版本门禁：SET/SHOW/DELETE USER QUOTA 仅 TimechoDB 可用。
   public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
       "用户资源配额在本版本中不可用。";
-
 }

@@ -699,7 +699,6 @@ public class ConsensusSubscriptionSetupHandler {
     final String regexMetaCharacters = ".*+?[](){}\\|^$";
     return Objects.nonNull(pattern)
         && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
-
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {

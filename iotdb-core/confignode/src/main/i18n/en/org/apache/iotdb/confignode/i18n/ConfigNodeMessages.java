@@ -685,5 +685,4 @@ public final class ConfigNodeMessages {
   // Edition gate: SET/SHOW/DELETE USER QUOTA is TimechoDB-only.
   public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
       "User resource quota is not available in this edition.";
-
 }
