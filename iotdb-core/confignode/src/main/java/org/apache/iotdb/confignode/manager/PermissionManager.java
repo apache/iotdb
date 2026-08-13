@@ -68,11 +68,20 @@ public class PermissionManager {
     // If the permissions change, clear the cache content affected by the operation
     LOGGER.info(ManagerMessages.AUTH_RUN_AUTH_PLAN, authorPlan.toString());
     try {
-      if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
-          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateUser
-          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole
-          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateRole
-          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
+      final ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+      final boolean isDropUser =
+          authorType == ConfigPhysicalPlanType.DropUser
+              || authorType == ConfigPhysicalPlanType.DropUserV2
+              || authorType == ConfigPhysicalPlanType.DropUserDep
+              || authorType == ConfigPhysicalPlanType.RDropUser
+              || authorType == ConfigPhysicalPlanType.RDropUserV2;
+      // Capture the immutable userId before the drop is applied.
+      final long userId = isDropUser ? authorInfo.getUserIdIfExists(authorPlan.getUserName()) : -1;
+      if (authorType == ConfigPhysicalPlanType.CreateUser
+          || authorType == ConfigPhysicalPlanType.RCreateUser
+          || authorType == ConfigPhysicalPlanType.CreateRole
+          || authorType == ConfigPhysicalPlanType.RCreateRole
+          || authorType == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
         tsStatus =
             getConsensusManager()
                 .write(isGeneratedByPipe ? new PipeEnrichedPlan(authorPlan) : authorPlan);
@@ -83,6 +92,14 @@ public class PermissionManager {
             configManager
                 .getProcedureManager()
                 .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
+      }
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && isDropUser
+          && userId >= 0) {
+        // ConfigNode-side cascade already ran inside the state machine; broadcast so DataNodes
+        // clear in-memory quota for the dropped userId. Rename needs no broadcast: throttle and
+        // user resource quotas are both keyed by immutable userId.
+        configManager.getClusterQuotaManager().onUserDropped(userId, authorPlan.getUserName());
       }
       return tsStatus;
     } catch (final ConsensusException e) {

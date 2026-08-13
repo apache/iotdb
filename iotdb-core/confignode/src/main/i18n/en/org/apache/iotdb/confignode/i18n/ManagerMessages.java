@@ -593,6 +593,20 @@ public final class ManagerMessages {
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "Unexpected error happened while setting space quota on database: %s ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "Unexpected error happened while setting throttle quota on user: %s ";
+  public static final String
+      LOG_UNEXPECTED_ERROR_HAPPENED_WHEN_SETTING_USER_RESOURCE_QUOTA_ARG_9BB8F473 =
+          "Unexpected error happened when setting user resource quota: {}";
+  public static final String LOG_FAILED_TO_RESOLVE_USERID_FOR_USERNAME_ARG_900382A8 =
+      "Failed to resolve userId for userName={}";
+  public static final String
+      LOG_UPGRADED_LEGACY_NAME_KEYED_THROTTLE_QUOTA_ENTRIES_TO_USERID_KEYS_RESOLVED_UNRESOLVED_1DDB7249 =
+          "Upgraded legacy name-keyed throttle quota entries to userId keys: resolved={}, unresolved={}";
+  public static final String
+      LOG_FAILED_TO_AGGREGATE_RUNNING_DATANODE_USAGE_FOR_SHOW_USER_QUOTA_ARG_DB436DC5 =
+          "Failed to aggregate Running DataNode usage for SHOW USER QUOTA: {}";
+  public static final String
+      MESSAGE_INVALID_USER_QUOTA_RANGE_FOR_ARG_ARG_MIN_ARG_MUST_NOT_EXCEED_MAX_ARG_2B8D90C9 =
+          "Invalid USER QUOTA range for %s %s: min (%d) must not exceed max (%d)";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template need two files";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";

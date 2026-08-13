@@ -160,6 +160,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.DeleteUserResourceQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetUserResourceQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowUserResourceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.AlterTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
@@ -203,6 +206,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableVie
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -237,6 +241,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowActivation;
@@ -265,6 +270,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSystemInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartExternalService;
@@ -295,6 +301,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -1389,6 +1398,33 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     context.setQueryType(QueryType.OTHER);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
+  }
+
+  @Override
+  public IConfigTask visitSetUserResourceQuota(
+      final SetUserResourceQuota node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.OTHER);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new SetUserResourceQuotaTask(
+        (SetUserResourceQuotaStatement) node.getInnerTreeStatement());
+  }
+
+  @Override
+  public IConfigTask visitShowUserResourceQuota(
+      final ShowUserResourceQuota node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new ShowUserResourceQuotaTask(
+        (ShowUserResourceQuotaStatement) node.getInnerTreeStatement());
+  }
+
+  @Override
+  public IConfigTask visitDeleteUserResourceQuota(
+      final DeleteUserResourceQuota node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.OTHER);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new DeleteUserResourceQuotaTask(
+        (DeleteUserResourceQuotaStatement) node.getInnerTreeStatement());
   }
 
   @Override

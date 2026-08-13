@@ -224,6 +224,8 @@ public final class CalcMessages {
   public static final String EXCEPTION_CAN_T_CLOSE_FILECHANNEL_FILESPILLERREADER_E46979F0 = "Can't close fileChannel in FileSpillerReader: ";
   public static final String EXCEPTION_CREATE_FILE_ERROR_B8B379CF = "Create file error: ";
   public static final String EXCEPTION_CAN_T_WRITE_INTERMEDIATE_SORTED_DATA_FILE_0027961E = "Can't write intermediate sorted data to file: ";
+  public static final String LOG_ATTEMPTED_TO_RELEASE_TEMP_DISK_BYTES_BUT_ONLY_WERE_CHARGED_DC962BD1 =
+      "Attempted to release {} TEMP_DISK bytes but only {} were charged";
   public static final String EXCEPTION_CAN_T_GET_FILE_FILESPILLERREADER_CHECK_IF_FILE_EXISTS_DEED83D9 = "Can't get file for FileSpillerReader, check if the file exists: ";
   public static final String EXCEPTION_LONG_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B3F9016B = "long value %d is out of range of integer value.";
   public static final String EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B0E6DDED = "Float value %f is out of range of integer value.";

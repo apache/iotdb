@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -510,11 +511,17 @@ public class IoTDBSpaceQuotaIT {
   }
 
   private void validateResultSetEventually(Statement statement, String sql, String ans) {
+    // ClusterIT fans SHOW out to every DataNode and compares cells. Space-quota usage is updated
+    // asynchronously via heartbeat, so coordinators may briefly disagree (e.g. [0, 2, 2]) until CN
+    // converges. That mismatch surfaces as InconsistentDataException from getString(), which
+    // untilAsserted() does not retry by default — ignore only that type so genuine SQL errors
+    // still fail fast.
     Awaitility.await()
         .pollInSameThread()
         .pollDelay(0, TimeUnit.MILLISECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
         .atMost(30, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () -> {
               try {

@@ -38,16 +38,19 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TResourceType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetUserResourceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
+import org.apache.iotdb.common.rpc.thrift.TUserResourceQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -191,6 +194,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserResourceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -198,6 +202,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResourceQuotaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -281,6 +286,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionT
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowUserResourceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
@@ -345,10 +351,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
@@ -4795,6 +4804,104 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.error(e.getMessage());
     }
     return throttleQuotaResp;
+  }
+
+  @Override
+  public TUserResourceQuotaResp getUserResourceQuota() {
+    TUserResourceQuotaResp resp = new TUserResourceQuotaResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      resp = configNodeClient.getUserResourceQuota();
+    } catch (final Exception e) {
+      LOGGER.error(e.getMessage());
+    }
+    return resp;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setUserResourceQuota(
+      SetUserResourceQuotaStatement statement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (!EditionGate.isUserResourceQuotaEnabled()) {
+      future.setException(
+          new IoTDBException(
+              DataNodeQueryMessages
+                  .EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0,
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
+      return future;
+    }
+    TSetUserResourceQuotaReq req = new TSetUserResourceQuotaReq();
+    req.setUserName(statement.getUserName());
+    req.setUserResourceQuota(statement.getUserResourceQuota());
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = client.setUserResourceQuota(req);
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new IoTDBException(tsStatus));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  /** DELETE USER QUOTA is sent as SET with empty read/write/throttle maps. */
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteUserResourceQuota(
+      DeleteUserResourceQuotaStatement statement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (!EditionGate.isUserResourceQuotaEnabled()) {
+      future.setException(
+          new IoTDBException(
+              DataNodeQueryMessages
+                  .EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0,
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
+      return future;
+    }
+    TSetUserResourceQuotaReq req = new TSetUserResourceQuotaReq();
+    req.setUserName(statement.getUserName());
+    TUserResourceQuota empty = new TUserResourceQuota();
+    empty.setReadQuota(new java.util.EnumMap<>(TResourceType.class));
+    empty.setWriteQuota(new java.util.EnumMap<>(TResourceType.class));
+    empty.setThrottleLimit(new java.util.HashMap<>());
+    req.setUserResourceQuota(empty);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = client.setUserResourceQuota(req);
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new IoTDBException(tsStatus));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showUserResourceQuota(
+      ShowUserResourceQuotaStatement statement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (!EditionGate.isUserResourceQuotaEnabled()) {
+      future.setException(
+          new IoTDBException(
+              DataNodeQueryMessages
+                  .EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0,
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
+      return future;
+    }
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowUserResourceQuotaReq req = new TShowUserResourceQuotaReq();
+      req.setUserName(statement.getUserName());
+      ShowUserResourceQuotaTask.buildTSBlock(client.showUserResourceQuota(req), future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override

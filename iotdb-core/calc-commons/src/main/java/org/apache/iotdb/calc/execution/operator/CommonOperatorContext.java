@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator;
 
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.sort.TempDiskSpillQuotaGate;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -98,6 +99,25 @@ public abstract class CommonOperatorContext implements Accountable {
   public abstract int getFragmentId();
 
   public abstract int getPipelineId();
+
+  /**
+   * Immutable userId of the session owning this operator, used for per-user resource quota
+   * accounting (e.g. TEMP_DISK spill). calc-commons operators can run in tests or standalone
+   * contexts without a session; the default of -1 disables quota accounting. DataNode's
+   * OperatorContext overrides this with the real session userId.
+   */
+  public long getSessionUserId() {
+    return -1;
+  }
+
+  /**
+   * TEMP_DISK spill quota gate for sort operators; null disables accounting. DataNode {@link
+   * org.apache.iotdb.db.queryengine.execution.operator.OperatorContext} overrides this when user
+   * resource quota is enabled.
+   */
+  public TempDiskSpillQuotaGate getTempDiskSpillQuotaGate() {
+    return null;
+  }
 
   public void recordExecutionTime(long executionTimeInNanos) {
     this.totalExecutionTimeInNanos += executionTimeInNanos;

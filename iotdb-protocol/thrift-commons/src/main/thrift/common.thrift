@@ -193,8 +193,51 @@ struct TSetSpaceQuotaReq {
 }
 
 struct TSetThrottleQuotaReq {
+  // userName is for logging / SHOW; userId is the unique storage key (rename-safe).
+  // DataNode -> ConfigNode requests may carry only userName (CN resolves userId);
+  // ConfigNode -> DataNode broadcasts always carry userId.
   1: required string userName
   2: required TThrottleQuota throttleQuota
+  3: optional i64 userId
+}
+
+enum TResourceType {
+  CPU,
+  MEMORY,
+  DISK_IO,
+  TEMP_DISK
+}
+
+enum TOperationType {
+  READ,
+  WRITE
+}
+
+struct TResourceQuotaRange {
+  1: required i64 minValue
+  2: required i64 maxValue
+}
+
+struct TUserResourceQuota {
+  1: optional map<TResourceType, TResourceQuotaRange> readQuota
+  2: optional map<TResourceType, TResourceQuotaRange> writeQuota
+  3: optional map<ThrottleType, TTimedQuota> throttleLimit
+}
+
+// Per-DataNode in-use snapshot for SHOW USER QUOTA (reportUserResourceUsage RPC).
+struct TUserResourceUsageSnapshot {
+  // userId -> resourceType -> inUse
+  1: optional map<i64, map<TResourceType, i64>> readInUse
+  2: optional map<i64, map<TResourceType, i64>> writeInUse
+}
+
+struct TSetUserResourceQuotaReq {
+  // userName is kept for logging / SHOW; userId is the unique key.
+  // DataNode -> ConfigNode requests carry only userName (CN resolves userId);
+  // ConfigNode -> DataNode broadcasts always carry userId.
+  1: required string userName
+  2: required TUserResourceQuota userResourceQuota
+  3: optional i64 userId
 }
 
 struct TPipeHeartbeatResp {

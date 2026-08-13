@@ -93,6 +93,32 @@ public final class StorageEngineMessages {
   public static final String THROTTLE_QUOTA_RESTORED_SUCCESSFULLY = "Throttle quota limit restored successfully. ";
   public static final String THROTTLE_QUOTA_RESTORED_FAILED = "Throttle quota limit restored failed. ";
   public static final String INVALID_STATEMENT_TYPE = "Invalid statement type: ";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_EXCEEDED_8B2D4E1A =
+      "User resource quota exceeded: %s";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_WAIT_TIMEOUT_6F3A1C2D =
+      "User resource quota wait timeout for %s %s";
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_ACQUIRE_INTERRUPTED_31D4116D =
+      "User resource quota acquire interrupted for %s";
+  public static final String EXCEPTION_USER_MAX_EXCEEDED_3D400C08 = "user max exceeded";
+  public static final String EXCEPTION_USER_MAX_EXCEEDED_FOR_ARG_F411FFB3 = "user max exceeded for %s";
+  public static final String EXCEPTION_NODE_CAPACITY_EXCEEDED_89601D9A = "node capacity exceeded";
+  public static final String EXCEPTION_NODE_CAPACITY_EXCEEDED_FOR_ARG_7D36CEB7 =
+      "node capacity exceeded for %s";
+  public static final String EXCEPTION_MIN_GAP_RESERVATION_B84C4EE4 = "min gap reservation";
+  public static final String EXCEPTION_MIN_GAP_RESERVATION_FOR_ARG_6F3E0949 =
+      "min gap reservation for %s";
+  public static final String LOG_USER_RESOURCE_QUOTA_UPDATED_3C8F5A7B =
+      "User resource quota updated for user {}";
+  public static final String LOG_USER_RESOURCE_QUOTAS_SYNCED_FROM_CONFIGNODE_REPORT_RESPONSE_E62A4D74 =
+      "User resource quotas synced from ConfigNode report response";
+  public static final String LOG_IGNORE_USER_RESOURCE_QUOTA_BROADCAST_WITHOUT_USERID_B32A7B22 =
+      "Ignore user resource quota broadcast without userId for user {}";
+  public static final String LOG_USER_RESOURCE_QUOTA_ACQUIRE_REJECTED_F5079ADB =
+      "User resource quota acquire rejected for user {} op {} resource {}: {}";
+  public static final String LOG_FAILED_TO_REPORT_USER_RESOURCE_USAGE_TO_CONFIGNODE_D08BB930 =
+      "Failed to report user resource usage to ConfigNode";
+  public static final String LOG_USER_RESOURCE_USAGE_REPORT_STARTED_WITH_INTERVAL_ARG_SECONDS_C3CC4CC2 =
+      "User resource usage report started with interval %s seconds";
 
   // ======================== DataRegion ========================
 

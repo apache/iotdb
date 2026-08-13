@@ -93,6 +93,9 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     this.comparator = comparator;
     this.cachedBytes = 0;
     this.diskSpiller = diskSpiller;
+    // Bind the session user so spilled bytes are charged to the user's TEMP_DISK quota.
+    this.diskSpiller.setQuotaUserId(operatorContext.getSessionUserId());
+    this.diskSpiller.setTempDiskSpillQuotaGate(operatorContext.getTempDiskSpillQuotaGate());
     this.sortBufferManager =
         new SortBufferManager(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),

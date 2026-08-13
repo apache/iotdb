@@ -214,6 +214,8 @@ public final class CalcMessages {
   public static final String EXCEPTION_CAN_T_CLOSE_FILECHANNEL_FILESPILLERREADER_E46979F0 = "无法关闭 FileSpillerReader 中的 FileChannel：";
   public static final String EXCEPTION_CREATE_FILE_ERROR_B8B379CF = "创建文件错误：";
   public static final String EXCEPTION_CAN_T_WRITE_INTERMEDIATE_SORTED_DATA_FILE_0027961E = "无法将中间排序数据写入文件：";
+  public static final String LOG_ATTEMPTED_TO_RELEASE_TEMP_DISK_BYTES_BUT_ONLY_WERE_CHARGED_DC962BD1 =
+      "尝试释放 {} TEMP_DISK 字节，但仅已计费 {} 字节";
   public static final String EXCEPTION_CAN_T_GET_FILE_FILESPILLERREADER_CHECK_IF_FILE_EXISTS_DEED83D9 = "无法获取 FileSpillerReader 的文件，请检查文件是否存在：";
   public static final String EXCEPTION_LONG_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B3F9016B = "long 值 %d 超出 int 值范围。";
   public static final String EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B0E6DDED = "float 值 %f 超出 int 值范围。";

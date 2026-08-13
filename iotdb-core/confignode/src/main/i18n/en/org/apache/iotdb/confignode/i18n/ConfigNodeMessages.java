@@ -678,4 +678,8 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+
+  // Edition gate: SET/SHOW/DELETE USER QUOTA is TimechoDB-only.
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
+      "User resource quota is not available in this edition.";
 }

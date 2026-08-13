@@ -664,6 +664,25 @@ public final class DataNodeQueryMessages {
       "Please set the number of timeseries greater than 0";
   public static final String CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT =
       "Cannot set throttle quota for user root.";
+  public static final String EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT =
+      "Cannot set USER QUOTA for user root";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292 =
+      "Invalid USER QUOTA attribute: %s";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_CPU_VALUE_ARG_EXPECTED_POSITIVE_LONG_ECF3E7E1 =
+      "Invalid USER QUOTA cpu value: %s, expected positive long";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430 =
+          "Invalid USER QUOTA disk_io value: %s, expected positive long (bytes/sec)";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF =
+          "Invalid USER QUOTA temp_disk value: %s, expected positive long (bytes)";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_MEMORY_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_E68B3BF1 =
+          "Invalid USER QUOTA memory value: %s, expected positive long (bytes)";
+  public static final String EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED =
+      "Limit configuration is not enabled, please enable it first.";
+  public static final String EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65 =
+      "Limit configuration is not enabled, please set quota_enable=true first.";
   public static final String PLEASE_SET_THE_NUMBER_OF_REQUESTS_GREATER_THAN =
       "Please set the number of requests greater than 0";
   public static final String PLEASE_SET_THE_NUMBER_OF_CPU_GREATER_THAN =
@@ -3844,5 +3863,9 @@ public final class DataNodeQueryMessages {
   // coordination so the client sees a clean top-level 701. %s is the config key.
   public static final String EXCEPTION_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =
       "Configuration '%s' is not available in this edition and cannot be set.";
+
+  // Edition gate: SET/SHOW/DELETE USER QUOTA is TimechoDB-only.
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
+      "User resource quota is not available in this edition.";
 
 }

@@ -232,6 +232,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showThrottleQuotaColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowUserResourceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showUserResourceQuotaColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowModelsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
   }

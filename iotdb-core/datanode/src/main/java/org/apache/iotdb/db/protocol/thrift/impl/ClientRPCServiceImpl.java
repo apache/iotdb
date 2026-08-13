@@ -439,7 +439,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           quota =
               DataNodeThrottleQuotaManager.getInstance()
-                  .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+                  .checkQuota(
+                      SESSION_MANAGER.getCurrSession().getUsername(),
+                      SESSION_MANAGER.getCurrSession().getUserId(),
+                      s);
           statementType = s.getType();
 
           queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
@@ -514,6 +517,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               RpcUtils.getStatus(
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
+
+        quota =
+            DataNodeThrottleQuotaManager.getInstance()
+                .checkQuota(
+                    SESSION_MANAGER.getCurrSession().getUsername(),
+                    SESSION_MANAGER.getCurrSession().getUserId(),
+                    s);
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
 
@@ -842,7 +852,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  s);
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
@@ -938,7 +951,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  s);
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
@@ -1036,7 +1052,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  s);
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
@@ -1544,7 +1563,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  s);
 
       // create and cache dataset
       ExecutionResult result =
@@ -2289,7 +2311,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
               quota =
                   DataNodeThrottleQuotaManager.getInstance()
-                      .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+                      .checkQuota(
+                          SESSION_MANAGER.getCurrSession().getUsername(),
+                          SESSION_MANAGER.getCurrSession().getUserId(),
+                          s);
 
               queryId = SESSION_MANAGER.requestQueryId();
               type = s.getType() == null ? null : s.getType().name();
@@ -2336,7 +2361,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
             }
 
-            // TODO audit log, quota, StatementType
+            quota =
+                DataNodeThrottleQuotaManager.getInstance()
+                    .checkQuota(
+                        SESSION_MANAGER.getCurrSession().getUsername(),
+                        SESSION_MANAGER.getCurrSession().getUserId(),
+                        s);
 
             queryId = SESSION_MANAGER.requestQueryId();
 
@@ -2517,7 +2547,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2583,7 +2616,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2651,7 +2687,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2721,7 +2760,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2795,7 +2837,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2864,7 +2909,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
@@ -2940,7 +2988,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
@@ -3272,7 +3323,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
@@ -3663,7 +3717,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       quota =
           DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+              .checkQuota(
+                  SESSION_MANAGER.getCurrSession().getUsername(),
+                  SESSION_MANAGER.getCurrSession().getUserId(),
+                  statement);
 
       // Step 2: Call the coordinator
       final long queryId = SESSION_MANAGER.requestQueryId();
@@ -3865,7 +3922,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final String statementStr,
       final Metadata metadata,
       final long timeoutMs,
-      final boolean userQuery) {
+      final boolean userQuery)
+      throws Exception {
 
     ExecutionResult result = null;
     List<? extends org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement>
@@ -3880,18 +3938,28 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       LOGGER.info(
           DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TABLE, i + 1, totalSubStatements, queryId);
 
-      result =
-          COORDINATOR.executeForTableModel(
-              subStatement,
-              relationSqlParser,
-              clientSession,
-              queryId,
-              sessionInfo,
-              statementStr,
-              metadata,
-              timeoutMs,
-              userQuery,
-              statement.isDebug());
+      OperationQuota subQuota = null;
+      try {
+        subQuota =
+            DataNodeThrottleQuotaManager.getInstance()
+                .checkQuota(sessionInfo.getUserName(), sessionInfo.getUserId(), subStatement);
+        result =
+            COORDINATOR.executeForTableModel(
+                subStatement,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                sessionInfo,
+                statementStr,
+                metadata,
+                timeoutMs,
+                userQuery,
+                statement.isDebug());
+      } finally {
+        if (subQuota != null) {
+          subQuota.close();
+        }
+      }
 
       // Exit early if any sub-statement execution fails
       if (result != null

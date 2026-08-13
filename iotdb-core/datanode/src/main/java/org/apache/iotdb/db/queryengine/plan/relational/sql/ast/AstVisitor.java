@@ -211,6 +211,18 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitSetUserResourceQuota(SetUserResourceQuota node, C context) {
+    return visitStatement(node, context);
+  }
+
+  default R visitShowUserResourceQuota(ShowUserResourceQuota node, C context) {
+    return visitStatement(node, context);
+  }
+
+  default R visitDeleteUserResourceQuota(DeleteUserResourceQuota node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitSetConfiguration(SetConfiguration node, C context) {
     return visitStatement(node, context);
   }

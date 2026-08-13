@@ -721,4 +721,8 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
+
+  // 版本门禁：SET/SHOW/DELETE USER QUOTA 仅 TimechoDB 可用。
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
+      "用户资源配额在本版本中不可用。";
 }

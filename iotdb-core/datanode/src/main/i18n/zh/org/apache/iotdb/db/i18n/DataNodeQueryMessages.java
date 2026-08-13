@@ -645,6 +645,25 @@ public final class DataNodeQueryMessages {
       "请将时间序列数设置为大于 0";
   public static final String CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT =
       "不能为 root 用户设置限流配额。";
+  public static final String EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT =
+      "不能为 root 用户设置 USER QUOTA";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292 =
+      "无效的 USER QUOTA 属性：%s";
+  public static final String EXCEPTION_INVALID_USER_QUOTA_CPU_VALUE_ARG_EXPECTED_POSITIVE_LONG_ECF3E7E1 =
+      "无效的 USER QUOTA cpu 值：%s，期望为正整数 long";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430 =
+          "无效的 USER QUOTA disk_io 值：%s，期望为正整数 long（单位 bytes/sec）";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF =
+          "无效的 USER QUOTA temp_disk 值：%s，期望为正整数 long（单位 Byte）";
+  public static final String
+      EXCEPTION_INVALID_USER_QUOTA_MEMORY_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_E68B3BF1 =
+          "无效的 USER QUOTA memory 值：%s，期望为正整数 long（单位 Byte）";
+  public static final String EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED =
+      "未启用 Limit 配置，请先启用。";
+  public static final String EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65 =
+      "未启用 Limit 配置，请先将 quota_enable 设置为 true。";
   public static final String PLEASE_SET_THE_NUMBER_OF_REQUESTS_GREATER_THAN =
       "请将请求数设置为大于 0";
   public static final String PLEASE_SET_THE_NUMBER_OF_CPU_GREATER_THAN =
@@ -4600,5 +4619,9 @@ public final class DataNodeQueryMessages {
   // 版本门禁：在下发 ConfigNode 协调前拒绝设置 IoTDB 版禁用的键，使客户端看到顶层 701。%s 为配置键名。
   public static final String EXCEPTION_CONFIGURATION_ARG_IS_NOT_AVAILABLE_IN_THIS_EDITION_AND_CANNOT_BE_SET_2B0D9AB3 =
       "配置项 '%s' 在本版本中不可用，无法设置。";
+
+  // 版本门禁：SET/SHOW/DELETE USER QUOTA 仅 TimechoDB 可用。
+  public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
+      "用户资源配额在本版本中不可用。";
 
 }

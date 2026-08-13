@@ -308,6 +308,10 @@ public enum ConfigPhysicalPlanType {
   setSpaceQuota((short) 1400),
   setThrottleQuota((short) 1401),
 
+  /** TimechoDB user resource quota (negative ids; not used by writable views). */
+  setUserResourceQuota((short) -896),
+  deleteUserResourceQuota((short) -897),
+
   /** Pipe Task. */
   CreatePipeV2((short) 1500),
   SetPipeStatusV2((short) 1501),

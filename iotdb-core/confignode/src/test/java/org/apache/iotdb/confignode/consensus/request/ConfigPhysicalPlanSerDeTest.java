@@ -29,11 +29,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TResourceQuotaRange;
+import org.apache.iotdb.common.rpc.thrift.TResourceType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
+import org.apache.iotdb.common.rpc.thrift.TUserResourceQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -118,8 +121,10 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.DeleteUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -207,6 +212,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -2286,10 +2292,42 @@ public class ConfigPhysicalPlanSerDeTest {
     throttleQuota.setCpuLimit(100);
     plan.setThrottleQuota(throttleQuota);
     plan.setUserName("tempuser");
+    plan.setUserId(1001L);
     SetThrottleQuotaPlan deserializedPlan =
         (SetThrottleQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getUserName(), deserializedPlan.getUserName());
+    Assert.assertEquals(plan.getUserId(), deserializedPlan.getUserId());
     Assert.assertEquals(plan.getThrottleQuota(), deserializedPlan.getThrottleQuota());
+  }
+
+  @Test
+  public void setUserResourceQuotaPlanTest() throws IOException {
+    final long testUserId = 1001L;
+    TUserResourceQuota quota = new TUserResourceQuota();
+    Map<TResourceType, TResourceQuotaRange> readQuota = new EnumMap<>(TResourceType.class);
+    readQuota.put(TResourceType.CPU, new TResourceQuotaRange(1, 8));
+    readQuota.put(TResourceType.MEMORY, new TResourceQuotaRange(-1, 1024));
+    quota.setReadQuota(readQuota);
+    SetUserResourceQuotaPlan plan = new SetUserResourceQuotaPlan("u1", testUserId, quota);
+    SetUserResourceQuotaPlan deserialized =
+        (SetUserResourceQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getUserName(), deserialized.getUserName());
+    Assert.assertEquals(plan.getUserId(), deserialized.getUserId());
+    Assert.assertEquals(
+        plan.getUserResourceQuota().getReadQuota().get(TResourceType.CPU).getMaxValue(),
+        deserialized.getUserResourceQuota().getReadQuota().get(TResourceType.CPU).getMaxValue());
+  }
+
+  @Test
+  public void deleteUserResourceQuotaPlanTest() throws IOException {
+    final long testUserId = 1002L;
+    DeleteUserResourceQuotaPlan plan = new DeleteUserResourceQuotaPlan(testUserId, "u_delete");
+    DeleteUserResourceQuotaPlan deserialized =
+        (DeleteUserResourceQuotaPlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getUserName(), deserialized.getUserName());
+    Assert.assertEquals(plan.getUserId(), deserialized.getUserId());
+    Assert.assertEquals(plan.getType(), deserialized.getType());
   }
 
   @Test

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -153,6 +154,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
@@ -185,6 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableVie
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeOutput;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
@@ -229,6 +232,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowActivation;
@@ -262,6 +266,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSystemInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowUserResourceQuota;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
@@ -287,6 +292,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.UserResourceQuotaAttributeHelper;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -2051,6 +2060,69 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     showConfigurationStatement =
         new ShowConfigurationStatement(showAllConfiguration, nodeId, withDescription);
     return new ShowConfiguration(showConfigurationStatement, null);
+  }
+
+  @Override
+  public Node visitSetUserResourceQuotaStatement(
+      RelationalSqlParser.SetUserResourceQuotaStatementContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    String userName = ((Identifier) visit(ctx.userName)).getValue();
+    if (userName.equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT);
+    }
+    SetUserResourceQuotaStatement statement = new SetUserResourceQuotaStatement();
+    statement.setUserName(userName);
+    for (RelationalSqlParser.UserQuotaAttributeContext attrCtx :
+        ctx.userQuotaAttributeAssignments().userQuotaAttribute()) {
+      String key = ((Identifier) visit(attrCtx.name)).getValue();
+      String value = parseUserQuotaAttributeValue(attrCtx.value);
+      UserResourceQuotaAttributeHelper.applyAttribute(statement, key, value);
+    }
+    return new SetUserResourceQuota(statement, null);
+  }
+
+  @Override
+  public Node visitShowUserResourceQuotaStatement(
+      RelationalSqlParser.ShowUserResourceQuotaStatementContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    ShowUserResourceQuotaStatement statement = new ShowUserResourceQuotaStatement();
+    if (ctx.userName != null) {
+      statement.setUserName(((Identifier) visit(ctx.userName)).getValue());
+    }
+    return new ShowUserResourceQuota(statement, null);
+  }
+
+  @Override
+  public Node visitDeleteUserResourceQuotaStatement(
+      RelationalSqlParser.DeleteUserResourceQuotaStatementContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    String userName = ((Identifier) visit(ctx.userName)).getValue();
+    if (userName.equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT);
+    }
+    DeleteUserResourceQuotaStatement statement = new DeleteUserResourceQuotaStatement();
+    statement.setUserName(userName);
+    return new DeleteUserResourceQuota(statement, null);
+  }
+
+  private static String parseUserQuotaAttributeValue(
+      RelationalSqlParser.UserQuotaAttributeValueContext ctx) {
+    if (ctx.string() != null) {
+      return parseStringLiteral(ctx.string().getText());
+    }
+    // INTEGER_VALUE e.g. 4, or string/identifier fallback
+    return ctx.getText();
   }
 
   @Override

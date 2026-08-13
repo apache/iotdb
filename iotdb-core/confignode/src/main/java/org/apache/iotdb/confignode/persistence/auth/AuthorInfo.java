@@ -250,6 +250,18 @@ public class AuthorInfo implements SnapshotProcessor {
     return authorPlanExecutor.getUserName(userId);
   }
 
+  /**
+   * @return the immutable userId of the given user, or -1 when the user does not exist.
+   */
+  public long getUserIdIfExists(String username) {
+    try {
+      org.apache.iotdb.commons.auth.entity.User user = authorizer.getUser(username);
+      return user == null ? -1 : user.getUserId();
+    } catch (AuthException e) {
+      return -1;
+    }
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return authorizer.processTakeSnapshot(snapshotDir);

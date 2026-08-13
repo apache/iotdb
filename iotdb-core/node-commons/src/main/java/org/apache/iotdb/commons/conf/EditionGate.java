@@ -55,6 +55,14 @@ public final class EditionGate {
     return ModuleConfigManager.getInstance().isIoTDB();
   }
 
+  /**
+   * User resource quota (SET/SHOW/DELETE USER QUOTA and runtime enforcement) is TimechoDB-only.
+   * Space/Throttle quota remain available in both editions.
+   */
+  public static boolean isUserResourceQuotaEnabled() {
+    return !isIoTDB();
+  }
+
   /** Test hook (public so tests in other modules/packages can toggle edition). */
   public static void setIoTDBOverrideForTest(boolean iotdb) {
     isIoTDBOverride = iotdb;

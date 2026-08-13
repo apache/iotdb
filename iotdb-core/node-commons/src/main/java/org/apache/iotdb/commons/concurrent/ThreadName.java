@@ -194,6 +194,7 @@ public enum ThreadName {
   // -------------------------- Metrics --------------------------
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
+  USER_RESOURCE_QUOTA_USAGE_REPORT("UserResourceQuota-UsageReport"),
   PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
@@ -407,6 +408,7 @@ public enum ThreadName {
           Arrays.asList(
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
+              USER_RESOURCE_QUOTA_USAGE_REPORT,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,

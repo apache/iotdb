@@ -21,12 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.sort.TempDiskSpillQuotaGate;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.storageengine.rescon.quotas.UserResourceQuotaManager;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -69,6 +71,23 @@ public class OperatorContext extends CommonOperatorContext {
 
   public SessionInfo getSessionInfo() {
     return getInstanceContext().getSessionInfo();
+  }
+
+  @Override
+  public long getSessionUserId() {
+    if (driverContext == null || driverContext.getFragmentInstanceContext() == null) {
+      return -1;
+    }
+    SessionInfo sessionInfo = driverContext.getFragmentInstanceContext().getSessionInfo();
+    return sessionInfo == null ? -1 : sessionInfo.getUserId();
+  }
+
+  @Override
+  public TempDiskSpillQuotaGate getTempDiskSpillQuotaGate() {
+    if (!UserResourceQuotaManager.isInitialized()) {
+      return null;
+    }
+    return UserResourceQuotaManager.getInstance().getTempDiskSpillQuotaGate();
   }
 
   public boolean isHighestPriority() {

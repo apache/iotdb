@@ -168,6 +168,9 @@ statement
     | loadConfigurationStatement
     | setConfigurationStatement
     | showConfigurationStatement
+    | setUserResourceQuotaStatement
+    | showUserResourceQuotaStatement
+    | deleteUserResourceQuotaStatement
     | showCurrentSqlDialectStatement
     | setSqlDialectStatement
     | showCurrentUserStatement
@@ -211,7 +214,7 @@ statement
     // Copy Statement
     | copyToStatement
 
-    // View, Trigger, CQ, Quota are not supported yet
+    // View, Trigger, CQ are not supported yet
     ;
 
 
@@ -832,6 +835,33 @@ showCurrentTimestampStatement
 
 showConfigurationStatement
     : SHOW (ALL)? CONFIGURATION (ON nodeId=INTEGER_VALUE)? (WITH DESC)?
+    ;
+
+setUserResourceQuotaStatement
+    : SET USER QUOTA ON userName=identifier WITH userQuotaAttributeAssignments
+    ;
+
+showUserResourceQuotaStatement
+    : SHOW USER QUOTA userName=identifier?
+    ;
+
+deleteUserResourceQuotaStatement
+    : DELETE USER QUOTA ON userName=identifier
+    ;
+
+userQuotaAttributeAssignments
+    : userQuotaAttribute (',' userQuotaAttribute)*
+    ;
+
+userQuotaAttribute
+    : name=identifier EQ value=userQuotaAttributeValue
+    ;
+
+// Values are plain numbers (CPU count, or bytes / bytes-sec for capacity & IO).
+userQuotaAttributeValue
+    : INTEGER_VALUE
+    | string
+    | identifier
     ;
 
 
@@ -1617,7 +1647,7 @@ nonReserved
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
-    | QUERIES | QUERY | QUOTES
+    | QUERIES | QUERY | QUOTA | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
     | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | STREAMS | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
@@ -1910,6 +1940,7 @@ PROPERTIES: 'PROPERTIES';
 PRUNE: 'PRUNE';
 QUERIES: 'QUERIES';
 QUERY: 'QUERY';
+QUOTA: 'QUOTA';
 QUOTES: 'QUOTES';
 RANGE: 'RANGE';
 READ: 'READ';

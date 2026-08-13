@@ -46,6 +46,7 @@ public class EditionGateTest {
     assertEquals("x", EditionGate.forceValueInIoTDB("x", "UNENCRYPTED", IoTDBGatedFeature.TDE));
     assertFalse(EditionGate.isIoTDBGatedConfigKey("enable_white_list"));
     assertFalse(EditionGate.isIoTDBGatedConfigKey("enable_secure_erase"));
+    assertTrue(EditionGate.isUserResourceQuotaEnabled());
   }
 
   @Test
@@ -64,6 +65,7 @@ public class EditionGateTest {
         EditionGate.firstGatedKey(new HashSet<>(Arrays.asList("foo", "enable_internal_ssl")));
     assertTrue(hit.isPresent());
     assertEquals("enable_internal_ssl", hit.get());
+    assertFalse(EditionGate.isUserResourceQuotaEnabled());
   }
 
   @Test

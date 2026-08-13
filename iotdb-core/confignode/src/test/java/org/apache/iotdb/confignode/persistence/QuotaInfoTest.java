@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TResourceQuotaRange;
+import org.apache.iotdb.common.rpc.thrift.TResourceType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
+import org.apache.iotdb.common.rpc.thrift.TUserResourceQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -78,6 +84,7 @@ public class QuotaInfoTest {
 
   private void prepareThrottleQuotaInfo() {
     String userName = "tempUser";
+    long userId = 1001L;
     Map<ThrottleType, TTimedQuota> quotaLimit = new HashMap<>();
     quotaLimit.put(ThrottleType.READ_NUMBER, new TTimedQuota(1000, 1000));
     quotaLimit.put(ThrottleType.READ_SIZE, new TTimedQuota(2000, 2000));
@@ -85,7 +92,8 @@ public class QuotaInfoTest {
     throttleQuota.setThrottleLimit(quotaLimit);
     throttleQuota.setMemLimit(1000);
     throttleQuota.setCpuLimit(3);
-    SetThrottleQuotaPlan setThrottleQuotaPlan = new SetThrottleQuotaPlan(userName, throttleQuota);
+    SetThrottleQuotaPlan setThrottleQuotaPlan =
+        new SetThrottleQuotaPlan(userName, userId, throttleQuota);
     quotaInfo.setThrottleQuota(setThrottleQuotaPlan);
   }
 
@@ -113,5 +121,49 @@ public class QuotaInfoTest {
 
     Assert.assertEquals(quotaInfo.getSpaceQuotaLimit(), quotaInfo2.getSpaceQuotaLimit());
     Assert.assertEquals(quotaInfo.getThrottleQuotaLimit(), quotaInfo2.getThrottleQuotaLimit());
+    Assert.assertEquals(quotaInfo.getThrottleUserNames(), quotaInfo2.getThrottleUserNames());
+  }
+
+  @Test
+  public void testUpgradeLegacyNameKeyedThrottle() throws TException, IOException {
+    // Simulate a legacy in-memory row that still uses userName as the key.
+    Map<ThrottleType, TTimedQuota> quotaLimit = new HashMap<>();
+    quotaLimit.put(ThrottleType.READ_NUMBER, new TTimedQuota(1000, 1000));
+    TThrottleQuota throttleQuota = new TThrottleQuota();
+    throttleQuota.setThrottleLimit(quotaLimit);
+    throttleQuota.setMemLimit(1000);
+    throttleQuota.setCpuLimit(3);
+    // Plan without userId lands in the legacy map.
+    quotaInfo.setThrottleQuota(new SetThrottleQuotaPlan("legacy_user", throttleQuota));
+    Assert.assertTrue(quotaInfo.getLegacyThrottleByUserName().containsKey("legacy_user"));
+    Assert.assertTrue(quotaInfo.getThrottleQuotaLimit().isEmpty());
+
+    quotaInfo.upgradeLegacyThrottleKeys(name -> "legacy_user".equals(name) ? 42L : -1L);
+
+    Assert.assertTrue(quotaInfo.getLegacyThrottleByUserName().isEmpty());
+    Assert.assertTrue(quotaInfo.getThrottleQuotaLimit().containsKey(42L));
+    Assert.assertEquals("legacy_user", quotaInfo.getThrottleUserNames().get(42L));
+  }
+
+  @Test
+  public void testRejectInvalidMergedUserResourceQuotaWithoutMutatingExistingQuota() {
+    long userId = 1002L;
+    TUserResourceQuota initial = new TUserResourceQuota();
+    initial.putToReadQuota(TResourceType.CPU, new TResourceQuotaRange(-1, 4));
+    TSStatus initialStatus =
+        quotaInfo.setUserResourceQuota(new SetUserResourceQuotaPlan("quota_user", userId, initial));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), initialStatus.getCode());
+
+    TUserResourceQuota invalidUpdate = new TUserResourceQuota();
+    invalidUpdate.putToReadQuota(TResourceType.CPU, new TResourceQuotaRange(5, -1));
+    TSStatus invalidStatus =
+        quotaInfo.setUserResourceQuota(
+            new SetUserResourceQuotaPlan("quota_user", userId, invalidUpdate));
+
+    Assert.assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), invalidStatus.getCode());
+    TResourceQuotaRange persisted =
+        quotaInfo.getUserResourceQuotaLimit().get(userId).getReadQuota().get(TResourceType.CPU);
+    Assert.assertEquals(-1, persisted.getMinValue());
+    Assert.assertEquals(4, persisted.getMaxValue());
   }
 }

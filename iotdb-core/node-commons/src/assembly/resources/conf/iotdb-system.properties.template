@@ -1406,6 +1406,36 @@ batch_size=100000
 # Datatype: long
 sort_buffer_size_in_bytes=0
 
+####################
+### Resource Quota (Space / Throttle / User Resource Quota)
+####################
+
+# Master switch for Space Quota, Throttle Quota, and User Resource Quota enforcement on DataNode.
+# When false, SET/SHOW USER QUOTA and runtime acquire paths are disabled.
+# effectiveMode: hot_reload
+# Datatype: boolean
+quota_enable=false
+
+# Node-level CPU slot capacity shared by all users' read/write CPU quotas on this DataNode.
+# If <= 0, runtime uses max(4, availableProcessors).
+# effectiveMode: hot_reload
+# Datatype: int
+dn_quota_cpu_slots=0
+
+# Node-level MEMORY capacity (bytes) shared by all users' memory quotas on this DataNode.
+# If <= 0, runtime uses JVM maxMemory.
+# effectiveMode: hot_reload
+# Datatype: long
+# Unit: bytes
+dn_quota_memory_bytes=0
+
+# Node-level TEMP_DISK capacity (bytes) for spill accounting on this DataNode.
+# If <= 0, default is min(100GiB, sum(dataDirs totalSpace) / 10).
+# effectiveMode: hot_reload
+# Datatype: long
+# Unit: bytes
+dn_quota_temp_disk_bytes=0
+
 # The buffer size for CTE materialization. If cte_buffer_size_in_bytes <= 0, a default value of 128 KB is used; otherwise the specified value
 # will be used.
 # effectiveMode: hot_reload

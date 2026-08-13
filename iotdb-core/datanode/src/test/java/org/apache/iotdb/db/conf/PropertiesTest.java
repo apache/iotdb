@@ -42,6 +42,46 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
   @Test
+  public void testHotReloadQuotaEnableAndDnQuotaCapacities() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final IoTDBConfig config = descriptor.getConfig();
+    final boolean originalEnable = config.isQuotaEnable();
+    final int originalCpu = config.getDnQuotaCpuSlots();
+    final long originalMem = config.getDnQuotaMemoryBytes();
+    final long originalTempDisk = config.getDnQuotaTempDiskBytes();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("quota_enable", "true");
+      properties.setProperty("dn_quota_cpu_slots", "16");
+      properties.setProperty("dn_quota_memory_bytes", "104857600");
+      properties.setProperty("dn_quota_temp_disk_bytes", "209715200");
+      descriptor.loadHotModifiedProps(properties);
+
+      Assert.assertTrue(config.isQuotaEnable());
+      Assert.assertEquals(16, config.getDnQuotaCpuSlots());
+      Assert.assertEquals(104857600L, config.getDnQuotaMemoryBytes());
+      Assert.assertEquals(209715200L, config.getDnQuotaTempDiskBytes());
+
+      // <=0 falls back to computed defaults via setters
+      properties.setProperty("dn_quota_cpu_slots", "0");
+      properties.setProperty("dn_quota_memory_bytes", "0");
+      properties.setProperty("dn_quota_temp_disk_bytes", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertTrue(config.getDnQuotaCpuSlots() >= 4);
+      Assert.assertTrue(config.getDnQuotaMemoryBytes() > 0);
+      Assert.assertTrue(config.getDnQuotaTempDiskBytes() > 0);
+    } finally {
+      final TrimProperties restore = new TrimProperties();
+      restore.setProperty("quota_enable", Boolean.toString(originalEnable));
+      restore.setProperty("dn_quota_cpu_slots", Integer.toString(originalCpu));
+      restore.setProperty("dn_quota_memory_bytes", Long.toString(originalMem));
+      restore.setProperty("dn_quota_temp_disk_bytes", Long.toString(originalTempDisk));
+      descriptor.loadHotModifiedProps(restore);
+    }
+  }
+
+  @Test
   public void testHotReloadNegativeWalThrottleThresholdUsesDefault() throws Exception {
     final String key = "wal_throttle_threshold_in_byte";
     final long configuredThreshold = 1024 * 1024 * 1024L;

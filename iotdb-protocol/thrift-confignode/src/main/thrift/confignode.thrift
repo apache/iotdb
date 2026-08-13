@@ -1253,11 +1253,30 @@ struct TSpaceQuotaResp {
 
 struct TThrottleQuotaResp {
   1: required common.TSStatus status
+  // Legacy userName-keyed map. Keep field 2 wire-compatible for rolling upgrades.
   2: optional map<string, common.TThrottleQuota> throttleQuota
+  // userId -> throttle quota (rename-safe)
+  3: optional map<i64, common.TThrottleQuota> throttleQuotaByUserId
+  // userId -> current userName for SHOW display
+  4: optional map<i64, string> userNameMap
 }
 
 struct TShowThrottleReq {
   1: optional string userName;
+}
+
+struct TUserResourceQuotaResp {
+  1: required common.TSStatus status
+  // userId -> quota (userId is the unique storage key; rename-safe)
+  2: optional map<i64, common.TUserResourceQuota> userResourceQuota
+  // dataNodeId -> in-use snapshot (from reportUserResourceUsage); only Running DataNodes
+  3: optional map<i32, common.TUserResourceUsageSnapshot> usageByDataNode
+  // userId -> current userName for SHOW display
+  4: optional map<i64, string> userNameMap
+}
+
+struct TShowUserResourceQuotaReq {
+  1: optional string userName
 }
 
 
@@ -2242,6 +2261,23 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Set user resource quota */
+  common.TSStatus setUserResourceQuota(common.TSetUserResourceQuotaReq req)
+
+  /** Show user resource quota */
+  TUserResourceQuotaResp showUserResourceQuota(TShowUserResourceQuotaReq req)
+
+  /** Get user resource quota */
+  TUserResourceQuotaResp getUserResourceQuota()
+
+  /**
+   * DataNode reports per-user resource in-use snapshot for SHOW USER QUOTA aggregation.
+   * Dedicated RPC (not main node heartbeat); low frequency is enough.
+   */
+  // DN reports in-use snapshot; CN replies with the latest user-resource quota map so DNs that
+  // missed SET USER QUOTA broadcast can converge within one report interval (~10s).
+  TUserResourceQuotaResp reportUserResourceUsage(i32 dataNodeId, common.TUserResourceUsageSnapshot usage)
 
   /** Push heartbeat in shutdown */
   common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)

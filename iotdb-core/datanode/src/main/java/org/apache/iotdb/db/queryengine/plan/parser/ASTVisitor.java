@@ -263,10 +263,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.UserResourceQuotaAttributeHelper;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
@@ -354,9 +358,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
-
-  private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
-      "Limit configuration is not enabled, please enable it first.";
 
   public static final String DELETE_RANGE_COMPARISON_ERROR_MSG =
       "For delete statement, where clause use a range comparison on the same field, the left value of the range cannot be greater than the right value of the range, it must be written like this : time > 5 and time < 10";
@@ -4824,7 +4825,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED);
     }
     SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
@@ -4894,7 +4896,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetThrottleQuota(IoTDBSqlParser.SetThrottleQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED);
     }
     if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
       throw new SemanticException(DataNodeQueryMessages.CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT);
@@ -4998,13 +5001,63 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowThrottleQuota(IoTDBSqlParser.ShowThrottleQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED);
     }
     ShowThrottleQuotaStatement showThrottleQuotaStatement = new ShowThrottleQuotaStatement();
     if (ctx.userName != null) {
       showThrottleQuotaStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     }
     return showThrottleQuotaStatement;
+  }
+
+  @Override
+  public Statement visitSetUserResourceQuota(IoTDBSqlParser.SetUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT);
+    }
+    SetUserResourceQuotaStatement statement = new SetUserResourceQuotaStatement();
+    statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    for (IoTDBSqlParser.AttributePairContext pair : ctx.attributePair()) {
+      UserResourceQuotaAttributeHelper.applyAttribute(
+          statement,
+          parseAttributeKey(pair.attributeKey()),
+          parseAttributeValue(pair.attributeValue()));
+    }
+    return statement;
+  }
+
+  @Override
+  public Statement visitShowUserResourceQuota(IoTDBSqlParser.ShowUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    ShowUserResourceQuotaStatement statement = new ShowUserResourceQuotaStatement();
+    if (ctx.userName != null) {
+      statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    }
+    return statement;
+  }
+
+  @Override
+  public Statement visitDeleteUserResourceQuota(IoTDBSqlParser.DeleteUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_QUOTA_ENABLE_NOT_ENABLED_86EE7A65);
+    }
+    if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT);
+    }
+    DeleteUserResourceQuotaStatement statement = new DeleteUserResourceQuotaStatement();
+    statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    return statement;
   }
 
   private long parseThrottleQuotaTimeUnit(String timeUnit) {
@@ -5075,7 +5128,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowSpaceQuota(IoTDBSqlParser.ShowSpaceQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED);
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
     List<PartialPath> databases = null;

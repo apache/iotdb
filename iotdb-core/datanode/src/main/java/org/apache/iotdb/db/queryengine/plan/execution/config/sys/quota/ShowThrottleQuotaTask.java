@@ -42,6 +42,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BytesUtils;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -67,13 +68,37 @@ public class ShowThrottleQuotaTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    if (throttleQuotaResp.getThrottleQuota() != null) {
-      for (Map.Entry<String, TThrottleQuota> throttleQuota :
+    Map<Long, TThrottleQuota> throttleByUserId = new HashMap<>();
+    Map<Long, String> nameMap = new HashMap<>();
+    boolean legacyResponse = false;
+    if (throttleQuotaResp.isSetThrottleQuotaByUserId()
+        && throttleQuotaResp.getThrottleQuotaByUserId() != null) {
+      throttleByUserId.putAll(throttleQuotaResp.getThrottleQuotaByUserId());
+      if (throttleQuotaResp.isSetUserNameMap() && throttleQuotaResp.getUserNameMap() != null) {
+        nameMap.putAll(throttleQuotaResp.getUserNameMap());
+      }
+    } else if (throttleQuotaResp.getThrottleQuota() != null) {
+      // Rolling-upgrade fallback for an older ConfigNode response.
+      legacyResponse = true;
+      long syntheticUserId = -1;
+      for (Map.Entry<String, TThrottleQuota> entry :
           throttleQuotaResp.getThrottleQuota().entrySet()) {
+        throttleByUserId.put(syntheticUserId, entry.getValue());
+        nameMap.put(syntheticUserId, entry.getKey());
+        syntheticUserId--;
+      }
+    }
+    if (!throttleByUserId.isEmpty()) {
+      for (Map.Entry<Long, TThrottleQuota> throttleQuota : throttleByUserId.entrySet()) {
+        if (!legacyResponse && (throttleQuota.getKey() == null || throttleQuota.getKey() < 0)) {
+          continue;
+        }
+        String userName =
+            nameMap.getOrDefault(throttleQuota.getKey(), String.valueOf(throttleQuota.getKey()));
         for (Map.Entry<ThrottleType, TTimedQuota> entry :
             throttleQuota.getValue().getThrottleLimit().entrySet()) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(userName));
           builder
               .getColumnBuilder(1)
               .writeBinary(BytesUtils.valueOf(toThrottleType(entry.getKey())));
@@ -87,7 +112,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
         }
         if (throttleQuota.getValue().getMemLimit() != 0) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(userName));
           builder
               .getColumnBuilder(1)
               .writeBinary(BytesUtils.valueOf(IoTDBConstant.MEMORY_SIZE_PER_READ));
@@ -105,7 +130,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
 
         if (throttleQuota.getValue().getCpuLimit() != 0) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(userName));
           builder
               .getColumnBuilder(1)
               .writeBinary(BytesUtils.valueOf(IoTDBConstant.CPU_NUMBER_PER_READ));

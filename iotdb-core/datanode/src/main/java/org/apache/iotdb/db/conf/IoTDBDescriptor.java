@@ -70,6 +70,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.quotas.UserResourceQuotaManager;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
@@ -1220,6 +1221,16 @@ public class IoTDBDescriptor {
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+    conf.setDnQuotaCpuSlots(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_quota_cpu_slots", String.valueOf(conf.getDnQuotaCpuSlots()))));
+    conf.setDnQuotaMemoryBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_quota_memory_bytes", String.valueOf(conf.getDnQuotaMemoryBytes()))));
+    conf.setDnQuotaTempDiskBytes(
+        Long.parseLong(properties.getProperty("dn_quota_temp_disk_bytes", "0")));
 
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(
@@ -2800,6 +2811,9 @@ public class IoTDBDescriptor {
           "sort_buffer_size_in_bytes",
           v -> commonDescriptor.getConfig().setSortBufferSize(v));
 
+      // Resource quota master switch and DataNode node capacities (hot_reload).
+      loadQuotaHotModifiedProps(properties);
+
       loadFixedSizeLimitForQuery(
           properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
@@ -3036,6 +3050,14 @@ public class IoTDBDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
+        "quota_enable", Boolean.toString(conf.isQuotaEnable()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "dn_quota_cpu_slots", Integer.toString(conf.getDnQuotaCpuSlots()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "dn_quota_memory_bytes", Long.toString(conf.getDnQuotaMemoryBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "dn_quota_temp_disk_bytes", Long.toString(conf.getDnQuotaTempDiskBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
 
     // Enterprise-only keys whose loaders rewrite the value (coercions / overflow guards).
@@ -3112,6 +3134,31 @@ public class IoTDBDescriptor {
       pattern = commonDescriptor.getConfig().getTrustedUriPattern();
     }
     commonDescriptor.getConfig().setTrustedUriPattern(pattern);
+  }
+
+  /**
+   * Hot-reload {@code quota_enable} and {@code dn_quota_*} capacities. When the user-resource quota
+   * manager has already been constructed, push node capacities into live {@code NodeQuotaState}s.
+   */
+  private void loadQuotaHotModifiedProps(TrimProperties properties) throws IOException {
+    conf.setQuotaEnable(
+        Boolean.parseBoolean(
+            properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+    conf.setDnQuotaCpuSlots(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_quota_cpu_slots", String.valueOf(conf.getDnQuotaCpuSlots()))));
+    conf.setDnQuotaMemoryBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_quota_memory_bytes", String.valueOf(conf.getDnQuotaMemoryBytes()))));
+    conf.setDnQuotaTempDiskBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_quota_temp_disk_bytes", String.valueOf(conf.getDnQuotaTempDiskBytes()))));
+    if (UserResourceQuotaManager.isInitialized()) {
+      UserResourceQuotaManager.getInstance().reloadNodeCapacitiesFromConfig();
+    }
   }
 
   public synchronized void loadHotModifiedProps() throws QueryProcessException {

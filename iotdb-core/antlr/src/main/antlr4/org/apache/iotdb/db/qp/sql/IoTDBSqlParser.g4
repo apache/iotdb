@@ -75,6 +75,7 @@ ddlStatement
     | activate | showActivation | showSystemInfo
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
+    | setUserResourceQuota | showUserResourceQuota | deleteUserResourceQuota
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
@@ -401,6 +402,18 @@ setThrottleQuota
 // Show Throttle Quota
 showThrottleQuota
     : SHOW THROTTLE QUOTA (userName=identifier)?
+    ;
+
+setUserResourceQuota
+    : SET USER QUOTA ON userName=identifier WITH attributePair (COMMA attributePair)*
+    ;
+
+showUserResourceQuota
+    : SHOW USER QUOTA (userName=identifier)?
+    ;
+
+deleteUserResourceQuota
+    : DELETE USER QUOTA ON userName=identifier
     ;
 
 // Trigger =========================================================================================

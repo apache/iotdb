@@ -23,7 +23,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/** The ten commercial security features gated off in the IoTDB edition. */
+/**
+ * Commercial features gated off in the IoTDB edition (available only in TimechoDB). Security
+ * features use config-key clamping via {@link EditionGate}; statement-level features such as {@link
+ * #USER_RESOURCE_QUOTA} are rejected at SQL/RPC entry points when {@link EditionGate#isIoTDB()}.
+ */
 public enum IoTDBGatedFeature {
   SEPARATION_OF_POWERS("Separation of powers", "enable_separation_of_powers"),
   TDE("Transparent data encryption", "encrypt_type"),
@@ -39,7 +43,9 @@ public enum IoTDBGatedFeature {
       "Anti password brute-force", "failed_login_attempts", "failed_login_attempts_per_user"),
   WHITE_BLACK_LIST("IP white/black list", "enable_white_list", "enable_black_list"),
   CONNECTION_LIMIT("Per-user connection limit"),
-  IDLE_EVICTION("Idle connection eviction", "idle_session_timeout_in_minutes");
+  IDLE_EVICTION("Idle connection eviction", "idle_session_timeout_in_minutes"),
+  /** SET/SHOW/DELETE USER QUOTA and runtime CPU/MEMORY/TEMP_DISK enforcement. */
+  USER_RESOURCE_QUOTA("User resource quota");
 
   private final String displayName;
   private final List<String> configKeys;

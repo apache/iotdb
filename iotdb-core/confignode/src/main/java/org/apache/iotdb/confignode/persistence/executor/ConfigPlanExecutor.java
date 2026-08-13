@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
@@ -179,6 +180,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RollbackCreateWritableViewPlan;
+import com.timecho.iotdb.confignode.persistence.executor.TimechoConfigPlanExecutor;
 import com.timecho.iotdb.confignode.procedure.consensus.request.write.auth.EnableSeparationOfAdminPowersPlan;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
@@ -397,8 +399,12 @@ public class ConfigPlanExecutor {
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
       throws UnknownPhysicalPlanTypeException {
+    ConfigPhysicalPlanType planType = physicalPlan.getType();
+    if (TimechoConfigPlanExecutor.isTimechoPlan(planType)) {
+      return TimechoConfigPlanExecutor.executeNonQueryPlan(physicalPlan, quotaInfo);
+    }
     TSStatus status;
-    switch (physicalPlan.getType()) {
+    switch (planType) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
       case RemoveDataNode:
@@ -530,7 +536,7 @@ public class ConfigPlanExecutor {
       case RRevokeRoleTBPriv:
       case RRevokeUserRole:
       case RRenameUser:
-        return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
+        return executeAuthorNonQueryWithQuotaCascade((AuthorPlan) physicalPlan);
       case EnableSeparationOfAdminPowers:
         EnableSeparationOfAdminPowersPlan plan = (EnableSeparationOfAdminPowersPlan) physicalPlan;
         return authorInfo.enableSeparationOfAdminPowers(
@@ -712,7 +718,15 @@ public class ConfigPlanExecutor {
       case setSpaceQuota:
         return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
       case setThrottleQuota:
-        return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
+        SetThrottleQuotaPlan setThrottleQuotaPlan = (SetThrottleQuotaPlan) physicalPlan;
+        if (setThrottleQuotaPlan.getUserId() < 0 && setThrottleQuotaPlan.getUserName() != null) {
+          // Replay path for pre-userId raft entries: resolve via AuthorInfo when possible.
+          long resolved = authorInfo.getUserIdIfExists(setThrottleQuotaPlan.getUserName());
+          if (resolved >= 0) {
+            setThrottleQuotaPlan.setUserId(resolved);
+          }
+        }
+        return quotaInfo.setThrottleQuota(setThrottleQuotaPlan);
       case CreatePipeSinkV1:
       case DropPipeV1:
       case DropPipeSinkV1:
@@ -844,6 +858,8 @@ public class ConfigPlanExecutor {
         PipeConfigNodeAgent.runtime()
             .reconcileListenerReferences(pipeInfo.getPipeTaskInfo().getPipeMetaList());
         pipeInfo.getPipeTaskInfo().enrichPipeMetasWithRootUserForCompatibility();
+        // Throttle quota used to be userName-keyed; upgrade after AuthorInfo is loaded.
+        quotaInfo.upgradeLegacyThrottleKeys(authorInfo::getUserIdIfExists);
         LOGGER.info(
             ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
             latestSnapshotRootDir);
@@ -855,6 +871,29 @@ public class ConfigPlanExecutor {
     // Propagate any snapshot-load failure so callers (e.g. the AddPeer flow) do not treat a
     // partially or wholly failed load as success.
     return result.get();
+  }
+
+  /**
+   * Apply an AuthorPlan and cascade quota cleanup on user drop. The userId must be captured before
+   * the drop is applied; running inside the state machine keeps all replicas consistent. Rename
+   * needs no cascade because throttle and user resource quotas are keyed by immutable userId.
+   */
+  private TSStatus executeAuthorNonQueryWithQuotaCascade(AuthorPlan plan) {
+    ConfigPhysicalPlanType type = plan.getAuthorType();
+    boolean isDropUser =
+        type == ConfigPhysicalPlanType.DropUser
+            || type == ConfigPhysicalPlanType.DropUserV2
+            || type == ConfigPhysicalPlanType.DropUserDep
+            || type == ConfigPhysicalPlanType.RDropUser
+            || type == ConfigPhysicalPlanType.RDropUserV2;
+    long userId = isDropUser ? authorInfo.getUserIdIfExists(plan.getUserName()) : -1;
+    TSStatus status = authorInfo.authorNonQuery(plan);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && isDropUser
+        && userId >= 0) {
+      quotaInfo.onUserDropped(userId, plan.getUserName());
+    }
+    return status;
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {

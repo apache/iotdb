@@ -21,6 +21,8 @@ package com.timecho.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.quota.DeleteUserResourceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -83,6 +85,10 @@ public final class TimechoConfigPhysicalPlanFactory {
         return new SetWritableViewColumnCommentPlan();
       case SetWritableViewComment:
         return new SetWritableViewCommentPlan();
+      case setUserResourceQuota:
+        return new SetUserResourceQuotaPlan();
+      case deleteUserResourceQuota:
+        return new DeleteUserResourceQuotaPlan();
       default:
         throw new IOException(
             String.format(

@@ -72,13 +72,18 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -1272,6 +1277,15 @@ public class IoTDBConfig {
 
   /** Resource control */
   private boolean quotaEnable = false;
+
+  private int dnQuotaCpuSlots = Math.max(4, Runtime.getRuntime().availableProcessors());
+  private long dnQuotaMemoryBytes = Runtime.getRuntime().maxMemory();
+
+  /**
+   * Node capacity for user TEMP_DISK quota (temporary disk occupancy), in bytes. Default is
+   * computed at startup as min(100GiB, totalDataDirSpace/10) unless overridden.
+   */
+  private long dnQuotaTempDiskBytes = -1L;
 
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
@@ -4646,6 +4660,82 @@ public class IoTDBConfig {
 
   public void setQuotaEnable(boolean quotaEnable) {
     this.quotaEnable = quotaEnable;
+  }
+
+  public int getDnQuotaCpuSlots() {
+    return dnQuotaCpuSlots;
+  }
+
+  public void setDnQuotaCpuSlots(int dnQuotaCpuSlots) {
+    if (dnQuotaCpuSlots <= 0) {
+      this.dnQuotaCpuSlots = Math.max(4, Runtime.getRuntime().availableProcessors());
+    } else {
+      this.dnQuotaCpuSlots = dnQuotaCpuSlots;
+    }
+  }
+
+  public long getDnQuotaMemoryBytes() {
+    return dnQuotaMemoryBytes;
+  }
+
+  public void setDnQuotaMemoryBytes(long dnQuotaMemoryBytes) {
+    if (dnQuotaMemoryBytes <= 0) {
+      this.dnQuotaMemoryBytes = Runtime.getRuntime().maxMemory();
+    } else {
+      this.dnQuotaMemoryBytes = dnQuotaMemoryBytes;
+    }
+  }
+
+  public long getDnQuotaTempDiskBytes() {
+    if (dnQuotaTempDiskBytes <= 0) {
+      dnQuotaTempDiskBytes = computeDefaultTempDiskBytes();
+    }
+    return dnQuotaTempDiskBytes;
+  }
+
+  public void setDnQuotaTempDiskBytes(long dnQuotaTempDiskBytes) {
+    if (dnQuotaTempDiskBytes <= 0) {
+      this.dnQuotaTempDiskBytes = computeDefaultTempDiskBytes();
+    } else {
+      this.dnQuotaTempDiskBytes = dnQuotaTempDiskBytes;
+    }
+  }
+
+  /** Default TEMP_DISK node capacity cap when data-dir sizing is unavailable. */
+  private static final long DEFAULT_TEMP_DISK_CAP_BYTES = 100L * 1024 * 1024 * 1024;
+
+  /** Default TEMP_DISK is at most this fraction of the sum of data-dir total spaces. */
+  private static final int DEFAULT_TEMP_DISK_DISK_FRACTION_DENOMINATOR = 10;
+
+  /** Default: min(100GiB, sum(unique FileStore totalSpace) / 10). */
+  public long computeDefaultTempDiskBytes() {
+    long totalSpace = 0L;
+    Set<FileStore> seenStores = new HashSet<>();
+    try {
+      String[] dirs = getDataDirs();
+      if (dirs != null) {
+        for (String dir : dirs) {
+          if (dir == null) {
+            continue;
+          }
+          Path path = Paths.get(dir).toAbsolutePath().normalize();
+          FileStore store = Files.getFileStore(path);
+          if (seenStores.add(store)) {
+            long space = store.getTotalSpace();
+            if (space > 0) {
+              totalSpace += space;
+            }
+          }
+        }
+      }
+    } catch (Exception ignore) {
+      // fall through to DEFAULT_TEMP_DISK_CAP_BYTES
+    }
+    if (totalSpace <= 0) {
+      return DEFAULT_TEMP_DISK_CAP_BYTES;
+    }
+    return Math.min(
+        DEFAULT_TEMP_DISK_CAP_BYTES, totalSpace / DEFAULT_TEMP_DISK_DISK_FRACTION_DENOMINATOR);
   }
 
   public String getRateLimiterType() {

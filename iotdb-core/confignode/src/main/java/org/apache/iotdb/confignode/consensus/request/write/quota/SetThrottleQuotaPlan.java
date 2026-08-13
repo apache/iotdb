@@ -35,7 +35,11 @@ import java.util.Objects;
 
 public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
 
+  /** Sentinel for plans that only carry a legacy userName (raft log upgrade path). */
+  public static final long UNKNOWN_USER_ID = -1L;
+
   private String userName;
+  private long userId = UNKNOWN_USER_ID;
   private TThrottleQuota throttleQuota;
 
   public SetThrottleQuotaPlan() {
@@ -43,8 +47,13 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
   }
 
   public SetThrottleQuotaPlan(String userName, TThrottleQuota throttleQuota) {
+    this(userName, UNKNOWN_USER_ID, throttleQuota);
+  }
+
+  public SetThrottleQuotaPlan(String userName, long userId, TThrottleQuota throttleQuota) {
     super(ConfigPhysicalPlanType.setThrottleQuota);
     this.userName = userName;
+    this.userId = userId;
     this.throttleQuota = throttleQuota;
   }
 
@@ -54,6 +63,14 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
 
   public void setUserName(String userName) {
     this.userName = userName;
+  }
+
+  public long getUserId() {
+    return userId;
+  }
+
+  public void setUserId(long userId) {
+    this.userId = userId;
   }
 
   public TThrottleQuota getThrottleQuota() {
@@ -76,6 +93,8 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
     }
     BasicStructureSerDeUtil.write(throttleQuota.getMemLimit(), stream);
     BasicStructureSerDeUtil.write(throttleQuota.getCpuLimit(), stream);
+    // Appended for userId-keyed throttle; older raft entries stop before this field.
+    BasicStructureSerDeUtil.write(userId, stream);
   }
 
   @Override
@@ -94,6 +113,11 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
     tmpThrottleQuota.setMemLimit(BasicStructureSerDeUtil.readLong(buffer));
     tmpThrottleQuota.setCpuLimit(BasicStructureSerDeUtil.readInt(buffer));
     this.throttleQuota = tmpThrottleQuota;
+    if (buffer.hasRemaining()) {
+      this.userId = BasicStructureSerDeUtil.readLong(buffer);
+    } else {
+      this.userId = UNKNOWN_USER_ID;
+    }
   }
 
   @Override
@@ -108,12 +132,13 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
       return false;
     }
     SetThrottleQuotaPlan that = (SetThrottleQuotaPlan) o;
-    return Objects.equals(userName, that.userName)
+    return userId == that.userId
+        && Objects.equals(userName, that.userName)
         && Objects.equals(throttleQuota, that.throttleQuota);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), userName, throttleQuota);
+    return Objects.hash(super.hashCode(), userName, userId, throttleQuota);
   }
 }

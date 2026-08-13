@@ -585,6 +585,20 @@ public final class ManagerMessages {
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "设置数据库 %s 的空间配额时发生意外错误 ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "设置用户 %s 的限流配额时发生意外错误 ";
+  public static final String
+      LOG_UNEXPECTED_ERROR_HAPPENED_WHEN_SETTING_USER_RESOURCE_QUOTA_ARG_9BB8F473 =
+          "设置用户资源配额时发生意外错误：{}";
+  public static final String LOG_FAILED_TO_RESOLVE_USERID_FOR_USERNAME_ARG_900382A8 =
+      "解析 userName={} 的 userId 失败";
+  public static final String
+      LOG_UPGRADED_LEGACY_NAME_KEYED_THROTTLE_QUOTA_ENTRIES_TO_USERID_KEYS_RESOLVED_UNRESOLVED_1DDB7249 =
+          "已将按用户名索引的限流配额升级为按 userId 索引：已解析={}，未解析={}";
+  public static final String
+      LOG_FAILED_TO_AGGREGATE_RUNNING_DATANODE_USAGE_FOR_SHOW_USER_QUOTA_ARG_DB436DC5 =
+          "汇总 Running DataNode 用量失败，无法完整展示 SHOW USER QUOTA：{}";
+  public static final String
+      MESSAGE_INVALID_USER_QUOTA_RANGE_FOR_ARG_ARG_MIN_ARG_MUST_NOT_EXCEED_MAX_ARG_2B8D90C9 =
+          "无效的 USER QUOTA 范围（%s %s）：min（%d）不能大于 max（%d）";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "反序列化 use&role 文件时发生 IOException，类型：{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "反序列化 roleList 时发生 IOException";
