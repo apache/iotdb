@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.conf;
 
-import org.apache.iotdb.commons.i18n.ConfigMessages;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +51,6 @@ public class ModuleConfigManager {
     moduleBEnabled = Boolean.parseBoolean(properties.getProperty("moduleB.enabled", "true"));
     versionSuffix = properties.getProperty("version.suffix", "");
     edition = Edition.fromString(properties.getProperty("edition", "TIMECHODB"));
-    LOGGER.info(ConfigMessages.LOG_CURRENT_PRODUCT_RELEASE_ARG_9A522901, edition.getDisplayName());
   }
 
   public static ModuleConfigManager getInstance() {
