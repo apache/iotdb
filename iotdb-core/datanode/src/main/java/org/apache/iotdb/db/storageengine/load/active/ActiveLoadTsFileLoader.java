@@ -32,7 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -264,6 +263,9 @@ public class ActiveLoadTsFileLoader {
             : new File(entry.getPendingDir());
     final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
     ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+    final String userName =
+        attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
+    session.setUsername(userName);
 
     return executeStatement(
         entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
@@ -276,7 +278,7 @@ public class ActiveLoadTsFileLoader {
           .executeForTreeModel(
               statement,
               SessionManager.getInstance().requestQueryId(),
-              new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
+              SESSION_MANAGER.getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

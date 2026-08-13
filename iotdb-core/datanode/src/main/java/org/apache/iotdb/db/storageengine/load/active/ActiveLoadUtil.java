@@ -21,8 +21,11 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -37,8 +40,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,8 +95,7 @@ public class ActiveLoadUtil {
       LOGGER.warn("Load active listening dir is not set.");
       return false;
     }
-    final Map<String, String> attributes =
-        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     transferFilesToActiveDir(
@@ -104,6 +106,23 @@ public class ActiveLoadUtil {
             file),
         isDeleteAfterLoad);
     return true;
+  }
+
+  private static Map<String, String> appendCurrentUserIfAbsent(
+      final Map<String, String> loadAttributes) {
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes)
+            ? new LinkedHashMap<>(loadAttributes)
+            : new LinkedHashMap<>();
+    if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
+      final IClientSession session = SessionManager.getInstance().getCurrSession();
+      attributes.put(
+          ActiveLoadPathHelper.USER_KEY,
+          session == null || session.getUsername() == null
+              ? AuthorityChecker.SUPER_USER
+              : session.getUsername());
+    }
+    return attributes;
   }
 
   public static boolean loadFilesToActiveDir(
@@ -129,8 +148,7 @@ public class ActiveLoadUtil {
       LOGGER.warn("Load active listening dir is not set.");
       return false;
     }
-    final Map<String, String> attributes =
-        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     final List<File> sourceFiles = new ArrayList<>(files.size());

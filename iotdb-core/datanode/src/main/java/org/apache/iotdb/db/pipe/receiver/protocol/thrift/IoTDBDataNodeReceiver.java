@@ -571,7 +571,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
         !shouldWaitForSchemaBeforeLoad,
         null,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        AuthorityChecker.SUPER_USER);
   }
 
   private TSStatus loadTsFileSync(
