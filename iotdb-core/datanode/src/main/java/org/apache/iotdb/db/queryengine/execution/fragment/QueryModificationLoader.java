@@ -266,7 +266,8 @@ class QueryModificationLoader implements AutoCloseable {
 
   private long estimateModsTreeMemory(
       PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications) {
-    return RamUsageEstimator.sizeOfObject(modifications);
+    return RamUsageEstimator.sizeOfObject(modifications)
+        + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
   }
 
   @Override
