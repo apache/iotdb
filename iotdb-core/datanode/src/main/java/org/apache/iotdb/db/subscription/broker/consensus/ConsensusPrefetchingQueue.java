@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -381,6 +382,9 @@ public class ConsensusPrefetchingQueue {
 
     private final Runnable wakeupHook;
     private final BooleanSupplier admissionSupplier;
+    private final IoTConsensusMemoryManager requestMemoryManager =
+        IoTConsensusMemoryManager.getInstance();
+    private final AtomicLong retainedRequestBytes = new AtomicLong(0L);
 
     private WakeableIndexedConsensusQueue(
         final int capacity, final Runnable wakeupHook, final BooleanSupplier admissionSupplier) {
@@ -396,7 +400,20 @@ public class ConsensusPrefetchingQueue {
         if (!admissionSupplier.getAsBoolean()) {
           return false;
         }
-        offered = super.offer(request);
+        if (!requestMemoryManager.reserve(request)) {
+          return false;
+        }
+        try {
+          offered = super.offer(request);
+        } catch (final Throwable t) {
+          requestMemoryManager.free(request);
+          throw t;
+        }
+        if (offered) {
+          retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+        } else {
+          requestMemoryManager.free(request);
+        }
       }
       if (offered) {
         wakeupHook.run();
@@ -406,7 +423,23 @@ public class ConsensusPrefetchingQueue {
 
     @Override
     public synchronized void clear() {
-      super.clear();
+      IndexedConsensusRequest request;
+      while (Objects.nonNull(request = super.poll())) {
+        release(request);
+      }
+    }
+
+    private void release(final IndexedConsensusRequest request) {
+      retainedRequestBytes.addAndGet(-request.getRetainedMemorySize());
+      requestMemoryManager.free(request);
+    }
+
+    private void release(final List<IndexedConsensusRequest> requests) {
+      requests.forEach(this::release);
+    }
+
+    private long getRetainedRequestBytes() {
+      return retainedRequestBytes.get();
     }
   }
 
@@ -1399,9 +1432,14 @@ public class ConsensusPrefetchingQueue {
             nextExpectedSearchIndex.get(),
             prefetchingQueue.size());
 
-        final MaterializationResult batchResult =
-            accumulateFromPending(
-                batch, lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes);
+        final MaterializationResult batchResult;
+        try {
+          batchResult =
+              accumulateFromPending(
+                  batch, lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes);
+        } finally {
+          pendingEntries.release(batch);
+        }
         if (batchResult != MaterializationResult.SUCCESS) {
           if (batchResult == MaterializationResult.WAL_GAP) {
             return PrefetchRoundResult.rescheduleAfter(WAL_GAP_RETRY_SLEEP_MS);
@@ -3820,6 +3858,10 @@ public class ConsensusPrefetchingQueue {
     return retainedTabletBytes.get();
   }
 
+  public long getRetainedRequestBytes() {
+    return pendingEntries.getRetainedRequestBytes();
+  }
+
   public long getSubscriptionMemoryLimitInBytes() {
     return subscriptionMemoryManager.getTotalMemorySizeInBytes();
   }
@@ -3888,6 +3930,7 @@ public class ConsensusPrefetchingQueue {
     result.put("prefetchingQueueSize", String.valueOf(prefetchingQueue.size()));
     result.put("inFlightEventsSize", String.valueOf(inFlightEvents.size()));
     result.put("pendingEntriesSize", String.valueOf(pendingEntries.size()));
+    result.put("retainedRequestBytes", String.valueOf(getRetainedRequestBytes()));
     result.put("retainedTabletBytes", String.valueOf(retainedTabletBytes.get()));
     result.put("memoryBlockedEntryBytes", String.valueOf(memoryBlockedEntryBytes));
     result.put("realtimeAdmissionBlocked", String.valueOf(realtimeAdmissionBlocked.get()));
