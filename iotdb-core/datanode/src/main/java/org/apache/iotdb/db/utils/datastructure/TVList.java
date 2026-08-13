@@ -1462,8 +1462,7 @@ public abstract class TVList implements WALEntryValue {
     if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
       defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
       defaultArrayNum =
-          ((int) WritingMetrics.getInstance().getAvgPointHistogram().takeSnapshot().getMean()
-              / ARRAY_SIZE);
+          ((int) WritingMetrics.getInstance().getGlobalAvgSeriesPointNum() / ARRAY_SIZE);
     }
     return defaultArrayNum;
   }
