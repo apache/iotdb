@@ -166,6 +166,7 @@
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>1.1.4-260130-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1925,6 +1926,12 @@
             <id>enforce</id>
             <properties>
                 <enforcer.skip>false</enforcer.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
             </properties>
         </profile>
     </profiles>

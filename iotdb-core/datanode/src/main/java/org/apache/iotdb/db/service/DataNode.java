@@ -128,6 +128,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -167,8 +168,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
 
-  private boolean schemaRegionConsensusStarted = false;
-  private boolean dataRegionConsensusStarted = false;
+  private volatile boolean schemaRegionConsensusStarted = false;
+  private volatile boolean dataRegionConsensusStarted = false;
+  private final ConsensusReadinessContext consensusReadinessContext =
+      new ConsensusReadinessContext();
   private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
 
@@ -292,6 +295,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             "DataRegion consensus start successfully, which takes {} ms.",
             (dataRegionEndTime - dataRegionStartTime));
         dataRegionConsensusStarted = true;
+        consensusReadinessContext.markDataRegionConsensusStarted();
       }
 
     } catch (StartupException | IOException e) {
@@ -721,6 +725,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           "SchemaRegion consensus start successfully, which takes {} ms.",
           (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
+      consensusReadinessContext.markSchemaRegionConsensusStarted();
       if (!isUsingPipeConsensus()) {
         DataRegionConsensusImpl.getInstance().start();
         long dataRegionEndTime = System.currentTimeMillis();
@@ -728,6 +733,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             "DataRegion consensus start successfully, which takes {} ms.",
             (dataRegionEndTime - schemaRegionEndTime));
         dataRegionConsensusStarted = true;
+        consensusReadinessContext.markDataRegionConsensusStarted();
       }
     } catch (IOException e) {
       throw new StartupException(e);
@@ -810,7 +816,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+    DataNodeInternalRPCService internalRPCService = DataNodeInternalRPCService.getInstance();
+    internalRPCService.setConsensusReadiness(consensusReadinessContext);
+    registerManager.register(internalRPCService);
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -1233,6 +1241,40 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     private DataNodeHolder() {
       // Empty constructor
+    }
+  }
+
+  static class ConsensusReadinessContext implements ConsensusReadiness {
+
+    private final CountDownLatch allConsensusStarted = new CountDownLatch(1);
+    private volatile boolean schemaRegionConsensusStarted;
+    private volatile boolean dataRegionConsensusStarted;
+
+    void markSchemaRegionConsensusStarted() {
+      schemaRegionConsensusStarted = true;
+      signalIfReady();
+    }
+
+    void markDataRegionConsensusStarted() {
+      dataRegionConsensusStarted = true;
+      signalIfReady();
+    }
+
+    private void signalIfReady() {
+      if (schemaRegionConsensusStarted && dataRegionConsensusStarted) {
+        allConsensusStarted.countDown();
+      }
+    }
+
+    @Override
+    public boolean isAllConsensusStarted() {
+      return allConsensusStarted.getCount() == 0;
+    }
+
+    @Override
+    public boolean awaitAllConsensusStarted(long timeout, TimeUnit unit)
+        throws InterruptedException {
+      return allConsensusStarted.await(timeout, unit);
     }
   }
 }

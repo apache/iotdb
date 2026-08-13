@@ -77,6 +77,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class DataNodeInternalRPCServiceImplTest {
 
@@ -133,7 +134,19 @@ public class DataNodeInternalRPCServiceImplTest {
         .createLocalPeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
-    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
+    dataNodeInternalRPCServiceImpl =
+        new DataNodeInternalRPCServiceImpl(
+            new ConsensusReadiness() {
+              @Override
+              public boolean isAllConsensusStarted() {
+                return true;
+              }
+
+              @Override
+              public boolean awaitAllConsensusStarted(long timeout, TimeUnit unit) {
+                return true;
+              }
+            });
   }
 
   @After

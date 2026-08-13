@@ -82,6 +82,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.i18n.ConsensusReadinessMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesS
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.service.ConsensusReadiness;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -319,7 +321,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
+  private final DataNodeRegionManager regionManager;
 
   private final DataNodeSpaceQuotaManager spaceQuotaManager =
       DataNodeSpaceQuotaManager.getInstance();
@@ -330,8 +332,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private static final long TEST_CONNECTION_TIMEOUT_MS =
       CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
   private static final int TEST_CONNECTION_RETRY_NUM = 1;
+  private static final long DEFAULT_CONSENSUS_WAIT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private final ConsensusReadiness consensusReadiness;
+  private final long consensusWaitTimeoutMs;
 
   private final ExecutorService schemaExecutor =
       new WrappedThreadPoolExecutor(
@@ -347,10 +352,49 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  public DataNodeInternalRPCServiceImpl() {
+  DataNodeInternalRPCServiceImpl(
+      ConsensusReadiness consensusReadiness, long consensusWaitTimeoutMs) {
+    this(consensusReadiness, consensusWaitTimeoutMs, DataNodeRegionManager.getInstance());
+  }
+
+  DataNodeInternalRPCServiceImpl(
+      ConsensusReadiness consensusReadiness,
+      long consensusWaitTimeoutMs,
+      DataNodeRegionManager regionManager) {
     super();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    this.consensusReadiness = consensusReadiness;
+    this.consensusWaitTimeoutMs = consensusWaitTimeoutMs;
+    this.regionManager = regionManager;
+  }
+
+  public DataNodeInternalRPCServiceImpl(ConsensusReadiness consensusReadiness) {
+    this(consensusReadiness, DEFAULT_CONSENSUS_WAIT_TIMEOUT_MS);
+  }
+
+  private TSStatus waitForConsensusStarted() {
+    if (consensusReadiness.isAllConsensusStarted()) {
+      return null;
+    }
+    try {
+      if (consensusReadiness.awaitAllConsensusStarted(
+          consensusWaitTimeoutMs, TimeUnit.MILLISECONDS)) {
+        return null;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    LOGGER.warn(
+        ConsensusReadinessMessages
+            .LOG_CONSENSUS_IS_NOT_INITIALIZED_REJECTING_THE_REGION_TOPOLOGY_REQUEST_AFTER_WAITING_UP_TO_ARG_MS_7035CB1C,
+        consensusWaitTimeoutMs);
+    return RpcUtils.getStatus(
+        TSStatusCode.CONSENSUS_NOT_INITIALIZED,
+        String.format(
+            ConsensusReadinessMessages
+                .MESSAGE_CONSENSUS_IS_NOT_INITIALIZED_REGION_TOPOLOGY_REQUEST_REJECTED_AFTER_WAITING_UP_TO_ARG_MS_30E1CBCC,
+            consensusWaitTimeoutMs));
   }
 
   @Override
@@ -525,11 +569,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     return regionManager.createSchemaRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
@@ -2097,6 +2149,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     if (consensusGroupId instanceof DataRegionId) {
@@ -2124,6 +2180,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req) {
     LOGGER.info("[ChangeRegionLeader] {}", req);
     TRegionLeaderChangeResp resp = new TRegionLeaderChangeResp();
+
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      resp.setStatus(consensusStatus);
+      return resp;
+    }
 
     TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     TConsensusGroupId tgId = req.getRegionId();
@@ -2194,6 +2256,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createNewRegionPeer(TCreatePeerReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
@@ -2214,6 +2280,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus addRegionPeer(TMaintainPeerReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
@@ -2232,6 +2302,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus removeRegionPeer(TMaintainPeerReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
@@ -2250,6 +2324,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteOldRegionPeer(TMaintainPeerReq req) {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitDeleteOldRegionPeerTask(req);
@@ -2269,6 +2347,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   // TODO: return which DataNode fail
   @Override
   public TSStatus resetPeerList(TResetPeerListReq req) throws TException {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     return RegionMigrateService.getInstance().resetPeerList(req);
   }
 
@@ -2279,6 +2361,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus notifyRegionMigration(TNotifyRegionMigrationReq req) throws TException {
+    TSStatus consensusStatus = waitForConsensusStarted();
+    if (consensusStatus != null) {
+      return consensusStatus;
+    }
     RegionMigrateService.getInstance().notifyRegionMigration(req);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

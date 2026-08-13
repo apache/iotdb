@@ -33,12 +33,43 @@ import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class DataNodeInternalRPCService extends ThriftService
     implements DataNodeInternalRPCServiceMBean {
 
+  private static final ConsensusReadiness NOT_READY =
+      new ConsensusReadiness() {
+        @Override
+        public boolean isAllConsensusStarted() {
+          return false;
+        }
+
+        @Override
+        public boolean awaitAllConsensusStarted(long timeout, TimeUnit unit) {
+          return false;
+        }
+      };
+
   private final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
+  private final AtomicReference<ConsensusReadiness> consensusReadiness =
+      new AtomicReference<>(NOT_READY);
+
+  private final ConsensusReadiness delegatingConsensusReadiness =
+      new ConsensusReadiness() {
+        @Override
+        public boolean isAllConsensusStarted() {
+          return consensusReadiness.get().isAllConsensusStarted();
+        }
+
+        @Override
+        public boolean awaitAllConsensusStarted(long timeout, TimeUnit unit)
+            throws InterruptedException {
+          return consensusReadiness.get().awaitAllConsensusStarted(timeout, unit);
+        }
+      };
 
   private DataNodeInternalRPCService() {}
 
@@ -49,9 +80,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public void initTProcessor() {
-    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    DataNodeInternalRPCServiceImpl service = getImpl();
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl.get());
+    processor = new Processor<>(service);
   }
 
   @Override
@@ -90,8 +121,16 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
-    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(delegatingConsensusReadiness));
     return impl.get();
+  }
+
+  void setConsensusReadiness(ConsensusReadiness consensusReadiness) {
+    this.consensusReadiness.set(Objects.requireNonNull(consensusReadiness));
+  }
+
+  ConsensusReadiness getConsensusReadiness() {
+    return delegatingConsensusReadiness;
   }
 
   private static class DataNodeInternalRPCServiceHolder {
