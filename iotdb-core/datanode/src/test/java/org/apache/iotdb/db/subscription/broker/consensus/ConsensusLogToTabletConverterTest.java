@@ -25,13 +25,11 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
@@ -255,45 +253,6 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
-  public void testTreeConverterRejectsRelationalInsertNodes() {
-    final ConsensusLogToTabletConverter converter = createTreeConverter();
-    final RelationalInsertRowNode relationalRow = StatementTestUtils.genInsertRowNode(0);
-    final RelationalInsertTabletNode relationalTablet =
-        StatementTestUtils.genInsertTabletNode(2, 0);
-    final InsertRowsNode rowsNode = new InsertRowsNode(new PlanNodeId("rows"));
-    rowsNode.addOneInsertRowNode(relationalRow, 0);
-    final RelationalInsertRowsNode relationalRowsNode =
-        new RelationalInsertRowsNode(new PlanNodeId("relationalRows"));
-    relationalRowsNode.addOneInsertRowNode(relationalRow, 0);
-    final InsertMultiTabletsNode multiTabletsNode =
-        new InsertMultiTabletsNode(new PlanNodeId("multiTablets"));
-    multiTabletsNode.addInsertTabletNode(relationalTablet, 0);
-
-    Assert.assertTrue(converter.convert(relationalRow).isEmpty());
-    Assert.assertTrue(converter.convert(relationalTablet).isEmpty());
-    Assert.assertTrue(converter.convert(rowsNode).isEmpty());
-    Assert.assertTrue(converter.convert(relationalRowsNode).isEmpty());
-    Assert.assertTrue(converter.convert(multiTabletsNode).isEmpty());
-  }
-
-  @Test
-  public void testTableConverterRejectsTreeInsertNodes() throws IllegalPathException {
-    final ConsensusLogToTabletConverter converter = createConverter("m1");
-    final InsertRowNode treeRow = createTreeRow("root.sg.d1", 1L, new Object[] {1, 1.0});
-    final InsertTabletNode treeTablet = createTreeTablet("root.sg.d1");
-    final InsertRowsNode rowsNode = new InsertRowsNode(new PlanNodeId("rows"));
-    rowsNode.addOneInsertRowNode(treeRow, 0);
-    final InsertMultiTabletsNode multiTabletsNode =
-        new InsertMultiTabletsNode(new PlanNodeId("multiTablets"));
-    multiTabletsNode.addInsertTabletNode(treeTablet, 0);
-
-    Assert.assertTrue(converter.convert(treeRow).isEmpty());
-    Assert.assertTrue(converter.convert(treeTablet).isEmpty());
-    Assert.assertTrue(converter.convert(rowsNode).isEmpty());
-    Assert.assertTrue(converter.convert(multiTabletsNode).isEmpty());
-  }
-
-  @Test
   public void testConvertInsertRowsOfOneDeviceNodeGroupsRowsWithSameSchema()
       throws IllegalPathException {
     final ConsensusLogToTabletConverter converter = createTreeConverter();
@@ -393,21 +352,6 @@ public class ConsensusLogToTabletConverterTest {
         time,
         values,
         false);
-  }
-
-  private static InsertTabletNode createTreeTablet(final String devicePath)
-      throws IllegalPathException {
-    return new InsertTabletNode(
-        new PlanNodeId("tablet"),
-        new PartialPath(devicePath),
-        false,
-        new String[] {"s1"},
-        new TSDataType[] {TSDataType.INT32},
-        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)},
-        new long[] {1L},
-        null,
-        new Object[] {new int[] {1}},
-        1);
   }
 
   private static String toUtf8(final Binary value) {

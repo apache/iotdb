@@ -78,14 +78,6 @@ public class ConsensusLogToTabletConverter {
    */
   private final String databaseName;
 
-  private boolean isTreeModelConverter() {
-    return treePattern != null && tablePattern == null;
-  }
-
-  private boolean isTableModelConverter() {
-    return tablePattern != null;
-  }
-
   public ConsensusLogToTabletConverter(
       final TreePattern treePattern,
       final TablePattern tablePattern,
@@ -247,10 +239,6 @@ public class ConsensusLogToTabletConverter {
   // ======================== Tree Model Conversion ========================
 
   private List<Tablet> convertInsertRowNode(final InsertRowNode node) {
-    if (isTableModelConverter()) {
-      return Collections.emptyList();
-    }
-
     final IDeviceID deviceId = node.getDeviceID();
 
     // Device-level path filtering
@@ -300,12 +288,7 @@ public class ConsensusLogToTabletConverter {
 
   private List<Tablet> convertInsertTabletNode(final InsertTabletNode node) {
     if (node instanceof RelationalInsertTabletNode) {
-      return !isTreeModelConverter()
-          ? convertRelationalInsertTabletNode((RelationalInsertTabletNode) node)
-          : Collections.emptyList();
-    }
-    if (isTableModelConverter()) {
-      return Collections.emptyList();
+      return convertRelationalInsertTabletNode((RelationalInsertTabletNode) node);
     }
 
     final IDeviceID deviceId = node.getDeviceID();
@@ -372,9 +355,7 @@ public class ConsensusLogToTabletConverter {
       if (rowNode instanceof RelationalInsertRowNode) {
         tablets.addAll(convertTreeInsertRowNodes(pendingTreeRows));
         pendingTreeRows.clear();
-        if (!isTreeModelConverter()) {
-          tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));
-        }
+        tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));
       } else {
         pendingTreeRows.add(rowNode);
       }
@@ -388,7 +369,7 @@ public class ConsensusLogToTabletConverter {
   }
 
   private List<Tablet> convertTreeInsertRowNodes(final List<InsertRowNode> rowNodes) {
-    if (isTableModelConverter() || rowNodes.isEmpty()) {
+    if (rowNodes.isEmpty()) {
       return Collections.emptyList();
     }
 
@@ -476,10 +457,7 @@ public class ConsensusLogToTabletConverter {
       // so merged relational tablets arrive as InsertMultiTabletsNode (tree) with
       // RelationalInsertTabletNode children. Dispatch correctly by checking the actual child type.
       if (tabletNode instanceof RelationalInsertTabletNode) {
-        if (!isTreeModelConverter()) {
-          tablets.addAll(
-              convertRelationalInsertTabletNode((RelationalInsertTabletNode) tabletNode));
-        }
+        tablets.addAll(convertRelationalInsertTabletNode((RelationalInsertTabletNode) tabletNode));
       } else {
         tablets.addAll(convertInsertTabletNode(tabletNode));
       }
@@ -490,10 +468,6 @@ public class ConsensusLogToTabletConverter {
   // ======================== Table Model Conversion ========================
 
   private List<Tablet> convertRelationalInsertRowNode(final RelationalInsertRowNode node) {
-    if (isTreeModelConverter()) {
-      return Collections.emptyList();
-    }
-
     final String tableName = node.getTableName();
 
     // Table-level pattern filtering
@@ -525,10 +499,6 @@ public class ConsensusLogToTabletConverter {
   }
 
   private List<Tablet> convertRelationalInsertTabletNode(final RelationalInsertTabletNode node) {
-    if (isTreeModelConverter()) {
-      return Collections.emptyList();
-    }
-
     final String tableName = node.getTableName();
 
     // Table-level pattern filtering
@@ -601,10 +571,6 @@ public class ConsensusLogToTabletConverter {
   }
 
   private List<Tablet> convertRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
-    if (isTreeModelConverter()) {
-      return Collections.emptyList();
-    }
-
     final List<Tablet> tablets = new ArrayList<>();
     for (final InsertRowNode rowNode : node.getInsertRowNodeList()) {
       tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));

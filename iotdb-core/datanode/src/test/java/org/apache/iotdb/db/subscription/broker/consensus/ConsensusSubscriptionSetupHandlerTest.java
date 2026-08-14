@@ -22,7 +22,6 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -45,8 +44,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class ConsensusSubscriptionSetupHandlerTest {
 
@@ -168,36 +165,30 @@ public class ConsensusSubscriptionSetupHandlerTest {
     tableTopicAttributes.put(TopicConstant.DATABASE_KEY, "table_db");
     final TopicConfig tableTopicConfig = new TopicConfig(tableTopicAttributes);
 
-    final DataRegion treeDataRegion = mock(DataRegion.class);
-    when(treeDataRegion.isTableModel()).thenReturn(false);
-    when(treeDataRegion.getDatabaseName()).thenReturn("root.tree_db");
-
-    final DataRegion tableDataRegion = mock(DataRegion.class);
-    when(tableDataRegion.isTableModel()).thenReturn(true);
-    when(tableDataRegion.getDatabaseName()).thenReturn("table_db");
-
-    final DataRegion otherTableDataRegion = mock(DataRegion.class);
-    when(otherTableDataRegion.isTableModel()).thenReturn(true);
-    when(otherTableDataRegion.getDatabaseName()).thenReturn("other_table_db");
-
     assertTrue(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            treeDataRegion, treeTopicConfig, false));
+            "root.tree_db", treeTopicConfig, false));
     assertFalse(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            tableDataRegion, treeTopicConfig, false));
+            "table_db", treeTopicConfig, false));
     assertFalse(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            treeDataRegion, tableTopicConfig, true));
+            "table_db", treeTopicConfig, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "root.table_db", tableTopicConfig, true));
     assertTrue(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            tableDataRegion, tableTopicConfig, true));
+            "table_db", tableTopicConfig, true));
     assertFalse(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            otherTableDataRegion, tableTopicConfig, true));
+            "other_table_db", tableTopicConfig, true));
     assertFalse(
         ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
-            tableDataRegion, tableTopicConfig, false));
+            "table_db", tableTopicConfig, false));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.matchesTopicDataRegion(
+            "root.table_db", tableTopicConfig, false));
   }
 
   private static void failOnSecondTopic(
