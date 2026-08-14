@@ -67,10 +67,18 @@ import static org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.time
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
+  private static final int PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES = 32 * 1024 * 1024;
+
   @Before
   public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
+    env.getConfig()
+        .getConfigNodeConfig()
+        .setRatisLogAppenderBufferSizeMax(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
+    env.getConfig()
+        .getDataNodeConfig()
+        .setThriftMaxFrameSize(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)

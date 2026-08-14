@@ -39,6 +39,15 @@ It is also included under `ext/pipe` in the standalone `library-pipe` distributi
 
 ## Register
 
+The fat JAR is larger than the default 16 MiB ConfigNode consensus limit. Before starting the
+nodes, set the following properties in `iotdb-system.properties` so the plugin can be transferred
+and replicated:
+
+```properties
+config_node_ratis_log_appender_buffer_size_max=33554432
+dn_thrift_max_frame_size=33554432
+```
+
 Upload the fat JAR to a URI accessible to IoTDB and register the plugin before creating an OPC UA Pipe:
 
 ```sql

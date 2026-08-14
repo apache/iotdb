@@ -31,11 +31,27 @@
     <dependencies>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
+            <artifactId>milo-stack-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.milo</groupId>
             <artifactId>milo-sdk-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
+            <artifactId>milo-transport</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.milo</groupId>
             <artifactId>milo-sdk-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
     <profiles>
