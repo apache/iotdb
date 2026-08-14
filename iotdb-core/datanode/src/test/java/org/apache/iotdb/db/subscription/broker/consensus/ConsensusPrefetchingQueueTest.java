@@ -107,6 +107,78 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testReplayStartPreservesUncoveredFollowerEntries() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("replay-start-with-follower-entry");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 1L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final WriterId formerLeader = new WriterId(regionId.toString(), 8);
+      final WriterProgress committedProgress = new WriterProgress(100L, 10L);
+      final RegionProgress regionProgress =
+          new RegionProgress(Collections.singletonMap(formerLeader, committedProgress));
+      final List<IndexedConsensusRequest> requests =
+          Arrays.asList(
+              createRequest(-1L, 10L, 100L, 8),
+              createRequest(-1L, 11L, 101L, 8),
+              createRequest(1L, 1L, 200L, 7));
+
+      final ConsensusPrefetchingQueue.ReplayLocateDecision decision =
+          queue.scanReplayStartForRequests(requests.iterator(), regionProgress, true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.FOUND, decision.getStatus());
+      assertEquals(1L, decision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          decision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+
+      // With no uncovered local request, keep the local cursor at the tail without advancing the
+      // recovery progress past the still-uncovered follower request.
+      reader.currentSearchIndex = 5L;
+      final ConsensusPrefetchingQueue.ReplayLocateDecision tailDecision =
+          queue.scanReplayStartForRequests(
+              Collections.singletonList(createRequest(-1L, 11L, 101L, 8)).iterator(),
+              regionProgress,
+              true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.AT_END, tailDecision.getStatus());
+      assertEquals(5L, tailDecision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          tailDecision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testAdmissionClearCannotLeaveEntryEnqueuedAfterFence() throws Exception {
     final Class<?> queueClass =
@@ -1856,6 +1928,20 @@ public class ConsensusPrefetchingQueueTest {
                 StatementTestUtils.genInsertRowNode(Math.toIntExact(searchIndex))))
         .setPhysicalTime(1000L + searchIndex)
         .setNodeId(7);
+  }
+
+  private static IndexedConsensusRequest createRequest(
+      final long searchIndex,
+      final long localSeq,
+      final long physicalTime,
+      final int writerNodeId) {
+    return new IndexedConsensusRequest(
+            searchIndex,
+            localSeq,
+            Collections.singletonList(
+                StatementTestUtils.genInsertRowNode(Math.toIntExact(localSeq))))
+        .setPhysicalTime(physicalTime)
+        .setNodeId(writerNodeId);
   }
 
   private static IndexedConsensusRequest createSizedRequest(
