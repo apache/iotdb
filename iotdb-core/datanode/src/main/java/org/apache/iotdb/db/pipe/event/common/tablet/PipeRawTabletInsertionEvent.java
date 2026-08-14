@@ -71,6 +71,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private boolean isSourceTsFileProgressReferenceIncreased;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private long memoryReservedForNextReferenceIncrease;
 
   private TabletInsertionEventParser eventParser;
 
@@ -271,10 +272,14 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      PipeDataNodeResourceManager.memory()
-          .forceResize(
-              allocatedMemoryBlock,
-              PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+      final long targetMemoryInBytes = getTabletSizeInBytes() + INSTANCE_SIZE;
+      if (memoryReservedForNextReferenceIncrease > 0) {
+        PipeDataNodeResourceManager.memory()
+            .forceResizeWithReservedMemory(
+                allocatedMemoryBlock, targetMemoryInBytes, memoryReservedForNextReferenceIncrease);
+      } else {
+        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, targetMemoryInBytes);
+      }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeSinglePipeMetrics.getInstance()
             .increaseRawTabletEventCount(pipeName, creationTime);
@@ -284,6 +289,24 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       releaseSourceTsFileProgressReference(true, false);
       throw e;
     }
+  }
+
+  public synchronized boolean increaseReferenceCountWithReservedMemory(
+      final String holderMessage, final long reservedMemoryInBytes) {
+    if (referenceCount.get() > 0) {
+      return super.increaseReferenceCount(holderMessage);
+    }
+
+    memoryReservedForNextReferenceIncrease = Math.max(0, reservedMemoryInBytes);
+    try {
+      return super.increaseReferenceCount(holderMessage);
+    } finally {
+      memoryReservedForNextReferenceIncrease = 0;
+    }
+  }
+
+  public long getTabletSizeInBytes() {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
   }
 
   @Override

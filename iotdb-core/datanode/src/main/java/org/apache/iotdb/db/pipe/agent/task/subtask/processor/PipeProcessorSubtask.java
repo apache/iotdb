@@ -59,10 +59,10 @@ import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -240,8 +240,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
 
       if (shouldParseTsFileEventInPool(event)) {
-        final PipeTsFileInsertionEvent tsFileInsertionEvent =
-            (PipeTsFileInsertionEvent) event;
+        final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
         if (!tsFileInsertionEvent.tryReserveTsFileParserMemory()) {
           executionGuard.yieldIfParserNotAdmitted();
         }
@@ -318,8 +317,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // event needs to be reported.
               && (outputEventCollector.hasNoGeneratedEvent()
                   || event instanceof PipeTsFileInsertionEvent
-                      && ((PipeTsFileInsertionEvent) event)
-                          .isProgressReportManagedByTsFileParser())
+                      && ((PipeTsFileInsertionEvent) event).isProgressReportManagedByTsFileParser())
               // If the event's reference count cannot be increased, it means that the event has
               // been released, and the progress of the event can not be reported.
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
@@ -429,8 +427,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return event;
   }
 
-  private synchronized boolean retainFailedTsFileParserEvent(
-      final PipeTsFileInsertionEvent event) {
+  private synchronized boolean retainFailedTsFileParserEvent(final PipeTsFileInsertionEvent event) {
     if (isClosed.get()) {
       if (!event.isReleased()) {
         event.clearReferenceCount(PipeProcessorSubtask.class.getName());

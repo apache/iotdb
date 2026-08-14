@@ -40,7 +40,7 @@ public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPend
 
   public E pollLast() {
     final E event = pendingDeque.pollLast();
-    eventCounter.decreaseEventCount(event);
+    onEventPolled(event);
     return event;
   }
 }

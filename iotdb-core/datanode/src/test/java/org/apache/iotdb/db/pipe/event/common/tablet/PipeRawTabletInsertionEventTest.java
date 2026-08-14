@@ -88,42 +88,15 @@ public class PipeRawTabletInsertionEventTest {
     tablet.addTimestamp(0, 1);
     tablet.addValue("s", 0, 1L);
     return new PipeRawTabletInsertionEvent(
-        null,
-        null,
-        null,
-        null,
-        tablet,
-        false,
-        "pipe",
-        1,
-        null,
-        sourceEvent,
-        needToReport);
+        null, null, null, null, tablet, false, "pipe", 1, null, sourceEvent, needToReport);
   }
 
   private static class TestPipeTsFileInsertionEvent extends PipeTsFileInsertionEvent {
 
     private TestPipeTsFileInsertionEvent(final TsFileResource resource, final File tsFile) {
       super(
-          null,
-          null,
-          resource,
-          tsFile,
-          false,
-          false,
-          false,
-          null,
-          "pipe",
-          1,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          true,
-          0,
-          1);
+          null, null, resource, tsFile, false, false, false, null, "pipe", 1, null, null, null,
+          null, null, null, true, 0, 1);
     }
 
     @Override

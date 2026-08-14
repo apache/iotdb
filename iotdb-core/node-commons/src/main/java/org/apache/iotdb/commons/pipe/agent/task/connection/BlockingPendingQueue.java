@@ -29,11 +29,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
@@ -49,6 +53,13 @@ public abstract class BlockingPendingQueue<E extends Event> {
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   protected final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+
+  private final Object pendingEventMemoryLock = new Object();
+  private final Map<E, PendingEventMemoryReservation> eventToMemoryReservation =
+      new IdentityHashMap<>();
+  private final Map<PendingEventMemoryReservation, Boolean> activeMemoryReservations =
+      new IdentityHashMap<>();
+  private long pendingEventMemoryUsageInBytes;
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -68,6 +79,73 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return offered;
   }
 
+  public PendingEventMemoryReservation waitForMemoryReservation(
+      final long eventMemoryInBytes,
+      final long maxPendingEventMemoryInBytes,
+      final BooleanSupplier shouldContinueWaiting) {
+    final long normalizedEventMemoryInBytes = Math.max(0, eventMemoryInBytes);
+    final long normalizedMaxPendingEventMemoryInBytes = Math.max(1, maxPendingEventMemoryInBytes);
+
+    synchronized (pendingEventMemoryLock) {
+      while (!isClosed.get()
+          && shouldContinueWaiting.getAsBoolean()
+          && pendingEventMemoryUsageInBytes > 0
+          && normalizedEventMemoryInBytes
+              > normalizedMaxPendingEventMemoryInBytes - pendingEventMemoryUsageInBytes) {
+        try {
+          pendingEventMemoryLock.wait(100);
+        } catch (final InterruptedException e) {
+          LOGGER.info(PipeMessages.PENDING_QUEUE_PUT_INTERRUPTED, e);
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      }
+
+      if (isClosed.get() || !shouldContinueWaiting.getAsBoolean()) {
+        return null;
+      }
+
+      final PendingEventMemoryReservation reservation =
+          new PendingEventMemoryReservation(this, normalizedEventMemoryInBytes);
+      activeMemoryReservations.put(reservation, Boolean.TRUE);
+      pendingEventMemoryUsageInBytes += normalizedEventMemoryInBytes;
+      return reservation;
+    }
+  }
+
+  /** Publishes an event using bytes previously reserved by {@link #waitForMemoryReservation}. */
+  public boolean offer(final E event, final PendingEventMemoryReservation reservation) {
+    if (reservation == null || reservation.owner != this) {
+      throw new IllegalArgumentException("The memory reservation does not belong to this queue.");
+    }
+
+    synchronized (pendingEventMemoryLock) {
+      if (!checkBeforeOffer(event)) {
+        releaseMemoryReservationInternal(reservation);
+        return false;
+      }
+      if (reservation.released || reservation.published) {
+        throw new IllegalStateException("The memory reservation is no longer publishable.");
+      }
+      if (eventToMemoryReservation.containsKey(event)) {
+        releaseMemoryReservationInternal(reservation);
+        throw new IllegalStateException("The same event is already byte-accounted in the queue.");
+      }
+
+      final boolean offered = pendingQueue.offer(event);
+      if (!offered) {
+        releaseMemoryReservationInternal(reservation);
+        return false;
+      }
+
+      reservation.published = true;
+      reservation.event = event;
+      eventToMemoryReservation.put(event, reservation);
+      eventCounter.increaseEventCount(event);
+      return true;
+    }
+  }
+
   public boolean put(final E event) {
     if (!checkBeforeOffer(event)) {
       return false;
@@ -85,7 +163,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public E directPoll() {
     final E event = pendingQueue.poll();
-    eventCounter.decreaseEventCount(event);
+    onEventPolled(event);
     return event;
   }
 
@@ -96,7 +174,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
           pendingQueue.poll(
               PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
               TimeUnit.MILLISECONDS);
-      eventCounter.decreaseEventCount(event);
+      onEventPolled(event);
     } catch (final InterruptedException e) {
       LOGGER.info(PipeMessages.PENDING_QUEUE_POLL_INTERRUPTED, e);
       Thread.currentThread().interrupt();
@@ -109,10 +187,11 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public void clear() {
-    isClosed.set(true);
+    closeOffers();
     pendingQueue.clear();
     eventCounter.reset();
     droppedPipeTaskKeys.clear();
+    releaseAllMemoryReservations();
   }
 
   /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
@@ -121,7 +200,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public void discardAllEvents() {
-    isClosed.set(true);
+    closeOffers();
+    final ArrayList<E> discardedEvents = new ArrayList<>();
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent) {
@@ -129,10 +209,13 @@ public abstract class BlockingPendingQueue<E extends Event> {
               eventCounter.decreaseEventCount(event);
             }
           }
+          discardedEvents.add(event);
           return true;
         });
+    discardedEvents.forEach(this::releasePendingEventMemory);
     eventCounter.reset();
     droppedPipeTaskKeys.clear();
+    releaseAllMemoryReservations();
   }
 
   public void discardEventsOfPipe(
@@ -142,6 +225,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public void discardEventsOfPipe(final CommitterKey committerKey) {
     droppedPipeTaskKeys.add(committerKey);
+    final ArrayList<E> discardedEvents = new ArrayList<>();
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
@@ -149,10 +233,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
             if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
             }
+            discardedEvents.add(event);
             return true;
           }
           return false;
         });
+    discardedEvents.forEach(this::releasePendingEventMemory);
   }
 
   public boolean isEmpty() {
@@ -173,6 +259,65 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
+  }
+
+  public long getPendingEventMemoryUsageInBytes() {
+    synchronized (pendingEventMemoryLock) {
+      return pendingEventMemoryUsageInBytes;
+    }
+  }
+
+  protected void onEventPolled(final E event) {
+    eventCounter.decreaseEventCount(event);
+    releasePendingEventMemory(event);
+  }
+
+  private void releasePendingEventMemory(final E event) {
+    if (event == null) {
+      return;
+    }
+    synchronized (pendingEventMemoryLock) {
+      final PendingEventMemoryReservation reservation = eventToMemoryReservation.remove(event);
+      if (reservation != null) {
+        releaseMemoryReservationInternal(reservation);
+      }
+    }
+  }
+
+  private void releaseAllMemoryReservations() {
+    synchronized (pendingEventMemoryLock) {
+      for (final PendingEventMemoryReservation reservation :
+          new ArrayList<>(activeMemoryReservations.keySet())) {
+        releaseMemoryReservationInternal(reservation);
+      }
+      eventToMemoryReservation.clear();
+      pendingEventMemoryLock.notifyAll();
+    }
+  }
+
+  private void releaseMemoryReservation(final PendingEventMemoryReservation reservation) {
+    synchronized (pendingEventMemoryLock) {
+      releaseMemoryReservationInternal(reservation);
+    }
+  }
+
+  private void releaseMemoryReservationInternal(final PendingEventMemoryReservation reservation) {
+    if (reservation.released) {
+      return;
+    }
+    reservation.released = true;
+    activeMemoryReservations.remove(reservation);
+    if (reservation.event != null) {
+      eventToMemoryReservation.remove(reservation.event);
+    }
+    pendingEventMemoryUsageInBytes -= reservation.memoryInBytes;
+    pendingEventMemoryLock.notifyAll();
+  }
+
+  private void closeOffers() {
+    synchronized (pendingEventMemoryLock) {
+      isClosed.set(true);
+    }
   }
 
   protected boolean checkBeforeOffer(final E event) {
@@ -218,5 +363,25 @@ public abstract class BlockingPendingQueue<E extends Event> {
                 key.getPipeName().equals(pipeName)
                     && key.getCreationTime() == creationTime
                     && key.getRegionId() == regionId);
+  }
+
+  public static final class PendingEventMemoryReservation implements AutoCloseable {
+
+    private final BlockingPendingQueue<?> owner;
+    private final long memoryInBytes;
+    private Object event;
+    private boolean published;
+    private boolean released;
+
+    private PendingEventMemoryReservation(
+        final BlockingPendingQueue<?> owner, final long memoryInBytes) {
+      this.owner = owner;
+      this.memoryInBytes = memoryInBytes;
+    }
+
+    @Override
+    public void close() {
+      owner.releaseMemoryReservation(this);
+    }
   }
 }
