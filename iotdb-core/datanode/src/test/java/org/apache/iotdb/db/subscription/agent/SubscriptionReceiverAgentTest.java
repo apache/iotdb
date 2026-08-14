@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,7 +35,9 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseV
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +51,20 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgentTest {
+
+  private boolean originalSubscriptionEnabled;
+
+  @Before
+  public void setUp() {
+    originalSubscriptionEnabled =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
+    CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(true);
+  }
+
+  @After
+  public void tearDown() {
+    CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(originalSubscriptionEnabled);
+  }
 
   @Test
   public void testDisconnectedReceiverIsRetainedUntilTimeout() throws IOException {
