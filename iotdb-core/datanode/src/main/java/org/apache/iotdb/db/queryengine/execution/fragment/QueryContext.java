@@ -282,6 +282,17 @@ public class QueryContext {
     tvListSet.addAll(set);
   }
 
+  /**
+   * Get columns of the TVList accessed by this query, or null if the query does not track
+   * column-level access for the TVList (e.g. a non-FragmentInstanceContext query, or a TVList not
+   * tracked by a FragmentInstanceContext). An empty (non-null) set means the TVList is tracked but
+   * only the time column is accessed (e.g. a time-only scan), which is different from being
+   * untracked.
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    return null;
+  }
+
   public void addRowLevelFilteredCount(long count) {
     throw new UnsupportedOperationException(
         DataNodeQueryMessages

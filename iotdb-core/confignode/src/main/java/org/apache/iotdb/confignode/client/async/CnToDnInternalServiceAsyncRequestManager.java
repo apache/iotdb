@@ -82,6 +82,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -527,6 +528,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
         (req, client, handler) ->
             client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_PERMISSION_CACHE,
+        (req, client, handler) ->
+            client.invalidatePermissionCache(
+                (TInvalidatePermissionCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

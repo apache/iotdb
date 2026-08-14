@@ -672,4 +672,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
+          "Failed to create or alter topic, subscribing only to the __audit database or paths under it is not allowed";
 }

@@ -34,7 +34,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -108,7 +108,7 @@ public class IoTDBOpcUaClient {
     long startTime = System.currentTimeMillis();
     while (System.currentTimeMillis() - startTime < runner.getTimeoutSeconds() * 1000L) {
       try {
-        client.connect().get();
+        client.connectAsync().get();
       } catch (final ExecutionException e) {
         if (e.getCause() instanceof UaException
             && ((UaException) e.getCause()).getStatusCode().getValue() == Bad_Timeout) {
@@ -267,7 +267,7 @@ public class IoTDBOpcUaClient {
       }
     }
 
-    final AddNodesResponse addStatus = client.addNodes(nodesToAdd).get();
+    final AddNodesResponse addStatus = client.addNodesAsync(nodesToAdd).get();
     for (final AddNodesResult result : addStatus.getResults()) {
       if (!result.getStatusCode().equals(StatusCode.GOOD)
           && result.getStatusCode().getValue() != StatusCodes.Bad_NodeIdExists) {
@@ -300,7 +300,7 @@ public class IoTDBOpcUaClient {
       nodeIds.add(writeRequest.nodeId);
       dataValues.add(writeRequest.dataValue);
     }
-    return client.writeValues(nodeIds, dataValues).get();
+    return client.writeValuesAsync(nodeIds, dataValues).get();
   }
 
   private static final class OpcUaWriteRequest {
@@ -374,7 +374,7 @@ public class IoTDBOpcUaClient {
             new QualifiedName(NAME_SPACE_INDEX, segments[0]),
             NodeClass.Object,
             ExtensionObject.encode(
-                client.getStaticSerializationContext(), createFolderAttributes(segments[0])),
+                client.getStaticEncodingContext(), createFolderAttributes(segments[0])),
             Identifiers.FolderType.expanded()));
 
     // segments.length >= 3
@@ -389,7 +389,7 @@ public class IoTDBOpcUaClient {
               new QualifiedName(NAME_SPACE_INDEX, segments[i]),
               NodeClass.Object,
               ExtensionObject.encode(
-                  client.getStaticSerializationContext(), createFolderAttributes(segments[i])),
+                  client.getStaticEncodingContext(), createFolderAttributes(segments[i])),
               Identifiers.FolderType.expanded()));
       curNodeId = nextId;
     }
@@ -404,7 +404,7 @@ public class IoTDBOpcUaClient {
             new QualifiedName(NAME_SPACE_INDEX, measurementName),
             NodeClass.Variable,
             ExtensionObject.encode(
-                client.getStaticSerializationContext(),
+                client.getStaticEncodingContext(),
                 createMeasurementAttributes(measurementName, opcDataType, initialValue)),
             Identifiers.BaseDataVariableType.expanded()));
 
@@ -412,8 +412,14 @@ public class IoTDBOpcUaClient {
   }
 
   public void disconnect() throws Exception {
-    if (Objects.nonNull(client)) {
-      client.disconnect().get();
+    try {
+      if (Objects.nonNull(client)) {
+        client.disconnectAsync().get();
+      }
+    } finally {
+      if (Objects.nonNull(runner)) {
+        runner.close();
+      }
     }
   }
 

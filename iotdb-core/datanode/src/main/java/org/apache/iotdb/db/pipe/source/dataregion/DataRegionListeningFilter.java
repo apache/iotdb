@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditDatabase;
 
 /**
  * {@link DataRegionListeningFilter} is to tell the insertion and deletion for {@link PipeTask} on
@@ -59,6 +60,10 @@ public class DataRegionListeningFilter {
   public static boolean shouldDatabaseBeListened(
       final PipeParameters parameters, final boolean isTableModel, final String databaseRawName)
       throws IllegalPathException {
+    if (isAuditDatabase(databaseRawName)) {
+      return false;
+    }
+
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
     final boolean hasSpecificListeningOption =
@@ -101,6 +106,10 @@ public class DataRegionListeningFilter {
     }
 
     final String databaseRawName = dataRegion.getDatabaseName();
+    if (isAuditDatabase(databaseRawName)) {
+      return false;
+    }
+
     final String databaseTreeModel =
         databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
     final String databaseTableModel =

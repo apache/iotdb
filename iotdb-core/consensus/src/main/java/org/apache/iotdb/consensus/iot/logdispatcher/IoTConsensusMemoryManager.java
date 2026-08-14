@@ -44,32 +44,35 @@ public class IoTConsensusMemoryManager {
   }
 
   public boolean reserve(IndexedConsensusRequest request) {
-    long prevRef = request.incRef();
-    if (prevRef == 0) {
-      boolean reserved = reserve(request.getMemorySize(), true);
-      if (reserved) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_SUCCEEDS,
-              request.getMemorySize(),
-              request.getSearchIndex(),
-              memoryBlock.getUsedMemoryInBytes());
+    synchronized (request) {
+      long prevRef = request.incRef();
+      if (prevRef == 0) {
+        final long retainedMemorySize = request.getRetainedMemorySize();
+        boolean reserved = reserve(retainedMemorySize, true);
+        if (reserved) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_SUCCEEDS,
+                retainedMemorySize,
+                request.getSearchIndex(),
+                memoryBlock.getUsedMemoryInBytes());
+          }
+        } else {
+          request.decRef();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_FAILS,
+                retainedMemorySize,
+                request.getSearchIndex(),
+                memoryBlock.getUsedMemoryInBytes());
+          }
         }
-      } else {
-        request.decRef();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_FAILS,
-              request.getMemorySize(),
-              request.getSearchIndex(),
-              memoryBlock.getUsedMemoryInBytes());
-        }
+        return reserved;
+      } else if (logger.isDebugEnabled()) {
+        logger.debug(IoTConsensusMessages.SKIP_MEMORY_RESERVATION, request.getSearchIndex());
       }
-      return reserved;
-    } else if (logger.isDebugEnabled()) {
-      logger.debug(IoTConsensusMessages.SKIP_MEMORY_RESERVATION, request.getSearchIndex());
+      return true;
     }
-    return true;
   }
 
   public boolean reserve(Batch batch) {
@@ -108,15 +111,18 @@ public class IoTConsensusMemoryManager {
   }
 
   public void free(IndexedConsensusRequest request) {
-    long prevRef = request.decRef();
-    if (prevRef == 1) {
-      free(request.getMemorySize(), true);
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            IoTConsensusMessages.FREED_BYTES_FOR_REQUEST,
-            request.getMemorySize(),
-            request.getSearchIndex(),
-            memoryBlock.getUsedMemoryInBytes());
+    synchronized (request) {
+      long prevRef = request.decRef();
+      if (prevRef == 1) {
+        final long retainedMemorySize = request.getRetainedMemorySize();
+        free(retainedMemorySize, true);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              IoTConsensusMessages.FREED_BYTES_FOR_REQUEST,
+              retainedMemorySize,
+              request.getSearchIndex(),
+              memoryBlock.getUsedMemoryInBytes());
+        }
       }
     }
   }

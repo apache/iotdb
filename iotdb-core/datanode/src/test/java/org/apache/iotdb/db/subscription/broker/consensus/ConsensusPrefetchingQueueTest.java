@@ -21,11 +21,15 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
@@ -56,6 +60,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -189,6 +194,54 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void testPendingQueueUsesSharedConsensusMemoryBudgetAndClearReleasesIt() throws Exception {
+    final Class<?> queueClass =
+        Class.forName(ConsensusPrefetchingQueue.class.getName() + "$WakeableIndexedConsensusQueue");
+    final Constructor<?> constructor =
+        queueClass.getDeclaredConstructor(int.class, Runnable.class, BooleanSupplier.class);
+    constructor.setAccessible(true);
+    final Method retainedBytesMethod = queueClass.getDeclaredMethod("getRetainedRequestBytes");
+    retainedBytesMethod.setAccessible(true);
+
+    final IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
+    final IMemoryBlock previousMemoryBlock = memoryManager.getMemoryBlock();
+    final double previousQueueRatio = memoryManager.getMaxMemoryRatioForQueue();
+    final AtomicLongMemoryBlock testMemoryBlock =
+        new AtomicLongMemoryBlock("SubscriptionPendingTest", null, 100L);
+    final BlockingQueue<IndexedConsensusRequest> firstQueue =
+        (BlockingQueue<IndexedConsensusRequest>)
+            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+    final BlockingQueue<IndexedConsensusRequest> secondQueue =
+        (BlockingQueue<IndexedConsensusRequest>)
+            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+
+    memoryManager.init(testMemoryBlock, 0.6);
+    try {
+      final IndexedConsensusRequest sharedRequest = createSizedRequest(1L, 10L, 30);
+      assertTrue(firstQueue.offer(sharedRequest));
+      assertTrue(secondQueue.offer(sharedRequest));
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(40L, retainedBytesMethod.invoke(firstQueue));
+      assertEquals(40L, retainedBytesMethod.invoke(secondQueue));
+
+      assertFalse(firstQueue.offer(createSizedRequest(2L, 10L, 30)));
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+
+      firstQueue.clear();
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(0L, retainedBytesMethod.invoke(firstQueue));
+      secondQueue.clear();
+      assertEquals(0L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(0L, retainedBytesMethod.invoke(secondQueue));
+    } finally {
+      firstQueue.clear();
+      secondQueue.clear();
+      memoryManager.init(previousMemoryBlock, previousQueueRatio);
+    }
+  }
+
+  @Test
   public void testLagIncludesLingeringBatchUntilCommitted() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalBatchMaxDelay =
@@ -230,8 +283,13 @@ public class ConsensusPrefetchingQueueTest {
               .setNodeId(7);
 
       assertNull(queue.poll("consumer"));
-      pendingEntries(queue).offer(request);
+      assertTrue(pendingEntries(queue).offer(request));
+      assertEquals(request.getRetainedMemorySize(), queue.getRetainedRequestBytes());
+      assertEquals(
+          String.valueOf(request.getRetainedMemorySize()),
+          queue.coreReportMessage().get("retainedRequestBytes"));
       queue.drivePrefetchOnce();
+      assertEquals(0L, queue.getRetainedRequestBytes());
 
       assertEquals(0, queue.getPrefetchedEventCount());
       assertEquals(1L, queue.getLag());
@@ -1800,6 +1858,17 @@ public class ConsensusPrefetchingQueueTest {
         .setNodeId(7);
   }
 
+  private static IndexedConsensusRequest createSizedRequest(
+      final long searchIndex, final long rawMemorySize, final int serializedMemorySize) {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            searchIndex,
+            Collections.singletonList(
+                new SizedConsensusRequest(rawMemorySize, serializedMemorySize)));
+    request.buildSerializedRequests();
+    return request;
+  }
+
   private static ConsensusSubscriptionCommitManager newCommitManager(final File systemDir)
       throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
@@ -1848,6 +1917,27 @@ public class ConsensusPrefetchingQueueTest {
     @Override
     public Pair<Long, Long> getDeletionBoundToFreeAtLeast(final long bytesToFree) {
       return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+  }
+
+  private static final class SizedConsensusRequest implements IConsensusRequest {
+
+    private final long rawMemorySize;
+    private final int serializedMemorySize;
+
+    private SizedConsensusRequest(final long rawMemorySize, final int serializedMemorySize) {
+      this.rawMemorySize = rawMemorySize;
+      this.serializedMemorySize = serializedMemorySize;
+    }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      return ByteBuffer.allocate(serializedMemorySize);
+    }
+
+    @Override
+    public long getMemorySize() {
+      return rawMemorySize;
     }
   }
 }
