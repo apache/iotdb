@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -103,7 +104,11 @@ public class ActiveLoadDirScannerTest {
 
     verify(loader, times(1))
         .tryTriggerTsFileLoad(
-            eq(tsFile.getAbsolutePath()), eq(pendingDir.getAbsolutePath()), eq(false), eq(false));
+            eq(tsFile.getAbsolutePath()),
+            eq(pendingDir.getAbsolutePath()),
+            eq(false),
+            eq(false),
+            isNull());
   }
 
   @Test
@@ -130,7 +135,11 @@ public class ActiveLoadDirScannerTest {
 
     verify(loader, times(1))
         .tryTriggerTsFileLoad(
-            eq(tsFile.getAbsolutePath()), eq(pendingDir.getAbsolutePath()), eq(false), eq(false));
+            eq(tsFile.getAbsolutePath()),
+            eq(pendingDir.getAbsolutePath()),
+            eq(false),
+            eq(false),
+            isNull());
   }
 
   @Test
@@ -153,7 +162,11 @@ public class ActiveLoadDirScannerTest {
 
     verify(loader, times(0))
         .tryTriggerTsFileLoad(
-            eq(tsFile.getAbsolutePath()), eq(pendingDir.getAbsolutePath()), eq(false), eq(false));
+            eq(tsFile.getAbsolutePath()),
+            eq(pendingDir.getAbsolutePath()),
+            eq(false),
+            eq(false),
+            isNull());
   }
 
   private static File createCompletedTsFile(final File dir, final String fileName)
