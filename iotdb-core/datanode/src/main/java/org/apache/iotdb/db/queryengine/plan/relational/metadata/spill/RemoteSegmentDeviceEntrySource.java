@@ -22,13 +22,44 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
+import java.util.List;
 
-public interface DeviceEntryReader extends AutoCloseable {
+public final class RemoteSegmentDeviceEntrySource extends SegmentDeviceEntrySource {
 
-  boolean hasNext() throws IOException;
+  private final DeviceEntrySegmentFetcher fetcher;
+  private boolean finished;
 
-  DeviceEntry next() throws IOException;
+  public RemoteSegmentDeviceEntrySource(DeviceEntryDataSetHandle handle) {
+    this(handle, DeviceEntryRpcSegmentFetcher.getInstance());
+  }
+
+  public RemoteSegmentDeviceEntrySource(
+      DeviceEntryDataSetHandle handle, DeviceEntrySegmentFetcher fetcher) {
+    super(handle);
+    this.fetcher = fetcher;
+  }
 
   @Override
-  void close() throws IOException;
+  public List<DeviceEntry> nextBatch() throws IOException {
+    int segmentId = nextSegmentId;
+    byte[] payload = fetcher.fetch(handle, segmentId);
+    List<DeviceEntry> result = deserialize(payload);
+    nextSegmentId++;
+    if (!hasNextBatch()) {
+      finish();
+    }
+    return result;
+  }
+
+  private void finish() {
+    fetcher.finish(handle);
+    finished = true;
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (!finished) {
+      finish();
+    }
+  }
 }

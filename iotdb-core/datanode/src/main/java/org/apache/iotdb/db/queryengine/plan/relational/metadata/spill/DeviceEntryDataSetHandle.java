@@ -101,7 +101,7 @@ public final class DeviceEntryDataSetHandle {
         new PlanNodeId(ReadWriteIOUtils.readString(byteBuffer)),
         ThriftCommonsSerDeUtils.deserializeTEndPoint(byteBuffer),
         ReadWriteIOUtils.readInt(byteBuffer),
-        ReadWriteIOUtils.readLong(byteBuffer),
+        ReadWriteIOUtils.readInt(byteBuffer),
         ReadWriteIOUtils.readBool(byteBuffer));
   }
 }

@@ -45,7 +45,7 @@ public final class DeviceEntrySpillManager {
   }
 
   public Path register(String queryId, PlanNodeId planNodeId) throws IOException {
-    Path ownerDirectory = rootDirectory().resolve(queryId).resolve(planNodeId.getId());
+    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
     Files.createDirectories(ownerDirectory);
     queryDirectories
         .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
@@ -66,7 +66,7 @@ public final class DeviceEntrySpillManager {
 
   public void deregisterQuery(String queryId) throws IOException {
     queryDirectories.remove(queryId);
-    FileUtils.deleteDirectory(rootDirectory().resolve(queryId).toFile());
+    FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
   }
 
   @TestOnly
@@ -109,17 +109,8 @@ public final class DeviceEntrySpillManager {
   }
 
   public void finishSegmentDataSet(String queryId, String planNodeId) throws IOException {
-    deregisterOwner(queryId, rootDirectory().resolve(queryId).resolve(planNodeId));
-  }
-
-  public void deregisterFragment(String queryId, String fragmentInstanceId) throws IOException {
-    FileUtils.deleteDirectory(
-        resolveUnderRoot(fragmentRootDirectory(), queryId, fragmentInstanceId).toFile());
-  }
-
-  public void clearStaleFragmentData() throws IOException {
-    FileUtils.deleteDirectory(fragmentRootDirectory().toFile());
-    Files.createDirectories(fragmentRootDirectory());
+    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId);
+    deregisterOwner(queryId, ownerDirectory);
   }
 
   private Path resolveRegisteredDataSetDirectory(String queryId, String dataSetId)
@@ -130,7 +121,7 @@ public final class DeviceEntrySpillManager {
             .anyMatch(path -> path.toString().equals("..") || path.toString().equals("."))) {
       throw new IllegalArgumentException();
     }
-    Path queryDirectory = rootDirectory().resolve(queryId).normalize();
+    Path queryDirectory = resolveQueryDirectory(queryId);
     Path dataSetDirectory = queryDirectory.resolve(relativeDataSetPath).resolve("fi").normalize();
     if (!dataSetDirectory.startsWith(queryDirectory)) {
       throw new IllegalArgumentException();
@@ -166,20 +157,16 @@ public final class DeviceEntrySpillManager {
     return Path.of(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir(), "device-entry");
   }
 
-  private Path fragmentRootDirectory() {
-    return rootDirectory().resolve("fragment");
+  private Path resolveOwnerDirectory(String queryId, String planNodeId) {
+    Path queryDirectory = resolveQueryDirectory(queryId);
+    Path ownerDirectory = queryDirectory.resolve(planNodeId).normalize();
+    return ownerDirectory;
   }
 
-  private Path resolveUnderRoot(Path root, String... children) {
-    Path result = root;
-    for (String child : children) {
-      result = result.resolve(child);
-    }
-    result = result.normalize();
-    if (!result.startsWith(root.normalize())) {
-      throw new IllegalArgumentException();
-    }
-    return result;
+  private Path resolveQueryDirectory(String queryId) {
+    Path root = rootDirectory().normalize();
+    Path queryDirectory = root.resolve(queryId).normalize();
+    return queryDirectory;
   }
 
   private static class DeviceEntrySpillManagerHolder {

@@ -22,12 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
+import java.util.List;
 
-public interface DeviceEntryReader extends AutoCloseable {
+public interface BatchDeviceEntrySource extends AutoCloseable {
 
-  boolean hasNext() throws IOException;
+  boolean hasNextBatch();
 
-  DeviceEntry next() throws IOException;
+  List<DeviceEntry> nextBatch() throws IOException;
 
   @Override
   void close() throws IOException;

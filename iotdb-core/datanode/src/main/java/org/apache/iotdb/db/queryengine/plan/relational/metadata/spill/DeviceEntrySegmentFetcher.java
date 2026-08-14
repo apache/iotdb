@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-
 import java.io.IOException;
 
-public interface DeviceEntryReader extends AutoCloseable {
+public interface DeviceEntrySegmentFetcher {
 
-  boolean hasNext() throws IOException;
+  byte[] fetch(DeviceEntryDataSetHandle handle, int segmentId) throws IOException;
 
-  DeviceEntry next() throws IOException;
-
-  @Override
-  void close() throws IOException;
+  void finish(DeviceEntryDataSetHandle handle);
 }
