@@ -49,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -114,7 +115,7 @@ public class SinkChannelFailurePropagationTest {
   }
 
   @Test
-  public void testFailurePreventsLastNormalChannelFromClosingShuffleSinkHandle() throws Exception {
+  public void testApplicationExceptionFailsWithoutRetryAndPreventsNormalClose() throws Exception {
     final String queryId = "q_failure_with_two_channels";
     final TFragmentInstanceId upstreamThriftId = new TFragmentInstanceId(queryId, 1, "0");
     final FragmentInstanceId upstreamId =
@@ -134,7 +135,14 @@ public class SinkChannelFailurePropagationTest {
           Mockito.mock(IClientManager.class);
       SyncDataNodeMPPDataExchangeServiceClient exchangeClient =
           Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
-      TException expectedFailure = new TException("injected onNewDataBlockEvent failure");
+      TException expectedFailure =
+          new TException(
+              "wrapped application failure",
+              new TException(
+                  "wrapped receive failure",
+                  new TApplicationException(
+                      TApplicationException.INTERNAL_ERROR,
+                      "Internal error processing onNewDataBlockEvent")));
       Mockito.when(exchangeClientManager.borrowClient(secondEndpoint)).thenReturn(exchangeClient);
       Mockito.doThrow(expectedFailure)
           .when(exchangeClient)
@@ -168,7 +176,8 @@ public class SinkChannelFailurePropagationTest {
 
       Assert.assertTrue(sinkHandle.isFull().isDone());
       sinkHandle.send(Utils.createMockTsBlocks(1, 1024).get(0));
-      Mockito.verify(exchangeClient, Mockito.timeout(5_000).times(SinkChannel.MAX_ATTEMPT_TIMES))
+      exchangeExecutor.submit(() -> {}).get(5, TimeUnit.SECONDS);
+      Mockito.verify(exchangeClient, Mockito.times(1))
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
       long waitStartNanos = System.nanoTime();
       while (!fragmentStateMachine.getState().isDone()
