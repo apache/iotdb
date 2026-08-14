@@ -26,7 +26,7 @@ import java.util.List;
 
 public interface DeviceEntryDataSet extends AutoCloseable {
 
-  long getEntryCount();
+  int getEntryCount();
 
   boolean isSpilled();
 

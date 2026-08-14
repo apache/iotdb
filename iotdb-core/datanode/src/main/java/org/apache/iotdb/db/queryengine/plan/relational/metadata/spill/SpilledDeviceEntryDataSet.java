@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,24 +28,18 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
   private final String queryId;
   private final Path ownerDirectory;
   private final List<Path> segments;
-  private final long entryCount;
-  private final boolean managedBySpillManager;
+  private final int entryCount;
 
   public SpilledDeviceEntryDataSet(
-      String queryId,
-      Path ownerDirectory,
-      List<Path> segments,
-      long entryCount,
-      boolean managedBySpillManager) {
+      String queryId, Path ownerDirectory, List<Path> segments, int entryCount) {
     this.queryId = queryId;
     this.ownerDirectory = ownerDirectory;
     this.segments = segments;
     this.entryCount = entryCount;
-    this.managedBySpillManager = managedBySpillManager;
   }
 
   @Override
-  public long getEntryCount() {
+  public int getEntryCount() {
     return entryCount;
   }
 
@@ -76,10 +68,6 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
 
   @Override
   public void close() throws IOException {
-    if (managedBySpillManager) {
-      DeviceEntrySpillManager.getInstance().deregisterOwner(queryId, ownerDirectory);
-    } else {
-      FileUtils.deleteDirectory(ownerDirectory.toFile());
-    }
+    DeviceEntrySpillManager.getInstance().deregisterOwner(queryId, ownerDirectory);
   }
 }

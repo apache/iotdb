@@ -34,7 +34,7 @@ public final class InMemoryDeviceEntryDataSet implements DeviceEntryDataSet {
   }
 
   @Override
-  public long getEntryCount() {
+  public int getEntryCount() {
     return entries.size();
   }
 

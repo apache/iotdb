@@ -94,7 +94,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     } else {
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(), ownerDirectory(), spiller.finish(), entryCount(), true);
+              queryId(), ownerDirectory(), spiller.finish(), entryCount());
     }
     if (rawSegment && getQueryContext() != null) {
       getQueryContext().recordDeviceEntryCount(entryCount());

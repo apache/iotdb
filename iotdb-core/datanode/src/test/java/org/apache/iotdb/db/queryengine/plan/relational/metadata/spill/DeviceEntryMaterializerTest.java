@@ -35,7 +35,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -118,7 +120,10 @@ public class DeviceEntryMaterializerTest {
     List<Path> segments;
     try (java.util.stream.Stream<Path> stream = Files.list(rawDirectory)) {
       segments =
-          stream.filter(path -> path.getFileName().toString().endsWith(".bin")).sorted().toList();
+          stream
+              .filter(path -> path.getFileName().toString().endsWith(".bin"))
+              .sorted()
+              .collect(Collectors.toList());
     }
     assertTrue(segments.size() > 1);
     assertTrue(Files.size(segments.get(0)) > 0);
@@ -142,6 +147,52 @@ public class DeviceEntryMaterializerTest {
     assertEquals(Integer.BYTES + payload.length, fileBytes.length);
     assertEquals(payload.length, ByteBuffer.wrap(fileBytes).getInt());
     dataSet.close();
+  }
+
+  @Test
+  public void testMemoryControllerSpillsLargestMaterializer() throws Exception {
+    DeviceEntry first = createEntries(1).get(0);
+    DeviceEntry second = createEntries(2).get(1);
+    try (DeviceEntryMaterializer firstMaterializer =
+            new DeviceEntryMaterializer("q-controller", new PlanNodeId("scan-0"), 128, false);
+        DeviceEntryMaterializer secondMaterializer =
+            new DeviceEntryMaterializer("q-controller", new PlanNodeId("scan-1"), 128, false)) {
+      DeviceEntryMaterializationMemoryController controller =
+          new DeviceEntryMaterializationMemoryController(
+              first.ramBytesUsed() + second.ramBytesUsed() - 1);
+      controller.append(firstMaterializer, first);
+      controller.append(secondMaterializer, second);
+
+      assertTrue(firstMaterializer.isSpilled() || secondMaterializer.isSpilled());
+    }
+  }
+
+  @Test
+  public void testSortedMaterializerMergesRunsInOrder() throws Exception {
+    List<DeviceEntry> input = createEntries(40);
+    input.sort(Comparator.comparing(entry -> entry.getDeviceID().toString()).reversed());
+    List<DeviceEntry> actual = new ArrayList<>();
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            "q-sorted",
+            new PlanNodeId("scan-0"),
+            128,
+            Comparator.comparing(entry -> entry.getDeviceID().toString()))) {
+      DeviceEntryMaterializationMemoryController controller =
+          new DeviceEntryMaterializationMemoryController(128);
+      for (DeviceEntry entry : input) {
+        controller.append(materializer, entry);
+      }
+      try (DeviceEntryDataSet dataSet = materializer.finish();
+          DeviceEntryReader reader = dataSet.openReader()) {
+        while (reader.hasNext()) {
+          actual.add(reader.next());
+        }
+      }
+    }
+    List<DeviceEntry> expected = new ArrayList<>(input);
+    expected.sort(Comparator.comparing(entry -> entry.getDeviceID().toString()));
+    assertEquals(expected, actual);
   }
 
   private static List<DeviceEntry> createEntries(int count) {

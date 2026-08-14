@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class DeviceEntrySpillManager {
 
@@ -77,7 +78,7 @@ public final class DeviceEntrySpillManager {
           .sorted(
               Comparator.comparingInt((Path path) -> path.getFileName().toString().length())
                   .thenComparing(path -> path.getFileName().toString()))
-          .toList();
+          .collect(Collectors.toList());
     }
   }
 

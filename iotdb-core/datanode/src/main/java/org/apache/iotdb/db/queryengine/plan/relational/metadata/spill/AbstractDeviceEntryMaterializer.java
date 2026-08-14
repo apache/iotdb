@@ -38,7 +38,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private final long thresholdInBytes;
   private final List<DeviceEntry> bufferedEntries = new ArrayList<>();
 
-  private long entryCount;
+  private int entryCount;
   private Path ownerDirectory;
   private boolean ownerRegistered;
   private boolean finished;
@@ -112,7 +112,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     return ioContext;
   }
 
-  protected final long entryCount() {
+  protected final int entryCount() {
     return entryCount;
   }
 

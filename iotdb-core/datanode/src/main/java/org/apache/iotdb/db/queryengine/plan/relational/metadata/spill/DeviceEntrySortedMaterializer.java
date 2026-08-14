@@ -1,0 +1,251 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
+
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+
+import org.apache.tsfile.external.commons.io.FileUtils;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
+
+/** Materializes a sorted data set in memory or through sorted runs and a K-way merge. */
+public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMaterializer {
+
+  private static final int MAX_MERGE_FAN_IN = 32;
+
+  private final Comparator<DeviceEntry> comparator;
+  private final List<List<Path>> sortedRuns = new ArrayList<>();
+
+  private Path runDirectory;
+
+  public DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator) {
+    super(queryId, planNodeId, bufferSizeInBytes);
+    this.comparator = comparator;
+  }
+
+  public DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator,
+      MPPQueryContext queryContext) {
+    this(queryId, planNodeId, bufferSizeInBytes, comparator);
+    setQueryContext(queryContext);
+  }
+
+  @Override
+  public void append(DeviceEntry entry) throws IOException {
+    checkNotFinished();
+    appendToBuffer(entry);
+  }
+
+  @Override
+  public void forceSpill() throws IOException {
+    checkNotFinished();
+    flushRun();
+  }
+
+  @Override
+  public DeviceEntryDataSet finish() throws IOException {
+    checkNotFinished();
+    if (entryCount() == 0) {
+      DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      markFinished();
+      return dataSet;
+    }
+    if (sortedRuns.isEmpty()) {
+      sortBufferedEntries(comparator);
+      DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      markFinished();
+      return dataSet;
+    }
+
+    try {
+      flushRun();
+      List<List<Path>> finalRuns = compactRuns(new ArrayList<>(sortedRuns));
+      Path finalDirectory = ownerDirectory().resolve("fi");
+      List<Path> finalSegments;
+      try (DeviceEntryDiskSpiller outputSpiller =
+          new DeviceEntryDiskSpiller(finalDirectory, thresholdInBytes(), ioContext())) {
+        if (finalRuns.size() == 1) {
+          copyRun(finalRuns.get(0), outputSpiller);
+        } else {
+          mergeRuns(finalRuns, outputSpiller);
+        }
+        finalSegments = outputSpiller.finish();
+      }
+      DeviceEntryDataSet dataSet =
+          new SpilledDeviceEntryDataSet(queryId(), ownerDirectory(), finalSegments, entryCount());
+      markFinished();
+      deleteRunDirectoryBestEffort();
+      return dataSet;
+    } catch (IOException | RuntimeException e) {
+      try {
+        cleanupOwnerDirectory();
+      } catch (IOException cleanupException) {
+        e.addSuppressed(cleanupException);
+      }
+      throw e;
+    }
+  }
+
+  private void flushRun() throws IOException {
+    if (isBufferEmpty()) {
+      return;
+    }
+    ensureSpillDirectory();
+    sortBufferedEntries(comparator);
+    Path currentRunDirectory = runDirectory.resolve(String.format("run-%06d", sortedRuns.size()));
+    try (DeviceEntryDiskSpiller runSpiller =
+        new DeviceEntryDiskSpiller(currentRunDirectory, thresholdInBytes(), ioContext())) {
+      for (DeviceEntry entry : bufferedEntries()) {
+        runSpiller.append(entry.serializeToBytes());
+      }
+      sortedRuns.add(runSpiller.finish());
+    }
+    clearBuffer();
+  }
+
+  private void ensureSpillDirectory() throws IOException {
+    if (ownerDirectory() != null) {
+      return;
+    }
+    createIOContextOnSpill(false);
+    runDirectory = ensureOwnerDirectory().resolve("sort-run");
+  }
+
+  private void copyRun(List<Path> run, DeviceEntryDiskSpiller outputSpiller) throws IOException {
+    try (DeviceEntryFileSpillerReader reader =
+        new DeviceEntryFileSpillerReader(run, true, ioContext())) {
+      while (reader.hasNext()) {
+        outputSpiller.append(reader.next().serializeToBytes());
+      }
+    }
+  }
+
+  private void deleteRunDirectoryBestEffort() {
+    try {
+      FileUtils.deleteDirectory(runDirectory.toFile());
+    } catch (IOException ignored) {
+      // Query cleanup removes the published data set and any remaining runs.
+    }
+  }
+
+  private List<List<Path>> compactRuns(List<List<Path>> runs) throws IOException {
+    int level = 1;
+    while (runs.size() > MAX_MERGE_FAN_IN) {
+      List<List<Path>> nextRuns = new ArrayList<>();
+      for (int from = 0, group = 0; from < runs.size(); from += MAX_MERGE_FAN_IN, group++) {
+        int to = Math.min(from + MAX_MERGE_FAN_IN, runs.size());
+        List<List<Path>> runGroup = new ArrayList<>(runs.subList(from, to));
+        if (runGroup.size() == 1) {
+          nextRuns.add(runGroup.get(0));
+          continue;
+        }
+        Path outputDirectory =
+            runDirectory
+                .resolve(String.format("level-%06d", level))
+                .resolve(String.format("run-%06d", group));
+        try (DeviceEntryDiskSpiller outputSpiller =
+            new DeviceEntryDiskSpiller(outputDirectory, thresholdInBytes(), ioContext())) {
+          mergeRuns(runGroup, outputSpiller);
+          nextRuns.add(outputSpiller.finish());
+        }
+      }
+      runs = nextRuns;
+      level++;
+    }
+    return runs;
+  }
+
+  private void mergeRuns(List<List<Path>> runs, DeviceEntryDiskSpiller outputSpiller)
+      throws IOException {
+    List<DeviceEntryFileSpillerReader> readers = new ArrayList<>(runs.size());
+    PriorityQueue<MergeElement> queue =
+        new PriorityQueue<>(
+            (left, right) -> {
+              int result = comparator.compare(left.entry, right.entry);
+              return result != 0 ? result : Integer.compare(left.readerIndex, right.readerIndex);
+            });
+    Throwable failure = null;
+    try {
+      for (int i = 0; i < runs.size(); i++) {
+        DeviceEntryFileSpillerReader reader =
+            new DeviceEntryFileSpillerReader(runs.get(i), true, ioContext());
+        readers.add(reader);
+        if (reader.hasNext()) {
+          queue.add(new MergeElement(reader.next(), i));
+        }
+      }
+      while (!queue.isEmpty()) {
+        MergeElement element = queue.poll();
+        outputSpiller.append(element.entry.serializeToBytes());
+        DeviceEntryFileSpillerReader reader = readers.get(element.readerIndex);
+        if (reader.hasNext()) {
+          queue.add(new MergeElement(reader.next(), element.readerIndex));
+        }
+      }
+    } catch (IOException | RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      IOException closeException = null;
+      for (DeviceEntryFileSpillerReader reader : readers) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          if (closeException == null) {
+            closeException = e;
+          } else {
+            closeException.addSuppressed(e);
+          }
+        }
+      }
+      if (closeException != null) {
+        if (failure != null) {
+          failure.addSuppressed(closeException);
+        } else {
+          throw closeException;
+        }
+      }
+    }
+  }
+
+  private static final class MergeElement {
+    private final DeviceEntry entry;
+    private final int readerIndex;
+
+    private MergeElement(DeviceEntry entry, int readerIndex) {
+      this.entry = entry;
+      this.readerIndex = readerIndex;
+    }
+  }
+}
