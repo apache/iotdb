@@ -193,8 +193,7 @@ public class MetricConfigDescriptor {
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties,
                 prefix)));
-    // Internal reporter writes metrics into IoTDB internal tables, which only DataNode
-    // (prefix "dn_") has storage to host. ConfigNode and StreamNode skip this config.
+
     if (DATA_NODE_PREFIX.equals(prefix)) {
       loadConfig.setInternalReportType(
           InternalReporterType.valueOf(
