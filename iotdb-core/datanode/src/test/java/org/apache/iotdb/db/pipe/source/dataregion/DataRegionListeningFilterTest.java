@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -34,17 +35,31 @@ import static org.junit.Assert.assertTrue;
 public class DataRegionListeningFilterTest {
 
   @Test
-  public void testAuditDatabaseIsNeverListened() throws Exception {
+  public void testAuditDatabaseIsOnlyExcludedFromSubscriptions() throws Exception {
     final Map<String, String> topicAttributes = new HashMap<>();
     topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     final PipeParameters parameters =
         new PipeParameters(
             new TopicMeta("topic", 1, topicAttributes).generateExtractorAttributes("root"));
 
-    assertFalse(DataRegionListeningFilter.shouldDatabaseBeListened(parameters, true, "__audit"));
     assertFalse(
-        DataRegionListeningFilter.shouldDatabaseBeListened(parameters, false, "root.__audit"));
-    assertFalse(DataRegionListeningFilter.shouldDatabaseBeListened(parameters, true, "__AUDIT"));
-    assertTrue(DataRegionListeningFilter.shouldDatabaseBeListened(parameters, true, "user_db"));
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, true, "__audit", PipeType.SUBSCRIPTION));
+    assertFalse(
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, false, "root.__audit", PipeType.SUBSCRIPTION));
+    assertFalse(
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, true, "__AUDIT", PipeType.SUBSCRIPTION));
+    assertTrue(
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, true, "user_db", PipeType.SUBSCRIPTION));
+
+    assertTrue(
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, true, "__audit", PipeType.CONSENSUS));
+    assertTrue(
+        DataRegionListeningFilter.shouldDatabaseBeListened(
+            parameters, true, "__audit", PipeType.USER));
   }
 }
