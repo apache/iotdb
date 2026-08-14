@@ -21,28 +21,17 @@ package org.apache.iotdb.db.storageengine.dataregion.modification.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 
-import java.io.IOException;
-import java.util.Collection;
+import java.util.Iterator;
 
-/** ModificationReader reads all modifications from a persistent medium like file system. */
-public interface ModificationReader {
+/** An iterator over modifications that can be closed to release underlying resources. */
+public interface ModificationIterator
+    extends Iterator<Modification>, Iterable<Modification>, AutoCloseable {
 
-  /**
-   * Read all modifications from a persistent medium. If the mods file is crashed, the redundant
-   * modifications will be truncated until the file is correct.
-   *
-   * @return a list of modifications contained the medium.
-   */
-  Collection<Modification> read();
+  @Override
+  void close();
 
-  /**
-   * Get an iterator over this mod file, others keep consistence with {@link #read()}. Please ensure
-   * you have called hasNext() with return of {@code true} before calling next().
-   *
-   * @return the modification iterator.
-   */
-  ModificationIterator getModificationIterator();
-
-  /** Release resources like streams. */
-  void close() throws IOException;
+  @Override
+  default Iterator<Modification> iterator() {
+    return this;
+  }
 }
