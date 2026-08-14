@@ -98,6 +98,11 @@ public class PipeSourceConstant {
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
 
+  public static final String EXTRACTOR_TSFILE_PARSER_KEY = "extractor.tsfile.parser";
+  public static final String SOURCE_TSFILE_PARSER_KEY = "source.tsfile.parser";
+  public static final String EXTRACTOR_TSFILE_PARSER_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_TSFILE_PARSER_SCAN_VALUE = "scan";
+
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";
   public static final boolean EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE = true;

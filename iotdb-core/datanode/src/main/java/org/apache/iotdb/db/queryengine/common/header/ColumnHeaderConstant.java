@@ -181,6 +181,7 @@ public class ColumnHeaderConstant {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
+  public static final String RECENT_FAILURES = "RecentFailures";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -450,7 +451,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
-          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(

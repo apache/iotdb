@@ -40,6 +40,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
+
 public class TsFileInsertionDataContainerProvider {
 
   private final String pipeName;
@@ -52,6 +55,7 @@ public class TsFileInsertionDataContainerProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
+  private final String tsFileParser;
 
   public TsFileInsertionDataContainerProvider(
       final String pipeName,
@@ -62,6 +66,28 @@ public class TsFileInsertionDataContainerProvider {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pipePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null);
+  }
+
+  public TsFileInsertionDataContainerProvider(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final PipePattern pipePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeTsFileInsertionEvent sourceEvent,
+      final String tsFileParser) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.tsFile = tsFile;
@@ -70,12 +96,39 @@ public class TsFileInsertionDataContainerProvider {
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    this.tsFileParser = tsFileParser;
   }
 
   public TsFileInsertionDataContainer provide(final boolean isWithMod) throws IOException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_QUERY_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionQueryDataContainer(
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_SCAN_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionScanDataContainer(
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory

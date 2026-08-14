@@ -106,6 +106,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   private Set<String> tableNames;
   // False when generated tablet events should wait for an external progress report.
   private volatile boolean shouldReportGeneratedEventsOnCommit = true;
+  private String tsFileParser;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -437,6 +438,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
+  public String getTsFileParser() {
+    return tsFileParser;
+  }
+
+  public void setTsFileParser(final String tsFileParser) {
+    this.tsFileParser = tsFileParser;
+  }
+
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
@@ -445,7 +454,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    return new PipeTsFileInsertionEvent(
+    final PipeTsFileInsertionEvent copiedEvent =
+        new PipeTsFileInsertionEvent(
             resource,
             tsFile,
             isWithMod,
@@ -457,8 +467,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
             pattern,
             startTime,
             endTime,
-            isTsFileSealed)
-        .setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
+            isTsFileSealed);
+    copiedEvent.setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
+    copiedEvent.setTsFileParser(tsFileParser);
+    return copiedEvent;
   }
 
   @Override
@@ -806,7 +818,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
                   startTime,
                   endTime,
                   pipeTaskMeta,
-                  this)
+                  this,
+                  tsFileParser)
               .provide(isWithMod));
       return dataContainer.get();
     } catch (final IOException e) {

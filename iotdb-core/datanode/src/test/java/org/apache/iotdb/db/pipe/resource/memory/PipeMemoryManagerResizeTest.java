@@ -71,6 +71,30 @@ public class PipeMemoryManagerResizeTest {
   }
 
   @Test
+  public void testTabletResizeCannotCrossTabletHardLimit() {
+    final PipeMemoryManager manager = new PipeMemoryManager();
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(0);
+    final long tabletMemorySizeInBytes =
+        (long)
+                (PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes()
+                    * (config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+                        + config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
+                            / 2))
+            + 1;
+
+    try {
+      Assert.assertThrows(
+          PipeRuntimeOutOfMemoryCriticalException.class,
+          () -> manager.forceResize(tablet, tabletMemorySizeInBytes));
+      Assert.assertEquals(0, tablet.getMemoryUsageInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(tablet);
+    }
+  }
+
+  @Test
   public void testTabletResizeLeavesMemoryForSinkForwardProgress() {
     final PipeMemoryManager manager = new PipeMemoryManager();
     final long totalNonFloatingMemorySizeInBytes =
