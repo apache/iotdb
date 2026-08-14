@@ -37,6 +37,9 @@
     <module name="BeforeExecutionExclusionFileFilter">
         <property name="fileNamePattern" value="target(\\|/).*\.java$"/>
     </module>
+    <module name="SuppressionFilter">
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
     <module name="FileTabCharacter">
         <property name="eachLine" value="true"/>
     </module>
