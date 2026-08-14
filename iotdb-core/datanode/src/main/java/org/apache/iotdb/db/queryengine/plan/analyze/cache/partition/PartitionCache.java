@@ -891,7 +891,7 @@ public class PartitionCache {
       }
       querySlots.put(entry.getKey(), seriesSlots);
     }
-    return getDataPartition(querySlots);
+    return getDataPartitionBySlots(querySlots);
   }
 
   public DataPartition getDataPartition(
@@ -902,10 +902,10 @@ public class PartitionCache {
     for (final TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
       querySlots.put(seriesPartitionSlot, timePartitionSlots);
     }
-    return getDataPartition(Collections.singletonMap(database, querySlots));
+    return getDataPartitionBySlots(Collections.singletonMap(database, querySlots));
   }
 
-  private DataPartition getDataPartition(
+  private DataPartition getDataPartitionBySlots(
       final Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> querySlots) {
     dataPartitionCacheLock.readLock().lock();
     try {
