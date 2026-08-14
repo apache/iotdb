@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.format.DateTimeParseException;
 
 /** An abstract executor for {@link DriverTask}. */
 public abstract class AbstractDriverThread extends Thread implements Closeable {
@@ -78,8 +81,13 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            logger.warn("[ExecuteFailed]", e);
-            next.setAbortCause(getAbortCause(e));
+            Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
+            if (isExpectedException(rootCause)) {
+              next.setAbortCause(getAbortCause(rootCause));
+            } else {
+              logger.warn("[ExecuteFailed]", rootCause);
+              next.setAbortCause(DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+            }
             scheduler.toAborted(next);
           }
         } finally {
@@ -116,11 +124,19 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
     closed = true;
   }
 
-  private String getAbortCause(final Exception e) {
-    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
+  static boolean isExpectedException(Throwable rootCause) {
+    return rootCause instanceof MemoryNotEnoughException
+        || rootCause instanceof IoTDBRuntimeException
+        || rootCause instanceof IoTDBException
+        || rootCause instanceof DateTimeParseException;
+  }
+
+  static String getAbortCause(final Throwable rootCause) {
     if (rootCause instanceof MemoryNotEnoughException) {
       return DriverTaskAbortedException.BY_MEMORY_NOT_ENOUGH;
     }
-    return DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED;
+    return rootCause.getMessage() == null
+        ? rootCause.getClass().getSimpleName()
+        : rootCause.getMessage();
   }
 }

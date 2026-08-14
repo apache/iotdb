@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextModificationAccessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationIterator;
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -139,8 +140,8 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  public Iterable<Modification> getModificationsIter() {
-    return reader::getModificationIterator;
+  public ModificationIterator getModificationsIter() {
+    return reader.getModificationIterator();
   }
 
   public String getFilePath() {

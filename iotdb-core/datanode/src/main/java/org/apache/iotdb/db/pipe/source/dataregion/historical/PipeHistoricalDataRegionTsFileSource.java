@@ -82,6 +82,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
@@ -90,6 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 
 public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataRegionSource {
 
@@ -117,6 +119,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
 
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
@@ -266,6 +269,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     dataRegionId = environment.getRegionId();
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -622,6 +627,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+    event.setTsFileParser(tsFileParser);
     if (sloppyPattern || isDbNameCoveredByPattern || isTsFileResourceCoveredByPattern(resource)) {
       event.skipParsingPattern();
     }

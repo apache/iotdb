@@ -161,10 +161,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || status.getCode()
             == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-      LOGGER.info(
-          "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
-          receiverId,
-          resp.getStatus());
       ok();
     } else if (status.getCode()
         == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
@@ -173,8 +169,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(
-          "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);

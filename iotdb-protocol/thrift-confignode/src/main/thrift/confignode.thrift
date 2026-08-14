@@ -729,6 +729,7 @@ struct TShowPipeInfo {
   7: required string exceptionMessage
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
+  11: optional map<string, i64> recentFailures
 }
 
 struct TGetAllPipeInfoResp {
@@ -1775,4 +1776,3 @@ service IConfigNodeRPCService {
   /** Push heartbeat in shutdown */
   common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 }
-
