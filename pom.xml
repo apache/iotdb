@@ -1008,6 +1008,10 @@
                     <signaturesFiles>
                         <signaturesFile>${maven.multiModuleProjectDirectory}/src/main/forbidden-apis/secure-erase</signaturesFile>
                     </signaturesFiles>
+                    <excludes>
+                        <exclude>org/apache/iotdb/google/common/io/Files*.class</exclude>
+                        <exclude>org/apache/iotdb/google/common/io/FileBackedOutputStream*.class</exclude>
+                    </excludes>
                 </configuration>
                 <executions>
                     <execution>
