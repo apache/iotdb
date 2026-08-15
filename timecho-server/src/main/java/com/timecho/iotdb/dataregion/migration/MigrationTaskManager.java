@@ -293,6 +293,10 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     }
 
     private void scheduleMigration() {
+      // Tier and status of recovered TsFiles are finalized asynchronously during startup.
+      if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+        return;
+      }
       if (iotdbConfig.getTierDataDirs().length == 1) {
         return;
       }
