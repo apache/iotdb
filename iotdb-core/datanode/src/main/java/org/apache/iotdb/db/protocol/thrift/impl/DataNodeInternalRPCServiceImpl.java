@@ -82,7 +82,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.i18n.ConsensusReadinessMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -333,6 +332,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
   private static final int TEST_CONNECTION_RETRY_NUM = 1;
   private static final long DEFAULT_CONSENSUS_WAIT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
+  private static final String CONSENSUS_NOT_INITIALIZED_LOG =
+      "Consensus is not initialized; rejecting the region topology request after waiting up to {} ms";
+  private static final String CONSENSUS_NOT_INITIALIZED_MESSAGE =
+      "Consensus is not initialized; region topology request rejected after waiting up to %d ms";
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final ConsensusReadiness consensusReadiness;
@@ -385,16 +388,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    LOGGER.warn(
-        ConsensusReadinessMessages
-            .LOG_CONSENSUS_IS_NOT_INITIALIZED_REJECTING_THE_REGION_TOPOLOGY_REQUEST_AFTER_WAITING_UP_TO_ARG_MS_7035CB1C,
-        consensusWaitTimeoutMs);
+    LOGGER.warn(CONSENSUS_NOT_INITIALIZED_LOG, consensusWaitTimeoutMs);
     return RpcUtils.getStatus(
         TSStatusCode.CONSENSUS_NOT_INITIALIZED,
-        String.format(
-            ConsensusReadinessMessages
-                .MESSAGE_CONSENSUS_IS_NOT_INITIALIZED_REGION_TOPOLOGY_REQUEST_REJECTED_AFTER_WAITING_UP_TO_ARG_MS_30E1CBCC,
-            consensusWaitTimeoutMs));
+        String.format(CONSENSUS_NOT_INITIALIZED_MESSAGE, consensusWaitTimeoutMs));
   }
 
   @Override
