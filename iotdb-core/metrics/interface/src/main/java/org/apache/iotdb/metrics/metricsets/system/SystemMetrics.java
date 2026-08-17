@@ -370,6 +370,29 @@ public class SystemMetrics implements IMetricSet {
     return sysAvailableSpace;
   }
 
+  public boolean isAllDiskSpaceAboveThreshold(double threshold) {
+    return isAllDiskSpaceAboveThreshold(fileStores, threshold);
+  }
+
+  static boolean isAllDiskSpaceAboveThreshold(Set<FileStore> fileStores, double threshold) {
+    if (fileStores.isEmpty()) {
+      return false;
+    }
+
+    for (FileStore fileStore : fileStores) {
+      try {
+        long totalSpace = fileStore.getTotalSpace();
+        if (totalSpace <= 0 || (double) fileStore.getUsableSpace() / totalSpace <= threshold) {
+          return false;
+        }
+      } catch (IOException e) {
+        logger.error(FAILED_TO_STATISTIC, fileStore, e);
+        return false;
+      }
+    }
+    return true;
+  }
+
   public static SystemMetrics getInstance() {
     return SystemMetricsHolder.INSTANCE;
   }

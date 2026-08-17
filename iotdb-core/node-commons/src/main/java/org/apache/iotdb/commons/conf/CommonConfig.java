@@ -836,7 +836,11 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatus(NodeStatus newStatus) {
+  public synchronized void setNodeStatus(NodeStatus newStatus) {
+    if (status == newStatus) {
+      return;
+    }
+
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
