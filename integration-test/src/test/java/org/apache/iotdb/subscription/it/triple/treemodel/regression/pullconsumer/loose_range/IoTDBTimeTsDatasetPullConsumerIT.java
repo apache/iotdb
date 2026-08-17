@@ -76,7 +76,7 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionTreeRe
         "2024-01-01T00:00:00+08:00",
         "2024-03-31T23:59:59+08:00",
         false,
-        TopicConstant.MODE_LIVE_VALUE,
+        TopicConstant.MODE_INITIAL_VALUE,
         TopicConstant.LOOSE_RANGE_TIME_VALUE);
     session_src.createTimeseries(
         pattern, TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);

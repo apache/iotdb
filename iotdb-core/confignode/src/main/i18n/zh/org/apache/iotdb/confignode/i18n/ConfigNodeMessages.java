@@ -340,6 +340,9 @@ public final class ConfigNodeMessages {
       "schema_region_consensus_protocol_class";
   public static final String SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON =
       "向 data node: {} 发送 RPC 以切换其上的 region leader";
+  public static final String
+      LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC =
+          "[SetNeedLastCache] Database：{} 的 need last cache 标志已调整为：{}";
   public static final String SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO =
       "[SetTTL] Database: {} 的 TTL 已调整为：{}";
   public static final String SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED = "无法创建快照目录 [{}]。";
@@ -480,15 +483,23 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_SET_PIPE_STATUS_BECAUSE = "设置 pipe 状态失败，原因：";
   public static final String FAILED_TO_DROP_PIPE_BECAUSE = "删除 pipe 失败，原因：";
   public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "修改 pipe 失败，原因：";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_DOES_NOT_EXIST_29E0DCEB =
+      "修改 Pipe %s 失败，该 Pipe 不存在";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B =
+      "修改 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "批量创建 pipe 失败，原因：";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "启动 pipe %s 失败，pipe 不存在";
   public static final String FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "启动 pipe %s 失败，pipe 已被删除";
+  public static final String EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638 =
+      "启动 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_DOES_NOT_EXIST =
       "停止 pipe %s 失败，pipe 不存在";
   public static final String FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED =
       "停止 pipe %s 失败，pipe 已被删除";
+  public static final String EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B =
+      "停止 Pipe %s 失败，该 Pipe 正在被删除";
   public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "处理 leader 变更失败，原因：";
   public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "处理元数据变更失败，原因：";
   public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "获取 PipePlugin Jar 失败，原因：";
@@ -672,12 +683,6 @@ public final class ConfigNodeMessages {
       EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
           "Procedure 文件 %s 超过了加载缓冲区限制 %s，实际大小为 %s";
   public static final String
-      MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649 =
-          "重放 offer plan 时丢弃 {} 的遗留 region-delete 任务；region 删除现已由 RemoveRegionGroupProcedure 处理。";
-  public static final String
-      MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0 =
-          "加载快照时丢弃 {} 的遗留 region-delete 任务；region 删除现已由 RemoveRegionGroupProcedure 处理。";
-  public static final String
       MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_2E051639 =
           "ConfigNode leader 在服务注册中的 ConfigNode 前正在进行预热，将等待";
   public static final String
@@ -708,6 +713,12 @@ public final class ConfigNodeMessages {
       EXCEPTION_PROCEDURE_COMPLETED_EVICT_TTL_SHOULD_BE_GREATER_THAN_0_BUT_WAS_5A4D0CF6 =
           "procedure_completed_evict_ttl 应大于 0，但当前值为 ";
   public static final String
-      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
-          "创建或修改 topic 失败，mode=consensus 不支持 topic 属性 %s";
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_INCREMENTAL_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_1A72326A =
+          "创建或修改 topic 失败，mode=incremental 不支持 topic 属性 %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
+          "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
+          "创建或修改 topic 失败，不允许仅订阅 __audit 数据库或其下的路径";
 }

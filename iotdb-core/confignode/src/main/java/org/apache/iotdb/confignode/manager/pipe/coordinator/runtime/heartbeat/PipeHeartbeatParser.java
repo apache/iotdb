@@ -142,6 +142,11 @@ public class PipeHeartbeatParser {
       final int nodeId,
       final PipeHeartbeat pipeHeartbeat) {
     for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
+      if (PipeStatus.PRE_DELETE.equals(
+          pipeMetaFromCoordinator.getRuntimeMeta().getStatus().get())) {
+        continue;
+      }
+
       final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
@@ -192,6 +197,7 @@ public class PipeHeartbeatParser {
       temporaryMeta.setRemainingEvent(nodeId, pipeHeartbeat.getRemainingEventCount(staticMeta));
       temporaryMeta.setRemainingTime(nodeId, pipeHeartbeat.getRemainingTime(staticMeta));
       temporaryMeta.setDegraded(nodeId, pipeHeartbeat.getDegraded(staticMeta));
+      temporaryMeta.setRecentFailures(nodeId, pipeHeartbeat.getRecentFailures(staticMeta));
 
       final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromCoordinator =
           pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
@@ -292,6 +298,9 @@ public class PipeHeartbeatParser {
                         }
 
                         final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+                        if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+                          return;
+                        }
                         if (!runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
                           // Record the connector exception for each pipe affected
                           Map<Integer, PipeRuntimeException> exceptionMap =

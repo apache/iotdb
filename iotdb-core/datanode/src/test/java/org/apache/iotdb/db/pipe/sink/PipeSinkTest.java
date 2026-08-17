@@ -500,7 +500,7 @@ public class PipeSinkTest {
           "testtarget", getWriteBackSinkDatabaseName(sink, "targetTableModelDatabaseName"));
       Assert.assertNull(getWriteBackSinkDatabaseName(sink, "invalidTargetTableModelDatabaseName"));
       Assert.assertEquals(
-          "root.testtarget", getWriteBackSinkDatabaseName(sink, "targetTreeModelDatabaseName"));
+          "root.TestTarget", getWriteBackSinkDatabaseName(sink, "targetTreeModelDatabaseName"));
     }
 
     try (final WriteBackSink sink = createCustomizedWriteBackSink("root.target")) {

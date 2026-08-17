@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserMemoryBlock;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -58,12 +57,12 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -78,11 +77,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   // For memory control
-  private final PipeMemoryBlock allocatedMemoryBlockForTablet;
-  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
-  private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
-  private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTablet;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunkMeta;
+  private final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTableSchema;
 
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
@@ -119,11 +118,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   public TsFileInsertionEventTableParserTabletIterator(
       final TsFileSequenceReader tsFileSequenceReader,
       final Predicate<Map.Entry<String, TableSchema>> predicate,
-      final PipeMemoryBlock allocatedMemoryBlockForTablet,
-      final PipeMemoryBlock allocatedMemoryBlockForBatchData,
-      final PipeMemoryBlock allocatedMemoryBlockForChunk,
-      final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
-      final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTablet,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForBatchData,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunk,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForChunkMeta,
+      final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTableSchema,
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
       final long endTime)
@@ -137,9 +136,12 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
     fileMetadata = this.metadataQuerier.getWholeFileMetadata();
     final List<Map.Entry<String, TableSchema>> tableSchemaList =
-        fileMetadata.getTableSchemaMap().entrySet().stream()
-            .filter(predicate)
-            .collect(Collectors.toList());
+        new ArrayList<>(fileMetadata.getTableSchemaMap().size());
+    for (final Map.Entry<String, TableSchema> entry : fileMetadata.getTableSchemaMap().entrySet()) {
+      if (predicate.test(entry)) {
+        tableSchemaList.add(entry);
+      }
+    }
 
     this.allocatedMemoryBlockForTablet = allocatedMemoryBlockForTablet;
     this.allocatedMemoryBlockForBatchData = allocatedMemoryBlockForBatchData;
@@ -153,8 +155,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           tableSchemaEntry.getKey().length()
               + PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(tableSchemaEntry.getValue());
       if (tableSchemaSize > allocatedMemoryBlockForTableSchema.getMemoryUsageInBytes()) {
-        PipeDataNodeResourceManager.memory()
-            .forceResize(this.allocatedMemoryBlockForTableSchema, tableSchemaSize);
+        this.allocatedMemoryBlockForTableSchema.forceResize(tableSchemaSize);
       }
     }
 
@@ -176,8 +177,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               batchData = chunkReader.nextPageData();
               final long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData);
               if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
-                PipeDataNodeResourceManager.memory()
-                    .forceResize(allocatedMemoryBlockForBatchData, size);
+                allocatedMemoryBlockForBatchData.forceResize(size);
               }
               state = State.CHECK_DATA;
               break;
@@ -227,8 +227,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 size +=
                     PipeMemoryWeightUtil.calculateAlignedChunkMetaBytesUsed(alignedChunkMetadata);
                 if (allocatedMemoryBlockForChunkMeta.getMemoryUsageInBytes() < size) {
-                  PipeDataNodeResourceManager.memory()
-                      .forceResize(allocatedMemoryBlockForChunkMeta, size);
+                  allocatedMemoryBlockForChunkMeta.forceResize(size);
                 }
               }
 
@@ -250,10 +249,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
               final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-              dataTypeList = new ArrayList<>();
-              columnTypes = new ArrayList<>();
-              measurementList = new ArrayList<>();
-              fieldSchemaList = new ArrayList<>();
+              dataTypeList = new ArrayList<>(columnSchemaSize);
+              columnTypes = new ArrayList<>(columnSchemaSize);
+              measurementList = new ArrayList<>(columnSchemaSize);
+              fieldSchemaList = new ArrayList<>(columnSchemaSize);
 
               for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
@@ -314,8 +313,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(batchData);
           if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
               < rowCountAndMemorySize.getRight()) {
-            PipeDataNodeResourceManager.memory()
-                .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+            allocatedMemoryBlockForTablet.forceResize(rowCountAndMemorySize.getRight());
           }
 
           tablet =
@@ -357,35 +355,33 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       timeChunk = reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
       timeChunkSize = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
       if (allocatedMemoryBlockForChunk.getMemoryUsageInBytes() < timeChunkSize) {
-        PipeDataNodeResourceManager.memory()
-            .forceResize(allocatedMemoryBlockForChunk, timeChunkSize);
+        allocatedMemoryBlockForChunk.forceResize(timeChunkSize);
       }
     }
     timeChunk.getData().rewind();
     long size = timeChunkSize;
 
-    final List<Chunk> valueChunkList = new ArrayList<>();
+    final int fieldSchemaSize = fieldSchemaList.size();
+    final List<Chunk> valueChunkList = new ArrayList<>(fieldSchemaSize);
     final Map<String, IChunkMetadata> valueChunkMetadataMap =
-        alignedChunkMetadata.getValueChunkMetadataList().stream()
-            .filter(Objects::nonNull)
-            .filter(
-                metadata ->
-                    !isFieldDeletedByMods(
-                        metadata.getMeasurementUid(),
-                        alignedChunkMetadata.getStartTime(),
-                        alignedChunkMetadata.getEndTime()))
-            .collect(
-                Collectors.toMap(
-                    IChunkMetadata::getMeasurementUid,
-                    metadata -> metadata,
-                    (left, right) -> left));
+        new HashMap<>((int) (fieldSchemaSize / 0.75f) + 1);
+    for (final IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (metadata != null
+          && !isFieldDeletedByMods(
+              metadata.getMeasurementUid(),
+              alignedChunkMetadata.getStartTime(),
+              alignedChunkMetadata.getEndTime())) {
+        // Keep the first metadata entry to preserve the former merge-function behavior.
+        valueChunkMetadataMap.putIfAbsent(metadata.getMeasurementUid(), metadata);
+      }
+    }
 
     // To ensure that the Tablet has the same alignedChunk column as the current one,
     // you need to create a new Tablet to fill in the data.
     isSameDeviceID = false;
 
     // Need to ensure that columnTypes recreates an array
-    final List<ColumnCategory> categories = new ArrayList<>(deviceIdSize);
+    final List<ColumnCategory> categories = new ArrayList<>(deviceIdSize + fieldSchemaSize);
     for (int i = 0; i < deviceIdSize; i++) {
       categories.add(ColumnCategory.TAG);
     }
@@ -416,7 +412,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           if (!hasSelectedNonNullChunk) {
             // If the first chunk exceeds the memory limit, we need to allocate more memory
             size = newSize;
-            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+            allocatedMemoryBlockForChunk.forceResize(size);
           } else {
             break;
           }

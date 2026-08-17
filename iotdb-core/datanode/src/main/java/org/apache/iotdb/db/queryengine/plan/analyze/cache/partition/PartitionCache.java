@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -152,7 +153,8 @@ public class PartitionCache {
   }
 
   protected void failIfMetadataLeaseFenced() {
-    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced();
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   // region database cache
@@ -586,12 +588,18 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databases the database names
+   * @param databases names of databases created through local {@code setDatabase} requests. Those
+   *     requests leave {@code needLastCache} unset, which is backward-compatibly treated as
+   *     enabled.
    */
   public void updateDatabaseCache(final Set<String> databases) {
     databaseCacheLock.writeLock().lock();
     try {
-      databases.forEach(database -> database2NeedLastCacheCache.put(database, true));
+      databases.forEach(
+          database -> {
+            // The newly created schemas omit needLastCache, whose compatibility default is true.
+            database2NeedLastCacheCache.put(database, true);
+          });
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

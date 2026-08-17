@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -157,6 +158,15 @@ public abstract class ProgressIndex implements Accountable {
    * @return the type of this {@link ProgressIndex}
    */
   public abstract ProgressIndexType getType();
+
+  /**
+   * Extracts a progress index of the given type from this progress index.
+   *
+   * <p>{@link StateProgressIndex} and {@link HybridProgressIndex} are recursively unwrapped because
+   * they may contain progress indexes from other causal chains.
+   */
+  public abstract <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      Class<T> progressIndexClass);
 
   /**
    * Get the sum of the tuples of each total order relation of the {@link ProgressIndex}, which is

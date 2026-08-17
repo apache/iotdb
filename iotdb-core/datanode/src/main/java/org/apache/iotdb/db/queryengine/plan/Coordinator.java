@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -393,20 +394,28 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTreeModel(
-                statement,
-                queryContext,
-                partitionFetcher,
-                schemaFetcher,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTreeModel(
+                      statement,
+                      queryContext,
+                      partitionFetcher,
+                      schemaFetcher,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   private IQueryExecution createQueryExecutionForTreeModel(
@@ -531,22 +540,30 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       boolean readOnlyInternalQuery) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        readOnlyInternalQuery,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTableModel(
-                statement,
-                sqlParser,
-                clientSession,
-                queryContext,
-                metadata,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              readOnlyInternalQuery,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTableModel(
+                      statement,
+                      sqlParser,
+                      clientSession,
+                      queryContext,
+                      metadata,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   /** For compatibility of MQTT and REST, this method should never be called. */

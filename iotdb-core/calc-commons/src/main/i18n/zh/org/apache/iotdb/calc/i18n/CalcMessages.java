@@ -414,6 +414,26 @@ public final class CalcMessages {
       "通知 {} 的状态变更监听器时出错";
   public static final String SERVER_IS_SHUTTING_DOWN =
       "服务器正在关闭";
+  public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor 不能为空";
+  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState 不能为空";
+  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates 不能为空";
+  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState 不能为空";
+  public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState 不能为空";
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 =
+      "stateChangeListener 不能为空";
+  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 =
+      "%s 无法从 %s 转换到 %s";
+  public static final String
+      EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
+          "持有锁时无法触发状态变更事件。";
+  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
+      "持有锁时无法通知。";
+  public static final String EXCEPTION_CANNOT_SET_STATE_WHILE_HOLDING_THE_LOCK_FA358188 =
+      "持有锁时无法设置状态。";
+  public static final String
+      EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
+          "持有锁时无法等待状态变更。";
+  public static final String EXCEPTION_NEWSTATE_IS_NULL_D29A5454 = "newState 不能为空";
 
   public static final String EXCEPTION_PERCENTAGE_SHOULD_BE_IN_0_1_GOT_7A2C2F83 =
       "百分比应在 [0,1] 范围内，实际为 ";
@@ -425,4 +445,64 @@ public final class CalcMessages {
       "PERCENTILE 聚合中不支持的数据类型：%s";
   public static final String EXCEPTION_PERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_66308C79 =
       "PercentileAccumulator 不支持统计信息";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_AT_LEAST_TWO_VALID_SAMPLES_1A89901C =
+          "rate 系列聚合函数至少需要两个有效样本";
+  public static final String
+      EXCEPTION_THE_FIRST_SAMPLE_TIME_MUST_BE_LESS_THAN_THE_LAST_SAMPLE_TIME_FC4D3517 =
+          "第一个样本时间必须小于最后一个样本时间";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_MUST_BE_LESS_THAN_THE_WINDOW_END_B1A38C98 =
+          "window_start 必须小于 window_end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_REQUIRES_WINDOW_START_FIRST_TIME_LAST_TIME_WINDOW_END_60DE93C8 =
+          "rate 系列聚合函数要求 window_start <= first_time < last_time < window_end";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_INTERMEDIATE_RESULT_D46B30CD =
+          "rate 系列聚合函数产生了非有限中间结果";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_TIME_INTERVAL_B26C4162 =
+          "rate 系列聚合函数产生了非有限时间间隔";
+  public static final String
+      EXCEPTION_RATE_FAMILY_AGGREGATE_FUNCTION_PRODUCED_A_NON_FINITE_EXTRAPOLATION_RESULT_6482CF1D =
+          "rate 系列聚合函数产生了非有限外推结果";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC =
+          "聚合函数 [%s] 不支持同一聚合分组内出现重复的 time_col 值：%d";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_NON_FINITE_VALUE_COL_ARG_AC2AAC62 =
+          "聚合函数 [%s] 不支持非有限 value_col：%s";
+  public static final String
+      EXCEPTION_THE_VALUE_COL_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_A_NON_NEGATIVE_NUMBER_BUT_GOT_ARG_4D5B7D74 =
+          "聚合函数 [%s] 的 value_col 参数必须是非负数，实际为：%s";
+  public static final String
+      EXCEPTION_THE_ARGUMENT_ARG_OF_AGGREGATE_FUNCTION_ARG_MUST_NOT_BE_NULL_WHEN_VALUE_COL_IS_NOT_NULL_7F087E99 =
+          "第 %d 个参数在聚合函数 [%s] 的 value_col 不为 NULL 时不得为 NULL";
+  public static final String
+      EXCEPTION_THE_WINDOW_START_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_LESS_THAN_WINDOW_END_17D2A79A =
+          "聚合函数 [%s] 的 window_start 参数必须小于 window_end";
+  public static final String
+      EXCEPTION_THE_SAMPLE_TIME_OF_AGGREGATE_FUNCTION_ARG_MUST_SATISFY_WINDOW_START_TIME_COL_WINDOW_END_35014D15 =
+          "聚合函数 [%s] 的样本时间必须满足 window_start <= time_col < window_end";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_CONSISTENT_WINDOW_BOUNDARIES_IN_THE_SAME_AGGREGATION_GROUP_EXPECTED_ARG_ARG_BUT_GOT_ARG_ARG_38631886 =
+          "聚合函数 [%s] 要求同一聚合分组内的窗口边界一致：期望 [%d, %d)，实际为 [%d, %d)";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9 =
+          "聚合函数 [%s] 要求 time_col 严格升序，但得到了 %d，前一个值为 %d";
+  public static final String
+      EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B =
+          "有序聚合函数 [%s] 不支持 Intermediate State";
+  public static final String
+      EXCEPTION_INVALID_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_2999C30B =
+          "聚合函数 [%s] 的 Intermediate State 非法";
+  public static final String
+      EXCEPTION_INTERMEDIATE_STATE_FOR_AGGREGATE_FUNCTION_ARG_EXCEEDS_THE_MAXIMUM_TSBLOCK_SIZE_OF_ARG_BYTES_D53A5546 =
+          "聚合函数 %s 的 Intermediate State 超过 TsBlock 最大大小 %d 字节";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D =
+          "聚合函数 [%s] 不支持值类型 %s";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
+          "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
 }

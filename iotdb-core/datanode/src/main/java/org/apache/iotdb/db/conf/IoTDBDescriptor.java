@@ -39,8 +39,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -1412,6 +1414,12 @@ public class IoTDBDescriptor {
       conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
     }
 
+    conf.setWalFileListCacheEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_file_list_cache_enabled",
+                Boolean.toString(conf.isWalFileListCacheEnabled()))));
+
     loadWALHotModifiedProps(properties);
   }
 
@@ -1803,6 +1811,11 @@ public class IoTDBDescriptor {
     }
 
     long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
+    if (throttleDownThresholdInByte < 0) {
+      throttleDownThresholdInByte =
+          Long.parseLong(
+              ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
+    }
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -2319,6 +2332,9 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update REST runtime limit config
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
+
       // update cache_eviction_memory_computation_threshold
       conf.setCacheEvictionMemoryComputationThreshold(
           Integer.parseInt(
@@ -2380,6 +2396,7 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.updateAppliedProperties(properties, true);
       // Overwrite the keys whose setters above may have rewritten, so `show configuration`
       // displays the effective values rather than the raw file values.
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
       overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
@@ -2413,6 +2430,8 @@ public class IoTDBDescriptor {
         Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -2761,6 +2780,7 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
     LoggerPeriodicalLogReducer.update();
   }
 

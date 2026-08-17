@@ -33,7 +33,6 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -172,11 +171,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getTsFiles()
           .forEach(
               tsfile -> {
-                FileUtils.deleteQuietly(tsfile);
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 

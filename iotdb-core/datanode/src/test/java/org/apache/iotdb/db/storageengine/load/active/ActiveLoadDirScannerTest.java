@@ -111,7 +111,7 @@ public class ActiveLoadDirScannerTest {
     // Async tree loads add attribute and per-handoff transfer directories below pending. These are
     // internal directories, not table database names inferred from a user-created subdirectory.
     final Map<String, String> attributes =
-        ActiveLoadPathHelper.buildAttributes(null, 2, false, false, null, false, "test-user");
+        ActiveLoadPathHelper.buildAttributes(null, 2, false, false, null, null, false, "test-user");
     final File attributeDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
     final File transferDir = new File(attributeDir, "transfer-id");
     Assert.assertTrue(transferDir.mkdirs());

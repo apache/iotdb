@@ -18,11 +18,22 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ClusterSchemaManagerTest {
 
@@ -51,5 +62,31 @@ public class ClusterSchemaManagerTest {
     final TDatabaseSchema disabledSchema = new TDatabaseSchema();
     disabledSchema.setNeedLastCache(false);
     Assert.assertFalse(ClusterSchemaManager.isNeedLastCacheEnabled(disabledSchema));
+  }
+
+  @Test
+  public void testGetAllTableInfoForDataNodeActivationWithDeletedDatabase() {
+    final IManager configManager = Mockito.mock(IManager.class);
+    final ProcedureManager procedureManager = Mockito.mock(ProcedureManager.class);
+    final ClusterSchemaInfo clusterSchemaInfo = Mockito.mock(ClusterSchemaInfo.class);
+
+    Mockito.when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    Mockito.when(procedureManager.getAllExecutingTables())
+        .thenReturn(Collections.singletonMap("test", null));
+    Mockito.when(clusterSchemaInfo.getAllUsingTables()).thenReturn(new HashMap<>());
+    Mockito.when(clusterSchemaInfo.getAllPreDeleteTables()).thenReturn(new HashMap<>());
+    Mockito.when(clusterSchemaInfo.getAllPreCreateTables()).thenReturn(new HashMap<>());
+
+    final ClusterSchemaManager clusterSchemaManager =
+        new ClusterSchemaManager(
+            configManager, clusterSchemaInfo, Mockito.mock(ClusterSchemaQuotaStatistics.class));
+
+    final Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>> tableInfo =
+        TsTableInternalRPCUtil.deserializeTableInitializationInfo(
+            clusterSchemaManager.getAllTableInfoForDataNodeActivation());
+
+    Assert.assertTrue(tableInfo.left.isEmpty());
+    Assert.assertEquals(Collections.singleton("test"), tableInfo.right.keySet());
+    Assert.assertTrue(tableInfo.right.get("test").isEmpty());
   }
 }
