@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfi
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -328,9 +330,42 @@ public class PipeSinkSubtaskTest {
     }
   }
 
+  @Test
+  public void testClientBorrowFailureRetriesLocallyWithoutReportingCriticalException() {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+
+    try {
+      subtask.handleExceptionForTest(
+          mock(EnrichedEvent.class), new ClientManagerException("client pool exhausted"));
+
+      Assert.assertEquals(
+          PipeResourceFailureType.NETWORK_TIMEOUT, subtask.getReportedResourceFailureType());
+      Assert.assertNull(subtask.getReportedException());
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+    }
+  }
+
   private static class CapturingPipeSinkSubtask extends PipeSinkSubtask {
 
     private PipeRuntimeException reportedException;
+    private PipeResourceFailureType reportedResourceFailureType;
 
     private CapturingPipeSinkSubtask(
         final UnboundedBlockingPendingQueue<Event> pendingQueue, final PipeConnector connector) {
@@ -353,9 +388,23 @@ public class PipeSinkSubtaskTest {
       return reportedException;
     }
 
+    private PipeResourceFailureType getReportedResourceFailureType() {
+      return reportedResourceFailureType;
+    }
+
+    private void handleExceptionForTest(final EnrichedEvent event, final Exception exception) {
+      handleException(event, exception);
+    }
+
     @Override
     protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
       reportedException = exception;
+    }
+
+    @Override
+    protected void reportResourceFailure(
+        final EnrichedEvent event, final PipeResourceFailureType failureType) {
+      reportedResourceFailureType = failureType;
     }
   }
 

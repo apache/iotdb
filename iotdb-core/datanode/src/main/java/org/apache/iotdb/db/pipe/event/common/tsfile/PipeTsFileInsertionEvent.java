@@ -106,6 +106,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  private String tsFileParser;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -429,6 +430,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
+  public String getTsFileParser() {
+    return tsFileParser;
+  }
+
+  public void setTsFileParser(final String tsFileParser) {
+    this.tsFileParser = tsFileParser;
+  }
+
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
@@ -437,19 +446,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    return new PipeTsFileInsertionEvent(
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        pattern,
-        startTime,
-        endTime,
-        isTsFileSealed);
+    final PipeTsFileInsertionEvent copiedEvent =
+        new PipeTsFileInsertionEvent(
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            pattern,
+            startTime,
+            endTime,
+            isTsFileSealed);
+    copiedEvent.setTsFileParser(tsFileParser);
+    return copiedEvent;
   }
 
   @Override
@@ -865,7 +877,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
                   startTime,
                   endTime,
                   pipeTaskMeta,
-                  this)
+                  this,
+                  tsFileParser)
               .provide(isWithMod));
       return dataContainer.get();
     } catch (final IOException e) {

@@ -258,6 +258,8 @@ public class AlignedTVListTest {
                     - RamUsageEstimator.sizeOfObjectArray(oldColumnCount))
             + RamUsageEstimator.sizeOfLongArray(oldColumnCount + 1)
             - RamUsageEstimator.sizeOfLongArray(oldColumnCount)
+            + RamUsageEstimator.sizeOfIntArray(oldColumnCount + 1)
+            - RamUsageEstimator.sizeOfIntArray(oldColumnCount)
             + RamUsageEstimator.shallowSizeOf(new ArrayList<>())
             + RamUsageEstimator.sizeOfObjectArray(0);
     tvList.extendColumn(TSDataType.INT32);
@@ -423,6 +425,47 @@ public class AlignedTVListTest {
     Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
     Assert.assertTrue(clonedTvList.isNullValue(0, 2));
     Assert.assertEquals(retainedRamSize, tvList.calculateRamSize().getRamSize());
+  }
+
+  // After a partial ownership transfer the new working list keeps the full pre-clone RAM
+  // (retained columns are copied, remaining columns are moved), and its write-cost estimator must
+  // match the actual RAM delta when a new block is written.
+  @Test
+  public void testPartialCloneKeepsWorkingListRamAndWriteCostMatchesActual() {
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+
+    // Fill exactly one block so the next write crosses a block boundary.
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, i, (double) i});
+    }
+
+    long fullRamBeforeClone = tvList.getRamSize();
+
+    AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(Collections.singleton(0));
+    AlignedTVList workingClone = plan.getCloneList();
+    plan.commit();
+
+    // The new working list still carries all columns, so its complete RAM must equal the
+    // pre-clone working-list RAM.
+    Assert.assertEquals(fullRamBeforeClone, workingClone.getRamSize());
+
+    // Write a new block into the working list. The incremental write estimate must equal the
+    // actual RAM increase.
+    long ramBeforeWrite = workingClone.getRamSize();
+    long nextTime = ARRAY_SIZE;
+    Object[] rowValues = {nextTime, (int) nextTime, (double) nextTime};
+    long estimatedWriteCost =
+        workingClone.alignedWriteRowMemCost(
+            new int[] {0, 1, 2},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE},
+            rowValues,
+            0);
+    workingClone.putAlignedValue(nextTime, rowValues);
+    long ramAfterWrite = workingClone.getRamSize();
+
+    Assert.assertEquals(estimatedWriteCost, ramAfterWrite - ramBeforeWrite);
   }
 
   @Test
