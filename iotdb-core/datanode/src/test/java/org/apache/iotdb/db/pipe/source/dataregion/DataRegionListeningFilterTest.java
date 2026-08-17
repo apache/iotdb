@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 public class DataRegionListeningFilterTest {
 
   @Test
-  public void testAuditDatabaseIsOnlyExcludedFromSubscriptions() throws Exception {
+  public void testAuditDatabaseIsOnlyListenedByConsensusPipes() throws Exception {
     final Map<String, String> topicAttributes = new HashMap<>();
     topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     final PipeParameters parameters =
@@ -58,7 +58,7 @@ public class DataRegionListeningFilterTest {
     assertTrue(
         DataRegionListeningFilter.shouldDatabaseBeListened(
             parameters, true, "__audit", PipeType.CONSENSUS));
-    assertTrue(
+    assertFalse(
         DataRegionListeningFilter.shouldDatabaseBeListened(
             parameters, true, "__audit", PipeType.USER));
   }

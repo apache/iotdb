@@ -64,7 +64,7 @@ public class DataRegionListeningFilter {
       final String databaseRawName,
       final PipeType pipeType)
       throws IllegalPathException {
-    if (PipeType.SUBSCRIPTION.equals(pipeType) && isAuditDatabase(databaseRawName)) {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 
@@ -111,7 +111,7 @@ public class DataRegionListeningFilter {
     }
 
     final String databaseRawName = dataRegion.getDatabaseName();
-    if (PipeType.SUBSCRIPTION.equals(pipeType) && isAuditDatabase(databaseRawName)) {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 
