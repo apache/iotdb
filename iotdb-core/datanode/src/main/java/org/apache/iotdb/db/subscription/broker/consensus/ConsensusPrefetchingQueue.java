@@ -120,7 +120,7 @@ public class ConsensusPrefetchingQueue {
 
   private RegionProgress lastCommittedProgressForRetention;
 
-  private long lastCurrentWalVersionForRetention = Long.MIN_VALUE;
+  private File lastRetainedWalFileForRetention;
 
   private final Map<Long, WalFileCommitRequirement> walFileCommitRequirements =
       new ConcurrentHashMap<>();
@@ -1094,7 +1094,7 @@ public class ConsensusPrefetchingQueue {
             compareWriterProgress(candidate, existing) > 0 ? candidate : existing);
   }
 
-  private int compareWriterProgress(
+  private static int compareWriterProgress(
       final WriterProgress leftProgress, final WriterProgress rightProgress) {
     int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
     if (cmp != 0) {
@@ -3175,42 +3175,44 @@ public class ConsensusPrefetchingQueue {
   private boolean refreshCommittedWalRetentionBound() {
     final RegionProgress committedRegionProgress =
         commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
-    final long currentWalVersion = consensusReqReader.getCurrentWALFileVersion();
 
     synchronized (committedRetentionLock) {
       if (Objects.equals(lastCommittedProgressForRetention, committedRegionProgress)
-          && lastCurrentWalVersionForRetention == currentWalVersion) {
+          && Objects.nonNull(lastRetainedWalFileForRetention)
+          && lastRetainedWalFileForRetention.exists()) {
         return false;
       }
 
-      final long newRetainedMinVersionId =
-          computeCommittedRetainedMinVersionId(committedRegionProgress, currentWalVersion);
+      final CommittedWalRetentionBound newRetentionBound =
+          computeCommittedRetainedMinVersionId(committedRegionProgress);
+      final long newRetainedMinVersionId = newRetentionBound.retainedMinVersionId;
       final boolean changed = committedRetainedMinVersionId != newRetainedMinVersionId;
       committedRetainedMinVersionId = newRetainedMinVersionId;
       lastCommittedProgressForRetention = committedRegionProgress;
-      lastCurrentWalVersionForRetention = currentWalVersion;
+      lastRetainedWalFileForRetention = newRetentionBound.retainedWalFile;
       walFileCommitRequirements.keySet().removeIf(versionId -> versionId < newRetainedMinVersionId);
       return changed;
     }
   }
 
-  private long computeCommittedRetainedMinVersionId(
-      final RegionProgress committedRegionProgress, final long currentWalVersion) {
+  private CommittedWalRetentionBound computeCommittedRetainedMinVersionId(
+      final RegionProgress committedRegionProgress) {
     if (!(consensusReqReader instanceof WALNode)) {
-      return 0L;
+      return new CommittedWalRetentionBound(0L, null);
     }
 
     final WALNode walNode = (WALNode) consensusReqReader;
+    final long currentWalVersion = walNode.getCurrentWALFileVersion();
     final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
     if (Objects.isNull(walFiles) || walFiles.length == 0) {
-      return Math.max(0L, currentWalVersion);
+      return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
     }
 
     WALFileUtils.ascSortByVersionId(walFiles);
     for (final File walFile : walFiles) {
       final long versionId = WALFileUtils.parseVersionId(walFile.getName());
       if (versionId >= currentWalVersion) {
-        return Math.max(0L, currentWalVersion);
+        return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
       }
       if (ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
         continue;
@@ -3230,15 +3232,27 @@ public class ConsensusPrefetchingQueue {
               this,
               walFile,
               e);
-          return versionId;
+          return new CommittedWalRetentionBound(versionId, walFile);
         }
       }
 
       if (!requirement.isCoveredBy(committedRegionProgress)) {
-        return versionId;
+        return new CommittedWalRetentionBound(versionId, walFile);
       }
     }
-    return Math.max(0L, currentWalVersion);
+    return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
+  }
+
+  private static final class CommittedWalRetentionBound {
+
+    private final long retainedMinVersionId;
+    private final File retainedWalFile;
+
+    private CommittedWalRetentionBound(
+        final long retainedMinVersionId, final File retainedWalFile) {
+      this.retainedMinVersionId = retainedMinVersionId;
+      this.retainedWalFile = retainedWalFile;
+    }
   }
 
   public RegionProgress computeTailRegionProgress() {
@@ -3353,7 +3367,9 @@ public class ConsensusPrefetchingQueue {
             writerId,
             candidateProgress,
             (currentProgress, candidate) ->
-                compareProgress(candidate, currentProgress) > 0 ? candidate : currentProgress);
+                compareWriterProgress(candidate, currentProgress) > 0
+                    ? candidate
+                    : currentProgress);
       }
       return new WalFileCommitRequirement(requiredWriterProgress, false);
     }
@@ -3366,20 +3382,11 @@ public class ConsensusPrefetchingQueue {
         final WriterProgress committedWriterProgress =
             committedRegionProgress.getWriterPositions().get(entry.getKey());
         if (Objects.isNull(committedWriterProgress)
-            || compareProgress(committedWriterProgress, entry.getValue()) < 0) {
+            || compareWriterProgress(committedWriterProgress, entry.getValue()) < 0) {
           return false;
         }
       }
       return true;
-    }
-
-    private static int compareProgress(
-        final WriterProgress leftProgress, final WriterProgress rightProgress) {
-      final int physicalTimeComparison =
-          Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
-      return physicalTimeComparison != 0
-          ? physicalTimeComparison
-          : Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
     }
   }
 
