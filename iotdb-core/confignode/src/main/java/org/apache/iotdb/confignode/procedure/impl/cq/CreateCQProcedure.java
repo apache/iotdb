@@ -70,7 +70,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private long firstExecutionTime;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public CreateCQProcedure(ScheduledExecutorService executor) {
     super();
@@ -181,7 +181,8 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     Optional<CQInfo.CQEntry> cqEntry = getCurrentCQEntry(env);
     if (!cqEntry.isPresent()) {
       LOGGER.info(
-          "Skip recovering the schedule task of CQ {} because its metadata is unavailable.",
+          ProcedureMessages
+              .LOG_SKIP_RECOVERING_SCHEDULE_TASK_CQ_ARG_BECAUSE_ITS_METADATA_UNAVAILABLE_00286802,
           req.cqId);
       return;
     }

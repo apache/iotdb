@@ -116,6 +116,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     this.singleDevice = true;
   }
 
+  public boolean isSingleDevice() {
+    return singleDevice;
+  }
+
   public List<Binary[]> getObjectColumns() {
     List<Binary[]> objectColumns = new ArrayList<>();
     for (int i = 0;
@@ -325,6 +329,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  protected int serializedAttributesSize() {
+    int size = super.serializedAttributesSize();
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += Byte.BYTES;
+      }
+    }
+    return size;
+  }
+
+  @Override
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
     TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
@@ -444,20 +459,19 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   public void updateLastCache(final String databaseName, final TSStatus[] results) {
-    final String[] rawMeasurements = getRawMeasurements();
-
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
     int startOffset = 0;
     for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
       final IDeviceID deviceID = deviceEndOffsetPair.getLeft();
       final int endOffset = deviceEndOffsetPair.getRight();
 
-      final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-      for (int i = 0; i < rawMeasurements.length; i++) {
+      final TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
+      for (int i = 0; i < measurements.length; i++) {
         timeValuePairs[i] = composeLastTimeValuePair(i, results, startOffset, endOffset);
       }
       TableDeviceSchemaCache.getInstance()
-          .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
+          .updateLastCacheIfExists(
+              databaseName, deviceID, measurements, measurementSchemas, timeValuePairs);
 
       startOffset = endOffset;
     }

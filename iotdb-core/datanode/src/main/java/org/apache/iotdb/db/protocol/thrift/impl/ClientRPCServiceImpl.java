@@ -147,6 +147,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -1043,7 +1045,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     int dataRegionSize = dataRegionList.size();
     if (dataRegionSize != 1) {
       throw new IllegalArgumentException(
-          "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATAREGIONLIST_SIZE_SHOULD_ONLY_BE_1_NOW_CURRENT_SIZE_IS_282E453C,
+              dataRegionSize));
     }
 
     Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
@@ -1185,7 +1190,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         RpcUtils.getTSExecuteStatementResp(
             new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
                 .setMessage(
-                    "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
+                    DataNodeMiscMessages
+                        .MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5));
       }
 
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
@@ -2663,8 +2669,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(req.getMeasurementsList());
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2730,8 +2735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention (only for tree model)
       if (!req.isWriteToTable()) {
-        req.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+        PathUtils.checkIsLegalSingleMeasurementsAndUpdateInPlace(req.getMeasurements());
       }
 
       // Step 1: transfer from TSInsertTabletReq to Statement
@@ -3435,7 +3439,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfoOfTreeModel(SESSION_MANAGER.getCurrSession()));
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
@@ -3472,17 +3479,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
-    return SubscriptionAgent.receiver().handle(req);
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInPipeSubscribeResp();
+      }
+
+      return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSBackupConfigurationResp(getNotLoggedInStatus());
+      }
+
+      return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
-    return SESSION_MANAGER.getAllConnectionInfo();
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSConnectionInfoResp(Collections.emptyList());
+      }
+
+      return SESSION_MANAGER.getAllConnectionInfo();
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TPipeSubscribeResp getNotLoggedInPipeSubscribeResp() {
+    return new TPipeSubscribeResp(
+        getNotLoggedInStatus(),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   @Override
@@ -3669,7 +3710,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
@@ -3751,7 +3795,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }

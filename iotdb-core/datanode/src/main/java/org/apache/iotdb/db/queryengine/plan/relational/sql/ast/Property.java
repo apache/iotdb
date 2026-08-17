@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -49,28 +50,28 @@ public class Property extends Node {
   /** Constructs an instance representing a property whose value is set to DEFAULT */
   public Property(@Nonnull Identifier name) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.value = null;
   }
 
   /** Constructs an instance representing a property whose value is set to DEFAULT */
   public Property(@Nonnull NodeLocation location, @Nonnull Identifier name) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.value = null;
   }
 
   public Property(@Nonnull Identifier name, @Nonnull Expression value) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public Property(
       @Nonnull NodeLocation location, @Nonnull Identifier name, @Nullable Expression value) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public Identifier getName() {
@@ -88,7 +89,8 @@ public class Property extends Node {
   public Expression getNonDefaultValue() {
     checkState(
         !isSetToDefault(),
-        "Cannot get non-default value of property %s since its value is set to DEFAULT",
+        DataNodeQueryMessages
+            .EXCEPTION_CANNOT_GET_NON_MINUS_DEFAULT_VALUE_OF_PROPERTY_ARG_SINCE_ITS_VALUE_IS_SET_TO_DEF_E7D3185F,
         name);
     return value;
   }

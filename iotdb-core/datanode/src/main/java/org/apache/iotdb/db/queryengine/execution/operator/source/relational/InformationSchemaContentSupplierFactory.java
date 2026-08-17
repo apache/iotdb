@@ -704,6 +704,17 @@ public class InformationSchemaContentSupplierFactory {
 
       columnBuilders[7].writeLong(tPipeInfo.isSetRemainingEventCount() ? remainingEventCount : -1);
       columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
+      if (tPipeInfo.isSetIsDegraded()) {
+        columnBuilders[9].writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        columnBuilders[9].appendNull();
+      }
+      columnBuilders[10].writeBinary(
+          new Binary(
+              tPipeInfo.isSetRecentFailures()
+                  ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
+                  : "{}",
+              TSFileConfig.STRING_CHARSET));
 
       resultBuilder.declarePosition();
     }

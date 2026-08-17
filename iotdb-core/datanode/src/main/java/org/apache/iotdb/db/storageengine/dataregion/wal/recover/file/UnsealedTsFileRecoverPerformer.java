@@ -35,9 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
@@ -167,7 +167,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
       logger.info(
-          "This TsFile {} isn't crashed, no need to redo wal log.", tsFileResource.getTsFilePath());
+          StorageEngineMessages
+              .STORAGE_LOG_THIS_TSFILE_ISN_T_CRASHED_NO_NEED_TO_REDO_WAL_LOG_A017A0F0,
+          tsFileResource.getTsFilePath());
       return;
     }
     try {
@@ -290,7 +292,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           long memTableSize = recoveryMemTable.memSize();
           double compressionRatio = ((double) memTableSize) / writer.getPos();
           logger.info(
-              "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_THE_COMPRESSION_RATIO_OF_TSFILE_IS_TOTALMEMTABLESIZE_THE_8CE66BE3,
               writer.getFile().getAbsolutePath(),
               String.format("%.2f", compressionRatio),
               memTableSize,
@@ -298,7 +301,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           CompressionRatio.getInstance().updateRatio(memTableSize, writer.getPos(), dataRegionId);
         } catch (IOException e) {
           logger.error(
-              "{}: {} update compression ratio failed",
+              StorageEngineMessages.STORAGE_LOG_UPDATE_COMPRESSION_RATIO_FAILED_8A076DFC,
               databaseName,
               tsFileResource.getTsFile().getName(),
               e);

@@ -62,6 +62,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    cnConfig.setMetadataLeaseFenceMs(metadataLeaseFenceMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     cnConfig.setPartitionInterval(partitionInterval);
     dnConfig.setPartitionInterval(partitionInterval);
@@ -655,6 +661,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
     cnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
     dnConfig.setEnableThriftClientSSL(enableThriftClientSSL);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    cnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
+    dnConfig.setThriftSSLClientAuth(thriftSSLClientAuth);
     return this;
   }
 

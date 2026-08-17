@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -29,7 +30,9 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,8 +44,8 @@ public class TopicConfig extends PipeParameters {
   static {
     final Set<String> modes = new HashSet<>(3);
     modes.add(TopicConstant.MODE_SNAPSHOT_VALUE);
-    modes.add(TopicConstant.MODE_LIVE_VALUE);
-    modes.add(TopicConstant.MODE_CONSENSUS_VALUE);
+    modes.add(TopicConstant.MODE_INITIAL_VALUE);
+    modes.add(TopicConstant.MODE_INCREMENTAL_VALUE);
     MODE_VALUE_SET = Collections.unmodifiableSet(modes);
 
     final Set<String> orderModes = new HashSet<>(3);
@@ -82,8 +85,10 @@ public class TopicConfig extends PipeParameters {
 
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
       Collections.singletonMap("mode", TopicConstant.MODE_SNAPSHOT_VALUE);
-  private static final Map<String, String> LIVE_MODE_CONFIG =
-      Collections.singletonMap("mode", TopicConstant.MODE_LIVE_VALUE);
+  // Pipe source still uses the legacy "live" value for the initial (full + incremental) topic
+  // mode.
+  private static final Map<String, String> INITIAL_MODE_CONFIG =
+      Collections.singletonMap("mode", TopicConstant.LEGACY_MODE_LIVE_VALUE);
 
   private static final Map<String, String> STRICT_MODE_CONFIG =
       Collections.singletonMap("mode.strict", "true");
@@ -123,12 +128,28 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.MODE_SNAPSHOT_VALUE.equalsIgnoreCase(getMode());
   }
 
-  public boolean isLiveMode() {
-    return TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(getMode());
+  public boolean isInitialMode() {
+    return TopicConstant.MODE_INITIAL_VALUE.equalsIgnoreCase(getMode());
   }
 
+  public boolean isIncrementalMode() {
+    return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(getMode());
+  }
+
+  /**
+   * @deprecated Use {@link #isInitialMode()}.
+   */
+  @Deprecated
+  public boolean isLiveMode() {
+    return isInitialMode();
+  }
+
+  /**
+   * @deprecated Use {@link #isIncrementalMode()}.
+   */
+  @Deprecated
   public boolean isConsensusMode() {
-    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(getMode());
+    return isIncrementalMode();
   }
 
   public static boolean isValidMode(final String mode) {
@@ -136,7 +157,19 @@ public class TopicConfig extends PipeParameters {
   }
 
   public static String normalizeMode(final String mode) {
-    return mode == null ? TopicConstant.MODE_DEFAULT_VALUE : mode.trim().toLowerCase();
+    if (mode == null) {
+      return TopicConstant.MODE_DEFAULT_VALUE;
+    }
+
+    final String normalizedMode = mode.trim().toLowerCase(Locale.ROOT);
+    switch (normalizedMode) {
+      case TopicConstant.LEGACY_MODE_LIVE_VALUE:
+        return TopicConstant.MODE_INITIAL_VALUE;
+      case TopicConstant.LEGACY_MODE_CONSENSUS_VALUE:
+        return TopicConstant.MODE_INCREMENTAL_VALUE;
+      default:
+        return normalizedMode;
+    }
   }
 
   public String getOrderMode() {
@@ -185,6 +218,23 @@ public class TopicConfig extends PipeParameters {
     return attributes;
   }
 
+  public Map<String, String> getAttributesWithSourceColumnFilter() {
+    return Collections.singletonMap(TopicConstant.COLUMN_FILTER_KEY, getColumnFilter());
+  }
+
+  public String getColumnFilter() {
+    return getStringIgnoreCase(
+        TopicConstant.COLUMN_FILTER_KEY, TopicConstant.COLUMN_FILTER_DEFAULT_VALUE);
+  }
+
+  public boolean hasColumnFilter() {
+    return containsKeyIgnoreCase(TopicConstant.COLUMN_FILTER_KEY);
+  }
+
+  public boolean isColumnFilterTrivial() {
+    return TopicConstant.COLUMN_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getColumnFilter().trim());
+  }
+
   public Map<String, String> getAttributesWithSourceTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
@@ -204,11 +254,12 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    if (isConsensusMode()) {
+    if (isIncrementalMode()) {
       throw new IllegalArgumentException(
-          "Consensus mode topic should not generate pipe source attributes");
+          SubscriptionMessages
+              .EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393);
     }
-    return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : LIVE_MODE_CONFIG;
+    return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : INITIAL_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceLooseRangeOrStrict() {
@@ -290,5 +341,18 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  private boolean containsKeyIgnoreCase(final String expectedKey) {
+    return attributes.keySet().stream().anyMatch(key -> expectedKey.equalsIgnoreCase(key));
+  }
+
+  private String getStringIgnoreCase(final String expectedKey, final String defaultValue) {
+    return attributes.entrySet().stream()
+        .filter(entry -> expectedKey.equalsIgnoreCase(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(defaultValue);
   }
 }

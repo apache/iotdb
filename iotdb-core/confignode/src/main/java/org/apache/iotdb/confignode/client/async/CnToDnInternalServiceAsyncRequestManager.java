@@ -82,6 +82,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -316,6 +317,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.fetchSchemaBlackList(
                 (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_PARTITION_CACHE,
+        (req, client, handler) ->
+            client.invalidatePartitionCache(
+                (TInvalidateCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.INVALIDATE_SCHEMA_CACHE,
         (req, client, handler) ->
             client.invalidateSchemaCache(
@@ -447,7 +453,7 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
+        CnToDnAsyncRequestType.PRE_DELETE_TABLE,
         (req, client, handler) ->
             client.invalidateTableCache(
                 (TInvalidateTableCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
@@ -522,6 +528,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
         (req, client, handler) ->
             client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_PERMISSION_CACHE,
+        (req, client, handler) ->
+            client.invalidatePermissionCache(
+                (TInvalidatePermissionCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override
@@ -547,9 +558,13 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      CnToDnAsyncRequestType CnToDnAsyncRequestType, AsyncDataNodeInternalServiceClient client) {
+      CnToDnAsyncRequestType CnToDnAsyncRequestType,
+      AsyncDataNodeInternalServiceClient client,
+      Long timeoutInMs) {
     if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (timeoutInMs != null) {
+      client.setTimeoutTemporarily(timeoutInMs);
     }
   }
 

@@ -26,8 +26,17 @@ import org.apache.tsfile.utils.Pair;
 public class MultiClusterEnv extends AbstractEnv {
 
   public MultiClusterEnv(final long startTime, final int index, final String currentMethodName) {
+    this(startTime, index, null, currentMethodName);
+  }
+
+  public MultiClusterEnv(
+      final long startTime,
+      final int index,
+      final String currentClassName,
+      final String currentMethodName) {
     super(startTime);
     this.index = index;
+    setTestClassName(currentClassName);
     this.testMethodName = currentMethodName;
   }
 

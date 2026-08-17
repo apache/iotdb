@@ -34,7 +34,7 @@ public class WarningCode {
       throw new IllegalArgumentException(DataNodeQueryMessages.CODE_IS_NEGATIVE);
     }
     this.code = code;
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
   }
 
   public int getCode() {

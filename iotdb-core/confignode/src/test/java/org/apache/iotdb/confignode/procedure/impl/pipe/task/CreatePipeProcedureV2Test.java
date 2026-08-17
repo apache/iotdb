@@ -78,6 +78,26 @@ public class CreatePipeProcedureV2Test {
   }
 
   @Test
+  public void serializeDeserializeWithMissingOptionalAttributesTest() throws Exception {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    final Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+
+    final CreatePipeProcedureV2 proc =
+        new CreatePipeProcedureV2(new TCreatePipeReq("testPipe", connectorAttributes));
+
+    proc.serialize(outputStream);
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    final CreatePipeProcedureV2 proc2 =
+        (CreatePipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+
+    assertEquals(proc, proc2);
+  }
+
+  @Test
   public void testCheckAndEnrichSourceAuthenticationWithEncryptedPassword() {
     final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
     final ConfigManager configManager = Mockito.mock(ConfigManager.class);

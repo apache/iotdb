@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
@@ -393,6 +394,43 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
 
     Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
+  }
+
+  @Test
+  public void testPipeTransferPlanNodeReqBytesWithPartialDirectByteBuffer() throws IOException {
+    final CreateAlignedTimeSeriesNode node =
+        new CreateAlignedTimeSeriesNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            Collections.singletonList("s"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.UNCOMPRESSED),
+            null,
+            null,
+            null);
+    final byte[] serializedPlanNodeBytes = byteBufferToByteArray(node.serializeToByteBuffer());
+    final ByteBuffer serializedPlanNode =
+        ByteBuffer.allocateDirect(serializedPlanNodeBytes.length + 2);
+    serializedPlanNode.put((byte) 0);
+    serializedPlanNode.put(serializedPlanNodeBytes);
+    serializedPlanNode.put((byte) 1);
+    serializedPlanNode.flip();
+    serializedPlanNode.position(1);
+    serializedPlanNode.limit(1 + serializedPlanNodeBytes.length);
+
+    final byte[] transferBytes = PipeTransferPlanNodeReq.toTPipeTransferBytes(serializedPlanNode);
+
+    Assert.assertEquals(1, serializedPlanNode.position());
+    Assert.assertEquals(1 + serializedPlanNodeBytes.length, serializedPlanNode.limit());
+    final ByteBuffer transferBuffer = ByteBuffer.wrap(transferBytes);
+    Assert.assertEquals(
+        IoTDBSinkRequestVersion.VERSION_1.getVersion(), ReadWriteIOUtils.readByte(transferBuffer));
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_PLAN_NODE.getType(), ReadWriteIOUtils.readShort(transferBuffer));
+    Assert.assertEquals(node, PlanNodeType.deserialize(transferBuffer));
+    Assert.assertEquals(0, ReadWriteIOUtils.readInt(transferBuffer));
+    Assert.assertFalse(transferBuffer.hasRemaining());
   }
 
   @Test
@@ -874,6 +912,51 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqV2SkipsStringInterningForSingleRawTablet()
+      throws IOException {
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                Collections.emptyList(),
+                Collections.singletonList(
+                    serializeTablet(
+                        createSingleValueTablet(new String("root.sg.d"), new String("s1")), false)),
+                Collections.emptyList(),
+                Collections.singletonList(new String("root.sg.d"))));
+
+    final PipeTransferTabletRawReqV2 tabletReq = deserializedReq.getTabletReqs().get(0);
+    Assert.assertEquals(tabletReq.getTablet().getDeviceId(), tabletReq.getDataBaseName());
+    Assert.assertNotSame(tabletReq.getTablet().getDeviceId(), tabletReq.getDataBaseName());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2InternsStringsAcrossMultipleRawTablets()
+      throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                Collections.emptyList(),
+                tabletBuffers,
+                Collections.emptyList(),
+                Arrays.asList(new String("root.sg.d"), new String("root.sg.d"))));
+
+    final PipeTransferTabletRawReqV2 firstTabletReq = deserializedReq.getTabletReqs().get(0);
+    final PipeTransferTabletRawReqV2 secondTabletReq = deserializedReq.getTabletReqs().get(1);
+    Assert.assertSame(
+        firstTabletReq.getTablet().getDeviceId(), secondTabletReq.getTablet().getDeviceId());
+    Assert.assertSame(firstTabletReq.getDataBaseName(), secondTabletReq.getDataBaseName());
+    Assert.assertSame(
+        ((MeasurementSchema) firstTabletReq.getTablet().getSchemas().get(0)).getMeasurementName(),
+        ((MeasurementSchema) secondTabletReq.getTablet().getSchemas().get(0)).getMeasurementName());
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqV2WithMultipleTreeModelDatabases() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
@@ -1094,6 +1177,18 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqWaitsForSchema() throws IOException {
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            "1.tsfile.mod", 10, "1.tsfile", 100, "root.db", true);
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertTrue(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test
@@ -1118,6 +1213,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertTrue(deserializeReq.getParameters().isEmpty());
     Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test

@@ -45,6 +45,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -444,6 +449,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
     return this;
   }
 

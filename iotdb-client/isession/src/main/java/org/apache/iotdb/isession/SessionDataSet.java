@@ -192,7 +192,8 @@ public class SessionDataSet implements ISessionDataSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+                String.format(
+                    ISessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
         }
       } else {
         field = new Field(null);

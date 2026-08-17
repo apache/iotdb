@@ -22,8 +22,11 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -120,6 +123,14 @@ public class PipeReceiverStatusHandler {
       return;
     }
 
+    if (!PipeStopStrategy.accept(null, status)) {
+      PipeLogger.log(
+          LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(null, status);
+      throw new PipeRuntimeSinkResourceException(exceptionMessage, failureType);
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
@@ -131,14 +142,6 @@ public class PipeReceiverStatusHandler {
         {
           LOGGER.info(PipeMessages.IDEMPOTENT_CONFLICT_IGNORED, status);
           return;
-        }
-
-      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-        {
-          PipeLogger.log(
-              LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
-          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
-              exceptionMessage, Long.MAX_VALUE);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -171,7 +174,7 @@ public class PipeReceiverStatusHandler {
               PipeMessages.USER_CONFLICT_WILL_RETRY,
               retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
                   ? "forever"
-                  : "for at least "
+                  : PipeMessages.MESSAGE_FOR_AT_LEAST_ADE37405
                       + (retryMaxMillisWhenConflictOccurs
                               + exceptionFirstEncounteredTime.get()
                               - System.currentTimeMillis())
@@ -276,7 +279,7 @@ public class PipeReceiverStatusHandler {
     }
 
     LOGGER.warn(
-        "User conflict exception: discarded data info because {}. data: {}. receiver message: {}. status: {}",
+        PipeMessages.LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5,
         reason,
         summarizeRecordMessage(recordMessage),
         status.getMessage(),

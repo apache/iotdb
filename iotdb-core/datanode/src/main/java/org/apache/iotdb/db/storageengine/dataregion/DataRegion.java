@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -46,6 +47,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -61,6 +63,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -119,10 +122,10 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -200,6 +203,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -421,7 +425,9 @@ public class DataRegion implements IDataRegionForQuery {
         new TsFileManager(databaseName, dataRegionIdString, dataRegionSysDir.getPath());
     if (dataRegionSysDir.mkdirs()) {
       logger.info(
-          "Database system Directory {} doesn't exist, create it", dataRegionSysDir.getPath());
+          StorageEngineMessages
+              .STORAGE_LOG_DATABASE_SYSTEM_DIRECTORY_DOESN_T_EXIST_CREATE_IT_9C0E7C68,
+          dataRegionSysDir.getPath());
     } else if (!dataRegionSysDir.exists()) {
       logger.error(StorageEngineMessages.CREATE_DB_SYSTEM_DIR_FAILED, dataRegionSysDir.getPath());
     }
@@ -437,7 +443,8 @@ public class DataRegion implements IDataRegionForQuery {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
         && !StorageEngine.getInstance().isReadyForReadAndWrite()) {
       logger.debug(
-          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
+          StorageEngineMessages
+              .STORAGE_LOG_SKIP_RECOVERING_DATA_REGION_WHEN_CONSENSUS_PROTOCOL_IS_RATIS_43A6A699,
           databaseName,
           dataRegionIdString);
       for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
@@ -447,7 +454,8 @@ public class DataRegion implements IDataRegionForQuery {
           fsFactory.deleteDirectory(dataRegionFolder.getPath());
         } catch (IOException e) {
           logger.error(
-              "Exception occurs when deleting data region folder for {}-{}",
+              StorageEngineMessages
+                  .STORAGE_LOG_EXCEPTION_OCCURS_WHEN_DELETING_DATA_REGION_FOLDER_FOR_8ABCF5D1,
               databaseName,
               dataRegionIdString,
               e);
@@ -455,7 +463,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (FSUtils.getFSType(dataRegionFolder) == FSType.LOCAL) {
           if (dataRegionFolder.mkdirs()) {
             logger.info(
-                "Data region directory {} doesn't exist, create it", dataRegionFolder.getPath());
+                StorageEngineMessages
+                    .STORAGE_LOG_DATA_REGION_DIRECTORY_DOESN_T_EXIST_CREATE_IT_EFB0AE77,
+                dataRegionFolder.getPath());
           } else if (!dataRegionFolder.exists()) {
             logger.error(
                 StorageEngineMessages.CREATE_DATA_REGION_DIR_FAILED, dataRegionFolder.getPath());
@@ -507,7 +517,11 @@ public class DataRegion implements IDataRegionForQuery {
             throw e;
           } catch (Exception e) {
             throw new LoadFileException(
-                String.format("Storage allocation failed for %s (tier %d)", fileName, tierLevel),
+                String.format(
+                    StorageEngineMessages
+                        .STORAGE_EXCEPTION_STORAGE_ALLOCATION_FAILED_FOR_S_TIER_D_E2C94F74,
+                    fileName,
+                    tierLevel),
                 e);
           }
         };
@@ -570,7 +584,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (recoveredFilesNum < numOfFilesToRecover) {
         if (System.currentTimeMillis() - lastLogTime > config.getRecoveryLogIntervalInMs()) {
           logger.info(
-              "The TsFiles of data region {}[{}] has recovered {}/{}.",
+              StorageEngineMessages.STORAGE_LOG_THE_TSFILES_OF_DATA_REGION_HAS_RECOVERED_E17384CF,
               databaseName,
               dataRegionIdString,
               recoveredFilesNum,
@@ -579,7 +593,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } else {
         logger.info(
-            "The TsFiles of data region {}[{}] has recovered completely {}/{}.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_TSFILES_OF_DATA_REGION_HAS_RECOVERED_COMPLETELY_0D79FC83,
             databaseName,
             dataRegionIdString,
             numOfFilesToRecover,
@@ -594,10 +609,6 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       recoverCompaction();
     } catch (Exception e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -619,13 +630,7 @@ public class DataRegion implements IDataRegionForQuery {
         // tsFiles without resource file are unsealed
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
-            FileMetrics.getInstance()
-                .addTsFile(
-                    resource.getDatabaseName(),
-                    resource.getDataRegionId(),
-                    resource.getTsFile().length(),
-                    true,
-                    resource.getTsFile().getName());
+            FileMetrics.getInstance().addTsFile(resource);
             if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
               // update mods file metrics
               resource.getExclusiveModFile();
@@ -653,13 +658,7 @@ public class DataRegion implements IDataRegionForQuery {
         // tsFiles without resource file are unsealed
         for (TsFileResource resource : unseqTsFiles) {
           if (resource.resourceFileExists()) {
-            FileMetrics.getInstance()
-                .addTsFile(
-                    resource.getDatabaseName(),
-                    resource.getDataRegionId(),
-                    resource.getTsFile().length(),
-                    false,
-                    resource.getTsFile().getName());
+            FileMetrics.getInstance().addTsFile(resource);
           } else {
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(resource, dataRegionRecoveryContext, false);
@@ -743,7 +742,7 @@ public class DataRegion implements IDataRegionForQuery {
       for (WALRecoverListener recoverListener : recoverListeners) {
         if (recoverListener.waitForResult() == WALRecoverListener.Status.FAILURE) {
           logger.error(
-              "Fail to recover unsealed TsFile {}, skip it.",
+              StorageEngineMessages.STORAGE_LOG_FAIL_TO_RECOVER_UNSEALED_TSFILE_SKIP_IT_CA576205,
               recoverListener.getFilePath(),
               recoverListener.getCause());
         }
@@ -768,10 +767,6 @@ public class DataRegion implements IDataRegionForQuery {
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
     } catch (IOException e) {
-      // signal wal recover manager to recover this region's files
-      WALRecoverManager.getInstance()
-          .getAllDataRegionScannedLatch()
-          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -789,10 +784,9 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
       logger.info(
-          "The data region {}[{}] is created successfully", databaseName, dataRegionIdString);
-    } else {
-      logger.info(
-          "The data region {}[{}] is recovered successfully", databaseName, dataRegionIdString);
+          StorageEngineMessages.STORAGE_LOG_THE_DATA_REGION_IS_CREATED_SUCCESSFULLY_B991F1D4,
+          databaseName,
+          dataRegionIdString);
     }
   }
 
@@ -824,7 +818,7 @@ public class DataRegion implements IDataRegionForQuery {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
-        endTimeMap.put(deviceId, endTime);
+        endTimeMap.merge(deviceId, endTime, Math::max);
       }
     }
     if (config.isEnableSeparateData()) {
@@ -927,9 +921,13 @@ public class DataRegion implements IDataRegionForQuery {
         && fileTime < RepairUnsortedFileCompactionTask.getInitialAllocatedFileTimestamp()) {
       throw new DataRegionException(
           String.format(
-              "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
-                  + "file time is %d while system current time is %d, please check it.",
-              databaseName, dataRegionIdString, tsFile.getAbsolutePath(), fileTime, currentTime));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_DATA_REGION_S_S_IS_DOWN_BECAUSE_THE_TIME_OF_TSFILE_S_IS_1F732E71,
+              databaseName,
+              dataRegionIdString,
+              tsFile.getAbsolutePath(),
+              fileTime,
+              currentTime));
     }
   }
 
@@ -962,13 +960,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
         updateDeviceLastFlushTime(tsFileResource);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-        FileMetrics.getInstance()
-            .addTsFile(
-                tsFileResource.getDatabaseName(),
-                tsFileResource.getDataRegionId(),
-                tsFileResource.getTsFile().length(),
-                recoverPerformer.isSequence(),
-                tsFileResource.getTsFile().getName());
+        FileMetrics.getInstance().addTsFile(tsFileResource);
       } else {
         // the last file is not closed, continue writing to it
         RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
@@ -1015,7 +1007,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
     } catch (Throwable e) {
       logger.error(
-          "Fail to recover unsealed TsFile {}, skip it.",
+          StorageEngineMessages.STORAGE_LOG_FAIL_TO_RECOVER_UNSEALED_TSFILE_SKIP_IT_CA576205,
           recoverPerformer.getTsFileAbsolutePath(),
           e);
     }
@@ -1331,14 +1323,36 @@ public class DataRegion implements IDataRegionForQuery {
     rangeList.add(newRange);
   }
 
+  private Map<Long, List<int[]>[]> splitUnprocessedTabletRows(
+      final InsertTabletNode insertTabletNode,
+      final int start,
+      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs,
+      final BitSet processedRows) {
+    final Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
+    int deviceStart = start;
+    for (final Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
+      final int deviceEnd = deviceEndOffsetPair.getRight();
+      int rangeStart = processedRows.nextClearBit(deviceStart);
+      while (rangeStart < deviceEnd) {
+        final int nextProcessed = processedRows.nextSetBit(rangeStart);
+        final int rangeEnd =
+            nextProcessed < 0 || nextProcessed > deviceEnd ? deviceEnd : nextProcessed;
+        split(insertTabletNode, rangeStart, rangeEnd, splitInfo);
+        rangeStart = processedRows.nextClearBit(rangeEnd);
+      }
+      deviceStart = deviceEnd;
+    }
+    return splitInfo;
+  }
+
   private boolean doInsert(
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
       long[] infoForMetrics,
-      boolean markLastFragmentOnFinalWrite)
+      boolean markLastFragmentOnFinalWrite,
+      TabletInsertionProgress progress)
       throws DataTypeInconsistentException {
-    boolean noFailure = true;
     int remainingFragmentCount = 0;
     if (markLastFragmentOnFinalWrite) {
       for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
@@ -1358,36 +1372,38 @@ public class DataRegion implements IDataRegionForQuery {
       if (sequenceRangeList != null) {
         insertTabletNode.setLastFragment(
             markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
-        noFailure =
+        final boolean fragmentSucceeded =
             insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    sequenceRangeList,
-                    true,
-                    results,
-                    timePartitionId,
-                    noFailure,
-                    infoForMetrics)
-                && noFailure;
+                insertTabletNode,
+                sequenceRangeList,
+                true,
+                results,
+                timePartitionId,
+                progress.noFailure,
+                infoForMetrics);
+        markInsertTabletRangesProcessed(sequenceRangeList, progress.processedRows);
+        progress.noFailure = fragmentSucceeded && progress.noFailure;
         remainingFragmentCount--;
       }
       List<int[]> unSequenceRangeList = rangeLists[0];
       if (unSequenceRangeList != null) {
         insertTabletNode.setLastFragment(
             markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
-        noFailure =
+        final boolean fragmentSucceeded =
             insertTabletToTsFileProcessor(
-                    insertTabletNode,
-                    unSequenceRangeList,
-                    false,
-                    results,
-                    timePartitionId,
-                    noFailure,
-                    infoForMetrics)
-                && noFailure;
+                insertTabletNode,
+                unSequenceRangeList,
+                false,
+                results,
+                timePartitionId,
+                progress.noFailure,
+                infoForMetrics);
+        markInsertTabletRangesProcessed(unSequenceRangeList, progress.processedRows);
+        progress.noFailure = fragmentSucceeded && progress.noFailure;
         remainingFragmentCount--;
       }
     }
-    return noFailure;
+    return progress.noFailure;
   }
 
   /**
@@ -1405,7 +1421,9 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       if (deleted) {
         logger.info(
-            "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
+            StorageEngineMessages
+                .STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_REGION_IS_DELETED_34D893A7,
+            insertTabletNode.getSearchIndex());
         return;
       }
       if (delayAnalyzer != null) {
@@ -1442,31 +1460,51 @@ public class DataRegion implements IDataRegionForQuery {
       List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs,
       boolean markLastFragmentOnFinalWrite) {
     final int initialStart = start;
+    final TabletInsertionProgress progress =
+        new TabletInsertionProgress(insertTabletNode.getRowCount());
     try {
-      Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
-      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        int end = deviceEndOffsetPair.getRight();
-        split(insertTabletNode, start, end, splitInfo);
-        start = end;
-      }
+      final Map<Long, List<int[]>[]> splitInfo =
+          splitUnprocessedTabletRows(
+              insertTabletNode, initialStart, deviceEndOffsetPairs, progress.processedRows);
       return doInsert(
-          insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
+          insertTabletNode,
+          splitInfo,
+          results,
+          infoForMetrics,
+          markLastFragmentOnFinalWrite,
+          progress);
     } catch (DataTypeInconsistentException e) {
       // the exception will trigger a flush, which requires the flush time to be recalculated
-      start = initialStart;
-      Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
-      for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
-        int end = deviceEndOffsetPair.getRight();
-        split(insertTabletNode, start, end, splitInfo);
-        start = end;
-      }
+      final Map<Long, List<int[]>[]> splitInfo =
+          splitUnprocessedTabletRows(
+              insertTabletNode, initialStart, deviceEndOffsetPairs, progress.processedRows);
       try {
         return doInsert(
-            insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
+            insertTabletNode,
+            splitInfo,
+            results,
+            infoForMetrics,
+            markLastFragmentOnFinalWrite,
+            progress);
       } catch (DataTypeInconsistentException ex) {
         logger.error(StorageEngineMessages.DATA_INCONSISTENT_NOT_TRIGGER_TWICE, ex);
+        progress.noFailure = false;
+        for (int i = initialStart; i < insertTabletNode.getRowCount(); i++) {
+          if (!progress.processedRows.get(i)) {
+            results[i] = RpcUtils.getStatus(ex.getErrorCode(), ex.getMessage());
+          }
+        }
         return false;
       }
+    }
+  }
+
+  private static final class TabletInsertionProgress {
+    private final BitSet processedRows;
+    private boolean noFailure = true;
+
+    private TabletInsertionProgress(final int rowCount) {
+      processedRows = new BitSet(rowCount);
     }
   }
 
@@ -1561,7 +1599,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (insertTabletNode.allMeasurementFailed()) {
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "Won't insert tablet {}, because {}",
+            StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
             insertTabletNode.getSearchIndex(),
             "insertTabletNode allMeasurementFailed");
       }
@@ -1589,6 +1627,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw e;
     } catch (WriteProcessRejectException e) {
       logger.warn(StorageEngineMessages.INSERT_TO_TSFILE_PROCESSOR_REJECTED, e.getMessage());
+      markInsertTabletRangesFailed(
+          rangeList, results, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       return false;
     } catch (WriteProcessException e) {
       logger.error(StorageEngineMessages.INSERT_TO_TSFILE_PROCESSOR_ERROR, e);
@@ -1600,6 +1640,13 @@ public class DataRegion implements IDataRegionForQuery {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
     return true;
+  }
+
+  private void markInsertTabletRangesProcessed(
+      final List<int[]> rangeList, final BitSet processedRows) {
+    for (final int[] rangePair : rangeList) {
+      processedRows.set(rangePair[0], rangePair[1]);
+    }
   }
 
   private void markInsertTabletRangesFailed(
@@ -1689,7 +1736,9 @@ public class DataRegion implements IDataRegionForQuery {
           t -> {
             final String database = getDatabaseName();
 
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
+            TsTable tsTable =
+                DataNodeTableCache.getInstance()
+                    .getTable(database, t, false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
@@ -1712,7 +1761,8 @@ public class DataRegion implements IDataRegionForQuery {
                   return schema;
                 } catch (TException | ClientManagerException e) {
                   logger.error(
-                      "Remote request config node failed that judgment if table is exist, occur exception. {}",
+                      StorageEngineMessages
+                          .STORAGE_LOG_REMOTE_REQUEST_CONFIG_NODE_FAILED_THAT_JUDGMENT_IF_TABLE_25FE3602,
                       e.getMessage());
                   CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
@@ -1721,7 +1771,8 @@ public class DataRegion implements IDataRegionForQuery {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
                 // DataNodeTableCache
                 logger.error(
-                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
+                    StorageEngineMessages
+                        .STORAGE_LOG_DUE_TSTABLE_IS_NULL_TABLE_SCHEMA_CAN_T_BE_GOT_LEADER_NODE_C3EF524D);
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
@@ -1809,10 +1860,11 @@ public class DataRegion implements IDataRegionForQuery {
       InsertRowsNode subInsertRowsNode = entry.getValue();
       subInsertRowsNode.setLastFragment(--remainingFragments == 0);
       try {
-        List<TsFileProcessor> insertedProcessors =
+        InsertRowsExecutionResult executionResult =
             insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
-        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-        for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+        executedInsertRowNodeList.addAll(executionResult.insertedRows);
+        insertRowsNode.getResults().putAll(executionResult.failedResults);
+        for (TsFileProcessor tsFileProcessor : executionResult.insertedProcessors) {
           // check memtable size and may asyncTryToFlush the work memtable
           if (tsFileProcessor.shouldFlush()) {
             fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
@@ -1825,14 +1877,16 @@ public class DataRegion implements IDataRegionForQuery {
     return executedInsertRowNodeList;
   }
 
-  private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
+  private InsertRowsExecutionResult insertRowsWithTypeConsistencyCheck(
       TsFileProcessor tsFileProcessor, InsertRowsNode subInsertRowsNode, long[] infoForMetrics)
       throws WriteProcessException {
     try {
       // register TableSchema (and maybe more) for table insertion
       registerToTsFile(subInsertRowsNode, tsFileProcessor);
       tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
-      return Collections.singletonList(tsFileProcessor);
+      InsertRowsExecutionResult executionResult = new InsertRowsExecutionResult();
+      executionResult.recordSuccess(tsFileProcessor, subInsertRowsNode);
+      return executionResult;
     } catch (DataTypeInconsistentException e) {
       InsertRowNode firstRow = subInsertRowsNode.getInsertRowNodeList().get(0);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(firstRow.getTime());
@@ -1909,11 +1963,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private List<TsFileProcessor> retryInsertRowsAfterFlush(
+  private InsertRowsExecutionResult retryInsertRowsAfterFlush(
       final InsertRowsNode subInsertRowsNode,
       final long timePartitionId,
-      final long[] infoForMetrics)
-      throws WriteProcessException {
+      final long[] infoForMetrics) {
+    final InsertRowsExecutionResult executionResult = new InsertRowsExecutionResult();
     final Map<TsFileProcessor, InsertRowsNode> retriedProcessorMap = new HashMap<>();
     for (int i = 0; i < subInsertRowsNode.getInsertRowNodeList().size(); i++) {
       final InsertRowNode insertRowNode = subInsertRowsNode.getInsertRowNodeList().get(i);
@@ -1921,9 +1975,14 @@ public class DataRegion implements IDataRegionForQuery {
           config.isEnableSeparateData()
               && insertRowNode.getTime()
                   > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
-      final TsFileProcessor retriedProcessor =
-          getOrCreateTsFileProcessor(timePartitionId, isSequence);
       final int insertRowNodeIndex = subInsertRowsNode.getInsertRowNodeIndexList().get(i);
+      final TsFileProcessor retriedProcessor;
+      try {
+        retriedProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+      } catch (WriteProcessException e) {
+        executionResult.recordFailure(insertRowNodeIndex, e);
+        continue;
+      }
       retriedProcessorMap.compute(
           retriedProcessor,
           (k, v) -> {
@@ -1935,18 +1994,47 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
-    final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
     int remainingRetriedFragments = retriedProcessorMap.size();
     for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
       final InsertRowsNode retriedInsertRowsNode = retriedEntry.getValue();
       retriedInsertRowsNode.setLastFragment(
           subInsertRowsNode.isLastFragment() && --remainingRetriedFragments == 0);
-      registerToTsFile(retriedInsertRowsNode, retriedProcessor);
-      retriedProcessor.insertRows(retriedInsertRowsNode, infoForMetrics);
-      insertedProcessors.add(retriedProcessor);
+      try {
+        registerToTsFile(retriedInsertRowsNode, retriedProcessor);
+        retriedProcessor.insertRows(retriedInsertRowsNode, infoForMetrics);
+        executionResult.recordSuccess(retriedProcessor, retriedInsertRowsNode);
+      } catch (WriteProcessException e) {
+        executionResult.recordFailure(retriedInsertRowsNode, e);
+      }
     }
-    return insertedProcessors;
+    return executionResult;
+  }
+
+  private static final class InsertRowsExecutionResult {
+    private final List<TsFileProcessor> insertedProcessors = new ArrayList<>();
+    private final List<InsertRowNode> insertedRows = new ArrayList<>();
+    private final Map<Integer, TSStatus> failedResults = new HashMap<>();
+
+    private void recordSuccess(
+        final TsFileProcessor tsFileProcessor, final InsertRowsNode insertRowsNode) {
+      insertedProcessors.add(tsFileProcessor);
+      insertedRows.addAll(insertRowsNode.getInsertRowNodeList());
+    }
+
+    private void recordFailure(
+        final InsertRowsNode insertRowsNode, final WriteProcessException exception) {
+      final TSStatus failureStatus =
+          RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      for (final int failedIndex : insertRowsNode.getInsertRowNodeIndexList()) {
+        failedResults.put(failedIndex, failureStatus);
+      }
+    }
+
+    private void recordFailure(final int failedIndex, final WriteProcessException exception) {
+      failedResults.put(
+          failedIndex, RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+    }
   }
 
   private void recordInsertRowsFailure(
@@ -2038,9 +2126,10 @@ public class DataRegion implements IDataRegionForQuery {
         if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
           if (!DataNodeSpaceQuotaManager.getInstance().checkRegionDisk(databaseName)) {
             throw new ExceedQuotaException(
-                "Unable to continue writing data, because the space allocated to the database "
-                    + databaseName
-                    + " has already used the upper limit",
+                String.format(
+                    StorageEngineMessages
+                        .STORAGE_EXCEPTION_UNABLE_TO_CONTINUE_WRITING_DATA_BECAUSE_THE_SPACE_ALLOCATED_9A5FB99E,
+                    databaseName),
                 TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
           }
         }
@@ -2053,7 +2142,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } catch (DiskSpaceInsufficientException e) {
         logger.error(
-            "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+            StorageEngineMessages
+                .STORAGE_LOG_DISK_SPACE_IS_INSUFFICIENT_WHEN_CREATING_TSFILE_PROCESSOR_4032BAF0,
             e);
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
@@ -2063,12 +2153,16 @@ public class DataRegion implements IDataRegionForQuery {
           retryCnt++;
         } else {
           logger.error(
-              "meet IOException when creating TsFileProcessor, change system mode to error", e);
+              StorageEngineMessages
+                  .STORAGE_LOG_MEET_IOEXCEPTION_WHEN_CREATING_TSFILEPROCESSOR_CHANGE_SYSTEM_4337F729,
+              e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           throw new WriteProcessException(
               String.format(
-                  "Failed to create TsFileProcessor for database %s, timePartitionId %s",
-                  databaseName, timeRangeId),
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_FAILED_TO_CREATE_TSFILEPROCESSOR_FOR_DATABASE_S_TIMEPARTITIONID_0CD885BB,
+                  databaseName,
+                  timeRangeId),
               e);
         }
       } catch (ExceedQuotaException e) {
@@ -2197,7 +2291,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     logger.info(
-        "Async close tsfile: {}, file start time: {}, file end time: {}",
+        StorageEngineMessages.STORAGE_LOG_ASYNC_CLOSE_TSFILE_FILE_START_TIME_FILE_END_TIME_65020832,
         resource.getTsFile().getAbsolutePath(),
         resource.getFileStartTime(),
         resource.getFileEndTime());
@@ -2215,7 +2309,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void deleteFolder(String systemDir) {
     logger.info(
-        "{} will close all files for deleting data folder {}",
+        StorageEngineMessages.STORAGE_LOG_WILL_CLOSE_ALL_FILES_FOR_DELETING_DATA_FOLDER_93A5B15E,
         databaseName + "-" + dataRegionIdString,
         systemDir);
     int regionId = dataRegionId.getId();
@@ -2228,8 +2322,8 @@ public class DataRegion implements IDataRegionForQuery {
       File dataRegionSystemFolder =
           SystemFileFactory.INSTANCE.getFile(
               systemDir + File.separator + databaseName, dataRegionIdString);
-      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
-          dataRegionSystemFolder);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParentWithRateLimiter(
+          dataRegionSystemFolder, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     } finally {
       writeUnlock();
     }
@@ -2265,7 +2359,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** delete tsfile */
   public void syncDeleteDataFiles() throws TsFileProcessorException {
     logger.info(
-        "{} will close all files for deleting data files", databaseName + "-" + dataRegionIdString);
+        StorageEngineMessages.STORAGE_LOG_WILL_CLOSE_ALL_FILES_FOR_DELETING_DATA_FILES_7768D429,
+        databaseName + "-" + dataRegionIdString);
     writeLock("syncDeleteDataFiles");
     try {
       forceCloseAllWorkingTsFileProcessors();
@@ -2278,7 +2373,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
       tsFileResourceList.forEach(
           x -> {
-            FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
+            FileMetrics.getInstance().deleteTsFile(Collections.singletonList(x));
             try {
               x.removeModFile();
             } catch (IOException e) {
@@ -2295,7 +2390,8 @@ public class DataRegion implements IDataRegionForQuery {
           .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionIdString)));
     } catch (InterruptedException e) {
       logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          StorageEngineMessages
+              .STORAGE_LOG_CLOSEFILENODECONDITION_ERROR_OCCURS_WHILE_WAITING_FOR_CLOSING_F33B72A6,
           databaseName + "-" + dataRegionIdString,
           e);
       Thread.currentThread().interrupt();
@@ -2317,8 +2413,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } else {
         if (dataRegionDataFolder.exists()) {
-          org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
-              dataRegionDataFolder);
+          org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParentWithRateLimiter(
+              dataRegionDataFolder, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
         }
       }
     }
@@ -2361,7 +2457,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } else {
         if (dataRegionObjectFolder.exists()) {
-          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dataRegionObjectFolder);
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectoryWithRateLimiter(
+              dataRegionObjectFolder, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
         }
       }
     }
@@ -2378,7 +2475,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
-              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              StorageEngineMessages
+                  .STORAGE_LOG_EXCEED_SEQUENCE_MEMTABLE_FLUSH_INTERVAL_SO_FLUSH_WORKING_23513D66,
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionIdString);
@@ -2404,7 +2502,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
-              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              StorageEngineMessages
+                  .STORAGE_LOG_EXCEED_UNSEQUENCE_MEMTABLE_FLUSH_INTERVAL_SO_FLUSH_WORKING_BADB0B75,
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionIdString);
@@ -2429,7 +2528,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (InterruptedException | ExecutionException e) {
       logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
+          StorageEngineMessages
+              .STORAGE_LOG_CLOSEFILENODECONDITION_ERROR_OCCURS_WHILE_WAITING_FOR_CLOSING_C4B97CC0,
           databaseName + "-" + dataRegionIdString,
           e);
       Thread.currentThread().interrupt();
@@ -2463,7 +2563,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (InterruptedException | ExecutionException e) {
       logger.error(
-          "CloseFileNodeCondition error occurs while waiting for closing tsfile processors of {}",
+          StorageEngineMessages
+              .STORAGE_LOG_CLOSEFILENODECONDITION_ERROR_OCCURS_WHILE_WAITING_FOR_CLOSING_C4B97CC0,
           databaseName + "-" + dataRegionIdString,
           e);
       Thread.currentThread().interrupt();
@@ -2473,7 +2574,8 @@ public class DataRegion implements IDataRegionForQuery {
   private void waitClosingTsFileProcessorFinished() throws InterruptedException {
     long startTime = System.currentTimeMillis();
     logger.info(
-        "Start to wait TsFiles to close, seq files: {}, unseq files: {}",
+        StorageEngineMessages
+            .STORAGE_LOG_START_TO_WAIT_TSFILES_TO_CLOSE_SEQ_FILES_UNSEQ_FILES_441F7130,
         closingSequenceTsFileProcessor,
         closingUnSequenceTsFileProcessor);
     while (!closingSequenceTsFileProcessor.isEmpty()
@@ -2487,11 +2589,11 @@ public class DataRegion implements IDataRegionForQuery {
       }
       if (System.currentTimeMillis() - startTime > 60_000) {
         logger.warn(
-            "{} has spent {}s to wait for closing all TsFiles.",
+            StorageEngineMessages.STORAGE_LOG_HAS_SPENT_S_TO_WAIT_FOR_CLOSING_ALL_TSFILES_6C3EE4CE,
             databaseName + "-" + this.dataRegionIdString,
             (System.currentTimeMillis() - startTime) / 1000);
         logger.warn(
-            "Sseq files: {}, unseq files: {}",
+            StorageEngineMessages.STORAGE_LOG_SSEQ_FILES_UNSEQ_FILES_918AEB2A,
             closingSequenceTsFileProcessor,
             closingUnSequenceTsFileProcessor);
       }
@@ -2505,7 +2607,8 @@ public class DataRegion implements IDataRegionForQuery {
     int count = 0;
     try {
       logger.info(
-          "async force close all files in database: {}", databaseName + "-" + dataRegionIdString);
+          StorageEngineMessages.STORAGE_LOG_ASYNC_FORCE_CLOSE_ALL_FILES_IN_DATABASE_076AB4B9,
+          databaseName + "-" + dataRegionIdString);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -2530,7 +2633,8 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("forceCloseAllWorkingTsFileProcessors");
     try {
       logger.info(
-          "force close all processors in database: {}", databaseName + "-" + dataRegionIdString);
+          StorageEngineMessages.STORAGE_LOG_FORCE_CLOSE_ALL_PROCESSORS_IN_DATABASE_68C9EB60,
+          databaseName + "-" + dataRegionIdString);
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileResource> closedTsFileResources = new ArrayList<>();
       for (TsFileProcessor tsFileProcessor :
@@ -2545,13 +2649,7 @@ public class DataRegion implements IDataRegionForQuery {
         closedTsFileResources.add(tsFileProcessor.getTsFileResource());
       }
       for (TsFileResource resource : closedTsFileResources) {
-        FileMetrics.getInstance()
-            .addTsFile(
-                resource.getDatabaseName(),
-                resource.getDataRegionId(),
-                resource.getTsFileSize(),
-                resource.isSeq(),
-                resource.getTsFile().getName());
+        FileMetrics.getInstance().addTsFile(resource);
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
       logger.info(StorageEngineMessages.FILES_WERE_CLOSED, closedTsFileResources.size());
@@ -3018,7 +3116,8 @@ public class DataRegion implements IDataRegionForQuery {
       throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
-          "Delete failed. " + "Please do not delete until the old files settled.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_DELETE_FAILED_PLEASE_DO_NOT_DELETE_UNTIL_THE_OLD_FILES_SETTLED_6C9F17CC);
     }
     final long startTime = node.getDeleteStartTime();
     final long endTime = node.getDeleteEndTime();
@@ -3083,7 +3182,8 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
-          "Delete failed. " + "Please do not delete until the old files settled.");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_DELETE_FAILED_PLEASE_DO_NOT_DELETE_UNTIL_THE_OLD_FILES_SETTLED_6C9F17CC);
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
 
@@ -3133,7 +3233,7 @@ public class DataRegion implements IDataRegionForQuery {
               } catch (IOException e) {
                 logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
               }
-              FileUtils.deleteQuietly(objectTableDir);
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
             }
             FileMetrics.getInstance().decreaseObjectFileNum(count.get());
             FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
@@ -3191,7 +3291,8 @@ public class DataRegion implements IDataRegionForQuery {
     final long endTime = node.getDeleteEndTime();
     final long searchIndex = node.getSearchIndex();
     logger.info(
-        "{} will delete data files directly for deleting data between {} and {}",
+        StorageEngineMessages
+            .STORAGE_LOG_WILL_DELETE_DATA_FILES_DIRECTLY_FOR_DELETING_DATA_BETWEEN_289DD3BF,
         databaseName + "-" + dataRegionIdString,
         startTime,
         endTime);
@@ -3368,7 +3469,7 @@ public class DataRegion implements IDataRegionForQuery {
               String fileName = path.getFileName().toString();
               long timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
               logger.debug(
-                  "timestamp {}, measurementId {}, ideviceId {}",
+                  StorageEngineMessages.STORAGE_LOG_TIMESTAMP_MEASUREMENTID_IDEVICEID_04A5AE37,
                   timestamp,
                   measurementId,
                   iDeviceID);
@@ -3424,7 +3525,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
       logger.debug(
-          "[Deletion] {} skipped {}, file time [{}, {}]",
+          StorageEngineMessages.STORAGE_LOG_DELETION_SKIPPED_FILE_TIME_DD653236,
           deletion,
           tsFileResource,
           fileStartTime,
@@ -3494,12 +3595,12 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
     boolean isDropMeasurementExist = false;
-    IDPredicate.IDPredicateType idPredicateType = null;
+    TagPredicate.TagPredicateType tagPredicateType = null;
 
     if (deletion instanceof TableDeletionEntry) {
       TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
       isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
-      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
+      tagPredicateType = tableDeletionEntry.getPredicate().getTagPredicateType();
     }
 
     for (TsFileResource sealedTsFile : sealedTsFiles) {
@@ -3530,7 +3631,8 @@ public class DataRegion implements IDataRegionForQuery {
                       device -> {
                         if (logger.isDebugEnabled()) {
                           logger.debug(
-                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                              StorageEngineMessages
+                                  .STORAGE_LOG_DEVICE_IS_DEVICETABLE_IS_TABLEDELETIONENTRY_GETPREDICATE_E84489E9,
                               device,
                               device.getTableName(),
                               tableDeletionEntry.getPredicate().matches(device));
@@ -3542,7 +3644,8 @@ public class DataRegion implements IDataRegionForQuery {
           onlyOneTable = matchSize == devicesInFile.size();
           if (logger.isDebugEnabled()) {
             logger.debug(
-                "tableName is {}, matchSize is {}, onlyOneTable is {}",
+                StorageEngineMessages
+                    .STORAGE_LOG_TABLENAME_IS_MATCHSIZE_IS_ONLYONETABLE_IS_E20FAFAE,
                 tableName,
                 matchSize,
                 onlyOneTable);
@@ -3563,7 +3666,8 @@ public class DataRegion implements IDataRegionForQuery {
 
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  StorageEngineMessages
+                      .STORAGE_LOG_TABLENAME_IS_DEVICE_IS_DELETIONSTARTTIME_IS_DELETIONENDTIME_B881E677,
                   device.getTableName(),
                   device,
                   deletion.getStartTime(),
@@ -3572,7 +3676,7 @@ public class DataRegion implements IDataRegionForQuery {
                   fileEndTime);
             }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
-                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && tagPredicateType.equals(TagPredicate.TagPredicateType.NOP)
                 && !isDropMeasurementExist) {
               ++matchSize;
             } else {
@@ -3593,7 +3697,8 @@ public class DataRegion implements IDataRegionForQuery {
                 StorageEngineMessages.EXPECT_IS_ACTUAL_IS, devicesInFile.size(), matchSize);
             for (TsFileResource tsFileResource : deletedByFiles) {
               logger.debug(
-                  "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
+                  StorageEngineMessages.STORAGE_LOG_DELETE_TSFILERESOURCE_IS_29F5A98C,
+                  tsFileResource.getTsFile().getAbsolutePath());
             }
           }
         } else {
@@ -3615,7 +3720,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
+            StorageEngineMessages
+                .STORAGE_LOG_DELETETSFILECOMPLETELY_EXECUTE_SUCCESSFUL_ALL_TSFILE_ARE_D81FE0D7);
       }
     }
 
@@ -3646,11 +3752,12 @@ public class DataRegion implements IDataRegionForQuery {
         exceptions.forEach(
             e -> logger.error(StorageEngineMessages.FAIL_TO_WRITE_MOD_ENTRY_TO_FILES, deletion, e));
         throw new IOException(
-            "Multiple errors occurred while writing mod files, see logs for details.");
+            StorageEngineMessages
+                .STORAGE_EXCEPTION_MULTIPLE_ERRORS_OCCURRED_WHILE_WRITING_MOD_FILES_SEE_LOGS_529D7145);
       }
     }
     logger.info(
-        "[Deletion] Deletion {} is written into {} mod files",
+        StorageEngineMessages.STORAGE_LOG_DELETION_DELETION_IS_WRITTEN_INTO_MOD_FILES_DDCDF0AD,
         deletion,
         involvedModificationFiles.size());
   }
@@ -3666,8 +3773,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
       try {
-        FileMetrics.getInstance()
-            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        FileMetrics.getInstance().deleteTsFile(Collections.singletonList(tsFileResource));
         tsFileResource.remove();
         logger.info(
             StorageEngineMessages.REMOVE_TSFILE_DIRECTLY_WHEN_DELETE_DATA,
@@ -3700,7 +3806,9 @@ public class DataRegion implements IDataRegionForQuery {
       // negative
       involvedModificationFile.close();
       logger.debug(
-          "[Deletion] Deletion {} written into mods file:{}.", modEntry, involvedModificationFile);
+          StorageEngineMessages.STORAGE_LOG_DELETION_DELETION_WRITTEN_INTO_MODS_FILE_F5E26D2A,
+          modEntry,
+          involvedModificationFile);
     }
 
     // can be deleted by files
@@ -3708,8 +3816,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
       try {
-        FileMetrics.getInstance()
-            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        FileMetrics.getInstance().deleteTsFile(Collections.singletonList(tsFileResource));
         tsFileResource.remove();
         logger.info(
             StorageEngineMessages.REMOVE_TSFILE_DIRECTLY_WHEN_DELETE_DATA,
@@ -3811,13 +3918,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     if (!isValidateTsFileFailed) {
       TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
-      FileMetrics.getInstance()
-          .addTsFile(
-              tsFileResource.getDatabaseName(),
-              tsFileResource.getDataRegionId(),
-              tsFileResource.getTsFileSize(),
-              tsFileProcessor.isSequence(),
-              tsFileResource.getTsFile().getName());
+      FileMetrics.getInstance().addTsFile(tsFileResource);
     }
   }
 
@@ -3880,7 +3981,9 @@ public class DataRegion implements IDataRegionForQuery {
         return 0;
       }
       logger.info(
-          "[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionIdString);
+          StorageEngineMessages.STORAGE_LOG_TTL_START_TTL_AND_MODIFICATION_CHECKING_A37AB173,
+          databaseName,
+          dataRegionIdString);
       CompactionScheduleContext context =
           new CompactionScheduleContext(
               EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
@@ -3903,7 +4006,8 @@ public class DataRegion implements IDataRegionForQuery {
         CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
       logger.info(
-          "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
+          StorageEngineMessages
+              .STORAGE_LOG_TTL_TOTALLY_SELECT_ALL_OUTDATED_FILES_AND_PARTIAL_OUTDATED_5246BD61,
           databaseName,
           dataRegionIdString,
           context.getFullyDirtyFileNum(),
@@ -4023,7 +4127,10 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (IOException e) {
       logger.error(StorageEngineMessages.EXCEPTION_MOVE_NEW_TSFILE_IN_SETTLING, e);
       throw new WriteProcessException(
-          "Meet error when settling file: " + oldTsFileResource.getTsFile().getAbsolutePath(), e);
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_MEET_ERROR_WHEN_SETTLING_FILE_S_4D6ECCEE,
+              oldTsFileResource.getTsFile().getAbsolutePath()),
+          e);
     } finally {
       oldTsFileResource.writeUnlock();
     }
@@ -4096,8 +4203,10 @@ public class DataRegion implements IDataRegionForQuery {
       if (Objects.nonNull(impl) && !impl.isActive()) {
         throw new LoadFileException(
             String.format(
-                "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
-                dataRegionId, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_PEER_IS_INACTIVE_AND_NOT_READY_TO_WRITE_REQUEST_S_DATANODE_EDFE5AEF,
+                dataRegionId,
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
       }
     }
 
@@ -4106,7 +4215,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
-          "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_TSFILE_VALIDATE_FAILED_S_3CDE0677,
+              newTsFileResource.getTsFile().getName()));
     }
 
     TsFileLastReader lastReader = null;
@@ -4131,7 +4242,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       if (deleted) {
         logger.info(
-            "Won't load TsFile {}, because region is deleted",
+            StorageEngineMessages.STORAGE_LOG_WON_T_LOAD_TSFILE_BECAUSE_REGION_IS_DELETED_0E72E8D0,
             tsfileToBeInserted.getAbsolutePath());
         return;
       }
@@ -4144,10 +4255,19 @@ public class DataRegion implements IDataRegionForQuery {
               0);
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
-        logger.info(
-            "TsFile {} must be renamed to {} for loading into the unsequence list.",
-            tsfileToBeInserted.getName(),
-            newFileName);
+        if (isGeneratedByPipe) {
+          logger.debug(
+              StorageEngineMessages
+                  .STORAGE_LOG_TSFILE_MUST_BE_RENAMED_TO_FOR_LOADING_INTO_THE_UNSEQUENCE_70321619,
+              tsfileToBeInserted.getName(),
+              newFileName);
+        } else {
+          logger.info(
+              StorageEngineMessages
+                  .STORAGE_LOG_TSFILE_MUST_BE_RENAMED_TO_FOR_LOADING_INTO_THE_UNSEQUENCE_70321619,
+              tsfileToBeInserted.getName(),
+              newFileName);
+        }
         newTsFileResource.setFile(
             fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
       }
@@ -4163,13 +4283,7 @@ public class DataRegion implements IDataRegionForQuery {
               TableDiskUsageIndex.getInstance()
                   .write(databaseName, newTsFileResource.getTsFileID(), stringLongMap));
 
-      FileMetrics.getInstance()
-          .addTsFile(
-              newTsFileResource.getDatabaseName(),
-              newTsFileResource.getDataRegionId(),
-              newTsFileResource.getTsFile().length(),
-              false,
-              newTsFileResource.getTsFile().getName());
+      FileMetrics.getInstance().addTsFile(newTsFileResource);
 
       if (config.isEnableSeparateData()) {
         final DataRegionId dataRegionId =
@@ -4196,10 +4310,15 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
-      logger.info(StorageEngineMessages.TSFILE_LOADED_IN_UNSEQ_LIST, newFileName);
+      if (isGeneratedByPipe) {
+        logger.debug(StorageEngineMessages.TSFILE_LOADED_IN_UNSEQ_LIST, newFileName);
+      } else {
+        logger.info(StorageEngineMessages.TSFILE_LOADED_IN_UNSEQ_LIST, newFileName);
+      }
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
-          "Failed to append the tsfile {} to database processor {} because the disk space is insufficient.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_APPEND_THE_TSFILE_TO_DATABASE_PROCESSOR_BECAUSE_670341AE,
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
@@ -4249,7 +4368,8 @@ public class DataRegion implements IDataRegionForQuery {
           break;
         default:
           logger.warn(
-              "Unrecognized LastCacheLoadStrategy: {}, fall back to CLEAN_ALL",
+              StorageEngineMessages
+                  .STORAGE_LOG_UNRECOGNIZED_LASTCACHELOADSTRATEGY_FALL_BACK_TO_CLEAN_ALL_C200F32D,
               IoTDBDescriptor.getInstance().getConfig().getLastCacheLoadStrategy());
           TreeDeviceSchemaCacheManager.getInstance().cleanUp();
           break;
@@ -4350,10 +4470,19 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
-    logger.info(
-        "Load tsfile in unsequence list, move file from {} to {}",
-        tsFileToLoad.getAbsolutePath(),
-        targetFile.getAbsolutePath());
+    if (isGeneratedByPipe) {
+      logger.debug(
+          StorageEngineMessages
+              .STORAGE_LOG_LOAD_TSFILE_IN_UNSEQUENCE_LIST_MOVE_FILE_FROM_TO_21E11AEB,
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    } else {
+      logger.info(
+          StorageEngineMessages
+              .STORAGE_LOG_LOAD_TSFILE_IN_UNSEQUENCE_LIST_MOVE_FILE_FROM_TO_21E11AEB,
+          tsFileToLoad.getAbsolutePath(),
+          targetFile.getAbsolutePath());
+    }
 
     LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
 
@@ -4377,14 +4506,18 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (final IOException e) {
       logger.warn(
-          "File renaming failed when loading tsfile. Origin: {}, Target: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_TARGET_28E43D85,
           tsFileToLoad.getAbsolutePath(),
           targetFile.getAbsolutePath(),
           e);
       throw new LoadFileException(
           String.format(
-              "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-              tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_S_TARGET_37BDA16F,
+              tsFileToLoad.getAbsolutePath(),
+              targetFile.getAbsolutePath(),
+              e.getMessage()));
     }
 
     final File resourceFileToLoad =
@@ -4407,13 +4540,15 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (final IOException e) {
       logger.warn(
-          "File renaming failed when loading .resource file. Origin: {}, Target: {}",
+          StorageEngineMessages
+              .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_TARGET_9C22DDF3,
           resourceFileToLoad.getAbsolutePath(),
           targetResourceFile.getAbsolutePath(),
           e);
       throw new LoadFileException(
           String.format(
-              "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_S_9622AA6D,
               resourceFileToLoad.getAbsolutePath(),
               targetResourceFile.getAbsolutePath(),
               e.getMessage()));
@@ -4482,14 +4617,18 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } catch (final IOException e) {
         logger.warn(
-            "File renaming failed when loading .mod file. Origin: {}, Target: {}",
+            StorageEngineMessages
+                .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_MOD_FILE_ORIGIN_TARGET_18A212F3,
             modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),
             e);
         throw new LoadFileException(
             String.format(
-                "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_MOD_FILE_ORIGIN_S_TARGET_EEB4EDE7,
+                modFileToLoad.getAbsolutePath(),
+                targetModFile.getAbsolutePath(),
+                e.getMessage()));
       }
     }
   }
@@ -4538,7 +4677,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileResourceToBeMoved.moveTo(targetDir);
       logger.info(
-          "Move tsfile {} to target dir {} successfully.",
+          StorageEngineMessages.STORAGE_LOG_MOVE_TSFILE_TO_TARGET_DIR_SUCCESSFULLY_57288783,
           tsFileResourceToBeMoved.getTsFile(),
           targetDir.getPath());
     } finally {
@@ -4557,8 +4696,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           unloadedTsFileResource = sequenceResource;
           tsFileManager.remove(unloadedTsFileResource, true);
-          FileMetrics.getInstance()
-              .deleteTsFile(true, Collections.singletonList(unloadedTsFileResource));
+          FileMetrics.getInstance().deleteTsFile(Collections.singletonList(unloadedTsFileResource));
           break;
         }
       }
@@ -4570,7 +4708,7 @@ public class DataRegion implements IDataRegionForQuery {
             unloadedTsFileResource = unsequenceResource;
             tsFileManager.remove(unloadedTsFileResource, false);
             FileMetrics.getInstance()
-                .deleteTsFile(false, Collections.singletonList(unloadedTsFileResource));
+                .deleteTsFile(Collections.singletonList(unloadedTsFileResource));
             break;
           }
         }
@@ -4726,10 +4864,11 @@ public class DataRegion implements IDataRegionForQuery {
         InsertRowsNode subInsertRowsNode = entry.getValue();
         subInsertRowsNode.setLastFragment(--remainingFragments == 0);
         try {
-          List<TsFileProcessor> insertedProcessors =
+          InsertRowsExecutionResult executionResult =
               insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
-          executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-          for (TsFileProcessor tsFileProcessor : insertedProcessors) {
+          executedInsertRowNodeList.addAll(executionResult.insertedRows);
+          insertRowsOfOneDeviceNode.getResults().putAll(executionResult.failedResults);
+          for (TsFileProcessor tsFileProcessor : executionResult.insertedProcessors) {
             // check memtable size and may asyncTryToFlush the work memtable
             if (tsFileProcessor.shouldFlush()) {
               fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
@@ -4856,7 +4995,8 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       if (deleted) {
         logger.info(
-            "Won't insert tablets {}, because region is deleted",
+            StorageEngineMessages
+                .STORAGE_LOG_WON_T_INSERT_TABLETS_BECAUSE_REGION_IS_DELETED_48E9720F,
             insertMultiTabletsNode.getSearchIndex());
         return;
       }
@@ -5117,11 +5257,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void acquireDirectBufferMemory() throws DataRegionException {
     long acquireDirectBufferMemCost = getAcquireDirectBufferMemCost();
     if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
-      throw new DataRegionException(
-          "Total allocated memory for direct buffer will be "
-              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
-              + ", which is greater than limit mem cost: "
-              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+      throw new DirectBufferMemoryAllocationException(
+          SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost,
+          SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
     }
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }

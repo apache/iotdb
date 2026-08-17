@@ -184,9 +184,16 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    offer(request, true);
+  }
+
+  public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
       request.buildSerializedRequests();
+      if (!keepRequestsForSubscription) {
+        request.clearRequests();
+      }
       synchronized (this) {
         threads.forEach(
             thread -> {
@@ -204,6 +211,10 @@ public class LogDispatcher {
               }
             });
       }
+    } else if (!keepRequestsForSubscription) {
+      // A single-replica region has no dispatcher thread, but still does not need the raw request
+      // after the state machine has applied it when subscriptions are disabled.
+      request.clearRequests();
     }
   }
 
@@ -538,7 +549,8 @@ public class LogDispatcher {
         lastIdleWriterSafeTimeBarrierSentTimeMs = now;
       } else {
         logger.debug(
-            "{}: Failed to send idle writer safe-time barrier to {}. status={}",
+            IoTConsensusMessages
+                .LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD,
             impl.getThisNode().getGroupId(),
             peer,
             status);

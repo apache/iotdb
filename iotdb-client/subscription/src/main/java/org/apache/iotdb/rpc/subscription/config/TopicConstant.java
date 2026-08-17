@@ -30,22 +30,35 @@ public class TopicConstant {
 
   public static final String DATABASE_KEY = "database";
   public static final String TABLE_KEY = "table";
-  public static final String COLUMN_KEY = "column";
+  public static final String COLUMN_FILTER_KEY = "column-filter";
   public static final String RETENTION_BYTES_KEY = "retention.bytes";
   public static final String RETENTION_MS_KEY = "retention.ms";
   public static final String DATABASE_DEFAULT_VALUE = ".*";
   public static final String TABLE_DEFAULT_VALUE = ".*";
-  public static final String COLUMN_DEFAULT_VALUE = ".*";
+  public static final String COLUMN_FILTER_DEFAULT_VALUE = "true";
 
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";
   public static final String NOW_TIME_VALUE = "now";
 
   public static final String MODE_KEY = "mode";
-  public static final String MODE_LIVE_VALUE = "live";
+  public static final String MODE_INITIAL_VALUE = "initial";
   public static final String MODE_SNAPSHOT_VALUE = "snapshot";
-  public static final String MODE_CONSENSUS_VALUE = "consensus";
-  public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
+  public static final String MODE_INCREMENTAL_VALUE = "incremental";
+  public static final String MODE_DEFAULT_VALUE = MODE_INITIAL_VALUE;
+
+  static final String LEGACY_MODE_LIVE_VALUE = "live";
+  static final String LEGACY_MODE_CONSENSUS_VALUE = "consensus";
+
+  /**
+   * @deprecated Use {@link #MODE_INITIAL_VALUE}.
+   */
+  @Deprecated public static final String MODE_LIVE_VALUE = LEGACY_MODE_LIVE_VALUE;
+
+  /**
+   * @deprecated Use {@link #MODE_INCREMENTAL_VALUE}.
+   */
+  @Deprecated public static final String MODE_CONSENSUS_VALUE = LEGACY_MODE_CONSENSUS_VALUE;
 
   public static final String ORDER_MODE_KEY = "order-mode";
   public static final String ORDER_MODE_LEADER_ONLY_VALUE = "leader-only";

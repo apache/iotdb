@@ -29,9 +29,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 public class ObjectWriter implements AutoCloseable {
 
@@ -39,7 +41,7 @@ public class ObjectWriter implements AutoCloseable {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final FileOutputStream fos;
+  private final FileChannel channel;
 
   private final File file;
 
@@ -58,27 +60,48 @@ public class ObjectWriter implements AutoCloseable {
       }
     }
     file = filePath;
-    fos = new FileOutputStream(filePath, true);
+    channel = openChannel(filePath);
   }
 
   public void write(boolean isGeneratedByConsensus, long offset, byte[] content)
       throws IOException {
     if (file.length() != offset) {
       if (isGeneratedByConsensus || offset == 0) {
-        fos.getChannel().truncate(offset);
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(file, offset);
+        channel.position(offset);
       } else {
         throw new IOException(
-            "The file length " + file.length() + " is not equal to the offset " + offset);
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_THE_FILE_LENGTH_S_IS_NOT_EQUAL_TO_THE_OFFSET_S_73905F07,
+                file.length(),
+                offset));
       }
     }
     if (file.length() + content.length > config.getMaxObjectSizeInByte()) {
       throw new IOException(DataNodeMiscMessages.FILE_LENGTH_LARGER_THAN_MAX);
     }
-    fos.write(content);
+    ByteBuffer buffer = ByteBuffer.wrap(content);
+    while (buffer.hasRemaining()) {
+      channel.write(buffer);
+    }
   }
 
   @Override
   public void close() throws Exception {
-    fos.close();
+    channel.close();
+  }
+
+  private static FileChannel openChannel(File file) throws FileNotFoundException {
+    try {
+      FileChannel channel =
+          FileChannel.open(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+      channel.position(channel.size());
+      return channel;
+    } catch (IOException e) {
+      FileNotFoundException exception = new FileNotFoundException(e.getMessage());
+      exception.initCause(e);
+      throw exception;
+    }
   }
 }

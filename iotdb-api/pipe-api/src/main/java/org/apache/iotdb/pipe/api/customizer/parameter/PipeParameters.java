@@ -430,6 +430,7 @@ public class PipeParameters {
 
     static {
       KEYS.add("ssl.trust-store-pwd");
+      KEYS.add("ssl.key-store-pwd");
       KEYS.add("scp.password");
       KEYS.add("password");
     }

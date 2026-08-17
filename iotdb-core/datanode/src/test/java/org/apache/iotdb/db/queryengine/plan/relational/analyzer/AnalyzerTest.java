@@ -47,8 +47,11 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -73,6 +76,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -81,6 +86,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
 import org.junit.BeforeClass;
@@ -127,7 +134,9 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -1101,6 +1110,114 @@ public class AnalyzerTest {
     assertEquals(
         analysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue(),
         analysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
+  }
+
+  @Test
+  public void testShowDeviceWithWhereCanBeAnalyzedAgain() {
+    assertDeviceQueryCanBeAnalyzedAgain("SHOW DEVICES FROM table1 WHERE tag1 = 'shanghai'");
+  }
+
+  @Test
+  public void testCountDeviceWithWhereCanBeAnalyzedAgain() {
+    assertDeviceQueryCanBeAnalyzedAgain("COUNT DEVICES FROM table1 WHERE tag1 = 'shanghai'");
+  }
+
+  @Test
+  public void testInternalShowDeviceKeepsPreparedTraversalState() {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      final ShowDevice statement = new ShowDevice(database, table);
+      final List<List<SchemaFilter>> tagFilters =
+          Collections.singletonList(Collections.emptyList());
+      final List<IDeviceID> partitionKeys =
+          Collections.singletonList(
+              Factory.DEFAULT_FACTORY.create(new String[] {table, "shanghai"}));
+      final List<String> attributeColumns = Collections.singletonList("attr1");
+      statement.setTagDeterminedFilterList(tagFilters);
+      statement.setPartitionKeyList(partitionKeys);
+      statement.setAttributeColumns(attributeColumns);
+
+      final SessionInfo session =
+          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
+      final MPPQueryContext queryContext =
+          new MPPQueryContext("", new QueryId("internal_show_device"), session, null, null);
+      final Analysis analysis =
+          analyzeStatement(statement, TEST_MATADATA, queryContext, new SqlParser(), session);
+
+      final ShowDevice analyzedStatement = (ShowDevice) analysis.getStatement();
+      assertSame(statement, analyzedStatement);
+      assertSame(tagFilters, analyzedStatement.getTagDeterminedFilterList());
+      assertSame(partitionKeys, analyzedStatement.getPartitionKeyList());
+      assertSame(attributeColumns, analyzedStatement.getAttributeColumns());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  private void assertDeviceQueryCanBeAnalyzedAgain(final String sql) {
+    final String database = "testdb";
+    final TsTable tsTable = new TsTable(table);
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
+    tsTable.addColumnSchema(new TagColumnSchema("tag3", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    tsTable.addColumnSchema(new AttributeColumnSchema("attr2", TSDataType.STRING));
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+
+    try {
+      final SqlParser sqlParser = new SqlParser();
+      final Statement statement =
+          sqlParser.createStatement(
+              sql, ZoneId.systemDefault(), new InternalClientSession("testClient"));
+      final SessionInfo session =
+          new SessionInfo(0, "test", ZoneId.systemDefault(), database, SqlDialect.TABLE);
+      final MPPQueryContext queryContext =
+          new MPPQueryContext(sql, new QueryId("device_query_retry"), session, null, null);
+
+      final AbstractQueryDeviceWithCache parsedStatement = (AbstractQueryDeviceWithCache) statement;
+      final Expression parsedWhere = parsedStatement.getWhere().orElseThrow(AssertionError::new);
+      final String parsedStatementText = parsedStatement.toString();
+      final long parsedStatementSize = parsedStatement.ramBytesUsed();
+
+      final Analysis firstAnalysis =
+          analyzeStatement(statement, TEST_MATADATA, queryContext, sqlParser, session);
+      assertParsedDeviceStatementUnchanged(
+          parsedStatement, parsedWhere, parsedStatementText, parsedStatementSize);
+      assertNotSame(statement, firstAnalysis.getStatement());
+
+      queryContext.prepareForRetry();
+      final Analysis retryAnalysis =
+          analyzeStatement(statement, TEST_MATADATA, queryContext, sqlParser, session);
+      assertParsedDeviceStatementUnchanged(
+          parsedStatement, parsedWhere, parsedStatementText, parsedStatementSize);
+      assertNotSame(statement, retryAnalysis.getStatement());
+      assertNotSame(firstAnalysis.getStatement(), retryAnalysis.getStatement());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
+  }
+
+  private void assertParsedDeviceStatementUnchanged(
+      final AbstractQueryDeviceWithCache parsedStatement,
+      final Expression parsedWhere,
+      final String parsedStatementText,
+      final long parsedStatementSize) {
+    assertSame(parsedWhere, parsedStatement.getWhere().orElseThrow(AssertionError::new));
+    assertEquals(parsedStatementText, parsedStatement.toString());
+    assertEquals(parsedStatementSize, parsedStatement.ramBytesUsed());
+    assertNull(parsedStatement.getDatabase());
+    assertNull(parsedStatement.getTableName());
+    assertNull(parsedStatement.getTagFuzzyPredicate());
+    assertNull(parsedStatement.getPartitionKeyList());
+    assertNull(parsedStatement.getAttributeColumns());
+    assertNull(parsedStatement.getColumnHeaderList());
   }
 
   private Metadata mockMetadataForInsertion() {

@@ -289,6 +289,7 @@ struct TDataNodeHeartbeatReq {
   // Using 8 bit to represent 8 bool
   // lowest bit: enable separation of admin powers
   16: optional byte booleanVariables1
+  17: optional i64 fenceThresholdMs
 }
 
 struct TDataNodeActivation {
@@ -316,6 +317,8 @@ struct TDataNodeHeartbeatResp {
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
+  18: optional list<i32> pipeDegradedStatusList
+  19: optional list<map<string, i64>> pipeRecentFailureList
 }
 
 struct TPipeHeartbeatReq {
@@ -545,6 +548,7 @@ struct TPushPipeMetaRespExceptionMessage {
   1: required string pipeName
   2: required string message
   3: required i64 timeStamp
+  4: optional i64 creationTime
 }
 
 struct TPushSinglePipeMetaReq {
@@ -564,6 +568,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -591,6 +596,7 @@ struct TTopicOwnerLeaseEntry {
   2: required string ownerId
   3: required i64 ownerEpoch
   4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
 }
 
 struct TPushTopicOwnerLeaseReq {
@@ -749,6 +755,14 @@ struct TGenerateDataPartitionTableHeartbeatResp {
   2: required i32 errorCode
   3: optional string message
   4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
+}
+
+struct TGetDataPartitionTableGeneratorProgressResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: required double progress
+  4: optional string message
 }
 
 /**
@@ -1404,6 +1418,11 @@ service IDataNodeRPCService {
    * Check the status of DataPartitionTable generation task
    */
   TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Get the progress of DataPartitionTable generation task without consuming the generated table.
+   */
+  TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress()
 
   /**
   * END: Data Partition Table Integrity Check

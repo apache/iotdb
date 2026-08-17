@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
@@ -46,11 +47,15 @@ public final class AggregationValuePointer implements ValuePointer {
       List<Expression> arguments,
       Optional<Symbol> classifierSymbol,
       Optional<Symbol> matchNumberSymbol) {
-    this.function = requireNonNull(function, "function is null");
-    this.setDescriptor = requireNonNull(setDescriptor, "setDescriptor is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
-    this.classifierSymbol = requireNonNull(classifierSymbol, "classifierSymbol is null");
-    this.matchNumberSymbol = requireNonNull(matchNumberSymbol, "matchNumberSymbol is null");
+    this.function = requireNonNull(function, QueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
+    this.setDescriptor =
+        requireNonNull(setDescriptor, QueryMessages.EXCEPTION_SETDESCRIPTOR_IS_NULL_4ED0D19A);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
+    this.classifierSymbol =
+        requireNonNull(classifierSymbol, QueryMessages.EXCEPTION_CLASSIFIERSYMBOL_IS_NULL_B92EE093);
+    this.matchNumberSymbol =
+        requireNonNull(
+            matchNumberSymbol, QueryMessages.EXCEPTION_MATCHNUMBERSYMBOL_IS_NULL_D88DC4EE);
   }
 
   public ResolvedFunction getFunction() {

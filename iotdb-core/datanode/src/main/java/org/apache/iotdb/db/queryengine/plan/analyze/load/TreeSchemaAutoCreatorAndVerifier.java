@@ -121,7 +121,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
       } catch (IllegalPathException e) {
         LOGGER.warn(
-            "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
             device,
             e);
       }
@@ -136,7 +137,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // IllegalPathException.
           if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
             LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
                 device,
                 timeseriesMetadata.getMeasurementId(),
                 e);
@@ -152,20 +154,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // not a timeseries, skip
         } else {
           // check WRITE_DATA permission of timeseries
-          long startTime = System.nanoTime();
-          try {
-            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
-            TSStatus status =
-                AuthorityChecker.getAccessControl()
-                    .checkFullPathWriteDataPermission(
-                        userEntity, device, timeseriesMetadata.getMeasurementId());
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new AuthException(
-                  TSStatusCode.representOf(status.getCode()), status.getMessage());
-            }
-          } finally {
-            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-          }
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           schemaCache.addTimeSeries(
@@ -186,6 +175,63 @@ public class TreeSchemaAutoCreatorAndVerifier {
           flush();
         }
       }
+    }
+  }
+
+  public void checkWritePermission(
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList) throws AuthException {
+    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+        device2TimeseriesMetadataList.entrySet()) {
+      final IDeviceID device = entry.getKey();
+
+      try {
+        if (schemaCache.isDeviceDeletedByMods(device)) {
+          continue;
+        }
+      } catch (IllegalPathException e) {
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .FAILED_TO_CHECK_IF_DEVICE_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT_DELETED,
+            device,
+            e);
+      }
+
+      for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        try {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .FAILED_TO_CHECK_IF_DEVICE_ARG_TIMESERIES_ARG_IS_DELETED_BY_MODS_WILL_SEE_IT_AS_NOT,
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
+        }
+
+        if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())) {
+          checkWritePermission(device, timeseriesMetadata.getMeasurementId());
+        }
+      }
+    }
+  }
+
+  private void checkWritePermission(final IDeviceID device, final String measurementId)
+      throws AuthException {
+    final long startTime = System.nanoTime();
+    try {
+      UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkFullPathWriteDataPermission(userEntity, device, measurementId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
   }
 
@@ -254,8 +300,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
-            "Auto create or verify schema error when executing statement %s.  Detail: %s.",
-            statementString, e.getMessage()));
+            DataNodeQueryMessages
+                .AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_S_DETAIL_S,
+            statementString,
+            e.getMessage()));
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
@@ -275,7 +323,11 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (existingSchema != null) {
           if (existingSchema.getType() != timeseriesSchema.getType()) {
             throw new LoadAnalyzeException(
-                String.format("Duplicated measurements %s in device %s.", measurement, device));
+                String.format(
+                    DataNodeQueryMessages
+                        .QUERY_EXCEPTION_DUPLICATED_MEASUREMENTS_S_IN_DEVICE_S_438713CD,
+                    measurement,
+                    device));
           }
           deviceHasDuplicates = true;
           hasDuplicates = true;
@@ -307,10 +359,19 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final PartialPath devicePath = new PartialPath(device);
 
       final String[] devicePrefixNodes = devicePath.getNodes();
+      for (final String node : devicePrefixNodes) {
+        if (node == null || node.isEmpty()) {
+          throw new LoadAnalyzeException(
+              new IllegalPathException(devicePath.getFullPath()).getMessage());
+        }
+      }
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
         throw new LoadAnalyzeException(
             String.format(
-                "Database level %d is longer than device %s.", databasePrefixNodesLength, device));
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATABASE_LEVEL_D_IS_LONGER_THAN_DEVICE_S_9B34DD2F,
+                databasePrefixNodesLength,
+                device));
       }
 
       final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
@@ -332,13 +393,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 SchemaConstant.ALL_MATCH_SCOPE.serialize());
         final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-        for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-          schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-          databasesNeededToBeSet.removeIf(
-              database ->
-                  database.startsWith(databaseName)
-                      || databaseName.startsWith(database.getFullPath()));
-        }
+        filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
       }
@@ -355,6 +410,28 @@ public class TreeSchemaAutoCreatorAndVerifier {
       executeSetDatabaseStatement(statement);
 
       schemaCache.addAlreadySetDatabase(databasePath);
+    }
+  }
+
+  void filterAlreadySetDatabases(
+      final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+    for (final String databaseName : alreadySetDatabaseNames) {
+      final PartialPath databasePath;
+      try {
+        databasePath = new PartialPath(databaseName);
+      } catch (final IllegalPathException e) {
+        // Ignore malformed databases left by older versions so they do not block valid loads.
+        continue;
+      }
+
+      // The path parser normalizes a trailing separator away, for example, "root." to "root".
+      if (!databaseName.equals(databasePath.getFullPath())) {
+        continue;
+      }
+
+      schemaCache.addAlreadySetDatabase(databasePath);
+      databasesNeededToBeSet.removeIf(
+          database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
     }
   }
 
@@ -390,11 +467,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // root.db.ss.a) conflicts with the created database. just do not throw exception here.
         && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
       LOGGER.warn(
-          "Create database error, statement: {}, result status is: {}", statement, result.status);
+          DataNodeQueryMessages.CREATE_DATABASE_ERROR_STATEMENT_ARG_RESULT_STATUS_IS_ARG,
+          statement,
+          result.status);
       throw new LoadFileException(
           String.format(
-              "Create database error, statement: %s, result status is: %s",
-              statement, result.status));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_CREATE_DATABASE_ERROR_STATEMENT_S_RESULT_STATUS_IS_S_5C4AFD58,
+              statement,
+              result.status));
     }
   }
 
@@ -438,6 +519,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
+        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
         loadTsFileAnalyzer.context);
   }
 
@@ -467,10 +549,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (isAlignedInTsFile != isAlignedInIoTDB) {
         throw new LoadAnalyzeTypeMismatchException(
             String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DEVICE_S_IN_TSFILE_IS_S_BUT_IN_IOTDB_IS_S_350D5903,
                 device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
+                isAlignedInTsFile
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED,
+                isAlignedInIoTDB
+                    ? DataNodeQueryMessages.ALIGNMENT_ALIGNED
+                    : DataNodeQueryMessages.ALIGNMENT_NOT_ALIGNED));
       }
 
       // check timeseries schema
@@ -490,7 +577,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new LoadAnalyzeTypeMismatchException(
               String.format(
-                  "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s",
+                  DataNodeQueryMessages
+                      .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
                   device,
                   TsFileConstant.PATH_SEPARATOR,
                   iotdbSchema.getMeasurementName(),
@@ -503,8 +591,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.debug(
-              "Encoding type not match, measurement: {}{}{}, "
-                  + "TsFile encoding: {}, IoTDB encoding: {}",
+              DataNodeQueryMessages.ENCODING_TYPE_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_ENCODING_ARG_IOTDB_ENCODING_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),
@@ -517,8 +605,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.debug(
-              "Compressor not match, measurement: {}{}{}, "
-                  + "TsFile compressor: {}, IoTDB compressor: {}",
+              DataNodeQueryMessages.COMPRESSOR_NOT_MATCH_MEASUREMENT_ARGARGARG
+                  + DataNodeQueryMessages.TSFILE_COMPRESSOR_ARG_IOTDB_COMPRESSOR_ARG,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),

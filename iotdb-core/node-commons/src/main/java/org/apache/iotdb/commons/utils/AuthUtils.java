@@ -177,10 +177,11 @@ public class AuthUtils {
     if (!User.isSystemReservedUsername(username)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "Internal user names (except the default superuser and separation-of-duties admins) must "
-              + "start with \""
+          UtilMessages
+                  .EXCEPTION_INTERNAL_USER_NAMES_EXCEPT_DEFAULT_SUPERUSER_SEPARATION_DUTIES_ADMINS_MUST_3F045FC1
+              + UtilMessages.EXCEPTION_START_01CCD2EF
               + User.BUILTIN_USERNAME_PREFIX
-              + "\"");
+              + AuthMessages.EXCEPTION_BACKSLASH_QUOTE_D4C5D637);
     }
   }
 
@@ -199,10 +200,10 @@ public class AuthUtils {
     if (User.isSystemReservedUsername(username)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "User names starting with \""
+          UtilMessages.EXCEPTION_USER_NAMES_STARTING_8FDC637E
               + User.BUILTIN_USERNAME_PREFIX
-              + "\" are reserved for system use and cannot be used for new users or as a rename "
-              + "target");
+              + UtilMessages.EXCEPTION_RESERVED_SYSTEM_USE_CANNOT_USED_NEW_USERS_AS_RENAME_CEB73835
+              + UtilMessages.EXCEPTION_TARGET_42AEFBAE);
     }
   }
 
@@ -221,18 +222,18 @@ public class AuthUtils {
     if (length < NAME_MIN_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name must be greater than or equal to " + NAME_MIN_LENGTH);
+          UtilMessages.EXCEPTION_LENGTH_NAME_MUST_GREATER_THAN_EQUAL_0387C3A5 + NAME_MIN_LENGTH);
     } else if (length > NAME_MAX_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of name must be less than or equal to " + NAME_MAX_LENGTH);
+          UtilMessages.EXCEPTION_LENGTH_NAME_MUST_LESS_THAN_EQUAL_B7B31C94 + NAME_MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.NAME_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The name can only contain letters, numbers or !@#$%^*()_+-=");
+          UtilMessages.EXCEPTION_NAME_CAN_ONLY_CONTAIN_LETTERS_NUMBERS_A313856E);
     }
   }
 
@@ -241,18 +242,20 @@ public class AuthUtils {
     if (length < PASSWORD_MIN_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of password must be greater than or equal to " + PASSWORD_MIN_LENGTH);
+          UtilMessages.EXCEPTION_LENGTH_PASSWORD_MUST_GREATER_THAN_EQUAL_F95F3E8F
+              + PASSWORD_MIN_LENGTH);
     } else if (length > PASSWORD_MAX_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The length of password must be less than or equal to " + PASSWORD_MAX_LENGTH);
+          UtilMessages.EXCEPTION_LENGTH_PASSWORD_MUST_LESS_THAN_EQUAL_C822ECBE
+              + PASSWORD_MAX_LENGTH);
     } else if (str.contains(" ")) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
-          "The password can only contain letters, numbers or !@#$%^*()_+-=");
+          UtilMessages.EXCEPTION_PASSWORD_CAN_ONLY_CONTAIN_LETTERS_NUMBERS_D84EE152);
     }
   }
 
@@ -267,7 +270,9 @@ public class AuthUtils {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
-              "Illegal seriesPath %s, seriesPath should start with \"%s\"", path, ROOT_PREFIX));
+              UtilMessages.EXCEPTION_ILLEGAL_SERIESPATH_ARG_SERIESPATH_SHOULD_START_ARG_FB9E3C07,
+              path,
+              ROOT_PREFIX));
     }
   }
 
@@ -280,14 +285,17 @@ public class AuthUtils {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
-              "Illegal pattern path: %s, only pattern path that end with ** are supported.", path));
+              UtilMessages
+                  .EXCEPTION_ILLEGAL_PATTERN_PATH_ARG_ONLY_PATTERN_PATH_END_SUPPORTED_16CBB77D,
+              path));
     }
     for (int i = 0; i < path.getNodeLength() - 1; i++) {
       if (PathPatternUtil.hasWildcard(path.getNodes()[i])) {
         throw new AuthException(
             TSStatusCode.ILLEGAL_PARAMETER,
             String.format(
-                "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
+                UtilMessages
+                    .EXCEPTION_ILLEGAL_PATTERN_PATH_ARG_ONLY_PATTERN_PATH_END_WILDCARDS_SUPPORTED_7183A896,
                 path));
       }
     }
@@ -513,7 +521,8 @@ public class AuthUtils {
       }
       if (!legal) {
         throw new AuthException(
-            TSStatusCode.UNKNOWN_AUTH_PRIVILEGE, "No such privilege " + authorization);
+            TSStatusCode.UNKNOWN_AUTH_PRIVILEGE,
+            UtilMessages.EXCEPTION_NO_SUCH_PRIVILEGE_62644205 + authorization);
       }
     }
     return result;

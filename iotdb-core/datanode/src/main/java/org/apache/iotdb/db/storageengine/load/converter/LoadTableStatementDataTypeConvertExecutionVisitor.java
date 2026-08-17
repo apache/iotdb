@@ -28,11 +28,11 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +86,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               null,
               null,
               null,
-              true)) {
+              true,
+              LoadTsFileParserMemoryManager.getInstance())) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
             continue;
@@ -110,7 +111,10 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+            loadTsFileStatement,
+            e);
         return Optional.of(
             LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
                 loadTsFileStatement, e));
@@ -122,16 +126,21 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           .getTsFiles()
           .forEach(
               tsfile -> {
-                FileUtils.deleteQuietly(tsfile);
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                    new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 
     LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        StorageEngineMessages
+            .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

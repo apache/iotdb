@@ -22,9 +22,12 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -152,10 +155,20 @@ class LoadTreeTsFileTabletIterator
       try {
         scanParser =
             new TsFileInsertionEventScanParser(
-                file, LOAD_TREE_PATTERN, Long.MIN_VALUE, Long.MAX_VALUE, null, null, isWithMod);
+                file,
+                LOAD_TREE_PATTERN,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                isWithMod,
+                LoadTsFileParserMemoryManager.getInstance());
         activeIterator = scanParser.toTabletWithIsAligneds().iterator();
         return;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          throw toRuntimeException(e);
+        }
         if (!switchFromScanToQuery(e)) {
           throw toRuntimeException(e);
         }
@@ -182,8 +195,8 @@ class LoadTreeTsFileTabletIterator
 
     if (Objects.nonNull(activeQueryTask)) {
       LOGGER.warn(
-          "Load: Query fallback failed for device {} measurements {} in TsFile {}. "
-              + "Split or skip this query task and continue.",
+          StorageEngineMessages
+              .MESSAGE_LOAD_QUERY_FALLBACK_FAILED_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_3A4EA407,
           activeQueryTask.device,
           activeQueryTask.measurements,
           file.getAbsolutePath(),
@@ -214,15 +227,16 @@ class LoadTreeTsFileTabletIterator
       pendingQueryTasks.addAll(buildQueryTasks(currentDevice, currentMeasurements));
     } catch (final Exception queryInitException) {
       LOGGER.warn(
-          "Load: Failed to initialize query fallback for TsFile {} after scan parser failure.",
+          StorageEngineMessages
+              .MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_TSFILE_ARG_AFTER_SCAN_PARSER_FAILURE_143B6037,
           file.getAbsolutePath(),
           queryInitException);
       return false;
     }
 
     LOGGER.warn(
-        "Load: Scan parser detected a corrupted section in TsFile {} at device {}. "
-            + "Switch to query parsing for remaining devices.",
+        StorageEngineMessages
+            .MESSAGE_LOAD_SCAN_PARSER_DETECTED_A_CORRUPTED_SECTION_IN_TSFILE_ARG_AT_DEVICE_ARG_SWITCH_TO_QUERY_PARSING_FOR_REMAINING_DEVICES_EFA07985,
         file.getAbsolutePath(),
         currentDevice,
         e);
@@ -322,7 +336,8 @@ class LoadTreeTsFileTabletIterator
                 activeQueryTask.startTime,
                 activeQueryTask.endTime,
                 activeQueryTask.toDeviceMeasurementsMap(),
-                isWithMod);
+                isWithMod,
+                LoadTsFileParserMemoryManager.getInstance());
         final Iterator<TabletInsertionEvent> tabletIterator =
             activeQueryParser.toTabletInsertionEvents().iterator();
         activeIterator =
@@ -337,7 +352,9 @@ class LoadTreeTsFileTabletIterator
                 final TabletInsertionEvent event = tabletIterator.next();
                 if (!(event instanceof PipeRawTabletInsertionEvent)) {
                   throw new IllegalStateException(
-                      "Expected PipeRawTabletInsertionEvent but got " + event.getClass().getName());
+                      StorageEngineMessages
+                              .EXCEPTION_EXPECTED_PIPERAWTABLETINSERTIONEVENT_BUT_GOT_D1D1DD05
+                          + event.getClass().getName());
                 }
 
                 final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
@@ -348,9 +365,12 @@ class LoadTreeTsFileTabletIterator
             };
         return true;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          throw toRuntimeException(e);
+        }
         LOGGER.warn(
-            "Load: Failed to initialize query fallback for device {} measurements {} in TsFile {}. "
-                + "Split or skip this query task and continue.",
+            StorageEngineMessages
+                .MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_C6F69685,
             activeQueryTask.device,
             activeQueryTask.measurements,
             file.getAbsolutePath(),
@@ -385,7 +405,8 @@ class LoadTreeTsFileTabletIterator
     Throwable current = e;
     while (Objects.nonNull(current)) {
       if (current instanceof InterruptedException
-          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException
+          || current instanceof LoadRuntimeOutOfMemoryException) {
         return true;
       }
       current = current.getCause();

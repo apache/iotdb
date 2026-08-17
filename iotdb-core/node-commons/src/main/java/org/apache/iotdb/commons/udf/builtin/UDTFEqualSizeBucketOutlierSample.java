@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -636,7 +637,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         break;
       default:
         throw new UDFParameterNotValidException(
-            "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.");
+            CommonMessages
+                .EXCEPTION_ILLEGAL_OUTLIER_METHOD_OUTLIER_TYPE_SHOULD_AVG_STENDIS_COS_PRENEXTDIS_91D1C70A);
     }
   }
 

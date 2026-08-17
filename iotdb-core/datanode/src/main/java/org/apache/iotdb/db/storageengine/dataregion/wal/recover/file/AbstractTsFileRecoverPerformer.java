@@ -98,7 +98,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       if (versionNumber != TSFileConfig.VERSION_NUMBER) {
         // cannot rewrite a file with V3 header, delete it first
         writer.close();
-        tsFile.delete();
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
         writer =
             new RestorableTsFileIOWriter(
                 tsFile,
@@ -114,7 +114,8 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       tsFileResource.deserialize();
     } catch (Throwable e) {
       logger.warn(
-          "Cannot deserialize .resource file of {}, try to reconstruct it.",
+          StorageEngineMessages
+              .STORAGE_LOG_CANNOT_DESERIALIZE_RESOURCE_FILE_OF_TRY_TO_RECONSTRUCT_IT_F82299C6,
           tsFileResource.getTsFile(),
           e);
       reconstructResourceFile();
