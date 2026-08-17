@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -70,7 +71,22 @@ public class DataRegionListeningFilter {
         parameters,
         isTableModel,
         databaseRawName,
-        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters));
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters),
+        PipeType.USER);
+  }
+
+  public static boolean shouldDatabaseBeListened(
+      final PipeParameters parameters,
+      final boolean isTableModel,
+      final String databaseRawName,
+      final PipeType pipeType)
+      throws IllegalPathException {
+    return shouldDatabaseBeListened(
+        parameters,
+        isTableModel,
+        databaseRawName,
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters),
+        pipeType);
   }
 
   public static boolean shouldDatabaseBeListened(
@@ -79,7 +95,18 @@ public class DataRegionListeningFilter {
       final String databaseRawName,
       final PathPatternTree internalInclusionPathPatternTree)
       throws IllegalPathException {
-    if (isAuditDatabase(databaseRawName)) {
+    return shouldDatabaseBeListened(
+        parameters, isTableModel, databaseRawName, internalInclusionPathPatternTree, PipeType.USER);
+  }
+
+  public static boolean shouldDatabaseBeListened(
+      final PipeParameters parameters,
+      final boolean isTableModel,
+      final String databaseRawName,
+      final PathPatternTree internalInclusionPathPatternTree,
+      final PipeType pipeType)
+      throws IllegalPathException {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 
@@ -113,17 +140,39 @@ public class DataRegionListeningFilter {
   }
 
   public static boolean shouldDataRegionBeListened(
-      PipeParameters parameters, DataRegionId dataRegionId) throws IllegalPathException {
+      final PipeParameters parameters, final DataRegionId dataRegionId)
+      throws IllegalPathException {
     return shouldDataRegionBeListened(
         parameters,
         dataRegionId,
-        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters));
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters),
+        PipeType.USER);
   }
 
   public static boolean shouldDataRegionBeListened(
-      PipeParameters parameters,
-      DataRegionId dataRegionId,
-      PathPatternTree internalInclusionPathPatternTree)
+      final PipeParameters parameters, final DataRegionId dataRegionId, final PipeType pipeType)
+      throws IllegalPathException {
+    return shouldDataRegionBeListened(
+        parameters,
+        dataRegionId,
+        PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(parameters),
+        pipeType);
+  }
+
+  public static boolean shouldDataRegionBeListened(
+      final PipeParameters parameters,
+      final DataRegionId dataRegionId,
+      final PathPatternTree internalInclusionPathPatternTree)
+      throws IllegalPathException {
+    return shouldDataRegionBeListened(
+        parameters, dataRegionId, internalInclusionPathPatternTree, PipeType.USER);
+  }
+
+  public static boolean shouldDataRegionBeListened(
+      final PipeParameters parameters,
+      final DataRegionId dataRegionId,
+      final PathPatternTree internalInclusionPathPatternTree,
+      final PipeType pipeType)
       throws IllegalPathException {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
@@ -140,7 +189,7 @@ public class DataRegionListeningFilter {
     }
 
     final String databaseRawName = dataRegion.getDatabaseName();
-    if (isAuditDatabase(databaseRawName)) {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 

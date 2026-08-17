@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -34,6 +36,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +46,26 @@ public class PipeDataNodeTaskAgentTest {
 
   private static final int LOCAL_NODE_ID = 1;
   private static final int REGION_ID = 7;
+
+  @Test
+  public void testGetPipeTaskProgressIndexReportsMissingTaskMeta() throws Exception {
+    final PipeDataNodeTaskAgent taskAgent = new PipeDataNodeTaskAgent();
+    final Field pipeMetaKeeperField = PipeTaskAgent.class.getDeclaredField("pipeMetaKeeper");
+    pipeMetaKeeperField.setAccessible(true);
+    final PipeMetaKeeper pipeMetaKeeper = (PipeMetaKeeper) pipeMetaKeeperField.get(taskAgent);
+
+    final String pipeName = PipeStaticMeta.CONSENSUS_PIPE_PREFIX + "DataRegion[7]_1_2";
+    pipeMetaKeeper.addPipeMeta(
+        new PipeMeta(
+            new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta()));
+
+    final PipeException exception =
+        Assert.assertThrows(
+            PipeException.class, () -> taskAgent.getPipeTaskProgressIndex(pipeName, REGION_ID));
+    Assert.assertTrue(exception.getMessage().contains(pipeName));
+    Assert.assertTrue(exception.getMessage().contains(String.valueOf(REGION_ID)));
+  }
 
   @Test
   public void testCreateMemoryCheckStillRunsWhenNoPipeTasksNeedToBeCreated() throws Exception {

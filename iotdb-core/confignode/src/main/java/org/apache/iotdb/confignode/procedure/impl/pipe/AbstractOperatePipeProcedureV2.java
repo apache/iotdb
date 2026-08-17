@@ -919,11 +919,12 @@ public abstract class AbstractOperatePipeProcedureV2
               }
 
               try {
-                return !shouldCollectDataRegionForPipe(
+                return !DataRegionListeningFilter.shouldDatabaseBeListened(
                     copiedPipeMeta.getStaticMeta().getSourceParameters(),
-                    database,
                     isTableModel,
-                    internalInclusionPathPatternTree);
+                    database,
+                    internalInclusionPathPatternTree,
+                    copiedPipeMeta.getStaticMeta().getPipeType());
               } catch (final Exception e) {
                 return false;
               }

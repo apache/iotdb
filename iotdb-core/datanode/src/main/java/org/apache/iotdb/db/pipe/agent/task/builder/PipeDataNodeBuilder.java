@@ -73,7 +73,10 @@ public class PipeDataNodeBuilder {
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
-                    sourceParameters, dataRegionId, internalInclusionPathPatternTree);
+                    sourceParameters,
+                    dataRegionId,
+                    internalInclusionPathPatternTree,
+                    pipeStaticMeta.getPipeType());
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
