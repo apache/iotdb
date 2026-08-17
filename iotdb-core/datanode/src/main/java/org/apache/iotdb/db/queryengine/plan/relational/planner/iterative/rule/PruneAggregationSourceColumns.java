@@ -25,15 +25,14 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-
-import com.google.common.collect.Streams;
+import org.apache.iotdb.google.common.collect.Streams;
 
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class PruneAggregationSourceColumns implements Rule<AggregationNode> {
   private static final Pattern<AggregationNode> PATTERN = aggregation();

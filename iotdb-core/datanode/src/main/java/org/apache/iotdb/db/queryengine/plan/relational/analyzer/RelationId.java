@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.lang.String.format;
 import static java.lang.System.identityHashCode;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class RelationId {
   /**

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.calc.execution.operator;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
+
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Accountable;
 
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public interface Operator extends AutoCloseable, Accountable {
 

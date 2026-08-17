@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.it.audit;
 
-import com.google.common.collect.HashMultiset;
+import org.apache.iotdb.google.common.collect.HashMultiset;
+
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

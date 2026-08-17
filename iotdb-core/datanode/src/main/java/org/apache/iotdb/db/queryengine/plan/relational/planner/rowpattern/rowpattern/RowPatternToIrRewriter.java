@@ -51,12 +51,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import java.util.List;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrQuantifier.oneOrMore;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrQuantifier.range;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrQuantifier.zeroOrMore;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrQuantifier.zeroOrOne;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
   private final Analysis analysis;

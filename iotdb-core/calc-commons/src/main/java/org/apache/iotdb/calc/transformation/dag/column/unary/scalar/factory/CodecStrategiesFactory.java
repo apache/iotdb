@@ -24,9 +24,9 @@ import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.inteface.Cod
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util.HexUtils;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util.SpookyHashV2Utils;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.google.common.hash.Hashing;
+import org.apache.iotdb.google.common.io.BaseEncoding;
 
-import com.google.common.hash.Hashing;
-import com.google.common.io.BaseEncoding;
 import net.jpountz.xxhash.XXHashFactory;
 import org.apache.tsfile.common.conf.TSFileConfig;
 

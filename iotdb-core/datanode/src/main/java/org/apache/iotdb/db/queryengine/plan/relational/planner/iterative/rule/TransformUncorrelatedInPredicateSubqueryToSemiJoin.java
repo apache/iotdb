@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.empty;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.Apply.correlation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.applyNode;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 /**
  * This optimizers looks for InPredicate expressions in ApplyNodes and replaces the nodes with

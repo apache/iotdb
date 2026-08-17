@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.Maps;
 
 import java.util.Map;
 import java.util.Optional;

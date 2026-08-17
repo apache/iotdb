@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import java.util.Optional;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public class ReplaceWindowWithRowNumber implements Rule<WindowNode> {
   private final Pattern<WindowNode> pattern;

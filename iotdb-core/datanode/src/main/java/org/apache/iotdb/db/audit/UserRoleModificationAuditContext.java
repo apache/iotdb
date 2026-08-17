@@ -29,13 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.google.common.util.concurrent.FutureCallback;
+import org.apache.iotdb.google.common.util.concurrent.Futures;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.MoreExecutors;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import jakarta.validation.constraints.NotNull;
 

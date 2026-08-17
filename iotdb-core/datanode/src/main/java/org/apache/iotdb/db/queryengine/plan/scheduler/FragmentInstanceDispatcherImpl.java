@@ -79,9 +79,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DISPATCH_READ;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onThriftFrameOversizeException;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.immediateFuture;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 

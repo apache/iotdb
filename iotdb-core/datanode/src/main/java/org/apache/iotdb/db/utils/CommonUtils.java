@@ -33,6 +33,7 @@ import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
+import org.apache.iotdb.google.common.base.Throwables;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -40,7 +41,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
-import com.google.common.base.Throwables;
 import io.airlift.airline.Cli;
 import io.airlift.airline.Help;
 import io.airlift.airline.ParseArgumentsMissingException;

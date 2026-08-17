@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowExternalServiceStatement extends ShowStatement implements IConfigStatement {
 

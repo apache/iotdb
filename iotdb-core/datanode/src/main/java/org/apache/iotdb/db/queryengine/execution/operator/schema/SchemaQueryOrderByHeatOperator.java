@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -43,8 +43,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.successfulAsList;
 
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 

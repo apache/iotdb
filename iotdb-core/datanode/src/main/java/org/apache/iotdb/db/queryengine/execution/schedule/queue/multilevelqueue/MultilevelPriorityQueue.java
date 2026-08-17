@@ -27,10 +27,10 @@ import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /**
  * This class is inspired by Trino. <a

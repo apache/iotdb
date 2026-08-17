@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class OffsetMatcher implements Matcher {
   private final long rowCount;

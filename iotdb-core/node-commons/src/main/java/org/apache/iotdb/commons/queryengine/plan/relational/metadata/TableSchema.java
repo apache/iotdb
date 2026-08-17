@@ -38,7 +38,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class TableSchema {
 

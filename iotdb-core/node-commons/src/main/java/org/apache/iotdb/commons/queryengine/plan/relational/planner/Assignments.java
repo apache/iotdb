@@ -22,9 +22,8 @@ package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Maps;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.Maps;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -37,9 +36,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class Assignments {
 

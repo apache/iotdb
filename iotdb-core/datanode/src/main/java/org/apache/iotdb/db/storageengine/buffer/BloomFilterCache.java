@@ -28,10 +28,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Cache;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Weigher;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.RamUsageEstimator;

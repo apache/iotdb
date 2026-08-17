@@ -29,8 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class PlanFragmentId {
 

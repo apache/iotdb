@@ -31,7 +31,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCacheOperator {
   // Now not only a view path will be set here, but also the measurement path with alias will be set

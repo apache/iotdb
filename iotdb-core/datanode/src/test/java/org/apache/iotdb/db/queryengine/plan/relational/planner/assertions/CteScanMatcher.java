@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class CteScanMatcher implements Matcher {
   protected final String expectedCteName;

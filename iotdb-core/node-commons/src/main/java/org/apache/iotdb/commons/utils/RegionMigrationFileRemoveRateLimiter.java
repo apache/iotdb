@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.iotdb.google.common.util.concurrent.RateLimiter;
 
 public class RegionMigrationFileRemoveRateLimiter {
 

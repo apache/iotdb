@@ -21,8 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 

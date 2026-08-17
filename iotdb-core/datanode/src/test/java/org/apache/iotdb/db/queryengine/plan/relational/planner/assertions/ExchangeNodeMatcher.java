@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class ExchangeNodeMatcher implements Matcher {
 

@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class GroupsFrame implements Frame {
   private final Partition partition;

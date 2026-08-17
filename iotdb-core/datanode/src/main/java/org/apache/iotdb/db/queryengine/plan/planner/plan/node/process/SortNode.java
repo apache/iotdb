@@ -26,8 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
-
-import com.google.common.base.Objects;
+import org.apache.iotdb.google.common.base.Objects;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

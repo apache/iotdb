@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class PlanOptimizersStatsCollector {
   private final Map<Class<?>, QueryPlanOptimizerStats> stats = new ConcurrentHashMap<>();

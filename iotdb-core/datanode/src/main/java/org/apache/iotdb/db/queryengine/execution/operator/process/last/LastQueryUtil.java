@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumu
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;

@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.google.common.base.Joiner;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;

@@ -22,8 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
 public class AlterDBTask extends AbstractDatabaseTask {
   public AlterDBTask(final TDatabaseSchema schema, final boolean exists) {

@@ -23,8 +23,8 @@ import io.airlift.units.Duration;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * this class is copied from

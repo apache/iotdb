@@ -26,14 +26,14 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+import static org.apache.iotdb.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class LocalSinkChannelTest {
   @Test

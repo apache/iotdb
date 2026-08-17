@@ -20,8 +20,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschem
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.util.Locale;

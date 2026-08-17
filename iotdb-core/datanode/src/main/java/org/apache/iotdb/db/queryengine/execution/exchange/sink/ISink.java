@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.db.queryengine.execution.driver.Driver;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Accountable;
 

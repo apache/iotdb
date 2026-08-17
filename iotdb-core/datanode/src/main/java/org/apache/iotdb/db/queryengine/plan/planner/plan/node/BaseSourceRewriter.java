@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class BaseSourceRewriter<C> implements PlanVisitor<List<PlanNode>, C> {
   @Override

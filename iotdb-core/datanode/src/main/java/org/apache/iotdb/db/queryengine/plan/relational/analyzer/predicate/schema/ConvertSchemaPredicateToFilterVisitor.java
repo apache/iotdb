@@ -63,9 +63,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /**
  * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link

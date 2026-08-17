@@ -21,8 +21,8 @@ package org.apache.iotdb.consensus.pipe;
 
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

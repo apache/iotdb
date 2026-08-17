@@ -29,16 +29,15 @@ import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-import static com.google.common.base.Predicates.alwaysTrue;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Predicates.alwaysTrue;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.Streams.stream;
 
 public final class ExpressionTreeUtils {
   private ExpressionTreeUtils() {}

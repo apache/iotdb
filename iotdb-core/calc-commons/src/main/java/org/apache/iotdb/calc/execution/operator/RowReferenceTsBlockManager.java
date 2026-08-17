@@ -29,9 +29,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Verify.verify;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 
 public class RowReferenceTsBlockManager {
   private static final long INSTANCE_SIZE =

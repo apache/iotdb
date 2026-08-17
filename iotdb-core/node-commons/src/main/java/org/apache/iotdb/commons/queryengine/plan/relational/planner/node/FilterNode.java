@@ -27,9 +27,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
-
-import com.google.common.base.Objects;
-import com.google.common.collect.Iterables;
+import org.apache.iotdb.google.common.base.Objects;
+import org.apache.iotdb.google.common.collect.Iterables;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

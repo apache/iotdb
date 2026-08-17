@@ -55,22 +55,22 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.google.common.base.Joiner;
+import org.apache.iotdb.google.common.base.Strings;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.Iterator;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ExpressionFormatter.formatOrderBy;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.util.RowPatternFormatter.formatPattern;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Integer> {
 
@@ -448,7 +448,9 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
       }
     } else {
       builder.append(' ');
-      process(com.google.common.collect.Iterables.getOnlyElement(node.getSelectItems()), indent);
+      process(
+          org.apache.iotdb.google.common.collect.Iterables.getOnlyElement(node.getSelectItems()),
+          indent);
     }
 
     builder.append('\n');
@@ -629,7 +631,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                       formatExpression(measure.getExpression())
                           + " AS "
                           + formatExpression(measure.getName()))
-              .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+              .collect(org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList()),
           indent + 2);
     }
     if (node.getRowsPerMatch().isPresent()) {
@@ -700,7 +702,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                                           .ExpressionFormatter
                                       ::formatExpression)
                               .collect(joining(", ", "(", ")")))
-              .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+              .collect(org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList()),
           indent + 2);
     }
     append(indent + 1, "DEFINE");
@@ -711,7 +713,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                     formatExpression(variable.getName())
                         + " AS "
                         + formatExpression(variable.getExpression()))
-            .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+            .collect(org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList()),
         indent + 2);
 
     builder.append(")");

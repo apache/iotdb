@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 

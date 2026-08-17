@@ -35,7 +35,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /**
  * This operator is used to horizontally concatenate TsBlocks with the same timestamp column.

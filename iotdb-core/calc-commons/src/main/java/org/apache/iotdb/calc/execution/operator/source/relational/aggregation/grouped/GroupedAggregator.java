@@ -23,8 +23,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.google.common.primitives.Ints;
 
-import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -34,8 +34,8 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.List;
 import java.util.OptionalInt;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class GroupedAggregator {
   private final GroupedAccumulator accumulator;

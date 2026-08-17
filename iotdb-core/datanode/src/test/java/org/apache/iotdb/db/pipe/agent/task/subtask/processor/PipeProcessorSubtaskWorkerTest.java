@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.iotdb.google.common.util.concurrent.ListeningScheduledExecutorService;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InOrder;

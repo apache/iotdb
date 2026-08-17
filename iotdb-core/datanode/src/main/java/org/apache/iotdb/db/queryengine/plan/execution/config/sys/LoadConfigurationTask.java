@@ -22,8 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
 public class LoadConfigurationTask implements IConfigTask {
   private final LoadConfigurationStatement loadConfigurationStatement;

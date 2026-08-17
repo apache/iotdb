@@ -19,8 +19,8 @@
 package org.apache.iotdb.commons.concurrent.threadpool;
 
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.google.common.base.Throwables;
 
-import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

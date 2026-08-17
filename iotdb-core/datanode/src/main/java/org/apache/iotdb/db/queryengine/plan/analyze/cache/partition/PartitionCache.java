@@ -64,10 +64,10 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Cache;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;

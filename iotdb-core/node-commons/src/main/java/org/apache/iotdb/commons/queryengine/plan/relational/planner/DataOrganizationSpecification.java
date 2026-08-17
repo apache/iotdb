@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

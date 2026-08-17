@@ -26,13 +26,12 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.SubExpressionExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.DisjointSet;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSetMultimap;
-import com.google.common.collect.Multimap;
+import org.apache.iotdb.google.common.annotations.VisibleForTesting;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.ImmutableSetMultimap;
+import org.apache.iotdb.google.common.collect.Multimap;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,11 +48,11 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionNodeInliner.replaceExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * Makes equality based inferences to rewrite Expressions and generate equality sets in terms of

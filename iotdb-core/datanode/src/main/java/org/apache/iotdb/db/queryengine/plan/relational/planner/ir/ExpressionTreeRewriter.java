@@ -62,9 +62,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParamete
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.Iterables;
 
 import java.util.Iterator;
 import java.util.List;

@@ -36,9 +36,9 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Collections;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.calcTypeSize;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeValue;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
 public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {

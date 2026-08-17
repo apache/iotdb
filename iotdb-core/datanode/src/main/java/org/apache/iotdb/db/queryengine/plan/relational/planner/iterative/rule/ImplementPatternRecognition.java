@@ -34,8 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.patternRecognition;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public class ImplementPatternRecognition implements Rule<PatternRecognitionNode> {
   private static final Pattern<PatternRecognitionNode> PATTERN = patternRecognition();

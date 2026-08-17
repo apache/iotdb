@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Singl
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.google.common.base.Objects;
+import org.apache.iotdb.google.common.collect.Iterables;
 
-import com.google.common.base.Objects;
-import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

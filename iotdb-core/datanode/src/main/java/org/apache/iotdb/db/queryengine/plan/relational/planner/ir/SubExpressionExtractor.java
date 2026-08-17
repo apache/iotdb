@@ -21,14 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-
-import com.google.common.graph.SuccessorsFunction;
-import com.google.common.graph.Traverser;
+import org.apache.iotdb.google.common.graph.SuccessorsFunction;
+import org.apache.iotdb.google.common.graph.Traverser;
 
 import java.util.stream.Stream;
 
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.collect.Streams.stream;
 
 /**
  * Extracts and returns the stream of all expression subtrees within an Expression, including

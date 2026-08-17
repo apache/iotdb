@@ -22,8 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
-
-import com.google.common.collect.Maps;
+import org.apache.iotdb.google.common.collect.Maps;
 
 import java.util.Map;
 import java.util.Optional;

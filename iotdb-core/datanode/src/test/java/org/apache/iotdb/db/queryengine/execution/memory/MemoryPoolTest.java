@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.memory;
 
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

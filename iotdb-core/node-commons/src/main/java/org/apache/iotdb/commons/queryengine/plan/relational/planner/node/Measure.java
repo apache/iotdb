@@ -30,8 +30,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class Measure {
   private final ExpressionAndValuePointers expressionAndValuePointers;

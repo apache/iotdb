@@ -23,8 +23,8 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class HeapTraversal {
   public enum Child {

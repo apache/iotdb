@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 

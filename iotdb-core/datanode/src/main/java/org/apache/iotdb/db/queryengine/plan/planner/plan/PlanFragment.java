@@ -47,7 +47,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {

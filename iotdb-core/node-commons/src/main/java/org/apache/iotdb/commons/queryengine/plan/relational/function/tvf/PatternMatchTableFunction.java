@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.m
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.Point;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.RegexMatchState;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.Section;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -42,7 +43,6 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;

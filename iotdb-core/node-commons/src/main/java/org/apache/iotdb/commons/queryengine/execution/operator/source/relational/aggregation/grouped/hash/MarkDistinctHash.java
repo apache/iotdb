@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.queryengine.execution.operator.source.relationa
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.google.common.annotations.VisibleForTesting;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -31,10 +31,10 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.createGroupByHash;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class MarkDistinctHash {
   private final GroupByHash groupByHash;

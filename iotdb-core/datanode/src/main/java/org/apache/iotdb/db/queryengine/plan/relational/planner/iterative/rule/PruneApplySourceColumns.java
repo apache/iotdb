@@ -25,15 +25,14 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.applyNode;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 /**
  * This rule restricts outputs of ApplyNode's subquery to include only the symbols needed for

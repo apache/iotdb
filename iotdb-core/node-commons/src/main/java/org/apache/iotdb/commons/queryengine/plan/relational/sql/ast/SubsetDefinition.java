@@ -26,9 +26,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class SubsetDefinition extends Node {
   private static final long INSTANCE_SIZE =

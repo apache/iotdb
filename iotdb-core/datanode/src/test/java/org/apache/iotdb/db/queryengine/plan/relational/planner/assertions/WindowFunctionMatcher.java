@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class WindowFunctionMatcher implements Matcher {
   private final PlanMatchPattern.Specification specification;

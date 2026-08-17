@@ -37,9 +37,9 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -57,13 +57,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.DATE_BIN_PREFIX;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class AggregationTableScanNode extends DeviceTableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input

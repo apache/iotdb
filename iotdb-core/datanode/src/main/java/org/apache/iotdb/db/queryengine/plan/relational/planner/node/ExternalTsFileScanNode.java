@@ -31,8 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-
-import com.google.common.collect.Lists;
+import org.apache.iotdb.google.common.collect.Lists;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
