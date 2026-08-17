@@ -170,14 +170,15 @@ public class DeviceEntryMaterializerTest {
   @Test
   public void testSortedMaterializerMergesRunsInOrder() throws Exception {
     List<DeviceEntry> input = createEntries(40);
-    input.sort(Comparator.comparing(entry -> entry.getDeviceID().toString()).reversed());
+    input.sort(
+        Comparator.comparing((DeviceEntry entry) -> entry.getDeviceID().toString()).reversed());
     List<DeviceEntry> actual = new ArrayList<>();
     try (DeviceEntrySortedMaterializer materializer =
         new DeviceEntrySortedMaterializer(
             "q-sorted",
             new PlanNodeId("scan-0"),
             128,
-            Comparator.comparing(entry -> entry.getDeviceID().toString()))) {
+            Comparator.comparing((DeviceEntry entry) -> entry.getDeviceID().toString()))) {
       DeviceEntryMaterializationMemoryController controller =
           new DeviceEntryMaterializationMemoryController(128);
       for (DeviceEntry entry : input) {

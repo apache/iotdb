@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read;
 
 public enum QueryDataSourceType {
   SERIES_SCAN,
+  BATCH_SERIES_SCAN,
   DEVICE_REGION_SCAN,
   TIME_SERIES_REGION_SCAN,
   EXTERNAL_TSFILE_SCAN

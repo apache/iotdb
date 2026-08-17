@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
@@ -36,6 +40,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,20 +66,22 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
     super(parameter);
     this.extractor = extractor;
     this.childOperatorGenerator = childOperatorGenerator;
-    constructCurrentDeviceOperatorTree();
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
     // Don't call isBlocked of child if the device has been consumed up, because the child operator
     // may have been closed
-    return currentDeviceIndex >= deviceCount ? NOT_BLOCKED : child.isBlocked();
+    return child == null || currentDeviceIndex >= deviceCount ? NOT_BLOCKED : child.isBlocked();
   }
 
   @Override
   public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
+    }
+    if (!prepareNextDeviceBatch()) {
+      return null;
     }
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
@@ -108,9 +115,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
 
   @Override
   public void close() throws Exception {
-    if (child != null) {
-      child.close();
-    }
+    super.close();
   }
 
   @Override
@@ -141,9 +146,15 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
       nextDevice();
 
       if (currentDeviceIndex >= deviceCount) {
-        // All devices consumed
-        timeIterator.setFinished();
-        return Optional.of(true);
+        releaseCurrentBatch();
+        if (prepareNextDeviceBatch()) {
+          return Optional.of(false);
+        }
+        if (deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch()) {
+          timeIterator.setFinished();
+          return Optional.of(true);
+        }
+        return Optional.of(false);
       } else {
         // More devices to process, child should provide next device's data
         return Optional.of(false);
@@ -181,6 +192,56 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
         CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
+  @Override
+  protected boolean prepareNextDeviceBatch() throws Exception {
+    if (currentBatchInitialized) {
+      return currentDeviceIndex < deviceCount;
+    }
+    while (deviceEntries.isEmpty()) {
+      if (!deviceEntrySource.hasNextBatch()) {
+        return false;
+      }
+      deviceEntries = deviceEntrySource.nextBatch();
+    }
+    deviceCount = deviceEntries.size();
+    currentDeviceIndex = 0;
+    List<IFullPath> paths = new ArrayList<>();
+    for (DeviceEntry deviceEntry : deviceEntries) {
+      if (deviceEntry instanceof NonAlignedDeviceEntry) {
+        for (org.apache.tsfile.write.schema.IMeasurementSchema measurementSchema :
+            measurementSchemas) {
+          paths.add(new NonAlignedFullPath(deviceEntry.getDeviceID(), measurementSchema));
+        }
+      } else {
+        paths.add(
+            new AlignedFullPath(
+                deviceEntry.getDeviceID(), measurementColumnNames, measurementSchemas, allSensors));
+      }
+    }
+    currentLease =
+        ((org.apache.iotdb.db.queryengine.execution.operator.OperatorContext) operatorContext)
+            .getInstanceContext()
+            .initBatchQueryDataSource(paths);
+    if (currentLease == null) {
+      return false;
+    }
+    queryDataSource = currentLease.getDataSource();
+    constructCurrentDeviceOperatorTree();
+    initQueryDataSource(queryDataSource);
+    currentBatchInitialized = true;
+    return true;
+  }
+
+  @Override
+  protected void releaseCurrentBatch() throws Exception {
+    if (child != null) {
+      childOperatorGenerator.getCurrentDeviceStartCloseOperator().close();
+    }
+    child = null;
+    dataSourceOperators = null;
+    super.releaseCurrentBatch();
+  }
+
   private void constructCurrentDeviceOperatorTree() {
     if (this.deviceEntries.isEmpty()) {
       return;
@@ -201,9 +262,9 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   /** same with {@link DeviceIteratorScanOperator#initQueryDataSource(IQueryDataSource)} */
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
+    this.queryDataSource = (QueryDataSource) dataSource;
     if (resultTsBlockBuilder == null) {
       // only need to do this when init firstly
-      this.queryDataSource = (QueryDataSource) dataSource;
       this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     }
 
@@ -225,8 +286,12 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
       inputTsBlock = null;
 
       if (currentDeviceIndex >= deviceCount) {
-        // all devices have been consumed
-        timeIterator.setFinished();
+        releaseCurrentBatch();
+        if (!prepareNextDeviceBatch()
+            && deviceEntries.isEmpty()
+            && !deviceEntrySource.hasNextBatch()) {
+          timeIterator.setFinished();
+        }
       }
 
       allAggregatorsHasFinalResult = false;
@@ -235,17 +300,17 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return childOperatorGenerator.calculateMaxPeekMemory();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize();
+    return childOperatorGenerator.calculateMaxReturnSize();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
+    return childOperatorGenerator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
