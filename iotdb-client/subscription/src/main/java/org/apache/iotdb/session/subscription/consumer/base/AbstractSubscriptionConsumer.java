@@ -947,8 +947,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   void sleepAfterEmptyPollRound() throws InterruptedException {
-    // TODO: associated with timeoutMs instead of hardcoding
-    // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
+    // Randomize the pause between fully empty provider rounds to avoid synchronized polling.
     Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
   }
 
