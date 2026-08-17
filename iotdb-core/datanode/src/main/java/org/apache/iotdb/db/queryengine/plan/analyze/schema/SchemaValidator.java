@@ -27,11 +27,13 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -39,7 +41,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 
@@ -76,6 +80,34 @@ public class SchemaValidator {
           new QualifiedObjectName(
               unQualifyDatabaseName(insertStatement.getDatabase()), insertStatement.getTableName()),
           context);
+      insertStatement.validateTableSchema(metadata, context);
+      insertStatement.updateAfterSchemaValidation(context);
+      insertStatement.validateDeviceSchema(metadata, context);
+      insertStatement.removeAttributeColumns();
+    } catch (final QueryProcessException e) {
+      throw new SemanticException(e.getMessage());
+    }
+  }
+
+  public static void validate(
+      final Metadata metadata,
+      final InsertTablets insertStatement,
+      final MPPQueryContext context,
+      final AccessControl accessControl) {
+    try {
+      final String database = unQualifyDatabaseName(insertStatement.getDatabase());
+      final Set<String> checkedTables = new HashSet<>();
+      for (InsertTabletStatement tabletStatement :
+          insertStatement.getInnerTreeStatement().getInsertTabletStatementList()) {
+        final String tableName = tabletStatement.getDevicePath().getFullPath();
+        if (!checkedTables.add(tableName)) {
+          continue;
+        }
+        accessControl.checkCanInsertIntoTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, tableName),
+            context);
+      }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);

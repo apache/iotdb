@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -92,5 +95,58 @@ public class InsertMultiTabletsNodeSerdeTest {
     Assert.assertEquals(PlanNodeType.INSERT_MULTI_TABLET.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertMultiTabletsNode, InsertMultiTabletsNode.deserialize(byteBuffer));
+  }
+
+  @Test
+  public void testRelationalInsertMultiTabletPlan() {
+    long[] times = new long[] {110L, 111L, 112L, 113L};
+    TSDataType[] dataTypes =
+        new TSDataType[] {TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE};
+    TsTableColumnCategory[] columnCategories =
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
+        };
+
+    Object[] columns = new Object[3];
+    columns[0] = new Binary[4];
+    columns[1] = new Binary[4];
+    columns[2] = new double[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((Binary[]) columns[0])[r] = new Binary("tag" + r, TSFileConfig.STRING_CHARSET);
+      ((Binary[]) columns[1])[r] = new Binary("attr" + r, TSFileConfig.STRING_CHARSET);
+      ((double[]) columns[2])[r] = r;
+    }
+
+    PlanNodeId planNodeId = new PlanNodeId("plan node 2");
+
+    RelationalInsertMultiTabletsNode insertMultiTabletsNode =
+        new RelationalInsertMultiTabletsNode(planNodeId);
+
+    for (int i = 0; i < 10; i++) {
+      insertMultiTabletsNode.addInsertTabletNode(
+          new RelationalInsertTabletNode(
+              planNodeId,
+              new PartialPath("table" + i, false),
+              false,
+              new String[] {"tag1", "attr1", "s1"},
+              dataTypes,
+              times,
+              null,
+              columns,
+              times.length,
+              columnCategories),
+          i);
+    }
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    insertMultiTabletsNode.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(
+        PlanNodeType.RELATIONAL_INSERT_MULTI_TABLETS.getNodeType(), byteBuffer.getShort());
+
+    Assert.assertEquals(
+        insertMultiTabletsNode, RelationalInsertMultiTabletsNode.deserialize(byteBuffer));
   }
 }
