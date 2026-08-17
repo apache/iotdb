@@ -88,6 +88,36 @@ public class IoTDBDataRegionSourceTest {
   }
 
   @Test
+  public void testTsFileParserParameter() throws Exception {
+    for (final String parser : new String[] {"query", "scan"}) {
+      try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+        extractor.validate(
+            new PipeParameterValidator(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY, parser);
+                      }
+                    })));
+      }
+    }
+
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      Assert.assertThrows(
+          PipeParameterNotValidException.class,
+          () ->
+              extractor.validate(
+                  new PipeParameterValidator(
+                      new PipeParameters(
+                          new HashMap<String, String>() {
+                            {
+                              put(PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY, "invalid");
+                            }
+                          }))));
+    }
+  }
+
+  @Test
   public void testIoTDBDataRegionExtractorWithPattern() {
     Assert.assertEquals(
         IllegalArgumentException.class,

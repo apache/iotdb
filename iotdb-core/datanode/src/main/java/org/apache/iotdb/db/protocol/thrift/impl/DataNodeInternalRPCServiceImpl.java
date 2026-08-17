@@ -1404,6 +1404,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
 
           @Override
+          public boolean handlePipeMetaChanges(
+              final List<ByteBuffer> pipeMetas,
+              final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+            final List<TPushPipeMetaRespExceptionMessage> exceptionMessagesFromAgent =
+                PipeDataNodeAgent.task()
+                    .handlePipeMetaChanges(
+                        pipeMetas.stream()
+                            .map(PipeMeta::deserialize4TaskAgent)
+                            .collect(Collectors.toList()));
+            // PipeTaskAgent returns null only when its timed write-lock acquisition fails.
+            if (exceptionMessagesFromAgent == null) {
+              return false;
+            }
+            exceptionMessages.addAll(exceptionMessagesFromAgent);
+            return true;
+          }
+
+          @Override
           public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
             return PipeDataNodeAgent.task()
                 .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
@@ -2352,7 +2370,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
-    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may

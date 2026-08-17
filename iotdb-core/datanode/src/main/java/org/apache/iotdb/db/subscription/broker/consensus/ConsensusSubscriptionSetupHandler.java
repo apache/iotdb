@@ -58,6 +58,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditDatabase;
+
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
@@ -645,10 +647,11 @@ public class ConsensusSubscriptionSetupHandler {
     return new ConsensusLogToTabletConverter(treePattern, tablePattern, null, actualDatabaseName);
   }
 
-  private static boolean matchesTopicDatabase(
+  static boolean matchesTopicDatabase(
       final TopicConfig topicConfig, final String actualDatabaseName) {
-    return !topicConfig.isTableTopic()
-        || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+    return !isAuditDatabase(actualDatabaseName)
+        && (!topicConfig.isTableTopic()
+            || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName));
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {

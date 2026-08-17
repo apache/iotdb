@@ -1215,8 +1215,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} 已启动。Socket：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}：在 air gap receiver 处遇到 TSStatus {}，将忽略。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe：写入 row。将类型从 {} 转换为 {}。";
@@ -1256,8 +1254,6 @@ public final class DataNodePipeMessages {
       "开始加载 serialize number 为 {}、type 为 {} 的 pipeData，value={}";
   public static final String STORAGE_ENGINE_READONLY = "存储引擎只读";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} 从 {} 开始到 {} 已完成。";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "在 air gap receiver 处遇到临时不可用异常，将在本地重试。";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "iotConsensusV2 请求版本 {} 与 sender 请求版本 {} 不同，"
           + "receiver 将被重置为 sender 请求版本。";
@@ -2423,4 +2419,6 @@ public final class DataNodePipeMessages {
       "共识订阅设置期间 topic %s 的配置不可用";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
+  public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
+      "Pipe processor worker {} 已连续处理同一 event {} ms。Pipe：{}，DataRegion：{}，subtask：{}，event：{}，线程状态：{}。栈：{}";
 }
