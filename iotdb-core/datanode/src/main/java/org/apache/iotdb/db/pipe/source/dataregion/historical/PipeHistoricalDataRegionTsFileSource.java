@@ -82,6 +82,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
@@ -90,6 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 
 public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataRegionSource {
 
@@ -117,6 +119,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
 
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
@@ -165,13 +168,23 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       }
     }
 
+    // Historical data extraction is enabled in the following cases:
+    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
+    // enabled, the pipe will lose some historical data.
+    // 2. Historical extraction is enabled by the user or by default.
+    isHistoricalSourceEnabled =
+        parameters.getBooleanOrDefault(
+                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
+                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
         EXTRACTOR_START_TIME_KEY,
         SOURCE_END_TIME_KEY,
         EXTRACTOR_END_TIME_KEY)) {
-      isHistoricalSourceEnabled = true;
-
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
@@ -204,19 +217,6 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       // return here
       return;
     }
-
-    // Historical data extraction is enabled in the following cases:
-    // 1. System restarts the pipe. If the pipe is restarted but historical data extraction is not
-    // enabled, the pipe will lose some historical data.
-    // 2. User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    isHistoricalSourceEnabled =
-        parameters.getBooleanOrDefault(
-                SystemConstant.RESTART_OR_NEWLY_ADDED_KEY,
-                SystemConstant.RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE)
-            || parameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
 
     try {
       historicalDataExtractionStartTime =
@@ -269,6 +269,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     dataRegionId = environment.getRegionId();
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -398,7 +400,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
         originalResourceList.sort(
             (o1, o2) ->
-                startIndex instanceof TimeWindowStateProgressIndex
+                Objects.nonNull(getTimeWindowStateProgressIndex(startIndex))
                     ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                     : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(originalResourceList);
@@ -466,9 +468,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
-    if (startIndex instanceof TimeWindowStateProgressIndex) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     if (startIndex instanceof StateProgressIndex) {
@@ -486,6 +490,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       return true;
     }
     return false;
+  }
+
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
@@ -616,6 +627,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+    event.setTsFileParser(tsFileParser);
     if (sloppyPattern || isDbNameCoveredByPattern || isTsFileResourceCoveredByPattern(resource)) {
       event.skipParsingPattern();
     }

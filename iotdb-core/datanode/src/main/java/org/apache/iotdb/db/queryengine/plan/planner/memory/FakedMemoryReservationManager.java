@@ -30,7 +30,13 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
   public void reserveMemoryImmediately() {}
 
   @Override
+  public void reserveMemoryImmediately(final long size) {}
+
+  @Override
   public void releaseMemoryCumulatively(long size) {}
+
+  @Override
+  public void releaseMemoryImmediately(long size) {}
 
   @Override
   public void releaseAllReservedMemory() {}

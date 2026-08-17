@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -33,6 +35,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -49,9 +52,12 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -138,6 +144,16 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
+    // The periodic heartbeat may not have reached ConfigNode immediately before this alter. Pull
+    // the current leader checkpoints first so a leader migration does not make the replacement
+    // task start from an older coordinator checkpoint.
+    final Map<Integer, ProgressIndex> latestProgressIndexMap =
+        PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getExtractorParameters())
+                == PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getExtractorParameters())
+            ? collectLatestProgressIndexes(
+                env, currentPipeStaticMeta, currentConsensusGroupId2PipeTaskMeta)
+            : Collections.emptyMap();
+
     final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
 
@@ -167,8 +183,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 // then it will extract all existing data now, not existing data since the
                 // original pipe was created
                 // Similar for "pure realtime"
-                updatedConsensusGroupIdToTaskMetaMap.put(
-                    regionGroupId.getId(),
+                final PipeTaskMeta updatedPipeTaskMeta =
                     new PipeTaskMeta(
                         PipeTaskAgent.isRealtimeOnlyPipe(
                                     currentPipeStaticMeta.getExtractorParameters())
@@ -186,7 +201,14 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                                     && PipeTaskAgent.isRealtimeOnlyPipe(
                                         updatedPipeStaticMeta.getExtractorParameters()))
                             ? PipeTaskMeta.getRevertedLeader(regionLeaderNodeId)
-                            : regionLeaderNodeId));
+                            : regionLeaderNodeId);
+                final ProgressIndex latestProgressIndex =
+                    latestProgressIndexMap.get(regionGroupId.getId());
+                if (latestProgressIndex != null) {
+                  updatedPipeTaskMeta.updateProgressIndex(latestProgressIndex);
+                }
+                updatedConsensusGroupIdToTaskMetaMap.put(
+                    regionGroupId.getId(), updatedPipeTaskMeta);
               }
             });
 
@@ -211,6 +233,61 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (!pipeTaskInfo.get().isPipeStoppedByUser(alterPipeRequest.getPipeName())) {
       updatedPipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     }
+  }
+
+  private Map<Integer, ProgressIndex> collectLatestProgressIndexes(
+      final ConfigNodeProcedureEnv env,
+      final PipeStaticMeta pipeStaticMeta,
+      final Map<Integer, PipeTaskMeta> taskMetaMap) {
+    final Set<Integer> leaderNodeIds = new HashSet<>();
+    final Set<Integer> registeredDataNodeIds =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations().keySet();
+    taskMetaMap.forEach(
+        (consensusGroupId, taskMeta) -> {
+          // The ConfigRegion task is led by a ConfigNode, not by a DataNode.
+          if (consensusGroupId != Integer.MIN_VALUE
+              && registeredDataNodeIds.contains(taskMeta.getLeaderNodeId())) {
+            leaderNodeIds.add(taskMeta.getLeaderNodeId());
+          }
+        });
+
+    if (leaderNodeIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final Map<Integer, TPipeHeartbeatResp> responseMap =
+        env.collectPipeMetaFromDataNodes(leaderNodeIds);
+    final Map<Integer, ProgressIndex> latestProgressIndexMap = new HashMap<>();
+    responseMap.forEach(
+        (dataNodeId, response) -> {
+          if (response == null || !response.isSetPipeMetaList()) {
+            return;
+          }
+
+          final PipeMeta pipeMetaFromDataNode =
+              new PipeHeartbeat(response.getPipeMetaList(), null, null, null)
+                  .getPipeMeta(pipeStaticMeta);
+          if (pipeMetaFromDataNode == null) {
+            return;
+          }
+
+          pipeMetaFromDataNode
+              .getRuntimeMeta()
+              .getConsensusGroupId2TaskMetaMap()
+              .forEach(
+                  (consensusGroupId, taskMetaFromDataNode) -> {
+                    final PipeTaskMeta taskMetaFromCoordinator = taskMetaMap.get(consensusGroupId);
+                    if (taskMetaFromCoordinator == null
+                        || taskMetaFromCoordinator.getLeaderNodeId() != dataNodeId) {
+                      return;
+                    }
+                    latestProgressIndexMap.merge(
+                        consensusGroupId,
+                        taskMetaFromDataNode.getProgressIndex(),
+                        ProgressIndex::updateToMinimumEqualOrIsAfterProgressIndex);
+                  });
+        });
+    return latestProgressIndexMap;
   }
 
   @Override

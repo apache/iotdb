@@ -21,7 +21,10 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -105,6 +108,14 @@ public class PipeReceiverStatusHandler {
       final @Nullable String exceptionMessage,
       final String recordMessage,
       final boolean log4NoPrivileges) {
+    if (!PipeStopStrategy.accept(null, status)) {
+      PipeLogger.log(
+          LOGGER::info, "Temporary unavailable exception: will retry forever. status: %s", status);
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(null, status);
+      throw new PipeRuntimeSinkResourceException(exceptionMessage, failureType);
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
@@ -116,16 +127,6 @@ public class PipeReceiverStatusHandler {
         {
           LOGGER.info("Idempotent conflict exception: will be ignored. status: {}", status);
           return;
-        }
-
-      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-        {
-          PipeLogger.log(
-              LOGGER::info,
-              "Temporary unavailable exception: will retry forever. status: %s",
-              status);
-          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
-              exceptionMessage, Long.MAX_VALUE);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION

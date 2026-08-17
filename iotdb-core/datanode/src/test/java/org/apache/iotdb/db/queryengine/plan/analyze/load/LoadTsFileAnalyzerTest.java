@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -100,10 +102,76 @@ public class LoadTsFileAnalyzerTest {
     }
   }
 
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenPerLoadAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+    final File tsFile = File.createTempFile("missing-schema-per-load", ".tsfile");
+
+    try {
+      final LoadTsFileStatement waitingStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      waitingStatement.setAutoCreateSchema(false);
+      waitingStatement.markIsGeneratedByPipe();
+      try (final LoadTsFileAnalyzer waitingAnalyzer =
+          createAnalyzer(waitingStatement, "load_pipe_waiting_test")) {
+        Assert.assertFalse(waitingAnalyzer.isAutoCreateSchemaRequested());
+        Assert.assertTrue(
+            waitingAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+
+      final LoadTsFileStatement defaultStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      defaultStatement.markIsGeneratedByPipe();
+      try (final LoadTsFileAnalyzer defaultAnalyzer =
+          createAnalyzer(defaultStatement, "load_pipe_default_test")) {
+        Assert.assertTrue(defaultAnalyzer.isAutoCreateSchemaRequested());
+        Assert.assertFalse(
+            defaultAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testGlobalAutoCreateDisabledKeepsPerLoadAutoCreatePermission() throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("global-auto-create-disabled", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        createAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            "load_global_auto_create_disabled_test")) {
+      Assert.assertFalse(analyzer.isAutoCreateSchemaEnabled());
+      Assert.assertTrue(analyzer.isAutoCreateSchemaRequested());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
   private LoadTsFileAnalyzer createAnalyzer(final File tsFile) throws Exception {
+    return createAnalyzer(
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), "load_tree_test");
+  }
+
+  private LoadTsFileAnalyzer createAnalyzer(
+      final LoadTsFileStatement statement, final String queryId) throws Exception {
     return new LoadTsFileAnalyzer(
-        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
-        new MPPQueryContext(new QueryId("load_tree_test")),
+        statement,
+        new MPPQueryContext(new QueryId(queryId)),
         mock(IPartitionFetcher.class),
         mock(ISchemaFetcher.class));
   }

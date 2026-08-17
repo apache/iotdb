@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -69,11 +70,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
@@ -89,6 +93,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private final FragmentInstanceId id;
@@ -162,6 +167,9 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedUnseqFileNum = 0;
   private boolean highestPriority = false;
 
+  // accessed value columns on each referenced AlignedTVList.
+  private Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -216,6 +224,48 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  /**
+   * Record columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held. Even though the HashSet inside
+   * alignedTVListColumnAccessMap is not thread-safe, the calling pattern guarantees thread safety
+   * without requiring additional synchronization.
+   *
+   * @param tvList the TVList being accessed
+   * @param columnIndexList list of column indices being accessed
+   */
+  public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
+    Set<Integer> accessedColumns =
+        alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
+    columnIndexList.stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            index -> {
+              if (index >= 0) {
+                accessedColumns.add(index);
+              }
+            });
+  }
+
+  /** Remove column-access metadata for an unpublished TVList when clone preparation fails. */
+  public void removeAccessedColumns(TVList tvList) {
+    alignedTVListColumnAccessMap.remove(tvList);
+  }
+
+  /**
+   * Get columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can
+   * change accessed columns for the same TVList concurrently.
+   *
+   * @param tvList the TVList being accessed
+   * @return set of column indices being accessed
+   */
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
+    return accessedColumns == null
+        ? Collections.emptySet()
+        : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly
@@ -350,6 +400,60 @@ public class FragmentInstanceContext extends QueryContext {
 
     // always update last execution start time
     lastExecutionStartTime.set(now);
+  }
+
+  @Override
+  public List<Modification> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    PartialPath path = new PartialPath(deviceID, measurement);
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  @Override
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, path);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<Modification> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   @Override
@@ -897,12 +1001,12 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize().getRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
                 "Release TVList owned by query: allocate size {}, release size {}",
@@ -980,6 +1084,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
+    alignedTVListColumnAccessMap = null;
 
     fileModCache = null;
     nonExistentModFiles = null;

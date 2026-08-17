@@ -34,11 +34,25 @@ public interface MemoryReservationManager {
   void reserveMemoryImmediately();
 
   /**
+   * Reserve memory for the given size immediately without changing the accumulated pending
+   * reservation size maintained by this manager.
+   *
+   * @param size the size of memory to reserve immediately
+   */
+  void reserveMemoryImmediately(final long size);
+
+  /**
    * Release memory for the given size.
    *
    * @param size the size of memory to release
    */
   void releaseMemoryCumulatively(final long size);
+
+  /**
+   * Release the given size immediately. This is used to roll back a reservation when the operation
+   * protected by that reservation fails before ownership is published.
+   */
+  void releaseMemoryImmediately(final long size);
 
   /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of

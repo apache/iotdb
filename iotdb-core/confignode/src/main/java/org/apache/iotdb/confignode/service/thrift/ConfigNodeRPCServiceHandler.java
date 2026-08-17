@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.apache.thrift.protocol.TProtocol;
@@ -37,7 +38,7 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
     thriftConnectionNumber.incrementAndGet();
-    return null;
+    return NoopServerContext.INSTANCE;
   }
 
   @Override

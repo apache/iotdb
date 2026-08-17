@@ -154,6 +154,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final int databaseLevel;
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
+  private final boolean isAutoCreateSchemaRequested;
+  private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
@@ -180,10 +182,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
+  }
+
+  protected boolean isAutoCreateSchemaEnabled() {
+    return isAutoCreateSchemaEnabled;
+  }
+
+  protected boolean isAutoCreateSchemaRequested() {
+    return isAutoCreateSchemaRequested;
   }
 
   public Analysis analyzeFileByFile(Analysis analysis) {
@@ -255,8 +269,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
+              isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
-              isGeneratedByPipe);
+              isGeneratedByPipe,
+              context.getSession().getUserName());
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
           tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
@@ -435,7 +451,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
 
     final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema;
+        isAutoCreateSchemaEnabled || isVerifySchema;
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
@@ -450,6 +466,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
+      } else {
+        schemaAutoCreatorAndVerifier.checkWritePermission(device2TimeseriesMetadata);
       }
       // TODO: how to get the correct write point count when
       //  !isAutoCreateSchemaOrVerifySchemaEnabled
@@ -574,9 +592,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
-    if (!isGeneratedByPipe
-        || !isVerifySchema
-        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchemaEnabled) {
       return false;
     }
 
@@ -660,33 +676,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             // not a timeseries, skip
           } else {
             // check WRITE_DATA permission of timeseries
-            long startTime = System.nanoTime();
-            try {
-              String userName = context.getSession().getUserName();
-              if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-                TSStatus status;
-                try {
-                  List<PartialPath> paths =
-                      Collections.singletonList(
-                          new PartialPath(device, timeseriesMetadata.getMeasurementId()));
-                  status =
-                      AuthorityChecker.getTSStatus(
-                          AuthorityChecker.checkFullPathListPermission(
-                              userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
-                          paths,
-                          PrivilegeType.WRITE_DATA);
-                } catch (IllegalPathException e) {
-                  throw new RuntimeException(e);
-                }
-                if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  throw new AuthException(
-                      TSStatusCode.representOf(status.getCode()), status.getMessage());
-                }
-              }
-            } finally {
-              PerformanceOverviewMetrics.getInstance()
-                  .recordAuthCost(System.nanoTime() - startTime);
-            }
+            checkWritePermission(device, timeseriesMetadata.getMeasurementId());
             final Pair<CompressionType, TSEncoding> compressionEncodingPair =
                 reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
             schemaCache.addTimeSeries(
@@ -707,6 +697,77 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             flush();
           }
         }
+      }
+    }
+
+    public void checkWritePermission(
+        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+        throws AuthException {
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          device2TimeseriesMetadataList.entrySet()) {
+        final IDeviceID device = entry.getKey();
+
+        try {
+          if (schemaCache.isDeviceDeletedByMods(device)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          LOGGER.warn(
+              "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+              device,
+              e);
+        }
+
+        for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+          try {
+            if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
+              continue;
+            }
+          } catch (IllegalPathException e) {
+            // In aligned devices, there may be empty measurements which will cause
+            // IllegalPathException.
+            if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+              LOGGER.warn(
+                  "Failed to check if device {}, timeSeries {} is deleted by mods. Will see it as not deleted.",
+                  device,
+                  timeseriesMetadata.getMeasurementId(),
+                  e);
+            }
+          }
+
+          if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())) {
+            checkWritePermission(device, timeseriesMetadata.getMeasurementId());
+          }
+        }
+      }
+    }
+
+    private void checkWritePermission(final IDeviceID device, final String measurementId)
+        throws AuthException {
+      final long startTime = System.nanoTime();
+      try {
+        String userName = context.getSession().getUserName();
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          TSStatus status;
+          try {
+            List<PartialPath> paths =
+                Collections.singletonList(new PartialPath(device, measurementId));
+            status =
+                AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkFullPathListPermission(
+                        userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                    paths,
+                    PrivilegeType.WRITE_DATA);
+          } catch (IllegalPathException e) {
+            throw new RuntimeException(e);
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new AuthException(
+                TSStatusCode.representOf(status.getCode()), status.getMessage());
+          }
+        }
+      } finally {
+        PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
       }
     }
 
@@ -961,6 +1022,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           encodingsList,
           compressionTypesList,
           isAlignedList,
+          isAutoCreateSchemaRequested,
           context);
     }
 
