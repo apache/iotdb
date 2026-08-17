@@ -25,6 +25,10 @@ public class PipeProcessorConstant {
 
   public static final String PROCESSOR_KEY = "processor";
 
+  public static final String PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY =
+      "processor.tsfile-parser.parallelism";
+  public static final int PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE = 1;
+
   public static final String PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY =
       "processor.down-sampling.split-file";
   public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;

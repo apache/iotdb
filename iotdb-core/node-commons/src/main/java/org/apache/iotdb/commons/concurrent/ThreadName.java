@@ -130,6 +130,7 @@ public enum ThreadName {
   // -------------------------- Compute --------------------------
   PIPE_SOURCE_DISRUPTOR("Pipe-Source-Disruptor"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
+  PIPE_TSFILE_PARSER_EXECUTOR_POOL("Pipe-TsFile-Parser-Executor-Pool"),
   PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_SINK_EXECUTOR_POOL("Pipe-Sink-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
@@ -289,6 +290,7 @@ public enum ThreadName {
           Arrays.asList(
               PIPE_SOURCE_DISRUPTOR,
               PIPE_PROCESSOR_EXECUTOR_POOL,
+              PIPE_TSFILE_PARSER_EXECUTOR_POOL,
               PIPE_SINK_EXECUTOR_POOL,
               PIPE_CONSENSUS_EXECUTOR_POOL,
               PIPE_CONFIGNODE_EXECUTOR_POOL,

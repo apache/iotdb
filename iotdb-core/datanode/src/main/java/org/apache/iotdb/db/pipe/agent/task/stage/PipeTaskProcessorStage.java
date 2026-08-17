@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task.stage;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -43,6 +44,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
@@ -113,7 +117,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             regionId,
             pipeSourceInputEventSupplier,
             pipeProcessor,
-            pipeSinkOutputEventCollector);
+            pipeSinkOutputEventCollector,
+            pipeProcessor.getClass() == DoNothingProcessor.class
+                ? pipeProcessorParameters.getIntOrDefault(
+                    PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY,
+                    PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE)
+                : PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE);
 
     this.executor = executor;
   }

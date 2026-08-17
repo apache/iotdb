@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.pipe.agent.task.connection.BlockingPendingQueue.PendingEventMemoryReservation;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
@@ -56,6 +58,8 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean skipParsing;
 
+  private final boolean isTsFileParserCollector;
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
   private boolean isFailedToIncreaseReferenceCount = false;
@@ -66,11 +70,22 @@ public class PipeEventCollector implements EventCollector {
       final int regionId,
       final boolean forceTabletFormat,
       final boolean skipParsing) {
+    this(pendingQueue, creationTime, regionId, forceTabletFormat, skipParsing, false);
+  }
+
+  private PipeEventCollector(
+      final UnboundedBlockingPendingQueue<Event> pendingQueue,
+      final long creationTime,
+      final int regionId,
+      final boolean forceTabletFormat,
+      final boolean skipParsing,
+      final boolean isTsFileParserCollector) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
     this.skipParsing = skipParsing;
+    this.isTsFileParserCollector = isTsFileParserCollector;
   }
 
   @Override
@@ -118,7 +133,7 @@ public class PipeEventCollector implements EventCollector {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
     } else {
-      collectEvent(sourceEvent);
+      collectEvent(sourceEvent, isTsFileParserCollector);
     }
   }
 
@@ -152,10 +167,32 @@ public class PipeEventCollector implements EventCollector {
     return !sourceEvent.shouldParseTimeOrPattern();
   }
 
+  public boolean shouldParseTsFileEvent(final PipeTsFileInsertionEvent sourceEvent) {
+    return !skipParsing && (forceTabletFormat || !canSkipParsing4TsFileEvent(sourceEvent));
+  }
+
+  public void prepareTsFileEventForParallelParsing(final PipeTsFileInsertionEvent sourceEvent) {
+    if (sourceEvent.isProgressReportManagedByTsFileParser()) {
+      return;
+    }
+    if (sourceEvent.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId(sourceEvent, creationTime, regionId);
+    }
+    if (sourceEvent.getCommitId() > EnrichedEvent.NO_COMMIT_ID) {
+      sourceEvent.markProgressReportManagedByTsFileParser();
+    }
+  }
+
+  public PipeEventCollector forkForTsFileParser() {
+    return new PipeEventCollector(
+        pendingQueue, creationTime, regionId, forceTabletFormat, skipParsing, true);
+  }
+
   private void collectParsedRawTableEvent(final PipeRawTabletInsertionEvent parsedEvent) {
     if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
       hasNoGeneratedEvent = false;
-      collectEvent(parsedEvent);
+      collectEvent(parsedEvent, isTsFileParserCollector);
     }
   }
 
@@ -183,37 +220,95 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void collectEvent(final Event event) {
-    if (event instanceof EnrichedEvent) {
-      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
-      if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
-        LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
-        isFailedToIncreaseReferenceCount = true;
-        return;
-      }
+    collectEvent(event, false);
+  }
 
-      // Assign a commit id for this event in order to report progress in order.
-      PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
-
-      // Assign a rebootTime for iotConsensusV2
-      enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
-
-      if (enrichedEvent.getPipeName() != null
-          && (pendingQueue.isEventFromDroppedPipe(enrichedEvent)
-              || (enrichedEvent.getCommitterKey() == null
-                  && pendingQueue.isPipeDropped(
-                      enrichedEvent.getPipeName(), creationTime, regionId)))) {
-        enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
-        return;
+  private void collectEvent(final Event event, final boolean useParserQueueMemoryBackpressure) {
+    PendingEventMemoryReservation memoryReservation = null;
+    long tabletSizeInBytes = 0;
+    if (useParserQueueMemoryBackpressure && event instanceof PipeRawTabletInsertionEvent) {
+      tabletSizeInBytes = ((PipeRawTabletInsertionEvent) event).getTabletSizeInBytes();
+      memoryReservation =
+          pendingQueue.waitForMemoryReservation(
+              tabletSizeInBytes, Math.max(1, PipeConfig.getInstance().getTsFileParserMemory()));
+      if (memoryReservation == null) {
+        throw new PipeException("Interrupted while waiting for parser output queue memory.");
       }
     }
 
-    if (event instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
-    }
+    boolean isReferenceIncreased = false;
+    boolean isOffered = false;
+    try {
+      if (event instanceof EnrichedEvent) {
+        final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+        final boolean increased =
+            useParserQueueMemoryBackpressure && event instanceof PipeRawTabletInsertionEvent
+                ? ((PipeRawTabletInsertionEvent) event)
+                    .increaseReferenceCountWithReservedMemory(
+                        PipeEventCollector.class.getName(),
+                        Math.max(
+                            tabletSizeInBytes > Long.MAX_VALUE / 2
+                                ? Long.MAX_VALUE
+                                : tabletSizeInBytes * 2,
+                            PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes()))
+                : enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName());
+        if (!increased) {
+          LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
+          isFailedToIncreaseReferenceCount = true;
+          return;
+        }
+        isReferenceIncreased = true;
 
-    if (pendingQueue.offer(event)) {
-      collectInvocationCount.incrementAndGet();
+        final PipeTsFileInsertionEvent progressReportSourceTsFile =
+            event instanceof PipeRawTabletInsertionEvent
+                ? ((PipeRawTabletInsertionEvent) event).getProgressReportSourceTsFile()
+                : null;
+        if (progressReportSourceTsFile == null) {
+          // Assign a commit id for this event in order to report progress in order.
+          PipeEventCommitManager.getInstance()
+              .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
+        } else {
+          // The source TsFile owns the ordered commit id. Raw tablets retain its committer key but
+          // do not create independent commits.
+          enrichedEvent.setCommitterKeyAndCommitId(
+              progressReportSourceTsFile.getCommitterKey(), EnrichedEvent.NO_COMMIT_ID);
+        }
+
+        // Assign a rebootTime for iotConsensusV2
+        enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
+
+        if (enrichedEvent.getPipeName() != null
+            && (pendingQueue.isEventFromDroppedPipe(enrichedEvent)
+                || (enrichedEvent.getCommitterKey() == null
+                    && pendingQueue.isPipeDropped(
+                        enrichedEvent.getPipeName(), creationTime, regionId)))) {
+          enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
+          return;
+        }
+      }
+
+      if (event instanceof PipeHeartbeatEvent) {
+        ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
+      }
+
+      isOffered =
+          memoryReservation == null
+              ? pendingQueue.offer(event)
+              : pendingQueue.offer(event, memoryReservation);
+      if (isOffered) {
+        memoryReservation = null;
+        collectInvocationCount.incrementAndGet();
+      }
+    } finally {
+      if (memoryReservation != null) {
+        memoryReservation.close();
+      }
+      if (!isOffered
+          && isReferenceIncreased
+          && event instanceof EnrichedEvent
+          && !((EnrichedEvent) event).isReleased()) {
+        ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
+      }
     }
   }
 
