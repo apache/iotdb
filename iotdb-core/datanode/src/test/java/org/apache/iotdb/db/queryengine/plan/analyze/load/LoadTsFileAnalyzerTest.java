@@ -121,6 +121,16 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
+  public void testTableLoadEmptyPathIsRejected() {
+    try {
+      new LoadTsFile(null, "", Collections.emptyMap());
+      Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
+    } catch (final RuntimeException e) {
+      Assert.assertTrue(e.getMessage().contains("The LOAD TSFILE path cannot be empty."));
+    }
+  }
+
+  @Test
   public void testTableSchemaCacheShouldThrowMismatchWhenVerifyingDataType() throws Exception {
     final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(true);
     try {

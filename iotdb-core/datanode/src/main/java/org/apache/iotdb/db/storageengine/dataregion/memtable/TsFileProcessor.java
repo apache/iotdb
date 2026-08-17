@@ -650,7 +650,7 @@ public class TsFileProcessor {
 
     ensureMemTable(infoForMetrics);
     workMemTable.checkDataType(insertTabletNode);
-    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+    AlignedTvListRamCostSnapshot alignedRamCostSnapshot =
         takeAlignedTVListRamCostSnapshot(workMemTable, insertTabletNode, rangeList);
 
     long[] memIncrements =
@@ -1387,7 +1387,7 @@ public class TsFileProcessor {
     }
   }
 
-  static AlignedTVListRamCostSnapshot takeAlignedTVListRamCostSnapshot(
+  static AlignedTvListRamCostSnapshot takeAlignedTVListRamCostSnapshot(
       IMemTable memTable, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     if (!insertTabletNode.isAligned() || rangeList.isEmpty()) {
       return null;
@@ -1395,7 +1395,7 @@ public class TsFileProcessor {
 
     if (!(insertTabletNode instanceof RelationalInsertTabletNode)
         || ((RelationalInsertTabletNode) insertTabletNode).isSingleDevice()) {
-      return new AlignedTVListRamCostSnapshot(
+      return new AlignedTvListRamCostSnapshot(
           memTable, insertTabletNode.getDeviceID(rangeList.get(0)[0]));
     }
 
@@ -1408,10 +1408,10 @@ public class TsFileProcessor {
     }
     return alignedDeviceIds.isEmpty()
         ? null
-        : new AlignedTVListRamCostSnapshot(memTable, alignedDeviceIds);
+        : new AlignedTvListRamCostSnapshot(memTable, alignedDeviceIds);
   }
 
-  static final class AlignedTVListRamCostSnapshot {
+  static final class AlignedTvListRamCostSnapshot {
 
     private final IMemTable memTable;
     private final IDeviceID deviceId;

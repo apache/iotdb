@@ -3681,6 +3681,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName is null";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString is null";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath is null";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "The LOAD TSFILE path cannot be empty.";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details is null";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory is null";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName is null";

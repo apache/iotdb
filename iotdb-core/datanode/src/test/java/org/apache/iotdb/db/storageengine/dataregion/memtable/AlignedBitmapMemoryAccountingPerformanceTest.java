@@ -57,8 +57,8 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static final String ROUNDS_PROPERTY = "iotdb.aligned.bitmap.accounting.perf.rounds";
   private static final int RECONCILIATION_REPETITIONS = 1024;
 
-  private static final TsFileProcessor.AlignedTVListRamCostSnapshot[] SNAPSHOT_BLACKHOLE =
-      new TsFileProcessor.AlignedTVListRamCostSnapshot[RECONCILIATION_REPETITIONS];
+  private static final TsFileProcessor.AlignedTvListRamCostSnapshot[] SNAPSHOT_BLACKHOLE =
+      new TsFileProcessor.AlignedTvListRamCostSnapshot[RECONCILIATION_REPETITIONS];
   private static volatile long benchmarkBlackhole;
 
   @Test
@@ -135,10 +135,10 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     int warmupOperations = Math.multiplyExact(warmupIterations, RECONCILIATION_REPETITIONS);
     int operations = Math.multiplyExact(iterations, RECONCILIATION_REPETITIONS);
 
-    TsFileProcessor.AlignedTVListRamCostSnapshot legacySnapshot =
+    TsFileProcessor.AlignedTvListRamCostSnapshot legacySnapshot =
         takeLegacyAlignedTVListRamCostSnapshot(
             target.memTable, target.insertTabletNode, target.rangeList);
-    TsFileProcessor.AlignedTVListRamCostSnapshot optimizedSnapshot =
+    TsFileProcessor.AlignedTvListRamCostSnapshot optimizedSnapshot =
         TsFileProcessor.takeAlignedTVListRamCostSnapshot(
             target.memTable, target.insertTabletNode, target.rangeList);
     Assert.assertNotNull(legacySnapshot);
@@ -190,7 +190,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static void runLegacySnapshotLifecycle(SnapshotTarget target, int operations) {
     long correction = 0;
     for (int i = 0; i < operations; i++) {
-      TsFileProcessor.AlignedTVListRamCostSnapshot snapshot =
+      TsFileProcessor.AlignedTvListRamCostSnapshot snapshot =
           takeLegacyAlignedTVListRamCostSnapshot(
               target.memTable, target.insertTabletNode, target.rangeList);
       correction += snapshot.getMemoryCorrection(0);
@@ -202,7 +202,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static void runOptimizedSnapshotLifecycle(SnapshotTarget target, int operations) {
     long correction = 0;
     for (int i = 0; i < operations; i++) {
-      TsFileProcessor.AlignedTVListRamCostSnapshot snapshot =
+      TsFileProcessor.AlignedTvListRamCostSnapshot snapshot =
           TsFileProcessor.takeAlignedTVListRamCostSnapshot(
               target.memTable, target.insertTabletNode, target.rangeList);
       correction += snapshot.getMemoryCorrection(0);
@@ -211,7 +211,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     benchmarkBlackhole = correction + operations;
   }
 
-  private static TsFileProcessor.AlignedTVListRamCostSnapshot
+  private static TsFileProcessor.AlignedTvListRamCostSnapshot
       takeLegacyAlignedTVListRamCostSnapshot(
           IMemTable memTable, InsertTabletNode insertTabletNode, List<int[]> rangeList) {
     Set<IDeviceID> alignedDeviceIds = new HashSet<>();
@@ -225,7 +225,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
     }
     return alignedDeviceIds.isEmpty()
         ? null
-        : new TsFileProcessor.AlignedTVListRamCostSnapshot(memTable, alignedDeviceIds);
+        : new TsFileProcessor.AlignedTvListRamCostSnapshot(memTable, alignedDeviceIds);
   }
 
   private static Measurement measureReconciliation(Scenario scenario, int iterations) {

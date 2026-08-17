@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -60,13 +62,16 @@ public class ConsensusReqReaderTest {
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
   private WALMode prevMode;
+  private boolean prevWalFileListCacheEnabled;
   private WALNode walNode;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
+    prevWalFileListCacheEnabled = config.isWalFileListCacheEnabled();
     config.setWalMode(WALMode.SYNC);
+    config.setWalFileListCacheEnabled(true);
     walNode = new WALNode(identifier, logDirectory);
   }
 
@@ -74,7 +79,51 @@ public class ConsensusReqReaderTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
+    config.setWalFileListCacheEnabled(prevWalFileListCacheEnabled);
     EnvironmentUtils.cleanDir(logDirectory);
+  }
+
+  /** Verifies that reader access publishes an incrementally maintained file snapshot. */
+  @Test
+  public void testIncrementallyUpdateCachedWalFilesAfterRoll() throws IOException {
+    Assert.assertNull(walNode.getCachedSortedWalFiles());
+
+    Assert.assertFalse(walNode.getReqIterator(0).hasNext());
+    File[] initialCachedWalFiles = walNode.getCachedSortedWalFiles();
+    Assert.assertEquals(1, initialCachedWalFiles.length);
+    Assert.assertEquals(0, WALFileUtils.parseVersionId(initialCachedWalFiles[0].getName()));
+
+    // A directory rescan would incorrectly add this external sentinel to the cached snapshot.
+    Assert.assertTrue(new File(logDirectory, "_100-100-1.wal").createNewFile());
+    walNode.rollWALFile();
+    Assert.assertArrayEquals(initialCachedWalFiles, walNode.getCachedSortedWalFiles());
+
+    Assert.assertFalse(walNode.getReqIterator(0).hasNext());
+    File[] cachedWalFilesAfterFirstRoll = walNode.getCachedSortedWalFiles();
+    Assert.assertEquals(2, cachedWalFilesAfterFirstRoll.length);
+    Assert.assertEquals(
+        WALFileStatus.CONTAINS_NONE_SEARCH_INDEX,
+        WALFileUtils.parseStatusCode(cachedWalFilesAfterFirstRoll[0].getName()));
+    Assert.assertEquals(1, WALFileUtils.parseVersionId(cachedWalFilesAfterFirstRoll[1].getName()));
+
+    walNode.rollWALFile();
+    Assert.assertArrayEquals(cachedWalFilesAfterFirstRoll, walNode.getCachedSortedWalFiles());
+
+    Assert.assertFalse(walNode.getReqIterator(0).hasNext());
+    File[] cachedWalFilesAfterSecondRoll = walNode.getCachedSortedWalFiles();
+    Assert.assertEquals(3, cachedWalFilesAfterSecondRoll.length);
+    for (int i = 0; i < cachedWalFilesAfterSecondRoll.length; i++) {
+      Assert.assertEquals(
+          i, WALFileUtils.parseVersionId(cachedWalFilesAfterSecondRoll[i].getName()));
+    }
+  }
+
+  private void recreateWalNodeWithoutFileListCache() throws IOException {
+    // These corruption tests replace WAL files outside WALNode, so use the directory-scanning mode
+    // that is designed to observe such external test-fixture mutations.
+    walNode.close();
+    config.setWalFileListCacheEnabled(false);
+    walNode = new WALNode(identifier, logDirectory);
   }
 
   /**
@@ -554,6 +603,7 @@ public class ConsensusReqReaderTest {
 
   @Test
   public void scenario03TestGetReqIterator01() throws Exception {
+    recreateWalNodeWithoutFileListCache();
     simulateFileScenario03();
     walNode.rollWALFile();
 
@@ -608,6 +658,7 @@ public class ConsensusReqReaderTest {
 
   @Test
   public void scenario03TestGetReqIterator02() throws Exception {
+    recreateWalNodeWithoutFileListCache();
     simulateFileScenario03();
     walNode.rollWALFile();
 
