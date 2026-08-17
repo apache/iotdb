@@ -161,7 +161,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final boolean needConstructDataRegionTask =
           StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
               && DataRegionListeningFilter.shouldDataRegionBeListened(
-                  sourceParameters, dataRegionId);
+                  sourceParameters, dataRegionId, pipeStaticMeta.getPipeType());
       final boolean needConstructSchemaRegionTask =
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
@@ -861,12 +861,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         throw new PipeException(DataNodePipeMessages.PIPE_META_NOT_FOUND + pipeName);
       }
 
-      return pipeMetaKeeper
-          .getPipeMeta(pipeName)
-          .getRuntimeMeta()
-          .getConsensusGroupId2TaskMetaMap()
-          .get(consensusGroupId)
-          .getProgressIndex();
+      final PipeTaskMeta pipeTaskMeta =
+          pipeMetaKeeper
+              .getPipeMeta(pipeName)
+              .getRuntimeMeta()
+              .getConsensusGroupId2TaskMetaMap()
+              .get(consensusGroupId);
+      if (pipeTaskMeta == null) {
+        throw new PipeException(
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_FAILED_TO_GET_PIPE_TASK_PROGRESS_INDEX_WITH_PIPE_NAME_S_CFE9DE7C,
+                pipeName,
+                consensusGroupId));
+      }
+      return pipeTaskMeta.getProgressIndex();
     } finally {
       releaseReadLock();
     }
@@ -951,7 +960,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
-                    sourceParameters, dataRegionId);
+                    sourceParameters, dataRegionId, pipeStaticMeta.getPipeType());
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
