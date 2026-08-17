@@ -119,8 +119,6 @@ public class DataNodeMetricsHelper {
     diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
     diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
-    diskDirs.addAll(
-        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs()));
     diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
     diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
     SystemMetrics.getInstance().setDiskDirs(diskDirs);

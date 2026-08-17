@@ -2565,9 +2565,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())
-          && systemMetrics.isAllDiskSpaceAboveThreshold(
-              commonConfig.getDiskSpaceWarningThreshold())) {
+          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
         commonConfig.setNodeStatus(NodeStatus.Running);
         commonConfig.setStatusReason(null);
       }

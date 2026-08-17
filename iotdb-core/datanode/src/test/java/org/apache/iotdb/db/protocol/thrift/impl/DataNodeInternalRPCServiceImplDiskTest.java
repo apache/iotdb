@@ -69,13 +69,12 @@ public class DataNodeInternalRPCServiceImplDiskTest {
   }
 
   @Test
-  public void testHeartbeatDoesNotRecoverWhenPipeReceiverDiskIsStillFull() {
+  public void testPipeReceiverDiskDoesNotBlockRunningRecovery() {
     SystemMetrics systemMetrics = mock(SystemMetrics.class);
-    // Disk A hosts the Pipe receiver and has 4% free space. Disk B has 100% free space, so the
-    // aggregate free ratio is 52%, but the node must remain read-only until disk A recovers.
+    // The storage-engine disks have an aggregate free ratio of 52%. A full Pipe receiver disk is
+    // handled by the receiver itself and must not prevent the node from recovering Running.
     when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(104L);
     when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(200L);
-    when(systemMetrics.isAllDiskSpaceAboveThreshold(0.05)).thenReturn(false, true);
 
     DataNodeContext dataNodeContext = mock(DataNodeContext.class);
     DataNodeInternalRPCServiceImpl service =
@@ -84,14 +83,27 @@ public class DataNodeInternalRPCServiceImplDiskTest {
 
     service.sampleDiskLoad(loadSample);
 
-    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
-    Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
-    Assert.assertEquals(104.0, loadSample.getFreeDiskSpace(), 0.0);
-    Assert.assertEquals(0.48, loadSample.getDiskUsageRate(), 1e-10);
-
-    service.sampleDiskLoad(loadSample);
-
     Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
     Assert.assertNull(commonConfig.getStatusReason());
+    Assert.assertEquals(104.0, loadSample.getFreeDiskSpace(), 0.0);
+    Assert.assertEquals(0.48, loadSample.getDiskUsageRate(), 1e-10);
+  }
+
+  @Test
+  public void testStorageEngineDiskAggregateStillEntersReadOnly() {
+    SystemMetrics systemMetrics = mock(SystemMetrics.class);
+    when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(4L);
+    when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(100L);
+
+    commonConfig.setNodeStatus(NodeStatus.Running);
+    commonConfig.setStatusReason(null);
+    DataNodeContext dataNodeContext = mock(DataNodeContext.class);
+    DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(dataNodeContext, systemMetrics);
+
+    service.sampleDiskLoad(new TLoadSample());
+
+    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
   }
 }
